@@ -1,0 +1,41 @@
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
+const gameManager = require('../game/gameManager');
+
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('captainvote')
+    .setDescription('Voter pour le capitaine (premier jour uniquement, dans le salon village)')
+    .addUserOption(opt => opt.setName('target').setDescription('La personne à élire').setRequired(true)),
+
+  async execute(interaction) {
+    // Vérification catégorie
+    const channel = await interaction.guild.channels.fetch(interaction.channelId);
+    if (channel.parentId !== '1469976287790633146') {
+      return interaction.reply({ content: '❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.', flags: 64 });
+    }
+    const game = gameManager.getGameByChannelId(interaction.channelId);
+    if (!game) return interaction.reply({ content: '❌ Aucune partie ici', flags: MessageFlags.Ephemeral });
+    if (interaction.channelId !== game.villageChannelId) {
+      return interaction.reply({ content: '❌ Cette commande ne peut être utilisée que dans le salon village', flags: MessageFlags.Ephemeral });
+    }
+
+    const target = interaction.options.getUser('target');
+    const res = gameManager.voteCaptain(interaction.channelId, interaction.user.id, target.id);
+
+    if (!res.ok) {
+      let msg = '❌ Impossible de voter.';
+      switch (res.reason) {
+        case 'not_day': msg = '❌ Ce n\'est pas le jour.'; break;
+        case 'not_first_day': msg = '❌ Le vote pour capitaine n\'a lieu que le premier jour.'; break;
+        case 'captain_already': msg = '❌ Le capitaine a déjà été élu.'; break;
+        case 'not_in_game': msg = '❌ Tu ne fais pas partie de la partie.'; break;
+        case 'voter_dead': msg = '❌ Les morts ne peuvent pas voter.'; break;
+        case 'target_not_found': msg = '❌ Cible invalide.'; break;
+        case 'target_dead': msg = '❌ La cible est morte.'; break;
+      }
+      return interaction.reply({ content: msg, flags: MessageFlags.Ephemeral });
+    }
+
+    return interaction.reply({ content: `✅ Vote enregistré pour **${target.username}**`, flags: MessageFlags.Ephemeral });
+  }
+};

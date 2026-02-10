@@ -1,0 +1,708 @@
+require("dotenv").config();
+
+const { Client, GatewayIntentBits, Collection, REST, Routes, EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require("discord.js");
+const fs = require("fs");
+const path = require("path");
+const gameManager = require("./game/gameManager");
+const ROLES = require("./game/roles");
+const { app: logger, discord: discordLogger, interaction: interactionLogger } = require("./utils/logger");
+const { safeEditReply } = require("./utils/interaction");
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.DirectMessages
+  ]
+});
+
+// Expose le client pour accès global (auto-cleanup)
+require.main.exports = require.main.exports || {};
+require.main.exports.client = client;
+
+client.commands = new Collection();
+
+// Charger le middleware de rate limiting
+const { applyRateLimit } = require("./utils/rateLimitMiddleware");
+
+// Charger les commandes avec rate limiting automatique
+const commandFiles = fs.readdirSync("./commands").filter(file => file.endsWith(".js"));
+for (const file of commandFiles) {
+  const command = require(`./commands/${file}`);
+  // Appliquer le rate limiting automatiquement
+  const protectedCommand = applyRateLimit(command);
+  client.commands.set(protectedCommand.data.name, protectedCommand);
+  logger.debug('Command loaded with rate limiting', { name: command.data.name });
+}
+
+// Bot prêt
+client.once("clientReady", async () => {
+  logger.success(`🐺 Connected as ${client.user.tag}`);
+  logger.info('Registering slash commands...');
+
+  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+
+  try {
+    await rest.put(
+      Routes.applicationGuildCommands(
+        process.env.CLIENT_ID,
+        process.env.GUILD_ID
+      ),
+      {
+        body: client.commands.map(cmd => cmd.data.toJSON())
+      }
+    );
+
+    logger.success("✅ Slash commands registered (guild)", { count: client.commands.size });
+    
+      // Charger l'état sauvegardé des parties et tenter une restauration minimale
+      try {
+        logger.info('Loading saved game state...');
+        gameManager.loadState();
+        const guild = client.guilds.cache.get(process.env.GUILD_ID);
+        if (guild) {
+          logger.info('Restoring games...', { count: gameManager.games.size });
+          for (const [channelId, game] of gameManager.games.entries()) {
+            // Validate main channel still exists
+            const mainChannel = await guild.channels.fetch(game.mainChannelId).catch(() => null);
+            if (!mainChannel) {
+              logger.warn('Restored game has missing main channel, removing', { channelId, mainChannelId: game.mainChannelId });
+              gameManager.games.delete(channelId);
+              gameManager.saveState();
+              continue;
+            }
+
+            // Reconnect voice only if voice channel exists
+            if (game.voiceChannelId) {
+              const voiceChannel = await guild.channels.fetch(game.voiceChannelId).catch(() => null);
+              if (voiceChannel) {
+                gameManager.joinVoiceChannel(guild, game.voiceChannelId)
+                  .then(() => logger.debug('Voice reconnected', { channelId, voiceChannelId: game.voiceChannelId }))
+                  .catch(e => logger.error('Restore voice error', e));
+              } else {
+                logger.warn('Restored game has missing voice channel, clearing', { channelId, voiceChannelId: game.voiceChannelId });
+                game.voiceChannelId = null;
+                gameManager.saveState();
+              }
+            }
+
+            // Rafraîchir le lobby embed si présent
+            try { await updateLobbyEmbed(guild, channelId); } catch (e) { /* ignore */ }
+          }
+        }
+      } catch (err) {
+        logger.error('❌ Game state restoration failed', err);
+      }
+  } catch (error) {
+    logger.error("❌ Failed to register commands", error);
+  }
+});
+
+// Fonction pour rafraîchir l'embed du lobby
+async function updateLobbyEmbed(guild, channelId) {
+  try {
+    const game = gameManager.games.get(channelId);
+    if (!game || !game.lobbyMessageId) return;
+
+    const channel = await guild.channels.fetch(channelId);
+    const lobbyMsg = await channel.messages.fetch(game.lobbyMessageId);
+
+    const lobbyEmbed = new EmbedBuilder()
+      .setTitle("🐺 Lobby Loup-Garou")
+      .setDescription("Bienvenue ! Clique sur **Rejoindre** pour participer.")
+      .setImage('attachment://LG.jpg')
+      .addFields(
+        {
+          name: "👤 Joueurs",
+          value: `\`${game.players.length}\` / 5-10`,
+          inline: true
+        },
+        {
+          name: "🎮 Hôte",
+          value: `<@${game.lobbyHostId}>`,
+          inline: true
+        },
+        {
+          name: "📊 Liste des joueurs",
+          value: game.players.length === 0 ? "_En attente..._" : game.players.map(p => `• ${p.username}`).join("\n"),
+          inline: false
+        }
+      )
+      .setColor(0xFF6B6B)
+      .setFooter({ text: "Minimum 5 joueurs pour démarrer" });
+
+    // fetch the file path for the image and re-send as attachment when editing
+    await lobbyMsg.edit({ embeds: [lobbyEmbed], files: ['img/LG.jpg'] });
+  } catch (err) {
+    logger.error("❌ Erreur rafraîchissement lobby:", { message: err.message });
+  }
+}
+
+// Interactions
+
+// Auto-mute/unmute selon la phase quand un joueur rejoint/quitte le vocal
+client.on('voiceStateUpdate', async (oldState, newState) => {
+  // On ne gère que les connexions à un channel vocal
+  if (!newState.channelId && !oldState.channelId) return;
+
+  // Chercher la partie correspondant à ce channel
+  const game = Array.from(gameManager.games.values()).find(g => g.voiceChannelId === (newState.channelId || oldState.channelId));
+  if (!game) return;
+  
+  // Désactivation debug
+  if (game.disableVoiceMute) return;
+  
+  // Ne pas mute/unmute si la partie est terminée
+  const PHASES = require('./game/phases');
+  if (game.phase === PHASES.ENDED || game.phase === 'Terminé') {
+    // Unmute everyone in the voice channel if the game is ended
+    try {
+      const guild = newState.guild;
+      const voiceChannel = guild.channels.cache.get(game.voiceChannelId) || await guild.channels.fetch(game.voiceChannelId).catch(() => null);
+      if (!voiceChannel) return;
+      
+      for (const member of voiceChannel.members.values()) {
+        if (member.user.bot) continue;
+        try { await member.voice.setMute(false); } catch (e) { /* ignore */ }
+      }
+    } catch (e) { /* ignore */ }
+    return;
+  }
+
+  // Récupérer le guild et le channel (use cache first for performance)
+  const guild = newState.guild;
+  const voiceChannel = guild.channels.cache.get(game.voiceChannelId) || await guild.channels.fetch(game.voiceChannelId).catch(() => null);
+  if (!voiceChannel) return;
+
+  // Pour chaque membre du channel, appliquer le mute/unmute selon la phase
+  for (const member of voiceChannel.members.values()) {
+    if (member.user.bot) continue;
+    const player = game.players.find(p => p.id === member.id);
+    if (!player || !player.alive) continue;
+    
+    try {
+      if (game.phase === 'Nuit' || game.phase === 'NIGHT') {
+        if (!member.voice.serverMute) {
+          await member.voice.setMute(true);
+        }
+      } else if (game.phase === 'Jour' || game.phase === 'DAY') {
+        if (member.voice.serverMute) {
+          await member.voice.setMute(false);
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
+});
+client.on("interactionCreate", async interaction => {
+  if (!interaction.__logWrapped) {
+    interaction.__logWrapped = true;
+
+    const formatContent = (payload) => {
+      if (typeof payload === 'string') return payload;
+      if (payload && typeof payload === 'object') {
+        return payload.content || '[embed/complex]';
+      }
+      return '[unknown]';
+    };
+
+    const originalReply = interaction.reply?.bind(interaction);
+    if (originalReply) {
+      interaction.reply = async (payload) => {
+        const result = await originalReply(payload);
+        interactionLogger.info('Reply sent', {
+          command: interaction.commandName || 'unknown',
+          channelId: interaction.channelId || 'unknown',
+          userId: interaction.user?.id || 'unknown',
+          content: formatContent(payload)
+        });
+        return result;
+      };
+    }
+
+    const originalEditReply = interaction.editReply?.bind(interaction);
+    if (originalEditReply) {
+      interaction.editReply = async (payload) => {
+        const result = await originalEditReply(payload);
+        interactionLogger.info('Reply edited', {
+          command: interaction.commandName || 'unknown',
+          channelId: interaction.channelId || 'unknown',
+          userId: interaction.user?.id || 'unknown',
+          content: formatContent(payload)
+        });
+        return result;
+      };
+    }
+
+    const originalFollowUp = interaction.followUp?.bind(interaction);
+    if (originalFollowUp) {
+      interaction.followUp = async (payload) => {
+        const result = await originalFollowUp(payload);
+        interactionLogger.info('FollowUp sent', {
+          command: interaction.commandName || 'unknown',
+          channelId: interaction.channelId || 'unknown',
+          userId: interaction.user?.id || 'unknown',
+          content: formatContent(payload)
+        });
+        return result;
+      };
+    }
+
+    const originalUpdate = interaction.update?.bind(interaction);
+    if (originalUpdate) {
+      interaction.update = async (payload) => {
+        const result = await originalUpdate(payload);
+        interactionLogger.info('Interaction updated', {
+          command: interaction.commandName || 'unknown',
+          channelId: interaction.channelId || 'unknown',
+          userId: interaction.user?.id || 'unknown',
+          content: formatContent(payload)
+        });
+        return result;
+      };
+    }
+  }
+
+  // Gérer les slash commands
+  if (interaction.isChatInputCommand()) {
+    const command = client.commands.get(interaction.commandName);
+    if (!command) return;
+
+    try {
+      logger.info('Command received', {
+        command: `/${interaction.commandName}`,
+        user: interaction.user?.username || 'unknown',
+        userId: interaction.user?.id || 'unknown',
+        channelId: interaction.channelId,
+        guildId: interaction.guildId
+      });
+      await command.execute(interaction);
+    } catch (err) {
+      logger.error('Command execution error', err);
+      try {
+        await interaction.reply({ content: "Erreur interne 😵", flags: MessageFlags.Ephemeral });
+      } catch (e) {
+        // Interaction déjà traitée
+      }
+    }
+    return;
+  }
+
+  // Gérer les boutons du lobby
+  if (interaction.isButton()) {
+    const { safeDefer } = require('./utils/interaction');
+    
+    try {
+      await safeDefer(interaction);
+    } catch (err) {
+      if (err.code === 10062) {
+        // Interaction expirée (bouton trop vieux)
+        return;
+      }
+      throw err;
+    }
+
+    const [buttonType, arg1, arg2] = interaction.customId.split(":");
+    let channelId = null;
+    if (buttonType === "lobby_join" || buttonType === "lobby_leave" || buttonType === "lobby_start") {
+      channelId = arg1;
+    }
+
+    if (buttonType === "game_restart" || buttonType === "game_cleanup") {
+      const targetChannelId = arg1;
+      const game = gameManager.getGameByChannelId(targetChannelId);
+
+      const isAdmin = interaction.member.permissions.has("ADMINISTRATOR");
+      const isHost = game && game.lobbyHostId === interaction.user.id;
+      if (!isAdmin && !isHost) {
+        await safeEditReply(interaction, { content: "❌ Admin ou hote requis", flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      if (!game) {
+        await safeEditReply(interaction, { content: "❌ Aucune partie a nettoyer", flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      const CATEGORY_ID = "1469976287790633146";
+
+      if (buttonType === "game_cleanup") {
+        const deletedCount = await gameManager.cleanupChannels(interaction.guild, game);
+        gameManager.games.delete(game.mainChannelId);
+        gameManager.saveState();
+        await safeEditReply(interaction, { content: `✅ Partie nettoyee (${deletedCount} channels)` , flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      // Restart flow
+      const deletedCount = await gameManager.cleanupChannels(interaction.guild, game);
+      gameManager.games.delete(game.mainChannelId);
+      gameManager.saveState();
+
+      const ok = gameManager.create(game.mainChannelId, game.rules || { minPlayers: 5, maxPlayers: 10 });
+      if (!ok) {
+        await safeEditReply(interaction, { content: "❌ Impossible de relancer la partie", flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      const newGame = gameManager.games.get(game.mainChannelId);
+      newGame.lobbyHostId = interaction.user.id;
+
+      const setupSuccess = await gameManager.createInitialChannels(
+        interaction.guild,
+        game.mainChannelId,
+        newGame,
+        CATEGORY_ID
+      );
+
+      if (!setupSuccess) {
+        gameManager.games.delete(game.mainChannelId);
+        await safeEditReply(interaction, { content: "❌ Erreur lors de la creation des channels", flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      // Connect voice in background
+      if (newGame.voiceChannelId) {
+        gameManager.joinVoiceChannel(interaction.guild, newGame.voiceChannelId)
+          .then(() => gameManager.playAmbience(newGame.voiceChannelId, 'night_ambience.mp3'))
+          .catch(err => logger.error('Voice connection error', err));
+      }
+
+      // Create lobby embed
+      const lobbyEmbed = new EmbedBuilder()
+        .setTitle("🐺 Lobby Loup-Garou")
+        .setDescription("Bienvenue ! Clique sur **Rejoindre** pour participer.")
+        .addFields(
+          {
+            name: "👤 Joueurs",
+            value: `\`${newGame.players.length}\` / ${newGame.rules.minPlayers}-${newGame.rules.maxPlayers}`,
+            inline: true
+          },
+          {
+            name: "🎮 Hote",
+            value: `<@${interaction.user.id}>`,
+            inline: true
+          },
+          {
+            name: "📊 Liste des joueurs",
+            value: newGame.players.length === 0 ? "_En attente..._" : newGame.players.map(p => `• ${p.username}`).join("\n"),
+            inline: false
+          }
+        )
+        .setColor(0xFF6B6B)
+        .setFooter({ text: "Minimum joueurs pour demarrer" });
+
+      const buttonRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`lobby_join:${game.mainChannelId}`)
+          .setLabel("➕ Rejoindre")
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId(`lobby_leave:${game.mainChannelId}`)
+          .setLabel("➖ Quitter")
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId(`lobby_start:${game.mainChannelId}`)
+          .setLabel("▶ Demarrer")
+          .setStyle(ButtonStyle.Primary)
+      );
+
+      const lobbyChannel = await interaction.guild.channels.fetch(game.mainChannelId);
+      logger.info('Channel send', { channelId: lobbyChannel.id, channelName: lobbyChannel.name, content: '[lobby message]' });
+      const lobbyMsg = await lobbyChannel.send({
+        embeds: [lobbyEmbed.setImage('attachment://LG.jpg')],
+        components: [buttonRow],
+        files: ['img/LG.jpg']
+      });
+      newGame.lobbyMessageId = lobbyMsg.id;
+
+      gameManager.join(game.mainChannelId, interaction.user);
+
+      await safeEditReply(interaction, { content: "✅ Partie relancee", flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    if (buttonType === "lobby_join") {
+      const game = gameManager.games.get(channelId);
+      if (!game) {
+        await safeEditReply(interaction, { content: "❌ Aucune partie trouvée" });
+        return;
+      }
+
+      const alreadyJoined = game.players.some(p => p.id === interaction.user.id);
+      if (alreadyJoined) {
+        await safeEditReply(interaction, { content: "❌ Tu as déjà rejoint la partie" });
+        return;
+      }
+
+      const joined = gameManager.join(channelId, interaction.user);
+      if (joined) {
+        await safeEditReply(interaction, { content: `✅ ${interaction.user.username} rejoint la partie !` });
+        await updateLobbyEmbed(interaction.guild, channelId);
+      } else {
+        await safeEditReply(interaction, { content: "❌ Impossible de rejoindre (la partie a peut-être déjà commencé)" });
+      }
+      return;
+    }
+
+    if (buttonType === "lobby_leave") {
+      const game = gameManager.games.get(channelId);
+      if (!game) {
+        await safeEditReply(interaction, { content: "❌ Aucune partie trouvée" });
+        return;
+      }
+
+      const playerIdx = game.players.findIndex(p => p.id === interaction.user.id);
+      if (playerIdx === -1) {
+        await safeEditReply(interaction, { content: "❌ Tu n'es pas dans cette partie" });
+        return;
+      }
+
+      const isHost = interaction.user.id === game.lobbyHostId;
+      game.players.splice(playerIdx, 1);
+
+      // Si c'était l'hôte
+      if (isHost) {
+        // S'il y a encore d'autres joueurs, transférer le rôle d'hôte au premier
+        if (game.players.length > 0) {
+          const newHost = game.players[0];
+          game.lobbyHostId = newHost.id;
+          await safeEditReply(interaction, { 
+            content: `✅ ${interaction.user.username} a quitté la partie\n🎭 ${newHost.username} est le nouveau host` 
+          });
+          await updateLobbyEmbed(interaction.guild, channelId);
+          return;
+        } 
+        // Sinon, la partie est vide → nettoyer automatiquement
+        else {
+          await safeEditReply(interaction, { content: `✅ ${interaction.user.username} a quitté la partie\n🧹 Nettoyage automatique...` });
+
+          try {
+            // Nettoyer les channels (même logique que /end)
+            const deleted = await gameManager.cleanupChannels(interaction.guild, game);
+            
+            // Déconnecter le bot du channel vocal
+            if (game.voiceChannelId) {
+              try { gameManager.disconnectVoice(game.voiceChannelId); } catch (e) { /* ignore */ }
+            }
+
+            // Supprimer la partie de la mémoire et sauvegarder
+            gameManager.games.delete(channelId);
+            try { await gameManager.saveState(); } catch (e) { /* best effort */ }
+
+            // D'abord envoyer le message de résultat
+            const reply = await safeEditReply(interaction, `🐺 Partie terminée automatiquement ! ${deleted} channel(s) supprimé(s).`);
+
+            // Puis nettoyer les anciens messages du bot (en excluant celui qu'on vient de créer)
+            if (reply) {
+              try {
+                const channel = interaction.channel;
+                if (channel) {
+                  const messages = await channel.messages.fetch({ limit: 100 });
+                  const botMessages = messages.filter(msg => msg.author.id === interaction.client.user.id && msg.id !== reply.id);
+                  for (const msg of botMessages.values()) {
+                    try { await msg.delete(); } catch (e) { /* ignore delete failures */ }
+                  }
+                }
+              } catch (e) {
+                logger.error('Failed to cleanup messages', e);
+              }
+              
+              // Enfin, supprimer le message de réponse après 2 secondes
+              setTimeout(() => {
+                try { reply.delete(); } catch (e) { /* ignore */ }
+              }, 2000);
+            }
+          } catch (err) {
+            logger.error("❌ Erreur nettoyage automatique lobby_leave:", err);
+            await safeEditReply(interaction, "❌ Erreur lors du nettoyage automatique");
+          }
+          return;
+        }
+      }
+
+      // Joueur normal qui quitte
+      await safeEditReply(interaction, { content: `✅ ${interaction.user.username} a quitté la partie` });
+      await updateLobbyEmbed(interaction.guild, channelId);
+      return;
+    }
+
+    if (buttonType === "lobby_start") {
+      // Always acknowledge interaction before editReply
+      if (!interaction.deferred && !interaction.replied) {
+        try {
+          await interaction.deferReply();
+        } catch (e) {
+          interactionLogger.error('Failed to defer reply for lobby_start', e);
+        }
+      }
+
+      const game = gameManager.games.get(channelId);
+      if (!game) {
+        await safeEditReply(interaction, { content: "❌ Aucune partie trouvée" });
+        return;
+      }
+
+      if (interaction.user.id !== game.lobbyHostId) {
+        await safeEditReply(interaction, { content: "❌ Seul le host peut démarrer la partie" });
+        return;
+      }
+
+      if (game.players.length < 5) {
+        await safeEditReply(interaction, { content: `❌ Minimum 5 joueurs requis (actuels: ${game.players.length})` });
+        return;
+      }
+
+      try {
+        // Démarrer le jeu avec les rôles par défaut
+        const startedGame = gameManager.start(channelId);
+        if (!startedGame) {
+          await safeEditReply(interaction, '❌ Impossible de démarrer la partie.');
+          return;
+        }
+
+        // Mettre à jour les permissions des channels
+        const setupSuccess = await gameManager.updateChannelPermissions(
+          interaction.guild,
+          startedGame
+        );
+
+        if (!setupSuccess) {
+          await safeEditReply(interaction, 
+            "❌ **Erreur lors de la création des permissions !**"
+          );
+          return;
+        }
+
+        // Initialiser les permissions vocales
+        await gameManager.updateVoicePerms(interaction.guild, startedGame);
+
+        // Envoyer les rôles en DM
+        for (const player of startedGame.players) {
+          if (typeof player.id !== 'string' || !/^\d+$/.test(player.id)) {
+            continue;
+          }
+
+          try {
+            const user = await interaction.client.users.fetch(player.id);
+            const embed = new EmbedBuilder()
+              .setTitle(`Ton role : ${player.role}`)
+              .setDescription(getRoleDescription(player.role))
+              .setColor(0xFF6B6B);
+
+            const imageName = getRoleImageName(player.role);
+            const files = [];
+            if (imageName) {
+              const imagePath = path.join(__dirname, "img", imageName);
+              files.push(new AttachmentBuilder(imagePath, { name: imageName }));
+              embed.setImage(`attachment://${imageName}`);
+            }
+
+            logger.info('DM send', { userId: user.id, username: user.username, content: '[role embed]' });
+            await user.send({ embeds: [embed], files });
+          } catch (err) {
+            logger.warn(`[Lobby] Failed to send DM to player ${player.id}`, err);
+          }
+        }
+
+        // Messages dans les channels privés
+        const ROLES = require("./game/roles");
+        if (startedGame.wolvesChannelId) {
+          const wolvesChannel = await interaction.guild.channels.fetch(startedGame.wolvesChannelId);
+          const wolves = startedGame.players.filter(p => p.role === ROLES.WEREWOLF);
+          logger.info('Channel send', { channelId: wolvesChannel.id, channelName: wolvesChannel.name, content: '[wolves welcome]' });
+          await wolvesChannel.send(
+            `🐺 **Bienvenue aux Loups-Garous !**\n` +
+            `Vous êtes ${wolves.length} dans cette nuit.\n` +
+            `Utilisez \`/kill @joueur\` pour désigner votre victime.`
+          );
+        }
+
+        // Message dans le channel village
+        const villageChannel = startedGame.villageChannelId
+          ? await interaction.guild.channels.fetch(startedGame.villageChannelId)
+          : await interaction.guild.channels.fetch(channelId);
+
+        logger.info('Channel send', { channelId: villageChannel.id, channelName: villageChannel.name, content: '[night system message]' });
+        await villageChannel.send(
+          `🌙 **LA NUIT TOMBE**\n\n` +
+          `✅ Les rôles ont été distribués en DM\n` +
+          `🎤 **Rejoignez le channel vocal 🎤-partie**\n\n` +
+          `**Cette nuit :**\n` +
+          `• Les loups choisissent leur victime avec \`/kill @joueur\`\n` +
+          `• Les autres ne peuvent PAS parler (micros coupés)\n\n` +
+          `Utilisez \`/nextphase\` pour passer au jour !`
+        );
+
+        await safeEditReply(interaction, "🌙 **La partie a démarré !** Les rôles ont été envoyés en DM.");
+      } catch (err) {
+        logger.error("❌ Erreur démarrage depuis lobby:", err);
+        await safeEditReply(interaction, "❌ Erreur lors du démarrage de la partie");
+      }
+      return;
+    }
+
+    // Suppression de la gestion des anciens boutons help (plus de pagination)
+  }
+});
+
+// Global error handlers
+client.on('error', (error) => {
+  if (error.code === 10062) {
+    // Silently ignore "Unknown interaction" errors (expired interactions)
+    return;
+  }
+  logger.error('Client error:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  if (reason?.code === 10062) {
+    // Silently ignore "Unknown interaction" errors
+    return;
+  }
+  
+  // Ignore voice connection UDP errors (firewall/NAT issues)
+  if (reason?.message?.includes('Cannot perform IP discovery') || 
+      reason?.message?.includes('socket closed')) {
+    return;
+  }
+  
+  logger.error('Unhandled Rejection:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  if (error.code === 10062) {
+    // Silently ignore "Unknown interaction" errors
+    return;
+  }
+  logger.critical('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+client.login(process.env.TOKEN);
+
+function getRoleDescription(role) {
+  const descriptions = {
+    [ROLES.WEREWOLF]: "Salon: 🐺-loups. Commande: /kill @joueur (choisir la victime la nuit).",
+    [ROLES.VILLAGER]: "Salon: 🏘️-village. Commande: /vote @joueur (voter le jour).",
+    [ROLES.SEER]: "Salon: 🔮-voyante. Commande: /see @joueur (connaitre le role la nuit).",
+    [ROLES.WITCH]: "Salon: 🧪-sorciere. Commandes: /potion save ou /potion kill @joueur (la nuit).",
+    [ROLES.HUNTER]: "Salon: 🏘️-village. Commande: /shoot @joueur (si tu es elimine).",
+    [ROLES.PETITE_FILLE]: "Salon: 🏘️-village. Commande: /listen (espionner les loups la nuit).",
+    [ROLES.CUPID]: "Salon: ❤️-cupidon. Commande: /love @a @b (au debut de la partie)."
+  };
+  return descriptions[role] || "Role inconnu";
+}
+
+function getRoleImageName(role) {
+  const images = {
+    [ROLES.WEREWOLF]: "loupSimple.webp",
+    [ROLES.VILLAGER]: "villageois.webp",
+    [ROLES.SEER]: "voyante.webp",
+    [ROLES.WITCH]: "sorciere.png",
+    [ROLES.HUNTER]: "chasseur.webp",
+    [ROLES.PETITE_FILLE]: "petiteFille.webp",
+    [ROLES.CUPID]: "cupidon.webp"
+  };
+  return images[role] || null;
+}
