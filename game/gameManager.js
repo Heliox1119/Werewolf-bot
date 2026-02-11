@@ -106,6 +106,11 @@ class GameManager {
       clearInterval(this._recentCommandsInterval);
       this._recentCommandsInterval = null;
     }
+    // Clear debounced save timeout
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+      this.saveTimeout = null;
+    }
     // Clear all game timers
     for (const game of this.games.values()) {
       this.clearGameTimers(game);
