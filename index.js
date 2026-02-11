@@ -180,32 +180,9 @@ async function updateLobbyEmbed(guild, channelId) {
     const channel = await guild.channels.fetch(channelId);
     const lobbyMsg = await channel.messages.fetch(game.lobbyMessageId);
 
-    const lobbyEmbed = new EmbedBuilder()
-      .setTitle("🐺 Lobby Loup-Garou")
-      .setDescription("Bienvenue ! Clique sur **Rejoindre** pour participer.")
-      .setImage('attachment://LG.jpg')
-      .addFields(
-        {
-          name: "👤 Joueurs",
-          value: `\`${game.players.length}\` / 5-10`,
-          inline: true
-        },
-        {
-          name: "🎮 Hôte",
-          value: `<@${game.lobbyHostId}>`,
-          inline: true
-        },
-        {
-          name: "📊 Liste des joueurs",
-          value: game.players.length === 0 ? "_En attente..._" : game.players.map(p => `• ${p.username}`).join("\n"),
-          inline: false
-        }
-      )
-      .setColor(0xFF6B6B)
-      .setFooter({ text: "Minimum 5 joueurs pour démarrer" });
-
-    // fetch the file path for the image and re-send as attachment when editing
-    await lobbyMsg.edit({ embeds: [lobbyEmbed], files: ['img/LG.jpg'] });
+    const { buildLobbyMessage } = require('./utils/lobbyBuilder');
+    const payload = buildLobbyMessage(game, game.lobbyHostId);
+    await lobbyMsg.edit(payload);
   } catch (err) {
     logger.error("❌ Erreur rafraîchissement lobby:", { message: err.message });
   }
@@ -487,51 +464,12 @@ client.on("interactionCreate", async interaction => {
       }
 
       // Create lobby embed
-      const lobbyEmbed = new EmbedBuilder()
-        .setTitle("🐺 Lobby Loup-Garou")
-        .setDescription("Bienvenue ! Clique sur **Rejoindre** pour participer.")
-        .addFields(
-          {
-            name: "👤 Joueurs",
-            value: `\`${newGame.players.length}\` / ${newGame.rules.minPlayers}-${newGame.rules.maxPlayers}`,
-            inline: true
-          },
-          {
-            name: "🎮 Hote",
-            value: `<@${interaction.user.id}>`,
-            inline: true
-          },
-          {
-            name: "📊 Liste des joueurs",
-            value: newGame.players.length === 0 ? "_En attente..._" : newGame.players.map(p => `• ${p.username}`).join("\n"),
-            inline: false
-          }
-        )
-        .setColor(0xFF6B6B)
-        .setFooter({ text: "Minimum joueurs pour demarrer" });
-
-      const buttonRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`lobby_join:${game.mainChannelId}`)
-          .setLabel("➕ Rejoindre")
-          .setStyle(ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId(`lobby_leave:${game.mainChannelId}`)
-          .setLabel("➖ Quitter")
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId(`lobby_start:${game.mainChannelId}`)
-          .setLabel("▶ Demarrer")
-          .setStyle(ButtonStyle.Primary)
-      );
+      const { buildLobbyMessage: buildLobbyMsg } = require('./utils/lobbyBuilder');
+      const lobbyPayload = buildLobbyMsg(newGame, interaction.user.id);
 
       const lobbyChannel = await interaction.guild.channels.fetch(game.mainChannelId);
       logger.info('Channel send', { channelId: lobbyChannel.id, channelName: lobbyChannel.name, content: '[lobby message]' });
-      const lobbyMsg = await lobbyChannel.send({
-        embeds: [lobbyEmbed.setImage('attachment://LG.jpg')],
-        components: [buttonRow],
-        files: ['img/LG.jpg']
-      });
+      const lobbyMsg = await lobbyChannel.send(lobbyPayload);
       newGame.lobbyMessageId = lobbyMsg.id;
 
       gameManager.join(game.mainChannelId, interaction.user);

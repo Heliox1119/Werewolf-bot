@@ -1,8 +1,9 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require("discord.js");
+const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const { checkCategoryAndDefer, sendTemporaryMessage } = require("../utils/commands");
 const { safeReply } = require("../utils/interaction");
 const { commands: logger } = require("../utils/logger");
+const { buildLobbyMessage } = require("../utils/lobbyBuilder");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -176,50 +177,11 @@ module.exports = {
 
     logger.debug('Creating lobby embed');
 
-    // Créer l'embed du lobby
-    const lobbyEmbed = new EmbedBuilder()
-      .setTitle("🐺 Lobby Loup-Garou")
-      .setDescription("Bienvenue ! Clique sur **Rejoindre** pour participer.")
-      .addFields(
-        {
-          name: "👤 Joueurs",
-          value: `\`${game.players.length}\` / 5-10`,
-          inline: true
-        },
-        {
-          name: "🎮 Hôte",
-          value: `<@${interaction.user.id}>`,
-          inline: true
-        },
-        {
-          name: "📊 Liste des joueurs",
-          value: game.players.length === 0 ? "_En attente..._" : game.players.map(p => `• ${p.username}`).join("\n"),
-          inline: false
-        }
-      )
-      .setColor(0xFF6B6B)
-      .setFooter({ text: "Minimum 5 joueurs pour démarrer" });
-
-    // Créer les boutons
-    const buttonRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`lobby_join:${interaction.channelId}`)
-        .setLabel("➕ Rejoindre")
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId(`lobby_leave:${interaction.channelId}`)
-        .setLabel("➖ Quitter")
-        .setStyle(ButtonStyle.Danger),
-      new ButtonBuilder()
-        .setCustomId(`lobby_start:${interaction.channelId}`)
-        .setLabel("▶ Démarrer")
-        .setStyle(ButtonStyle.Primary)
-    );
-
     // Poster le message du lobby
     const lobbyChannel = await interaction.guild.channels.fetch(interaction.channelId);
+    const lobbyPayload = buildLobbyMessage(game, interaction.user.id);
     logger.info('Channel send', { channelId: lobbyChannel.id, channelName: lobbyChannel.name, content: '[lobby message]' });
-    const lobbyMsg = await lobbyChannel.send({ embeds: [lobbyEmbed.setImage('attachment://LG.jpg')], components: [buttonRow], files: ['img/LG.jpg'] });
+    const lobbyMsg = await lobbyChannel.send(lobbyPayload);
     game.lobbyMessageId = lobbyMsg.id;
     logger.debug('Lobby message posted', { messageId: lobbyMsg.id });
 
