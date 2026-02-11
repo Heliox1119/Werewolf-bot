@@ -2,34 +2,33 @@
 
 Un bot Discord complet pour jouer au Loup-Garou avec gestion vocale automatique et audio d'ambiance.
 
-## 🎉 Nouveautés v2.2.0
+## 🎉 Nouveautés v2.2.1
 
-### 🔒 Audit de sécurité complet
+### 🔒 Hardening production (26 fixes)
+- **Validation env vars** au démarrage (TOKEN, CLIENT_ID, GUILD_ID)
+- **Graceful shutdown** avec SIGTERM/SIGINT handlers
+- **`safeReply` partout** — plus de `interaction.reply` brut
+- **Logger centralisé** — tout `console.log/error` remplacé
+- **Réponses éphémères** pour `/see` et `/love` (aucune fuite d'info)
+- **Audio validation** : vérification `existsSync` avant lecture
+- **DB sync complète** : nightVictim, witchKillTarget, witchSave persistés
+- **Debounced save** (500ms) pour réduire les écritures DB
+- **`checkWinner` draw** quand tous les joueurs meurent
+- **Code mort supprimé** : `getSaveFilePath()`, `data/games.json`
+- **`roleHelpers.js`** : descriptions/images rôles factorisées
+
+### ✅ Tests ×2.5
+- **191 tests** (était 77) — 8 nouvelles suites + gameManager étendu
+- **15 suites, 0 failures**
+- Couverture : vote, kill, potion, see, love, validators, roleHelpers, interaction
+
+### 📋 v2.2.0 — Sécurité & Chasseur
 - **Commandes debug protégées** : Toutes requièrent la permission Administrateur
-- **Permissions /end** : Vérification admin ou host de la partie
-- **Suppression ID hardcodé** : Category ID dynamique via `/setup`
-- **Protection DM** : Guard `guild null` contre les crashes en message privé
-
-### 🏹 Chasseur & nouvelles commandes
 - **`/shoot`** : Le Chasseur tire sur un joueur à sa mort (timeout 60s)
 - **`/vote-end`** : Vote majoritaire des joueurs vivants pour arrêter la partie
-- **Détection automatique** de la mort du Chasseur (nuit et jour)
-
-### ⏱️ AFK Timeout & verrous
-- **Timeout nuit 90s** : Auto-avance si un rôle (loups, sorcière, voyante) ne joue pas
-- **Verrou de transition** : Empêche les double-transitions jour/nuit (race condition)
-- **Nettoyage des timers** : `clearGameTimers()` en fin de partie
-
-### 🐛 Corrections critiques
-- Fix crash `command is not defined` (index.js)
-- Fix désync DB/mémoire : `db.deleteGame()` ajouté partout
-- Fix perte de précision snowflake Discord (config.js)
-- Fix boutons lobby inopérants (séparation `isChatInputCommand`)
-- Fix `addField` → `addFields` (discord.js v14)
-- Fix sous-phase enforcement (`/kill` → LOUPS, `/potion` → SORCIERE, `/see` → VOYANTE)
-- Fix vérification joueur vivant pour sorcière, voyante, loups
-- Sync DB : votes, potions sorcière, départ lobby
-- Prévention double start (`game.startedAt`)
+- **Timeout nuit 90s** : Auto-avance si un rôle ne joue pas
+- **Verrou de transition** : Empêche les double-transitions jour/nuit
+- Fix crash `command is not defined`, désync DB/mémoire, double start, etc.
 
 ## ✨ Fonctionnalités
 
@@ -246,6 +245,7 @@ Werewolf-bot/
 │   ├── validators.js     # Validations
 │   ├── commands.js       # Helpers commandes
 │   ├── rateLimiter.js    # Rate limiting
+│   ├── roleHelpers.js    # Descriptions & images rôles
 │   └── interaction.js    # Gestion interactions
 │
 ├── monitoring/           # Monitoring & alertes
@@ -356,8 +356,6 @@ module.exports = {
 
 ## 📊 Performances
 
-| Métrique | v1.0 | v2.0 | v2.1 | Amélioration |
-|----------|------|------|------|--------------|
 | Métrique | v1.0 | v2.0 | v2.1 | v2.2 |
 |----------|------|------|------|------|
 | Sauvegardes/min | ~50 | ~5 | ~5* | ~5* |
@@ -368,6 +366,7 @@ module.exports = {
 | Sécurité debug | ❌ | ❌ | ❌ | ✅ |
 | AFK timeout nuit | ❌ | ❌ | ❌ | ✅ 90s |
 | Chasseur /shoot | ❌ | ❌ | ❌ | ✅ |
+| Tests | — | — | 77 | 191 |
 
 *\*SQLite avec WAL (Write-Ahead Logging) pour performances optimales*
 
@@ -393,7 +392,7 @@ ISC License - Voir LICENSE pour plus de détails
 
 ---
 
-**Version actuelle** : 2.2.0  
+**Version actuelle** : 2.2.1  
 **Node.js requis** : ≥ 16.9.0  
 **Discord.js** : ^14.25.1
 

@@ -1,5 +1,57 @@
 # 📝 Changelog - Werewolf Bot
 
+## [2.2.1] - 2026-02-11 - Hardening Production, Tests ×2.5
+
+### 🔒 Hardening production (26 fixes)
+- **Validation env vars** : TOKEN, CLIENT_ID, GUILD_ID vérifiés au démarrage avec erreur explicite
+- **Graceful shutdown** : Handlers SIGTERM/SIGINT avec `gameManager.destroy()`
+- **`safeReply` everywhere** : Toutes les commandes utilisent `safeReply` au lieu de `interaction.reply` brut
+- **Logger centralisé** : `console.log/error` remplacés dans tous les fichiers par le logger structuré
+- **`setrules` fix** : `interaction.reply()` → `interaction.editReply()` après `deferReply()`
+- **`clear` scoped** : Suppression limitée à la catégorie de jeu, plus de suppression hors-scope
+- **`see`/`love`** : Réponses éphémères pour ne pas révéler d'info au village
+- **Audio validation** : `existsSync()` vérifie les fichiers audio avant lecture
+- **Permission voiceStateUpdate** : Vérification `MuteMembers` avant mute/unmute
+- **voiceStateUpdate try/catch** : Wrappé pour empêcher les crashes
+- **Transition guard order** : `_transitioning` vérifiée avant la phase
+- **DB sync nightVictim/witchKillTarget/witchSave** : Persistées dans `syncGameToDb` et restaurées dans `loadState`
+- **DB schema** : Colonnes `night_victim_id`, `witch_kill_target_id`, `witch_save` ajoutées
+- **DB `migrateSchema()`** : Migration automatique des anciennes DB
+- **Debounced `scheduleSave()`** : 500ms de debounce pour éviter les écritures multiples
+- **`checkWinner` draw** : Retourne `'draw'` quand tous les joueurs sont morts
+- **`_voteIncrements.clear()`** : Nettoyé avec les votes en changement de phase
+- **`destroy()` complet** : Nettoie saveTimeout, recentCommands interval, et ferme la DB
+- **Suppression code mort** : `getSaveFilePath()`, `data/games.json`
+- **`roleHelpers.js`** : Descriptions et images des rôles factorisées (supprime la duplication)
+- **TIMEOUTS constants** : Remplace les magic numbers (90s, 60s, 5s, etc.)
+- **`recentCommands` cleanup** : Interval périodique de nettoyage du cache de déduplication
+- **Monitoring** : Utilise `gameManager.getAllGames()` au lieu d'accès direct
+
+### ✅ Tests : 77 → 191 (+114 tests)
+- **8 nouvelles suites** : vote, kill, potion, see, love, validators, roleHelpers, interaction
+- **gameManager étendu** : +38 tests (kill, getAlive, nextPhase, voteCaptain, declareCaptain, isRealPlayerId, hasAliveRealRole, getAllGames, logAction, draw)
+- **Couverture complète** : Cas nominaux, edge cases, permissions, validations
+- **15 suites, 191 tests, 0 failures**
+
+### 🐛 Fix
+- **Escaped quotes** : `require(\"...\")` → `require("...")` dans index.js
+- **`destroy()` saveTimeout** : `clearTimeout(this.saveTimeout)` manquant
+
+### 📦 Nouveaux fichiers
+```
+utils/roleHelpers.js            # Descriptions & images rôles (shared)
+tests/commands/vote.test.js      # 11 tests
+tests/commands/kill.test.js      # 11 tests
+tests/commands/potion.test.js    # 10 tests
+tests/commands/see.test.js       # 9 tests
+tests/commands/love.test.js      # 9 tests
+tests/utils/validators.test.js   # 11 tests
+tests/utils/roleHelpers.test.js  # 4 tests
+tests/utils/interaction.test.js  # 11 tests
+```
+
+---
+
 ## [2.2.0] - 2026-02-11 - Audit Critique, Sécurité, Chasseur, AFK Timeout
 
 ### 🔐 Sécurité
