@@ -40,6 +40,17 @@ module.exports = {
       });
     }
 
+    // Rafraîchir le lobby embed
+    try {
+      if (game.lobbyMessageId) {
+        const channel = await interaction.guild.channels.fetch(game.mainChannelId);
+        const lobbyMsg = await channel.messages.fetch(game.lobbyMessageId);
+        const { buildLobbyMessage } = require('../utils/lobbyBuilder');
+        const payload = buildLobbyMessage(game, game.lobbyHostId);
+        await lobbyMsg.edit(payload);
+      }
+    } catch (e) { /* ignore */ }
+
     await interaction.reply({
       content: `✅ ${count} joueur(s) fictif(s) ajouté(s) !\n\n👥 Total : ${game.players.length} joueur(s)`,
       flags: MessageFlags.Ephemeral
