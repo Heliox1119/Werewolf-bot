@@ -5,9 +5,9 @@ const fs = require("fs");
 const path = require("path");
 const gameManager = require("./game/gameManager");
 const ROLES = require("./game/roles");
-const { getRoleDescription, getRoleImageName } = require(\"./utils/roleHelpers\");
-const { app: logger, discord: discordLogger, interaction: interactionLogger } = require(\"./utils/logger\");
-const { safeEditReply } = require(\"./utils/interaction\");
+const { getRoleDescription, getRoleImageName } = require("./utils/roleHelpers");
+const { app: logger, discord: discordLogger, interaction: interactionLogger } = require("./utils/logger");
+const { safeEditReply } = require("./utils/interaction");
 
 // Validation des variables d'environnement requises
 const REQUIRED_ENV = ['TOKEN', 'CLIENT_ID', 'GUILD_ID'];
