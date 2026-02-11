@@ -2,7 +2,8 @@ const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const { sendTemporaryMessage } = require("../utils/commands");
 const { safeDefer } = require("../utils/interaction");
-const { isAdmin } = require("../utils/validators");
+const { isAdmin, getCategoryId } = require("../utils/validators");
+const { game: logger } = require("../utils/logger");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -22,6 +23,7 @@ module.exports = {
     try {
       const guild = interaction.guild;
       const channels = await guild.channels.fetch();
+      const CATEGORY_ID = getCategoryId();
       
       // Patterns de noms des channels du jeu (sans dépendre de l'emoji exact)
       const gameChannelPatterns = [
@@ -36,6 +38,9 @@ module.exports = {
       let deletedCount = 0;
       
       for (const channel of channels.values()) {
+        // Ne supprimer que les channels dans la catégorie du jeu
+        if (CATEGORY_ID && channel.parentId !== CATEGORY_ID) continue;
+
         // Vérifier si le channel correspond à un pattern de jeu
         const isGameChannel = gameChannelPatterns.some(pattern => 
           channel.name.includes(pattern) || channel.name === pattern
@@ -49,16 +54,16 @@ module.exports = {
             }
           }
         } catch (e) {
-          console.error('Erreur lors du démute avant suppression:', e.message);
+          logger.error('Erreur lors du démute avant suppression:', { error: e.message });
         }
 
         if (isGameChannel) {
           try {
             await channel.delete();
             deletedCount++;
-            console.log(`🗑️ Supprimé: ${channel.name}`);
+            logger.info(`🗑️ Supprimé: ${channel.name}`);
           } catch (err) {
-            console.error(`❌ Erreur suppression ${channel.name}:`, err.message);
+            logger.error(`❌ Erreur suppression ${channel.name}:`, { error: err.message });
           }
         }
       }
@@ -76,7 +81,7 @@ module.exports = {
               }
             }
           } catch (e) {
-            console.error('Erreur demute lors du clear pour game voiceChannelId:', e.message);
+            logger.error('Erreur demute lors du clear pour game voiceChannelId:', { error: e.message });
           }
 
           try { gameManager.disconnectVoice(game.voiceChannelId); } catch (e) { /* ignore */ }
@@ -107,7 +112,7 @@ module.exports = {
       );
 
     } catch (error) {
-      console.error("❌ Erreur clear:", error);
+      logger.error("❌ Erreur clear:", { error: error.message });
       await interaction.editReply("❌ Erreur lors du nettoyage");
     }
   }

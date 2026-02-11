@@ -5,6 +5,16 @@ const path = require('path');
 const { game: logger } = require('../utils/logger');
 const GameDatabase = require('../database/db');
 
+// Timeouts configurables (en ms)
+const TIMEOUTS = {
+  LOBBY_AUTO_CLEANUP: 60 * 60 * 1000, // 1h
+  NIGHT_AFK: 90_000,                   // 90s
+  HUNTER_SHOOT: 60_000,                // 60s
+  RECENT_COMMAND_WINDOW: 5_000,        // 5s
+  RECENT_COMMAND_CLEANUP: 30_000,      // 30s
+  RECENT_COMMAND_INTERVAL: 60_000      // 60s interval de nettoyage
+};
+
 class GameManager {
   constructor() {
     this.games = new Map(); // Cache en mémoire pour performance
@@ -14,6 +24,16 @@ class GameManager {
     this.saveInProgress = false;
     this.creationsInProgress = new Set(); // Track ongoing channel creation to prevent duplicates
     this.recentCommands = new Map(); // Cache pour déduplication: "command:channelId:userId" -> timestamp
+    
+    // Nettoyage périodique des recentCommands
+    this._recentCommandsInterval = setInterval(() => {
+      const now = Date.now();
+      for (const [k, timestamp] of this.recentCommands.entries()) {
+        if (now - timestamp > TIMEOUTS.RECENT_COMMAND_CLEANUP) {
+          this.recentCommands.delete(k);
+        }
+      }
+    }, TIMEOUTS.RECENT_COMMAND_INTERVAL);
   }
 
   // Check if command was recently executed (within 5 seconds) to prevent Discord retries
@@ -23,7 +43,7 @@ class GameManager {
     
     if (lastExecution) {
       const elapsed = Date.now() - lastExecution;
-      if (elapsed < 5000) { // 5 seconds window
+      if (elapsed < TIMEOUTS.RECENT_COMMAND_WINDOW) {
         logger.warn('Duplicate command detected (Discord retry)', { 
           command: commandName,
           channelId,
@@ -36,13 +56,6 @@ class GameManager {
     
     // Mark this execution
     this.recentCommands.set(key, Date.now());
-    
-    // Cleanup old entries (older than 30 seconds)
-    for (const [k, timestamp] of this.recentCommands.entries()) {
-      if (Date.now() - timestamp > 30000) {
-        this.recentCommands.delete(k);
-      }
-    }
     
     return false;
   }
@@ -65,7 +78,7 @@ class GameManager {
           logger.info(`💤 Lobby auto-deleted after 1h of inactivity`, { channelId });
         }
       } catch (e) { logger.error('Auto-cleanup lobby failed', e); }
-    }, 60 * 60 * 1000); // 1h
+    }, TIMEOUTS.LOBBY_AUTO_CLEANUP);
     this.lobbyTimeouts.set(channelId, timeoutId);
   }
 
@@ -84,6 +97,34 @@ class GameManager {
       clearTimeout(game._hunterTimer);
       game._hunterTimer = null;
     }
+  }
+
+  // Nettoyage global (pour shutdown propre)
+  destroy() {
+    // Clear recentCommands interval
+    if (this._recentCommandsInterval) {
+      clearInterval(this._recentCommandsInterval);
+      this._recentCommandsInterval = null;
+    }
+    // Clear all game timers
+    for (const game of this.games.values()) {
+      this.clearGameTimers(game);
+    }
+    // Clear all lobby timeouts
+    for (const timeoutId of this.lobbyTimeouts.values()) {
+      clearTimeout(timeoutId);
+    }
+    this.lobbyTimeouts.clear();
+    // Save state and close DB
+    this.saveState();
+    if (this.db) {
+      this.db.close();
+    }
+  }
+
+  // Retourne toutes les parties actives sous forme de tableau
+  getAllGames() {
+    return Array.from(this.games.values());
   }
 
   create(channelId, options = {}) {
@@ -225,8 +266,8 @@ class GameManager {
   }
 
   async transitionToDay(guild, game) {
-    if (game.phase !== PHASES.NIGHT) return;
     if (game._transitioning) return;
+    if (game.phase !== PHASES.NIGHT) return;
     game._transitioning = true;
 
     try {
@@ -300,8 +341,8 @@ class GameManager {
   }
 
   async transitionToNight(guild, game) {
-    if (game.phase !== PHASES.DAY) return;
     if (game._transitioning) return;
+    if (game.phase !== PHASES.DAY) return;
     game._transitioning = true;
 
     try {
@@ -353,10 +394,10 @@ class GameManager {
   async announceVictoryIfAny(guild, game) {
     if (game.phase === PHASES.ENDED) return;
     const victor = this.checkWinner(game);
-    if (!victor) return;
+    if (victor === null) return;
 
     // Traduire le résultat pour l'affichage
-    const victorDisplay = { wolves: 'Loups-Garous 🐺', village: 'Village 🏡', lovers: 'Amoureux 💘' }[victor] || victor;
+    const victorDisplay = { wolves: 'Loups-Garous 🐺', village: 'Village 🏡', lovers: 'Amoureux 💘', draw: 'Égalité 🤝' }[victor] || victor;
 
     game.phase = PHASES.ENDED;
     game.endedAt = Date.now();
@@ -521,7 +562,7 @@ class GameManager {
   // Auto-avance la sous-phase si le rôle ne joue pas dans le délai imparti (90s)
   startNightAfkTimeout(guild, game) {
     this.clearNightAfkTimeout(game);
-    const NIGHT_AFK_DELAY = 90_000; // 90 secondes
+    const NIGHT_AFK_DELAY = TIMEOUTS.NIGHT_AFK;
     game._nightAfkTimer = setTimeout(async () => {
       try {
         if (game.phase !== PHASES.NIGHT) return;
@@ -569,7 +610,7 @@ class GameManager {
   // Le chasseur a 60s pour tirer sinon il perd son tir
   startHunterTimeout(guild, game, hunterId) {
     if (game._hunterTimer) clearTimeout(game._hunterTimer);
-    const HUNTER_DELAY = 60_000; // 60 secondes
+    const HUNTER_DELAY = TIMEOUTS.HUNTER_SHOOT;
     game._hunterTimer = setTimeout(async () => {
       try {
         if (game._hunterMustShoot !== hunterId) return;
@@ -1147,6 +1188,9 @@ class GameManager {
     if (game.voteVoters) {
       game.voteVoters.clear();
     }
+    if (game._voteIncrements) {
+      game._voteIncrements.clear();
+    }
     // Effacer les votes du tour précédent dans la DB
     this.db.clearVotes(game.mainChannelId, 'village', game.dayCount);
 
@@ -1317,7 +1361,7 @@ class GameManager {
     const alivePlayers = game.players.filter(p => p.alive);
     
     if (alivePlayers.length === 0) {
-      return null; // Partie terminée sans gagnant
+      return 'draw'; // Tout le monde est mort — égalité
     }
 
     // Compter les loups vivants
@@ -1352,17 +1396,12 @@ class GameManager {
     return null;
   }
 
-  // Persistence helpers
-  getSaveFilePath() {
-    const dir = path.join(__dirname, '..', 'data');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    return path.join(dir, 'games.json');
-  }
-
-  // Schedule a save with debouncing (waits 1s before saving)
+  // Schedule a save with debouncing (waits 500ms before saving)
   scheduleSave() {
-    // NOTE: Avec la DB, on n'a plus besoin de debouncing car les writes sont atomiques
-    // Cette méthode reste pour compatibilité avec le code existant mais ne fait rien
+    if (this.saveTimeout) clearTimeout(this.saveTimeout);
+    this.saveTimeout = setTimeout(() => {
+      this.saveState();
+    }, 500);
   }
 
   // Synchronise une partie du cache vers la base de données
@@ -1386,7 +1425,10 @@ class GameManager {
         dayCount: game.dayCount,
         captainId: game.captainId,
         startedAt: game.startedAt,
-        endedAt: game.endedAt
+        endedAt: game.endedAt,
+        nightVictim: game.nightVictim,
+        witchKillTarget: game.witchKillTarget,
+        witchSave: game.witchSave ? 1 : 0
       });
 
       // Mettre à jour les lovers (in-memory: [[id1, id2]], DB: flat pair)
@@ -1482,9 +1524,9 @@ class GameManager {
           votes: new Map(), // Charger depuis votes table si besoin
           voteVoters: new Map(),
           witchPotions: witchPotions,
-          nightVictim: null, // Pas persisté car temporaire
-          witchKillTarget: null, // Pas persisté car temporaire
-          witchSave: false,
+          nightVictim: dbGame.night_victim_id || null,
+          witchKillTarget: dbGame.witch_kill_target_id || null,
+          witchSave: dbGame.witch_save === 1,
           rules: { 
             minPlayers: dbGame.min_players, 
             maxPlayers: dbGame.max_players 

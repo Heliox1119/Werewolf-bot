@@ -5,8 +5,18 @@ const fs = require("fs");
 const path = require("path");
 const gameManager = require("./game/gameManager");
 const ROLES = require("./game/roles");
-const { app: logger, discord: discordLogger, interaction: interactionLogger } = require("./utils/logger");
-const { safeEditReply } = require("./utils/interaction");
+const { getRoleDescription, getRoleImageName } = require(\"./utils/roleHelpers\");
+const { app: logger, discord: discordLogger, interaction: interactionLogger } = require(\"./utils/logger\");
+const { safeEditReply } = require(\"./utils/interaction\");
+
+// Validation des variables d'environnement requises
+const REQUIRED_ENV = ['TOKEN', 'CLIENT_ID', 'GUILD_ID'];
+for (const key of REQUIRED_ENV) {
+  if (!process.env[key]) {
+    console.error(`❌ Variable d'environnement manquante: ${key}. Vérifiez votre fichier .env`);
+    process.exit(1);
+  }
+}
 
 const client = new Client({
   intents: [
@@ -205,21 +215,21 @@ async function updateLobbyEmbed(guild, channelId) {
 
 // Auto-mute/unmute selon la phase quand un joueur rejoint/quitte le vocal
 client.on('voiceStateUpdate', async (oldState, newState) => {
-  // On ne gère que les connexions à un channel vocal
-  if (!newState.channelId && !oldState.channelId) return;
+  try {
+    // On ne gère que les connexions à un channel vocal
+    if (!newState.channelId && !oldState.channelId) return;
 
-  // Chercher la partie correspondant à ce channel
-  const game = Array.from(gameManager.games.values()).find(g => g.voiceChannelId === (newState.channelId || oldState.channelId));
-  if (!game) return;
-  
-  // Désactivation debug
-  if (game.disableVoiceMute) return;
-  
-  // Ne pas mute/unmute si la partie est terminée
-  const PHASES = require('./game/phases');
-  if (game.phase === PHASES.ENDED || game.phase === 'Terminé') {
-    // Unmute everyone in the voice channel if the game is ended
-    try {
+    // Chercher la partie correspondant à ce channel
+    const game = Array.from(gameManager.games.values()).find(g => g.voiceChannelId === (newState.channelId || oldState.channelId));
+    if (!game) return;
+    
+    // Désactivation debug
+    if (game.disableVoiceMute) return;
+    
+    // Ne pas mute/unmute si la partie est terminée
+    const PHASES = require('./game/phases');
+    if (game.phase === PHASES.ENDED || game.phase === 'Terminé') {
+      // Unmute everyone in the voice channel if the game is ended
       const guild = newState.guild;
       const voiceChannel = guild.channels.cache.get(game.voiceChannelId) || await guild.channels.fetch(game.voiceChannelId).catch(() => null);
       if (!voiceChannel) return;
@@ -228,32 +238,41 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
         if (member.user.bot) continue;
         try { await member.voice.setMute(false); } catch (e) { /* ignore */ }
       }
-    } catch (e) { /* ignore */ }
-    return;
-  }
+      return;
+    }
 
-  // Récupérer le guild et le channel (use cache first for performance)
-  const guild = newState.guild;
-  const voiceChannel = guild.channels.cache.get(game.voiceChannelId) || await guild.channels.fetch(game.voiceChannelId).catch(() => null);
-  if (!voiceChannel) return;
+    // Récupérer le guild et le channel (use cache first for performance)
+    const guild = newState.guild;
+    const voiceChannel = guild.channels.cache.get(game.voiceChannelId) || await guild.channels.fetch(game.voiceChannelId).catch(() => null);
+    if (!voiceChannel) return;
 
-  // Pour chaque membre du channel, appliquer le mute/unmute selon la phase
-  for (const member of voiceChannel.members.values()) {
-    if (member.user.bot) continue;
-    const player = game.players.find(p => p.id === member.id);
-    if (!player || !player.alive) continue;
-    
-    try {
-      if (game.phase === 'Nuit' || game.phase === 'NIGHT') {
-        if (!member.voice.serverMute) {
-          await member.voice.setMute(true);
+    // Vérifier que le bot a la permission MUTE_MEMBERS
+    const botMember = guild.members.me;
+    if (botMember && !botMember.permissions.has('MuteMembers')) {
+      logger.warn('Bot missing MuteMembers permission — cannot mute/unmute players');
+      return;
+    }
+
+    // Pour chaque membre du channel, appliquer le mute/unmute selon la phase
+    for (const member of voiceChannel.members.values()) {
+      if (member.user.bot) continue;
+      const player = game.players.find(p => p.id === member.id);
+      if (!player || !player.alive) continue;
+      
+      try {
+        if (game.phase === 'Nuit' || game.phase === 'NIGHT') {
+          if (!member.voice.serverMute) {
+            await member.voice.setMute(true);
+          }
+        } else if (game.phase === 'Jour' || game.phase === 'DAY') {
+          if (member.voice.serverMute) {
+            await member.voice.setMute(false);
+          }
         }
-      } else if (game.phase === 'Jour' || game.phase === 'DAY') {
-        if (member.voice.serverMute) {
-          await member.voice.setMute(false);
-        }
-      }
-    } catch (e) { /* ignore */ }
+      } catch (e) { /* ignore */ }
+    }
+  } catch (err) {
+    logger.error('voiceStateUpdate error', { error: err.message });
   }
 });
 client.on("interactionCreate", async interaction => {
@@ -782,30 +801,35 @@ process.on('uncaughtException', (error) => {
   process.exit(1);
 });
 
+// Graceful shutdown
+async function gracefulShutdown(signal) {
+  logger.info(`${signal} received — shutting down gracefully...`);
+  try {
+    // Stop metrics collection
+    try {
+      const metrics = MetricsCollector.getInstance();
+      metrics.stopCollection();
+    } catch (e) { /* ignore */ }
+
+    // Clear all game timers and save state
+    gameManager.destroy();
+
+    // Disconnect voice connections
+    const voiceManager = require('./game/voiceManager');
+    for (const voiceChannelId of voiceManager.connections.keys()) {
+      try { voiceManager.disconnect(voiceChannelId); } catch (e) { /* ignore */ }
+    }
+
+    // Destroy Discord client
+    client.destroy();
+    logger.info('Shutdown complete');
+  } catch (err) {
+    logger.error('Shutdown error', { error: err.message });
+  }
+  process.exit(0);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
 client.login(process.env.TOKEN);
-
-function getRoleDescription(role) {
-  const descriptions = {
-    [ROLES.WEREWOLF]: "Salon: 🐺-loups. Commande: /kill @joueur (choisir la victime la nuit).",
-    [ROLES.VILLAGER]: "Salon: 🏘️-village. Commande: /vote @joueur (voter le jour).",
-    [ROLES.SEER]: "Salon: 🔮-voyante. Commande: /see @joueur (connaitre le role la nuit).",
-    [ROLES.WITCH]: "Salon: 🧪-sorciere. Commandes: /potion save ou /potion kill @joueur (la nuit).",
-    [ROLES.HUNTER]: "Salon: 🏘️-village. Commande: /shoot @joueur (si tu es elimine).",
-    [ROLES.PETITE_FILLE]: "Salon: 🏘️-village. Commande: /listen (espionner les loups la nuit).",
-    [ROLES.CUPID]: "Salon: ❤️-cupidon. Commande: /love @a @b (au debut de la partie)."
-  };
-  return descriptions[role] || "Role inconnu";
-}
-
-function getRoleImageName(role) {
-  const images = {
-    [ROLES.WEREWOLF]: "loupSimple.webp",
-    [ROLES.VILLAGER]: "villageois.webp",
-    [ROLES.SEER]: "voyante.webp",
-    [ROLES.WITCH]: "sorciere.png",
-    [ROLES.HUNTER]: "chasseur.webp",
-    [ROLES.PETITE_FILLE]: "petiteFille.webp",
-    [ROLES.CUPID]: "cupidon.webp"
-  };
-  return images[role] || null;
-}

@@ -33,6 +33,11 @@ CREATE TABLE IF NOT EXISTS games (
   lover1_id TEXT,
   lover2_id TEXT,
   
+  -- État nocturne (persisté pour survie au restart)
+  night_victim_id TEXT,
+  witch_kill_target_id TEXT,
+  witch_save BOOLEAN DEFAULT 0,
+  
   -- Métadonnées
   started_at INTEGER,
   ended_at INTEGER,

@@ -34,6 +34,29 @@ class GameDatabase {
     
     const version = this.getConfig('schema_version');
     logger.info('Database schema loaded', { version });
+    
+    // Migration: ajouter les colonnes nightVictim/witchKillTarget/witchSave si absentes
+    this.migrateSchema();
+  }
+
+  migrateSchema() {
+    try {
+      const columns = this.db.pragma('table_info(games)').map(c => c.name);
+      if (!columns.includes('night_victim_id')) {
+        this.db.exec('ALTER TABLE games ADD COLUMN night_victim_id TEXT');
+        logger.info('Migration: added night_victim_id column');
+      }
+      if (!columns.includes('witch_kill_target_id')) {
+        this.db.exec('ALTER TABLE games ADD COLUMN witch_kill_target_id TEXT');
+        logger.info('Migration: added witch_kill_target_id column');
+      }
+      if (!columns.includes('witch_save')) {
+        this.db.exec('ALTER TABLE games ADD COLUMN witch_save BOOLEAN DEFAULT 0');
+        logger.info('Migration: added witch_save column');
+      }
+    } catch (err) {
+      logger.error('Schema migration error', { error: err.message });
+    }
   }
 
   // ===== CONFIG =====
@@ -115,7 +138,10 @@ class GameDatabase {
       dayCount: 'day_count',
       captainId: 'captain_id',
       startedAt: 'started_at',
-      endedAt: 'ended_at'
+      endedAt: 'ended_at',
+      nightVictim: 'night_victim_id',
+      witchKillTarget: 'witch_kill_target_id',
+      witchSave: 'witch_save'
     };
 
     for (const [jsKey, dbKey] of Object.entries(mapping)) {

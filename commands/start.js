@@ -4,6 +4,7 @@ const gameManager = require("../game/gameManager");
 const { commands: logger } = require("../utils/logger");
 const ROLES = require("../game/roles");
 const { isInGameCategory } = require("../utils/validators");
+const { getRoleDescription, getRoleImageName } = require("../utils/roleHelpers");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -171,7 +172,7 @@ module.exports = {
     // Envoyer les rôles en DM (ignorer les IDs non-valide, ex: joueurs fake_...)
     for (const player of startedGame.players) {
       if (typeof player.id !== 'string' || !/^\d+$/.test(player.id)) {
-        console.log(`[Loup-Garou] Skip DM for non-snowflake id: ${player.id}`);
+        logger.debug(`Skip DM for non-snowflake id: ${player.id}`);
         continue;
       }
 
@@ -193,7 +194,7 @@ module.exports = {
         logger.info('DM send', { userId: user.id, username: user.username, content: '[role embed]' });
         await user.send({ embeds: [embed], files });
       } catch (err) {
-        console.error(`[Loup-Garou] Erreur envoi DM rôle à ${player.id}:`, err.message);
+        logger.warn(`Erreur envoi DM rôle à ${player.id}:`, { error: err.message });
       }
     }
 
@@ -246,29 +247,3 @@ module.exports = {
     );
   }
 };
-
-function getRoleDescription(role) {
-  const descriptions = {
-    [ROLES.WEREWOLF]: "Salon: 🐺-loups. Commande: /kill @joueur (choisir la victime la nuit).",
-    [ROLES.VILLAGER]: "Salon: 🏘️-village. Commande: /vote @joueur (voter le jour).",
-    [ROLES.SEER]: "Salon: 🔮-voyante. Commande: /see @joueur (connaitre le role la nuit).",
-    [ROLES.WITCH]: "Salon: 🧪-sorciere. Commandes: /potion save ou /potion kill @joueur (la nuit).",
-    [ROLES.HUNTER]: "Salon: 🏘️-village. Commande: /shoot @joueur (si tu es elimine).",
-    [ROLES.PETITE_FILLE]: "Salon: 🏘️-village. Commande: /listen (espionner les loups la nuit).",
-    [ROLES.CUPID]: "Salon: ❤️-cupidon. Commande: /love @a @b (au debut de la partie)."
-  };
-  return descriptions[role] || "Rôle inconnu";
-}
-
-function getRoleImageName(role) {
-  const images = {
-    [ROLES.WEREWOLF]: "loupSimple.webp",
-    [ROLES.VILLAGER]: "villageois.webp",
-    [ROLES.SEER]: "voyante.webp",
-    [ROLES.WITCH]: "sorciere.png",
-    [ROLES.HUNTER]: "chasseur.webp",
-    [ROLES.PETITE_FILLE]: "petiteFille.webp",
-    [ROLES.CUPID]: "cupidon.webp"
-  };
-  return images[role] || null;
-}

@@ -29,17 +29,17 @@ module.exports = {
     }
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
-      await interaction.reply({ content: "❌ Aucune partie ici", flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: "❌ Aucune partie ici", flags: MessageFlags.Ephemeral });
       return;
     }
     const min = interaction.options.getInteger("min");
     const max = interaction.options.getInteger("max");
     if (min < 3 || min > 6) {
-      await interaction.reply({ content: "❌ Le minimum doit être entre 3 et 6.", flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: "❌ Le minimum doit être entre 3 et 6.", flags: MessageFlags.Ephemeral });
       return;
     }
     if (max < min || max > 20) {
-      await interaction.reply({ content: "❌ Le maximum doit être entre le minimum et 20.", flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: "❌ Le maximum doit être entre le minimum et 20.", flags: MessageFlags.Ephemeral });
       return;
     }
     game.rules = { minPlayers: min, maxPlayers: max };

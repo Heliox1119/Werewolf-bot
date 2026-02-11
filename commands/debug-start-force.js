@@ -2,6 +2,7 @@ const { SlashCommandBuilder, MessageFlags, EmbedBuilder, AttachmentBuilder, Perm
 const path = require("path");
 const gameManager = require("../game/gameManager");
 const ROLES = require("../game/roles");
+const { commands: logger } = require("../utils/logger");
 
 function getRoleDescription(role) {
   const descriptions = {
@@ -113,7 +114,7 @@ module.exports = {
 
         await user.send({ embeds: [embed], files });
       } catch (err) {
-        console.log(`Pas de DM pour ${player.id}`);
+        logger.debug(`Pas de DM pour ${player.id}`);
       }
     }
 

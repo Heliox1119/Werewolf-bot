@@ -75,18 +75,26 @@ module.exports = {
     }
 
     // Si le votant est le capitaine, son vote compte double
-    const increment = game.captainId && game.captainId === interaction.user.id ? 2 : 1;
+    const isCaptain = game.captainId && game.captainId === interaction.user.id;
+    const increment = isCaptain ? 2 : 1;
 
     // Remove previous vote if exists
     const previousTarget = game.voteVoters.get(interaction.user.id);
     if (previousTarget) {
-      const prevCount = (game.votes.get(previousTarget) || 0) - increment;
+      // Utiliser l'incrément d'origine du vote précédent
+      if (!game._voteIncrements) game._voteIncrements = new Map();
+      const prevIncrement = game._voteIncrements.get(interaction.user.id) || 1;
+      const prevCount = (game.votes.get(previousTarget) || 0) - prevIncrement;
       if (prevCount <= 0) {
         game.votes.delete(previousTarget);
       } else {
         game.votes.set(previousTarget, prevCount);
       }
     }
+
+    // Tracker l'incrément utilisé pour ce vote
+    if (!game._voteIncrements) game._voteIncrements = new Map();
+    game._voteIncrements.set(interaction.user.id, increment);
 
     // Add new vote
     game.voteVoters.set(interaction.user.id, target.id);

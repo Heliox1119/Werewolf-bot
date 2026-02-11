@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const { isInGameCategory } = require("../utils/validators");
+const { safeReply } = require("../utils/interaction");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -10,11 +11,11 @@ module.exports = {
   async execute(interaction) {
     // Vérification catégorie
     if (!await isInGameCategory(interaction)) {
-      await interaction.reply({ content: "❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: "❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.", flags: MessageFlags.Ephemeral });
       return;
     }
     const game = gameManager.getGameByChannelId(interaction.channelId);
-    if (!game) return interaction.reply("❌ Aucune partie ici");
+    if (!game) return safeReply(interaction, { content: "❌ Aucune partie ici", flags: MessageFlags.Ephemeral });
     const alive = game.players.filter(p => p.alive);
     const dead = game.players.filter(p => !p.alive);
     let message = `🎭 **État de la Partie**\n\n`;
@@ -36,6 +37,6 @@ module.exports = {
     if (victory) {
       message += `\n\n🏆 **${victory}** a gagné!`;
     }
-    await interaction.reply(message);
+    await safeReply(interaction, { content: message });
   }
 };

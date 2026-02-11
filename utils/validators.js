@@ -1,6 +1,7 @@
 // Validation utilities for the Werewolf bot
 
 const ConfigManager = require('./config');
+const { app: logger } = require('./logger');
 
 /**
  * Check if a channel is in the allowed game category
@@ -26,7 +27,7 @@ async function isInGameCategory(interaction) {
     
     return channel.parentId === CATEGORY_ID;
   } catch (error) {
-    console.error('Error checking category:', error);
+    logger.error('Error checking category:', { error: error.message });
     return false;
   }
 }

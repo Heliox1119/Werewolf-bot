@@ -1,5 +1,5 @@
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus } = require('@discordjs/voice');
-const { createReadStream } = require('fs');
+const { createReadStream, existsSync } = require('fs');
 const path = require('path');
 const { game: logger } = require('../utils/logger');
 
@@ -43,6 +43,10 @@ class VoiceManager {
       }
 
       const soundPath = path.join(__dirname, '..', 'audio', soundFile);
+      if (!existsSync(soundPath)) {
+        logger.error('Audio file not found', { soundFile, soundPath });
+        return false;
+      }
       const resource = createAudioResource(createReadStream(soundPath));
       
       let player = this.players.get(voiceChannelId);
@@ -73,6 +77,10 @@ class VoiceManager {
       if (!connection) return false;
 
       const soundPath = path.join(__dirname, '..', 'audio', soundFile);
+      if (!existsSync(soundPath)) {
+        logger.error('Audio file not found for loop', { soundFile, soundPath });
+        return false;
+      }
 
       // stop any existing loop for this channel
       this.stopLoop(voiceChannelId);

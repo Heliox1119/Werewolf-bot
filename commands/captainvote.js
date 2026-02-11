@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const gameManager = require('../game/gameManager');
 const { isInGameCategory } = require('../utils/validators');
+const { safeReply } = require('../utils/interaction');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -11,12 +12,12 @@ module.exports = {
   async execute(interaction) {
     // Vérification catégorie
     if (!await isInGameCategory(interaction)) {
-      return interaction.reply({ content: '❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.', flags: MessageFlags.Ephemeral });
+      return safeReply(interaction, { content: '❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.', flags: MessageFlags.Ephemeral });
     }
     const game = gameManager.getGameByChannelId(interaction.channelId);
-    if (!game) return interaction.reply({ content: '❌ Aucune partie ici', flags: MessageFlags.Ephemeral });
+    if (!game) return safeReply(interaction, { content: '❌ Aucune partie ici', flags: MessageFlags.Ephemeral });
     if (interaction.channelId !== game.villageChannelId) {
-      return interaction.reply({ content: '❌ Cette commande ne peut être utilisée que dans le salon village', flags: MessageFlags.Ephemeral });
+      return safeReply(interaction, { content: '❌ Cette commande ne peut être utilisée que dans le salon village', flags: MessageFlags.Ephemeral });
     }
 
     const target = interaction.options.getUser('target');
@@ -33,9 +34,9 @@ module.exports = {
         case 'target_not_found': msg = '❌ Cible invalide.'; break;
         case 'target_dead': msg = '❌ La cible est morte.'; break;
       }
-      return interaction.reply({ content: msg, flags: MessageFlags.Ephemeral });
+      return safeReply(interaction, { content: msg, flags: MessageFlags.Ephemeral });
     }
 
-    return interaction.reply({ content: `✅ Vote enregistré pour **${target.username}**`, flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: `✅ Vote enregistré pour **${target.username}**`, flags: MessageFlags.Ephemeral });
   }
 };

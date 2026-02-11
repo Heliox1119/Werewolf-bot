@@ -2,6 +2,7 @@ const { SlashCommandBuilder, MessageFlags, EmbedBuilder, AttachmentBuilder } = r
 const path = require('path');
 const gameManager = require('../game/gameManager');
 const { isInGameCategory } = require('../utils/validators');
+const { safeReply } = require('../utils/interaction');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -12,28 +13,28 @@ module.exports = {
   async execute(interaction) {
     // Vérification catégorie
     if (!await isInGameCategory(interaction)) {
-      return interaction.reply({ content: '❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.', flags: MessageFlags.Ephemeral });
+      return safeReply(interaction, { content: '❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.', flags: MessageFlags.Ephemeral });
     }
     const game = gameManager.getGameByChannelId(interaction.channelId);
-    if (!game) return interaction.reply({ content: '❌ Aucune partie ici', flags: MessageFlags.Ephemeral });
+    if (!game) return safeReply(interaction, { content: '❌ Aucune partie ici', flags: MessageFlags.Ephemeral });
     if (interaction.channelId !== game.villageChannelId) {
-      return interaction.reply({ content: '❌ Cette commande doit être utilisée dans le salon village', flags: MessageFlags.Ephemeral });
+      return safeReply(interaction, { content: '❌ Cette commande doit être utilisée dans le salon village', flags: MessageFlags.Ephemeral });
     }
 
     const res = gameManager.declareCaptain(interaction.channelId);
     if (!res.ok) {
-      if (res.reason === 'no_votes') return interaction.reply({ content: '❌ Aucun vote enregistré pour le capitaine.', flags: MessageFlags.Ephemeral });
+      if (res.reason === 'no_votes') return safeReply(interaction, { content: '❌ Aucun vote enregistré pour le capitaine.', flags: MessageFlags.Ephemeral });
       if (res.reason === 'tie') {
         const names = res.tied.map(id => {
           const p = game.players.find(x => x.id === id);
           return p ? p.username : id;
         }).join(', ');
-        return interaction.reply({ content: `⚠️ Égalité entre : ${names}. Aucune élection.`, ephemeral: false });
+        return safeReply(interaction, { content: `⚠️ Égalité entre : ${names}. Aucune élection.` });
       }
-      return interaction.reply({ content: '❌ Impossible de déclarer le capitaine.', flags: MessageFlags.Ephemeral });
+      return safeReply(interaction, { content: '❌ Impossible de déclarer le capitaine.', flags: MessageFlags.Ephemeral });
     }
 
-    await interaction.reply(`🏅 **${res.username}** est élu·e capitaine !`);
+    await safeReply(interaction, { content: `🏅 **${res.username}** est élu·e capitaine !` });
 
     try {
       const user = await interaction.client.users.fetch(res.winnerId);
