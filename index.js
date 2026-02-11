@@ -441,6 +441,7 @@ client.on("interactionCreate", async interaction => {
 
       const newGame = gameManager.games.get(game.mainChannelId);
       newGame.lobbyHostId = interaction.user.id;
+      newGame._lobbyCreatedAt = Date.now();
 
       const setupSuccess = await gameManager.createInitialChannels(
         interaction.guild,

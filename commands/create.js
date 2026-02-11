@@ -133,6 +133,7 @@ module.exports = {
     
     game.lobbyHostId = interaction.user.id;
     game.rules = { minPlayers, maxPlayers };
+    game._lobbyCreatedAt = Date.now();
 
     logger.debug('Creating initial channels', { categoryId: CATEGORY_ID });
     const setupSuccess = await gameManager.createInitialChannels(
