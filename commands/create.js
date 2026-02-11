@@ -54,8 +54,18 @@ module.exports = {
     });
 
     try {
-      // Category ID for game channels
-      const CATEGORY_ID = "1469976287790633146";
+      // Get category ID from configuration
+      const ConfigManager = require('../utils/config');
+      const config = ConfigManager.getInstance();
+      const CATEGORY_ID = config.getCategoryId();
+      
+      if (!CATEGORY_ID) {
+        await interaction.editReply({
+          content: '❌ Le bot n\'est pas configuré. Un administrateur doit utiliser `/setup category` pour configurer la catégorie des channels de jeu.',
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
 
       // Clean up any existing game/channels before creating a new game
       const oldGame = gameManager.games.get(interaction.channelId);
@@ -63,6 +73,7 @@ module.exports = {
         logger.info('Found existing game, cleaning up...');
         const deletedCount = await gameManager.cleanupChannels(interaction.guild, oldGame);
         logger.success(`Cleaned up old game`, { deletedChannels: deletedCount });
+        try { gameManager.db.deleteGame(interaction.channelId); } catch (e) { /* ignore */ }
         gameManager.games.delete(interaction.channelId);
         gameManager.saveState();
         
@@ -132,6 +143,7 @@ module.exports = {
 
     if (!setupSuccess) {
       logger.error('Failed to create channels - rolling back', { channelId: interaction.channelId });
+      try { gameManager.db.deleteGame(interaction.channelId); } catch (e) { /* ignore */ }
       gameManager.games.delete(interaction.channelId);
       const errorMsg = "❌ **Erreur lors de la création des channels !**\n\n" +
         "Vérifications :\n" +

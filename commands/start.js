@@ -3,6 +3,7 @@ const path = require("path");
 const gameManager = require("../game/gameManager");
 const { commands: logger } = require("../utils/logger");
 const ROLES = require("../game/roles");
+const { isInGameCategory } = require("../utils/validators");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -11,8 +12,7 @@ module.exports = {
 
   async execute(interaction) {
     // Vérification catégorie
-    const channel = await interaction.guild.channels.fetch(interaction.channelId);
-    if (channel.parentId !== '1469976287790633146') {
+    if (!await isInGameCategory(interaction)) {
       await interaction.reply({ content: "❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.", flags: MessageFlags.Ephemeral });
       return;
     }

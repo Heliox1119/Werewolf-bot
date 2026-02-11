@@ -2,27 +2,34 @@
 
 Un bot Discord complet pour jouer au Loup-Garou avec gestion vocale automatique et audio d'ambiance.
 
-## 🎉 Nouveautés v2.1.0
+## 🎉 Nouveautés v2.2.0
 
-### 🗄️ Base de données SQLite
-- **Persistance fiable** : Sauvegarde automatique dans SQLite
-- **7 tables optimisées** : games, players, roles, etc.
-- **Transactions ACID** : Aucune perte de données
-- **Migration automatique** depuis JSON avec script inclus
-- **Performance** : Write-Ahead Logging (WAL) pour accès concurrent
+### 🔒 Audit de sécurité complet
+- **Commandes debug protégées** : Toutes requièrent la permission Administrateur
+- **Permissions /end** : Vérification admin ou host de la partie
+- **Suppression ID hardcodé** : Category ID dynamique via `/setup`
+- **Protection DM** : Guard `guild null` contre les crashes en message privé
 
-### 🛡️ Rate Limiting & Protection
-- **Token Bucket algorithm** : Rate limiting intelligent par commande
-- **Protection anti-spam** : Limites configurables (3-30 tokens/min)
-- **Cooldowns** : 0.5-10s entre requêtes selon la commande
-- **Pénalités progressives** : Bans automatiques (5min → 1h → 24h)
-- **Commande admin `/ratelimit`** : stats, reset, ban/unban manuel
-- **Performance** : <0.1ms par vérification, supporte 10k+ utilisateurs
+### 🏹 Chasseur & nouvelles commandes
+- **`/shoot`** : Le Chasseur tire sur un joueur à sa mort (timeout 60s)
+- **`/vote-end`** : Vote majoritaire des joueurs vivants pour arrêter la partie
+- **Détection automatique** de la mort du Chasseur (nuit et jour)
 
-### 📊 Observabilité
-- **Statistiques globales** : Tracking des violations et abus
-- **Monitoring par utilisateur** : Historique détaillé des limites
-- **Logs structurés** : Traçabilité complète des actions
+### ⏱️ AFK Timeout & verrous
+- **Timeout nuit 90s** : Auto-avance si un rôle (loups, sorcière, voyante) ne joue pas
+- **Verrou de transition** : Empêche les double-transitions jour/nuit (race condition)
+- **Nettoyage des timers** : `clearGameTimers()` en fin de partie
+
+### 🐛 Corrections critiques
+- Fix crash `command is not defined` (index.js)
+- Fix désync DB/mémoire : `db.deleteGame()` ajouté partout
+- Fix perte de précision snowflake Discord (config.js)
+- Fix boutons lobby inopérants (séparation `isChatInputCommand`)
+- Fix `addField` → `addFields` (discord.js v14)
+- Fix sous-phase enforcement (`/kill` → LOUPS, `/potion` → SORCIERE, `/see` → VOYANTE)
+- Fix vérification joueur vivant pour sorcière, voyante, loups
+- Sync DB : votes, potions sorcière, départ lobby
+- Prévention double start (`game.startedAt`)
 
 ## ✨ Fonctionnalités
 
@@ -90,12 +97,37 @@ Placer les fichiers audio :
 - `victory_villagers.mp3`
 - `victory_wolves.mp3`
 
-5. **Créer une catégorie Discord**
-- Créer une catégorie sur votre serveur
-- Copier son ID (clic droit > Copier l'identifiant)
-- Mettre à jour `CATEGORY_ID` dans `utils/validators.js`
+5. **Lancer le bot**
+```bash
+npm start
+```
 
-6. **Vérifier la santé du bot**
+6. **Configuration initiale (Discord)**
+
+Une fois le bot démarré, utilisez la commande `/setup wizard` sur Discord :
+
+```
+/setup wizard
+```
+
+L'assistant vous guidera pour :
+- ✅ Configurer la catégorie Discord (requis)
+- ⚙️ Configurer le webhook monitoring (optionnel)
+- 🎮 Définir les règles par défaut (optionnel)
+
+**Configuration rapide :**
+```
+# 1. Créer une catégorie sur votre serveur (ex: "Werewolf Games")
+# 2. Utiliser /setup
+/setup category category:#votre-categorie
+
+# 3. Vérifier la configuration
+/setup status
+```
+
+**Note :** Le bot refusera de créer des parties tant que la catégorie n'est pas configurée.
+
+7. **Vérifier la santé du bot**
 ```bash
 npm run health
 ```
@@ -152,18 +184,26 @@ LOG_LEVEL=INFO  # Niveaux: DEBUG, INFO, WARN, ERROR, NONE
 | `/kill @joueur` | Tuer un joueur | Loups-Garous |
 | `/see @joueur` | Voir le rôle | Voyante |
 | `/potion save/kill` | Utiliser potion | Sorcière |
+| `/shoot @joueur` | Tirer en mourant | Chasseur |
 | `/love @a @b` | Lier deux amoureux | Cupidon |
 | `/listen` | Espionner les loups | Petite Fille |
 | `/vote @joueur` | Voter pour éliminer | Tous |
+| `/vote-end` | Voter pour arrêter la partie | Tous |
 | `/captainvote @joueur` | Voter pour capitaine | Tous |
 | `/declarecaptain` | Déclarer le capitaine | Village |
 | `/nextphase` | Passer phase suivante | Tous |
-| `/end` | Terminer la partie | Tous |
+| `/end` | Terminer la partie | Admin/Host |
 
 ### Admin
 
 | Commande | Description |
 |----------|-------------|
+| `/setup wizard` | Assistant de configuration initiale |
+| `/setup category <category>` | Configurer la catégorie Discord |
+| `/setup webhook [url]` | Configurer le webhook de monitoring |
+| `/setup rules [min] [max]` | Configurer règles par défaut |
+| `/setup monitoring [interval] [alerts]` | Configurer le monitoring |
+| `/setup status` | Afficher la configuration actuelle |
 | `/clear` | Nettoyer tous les channels |
 | `/end` | Terminer la partie (dans le channel actuel) |
 | `/force-end` | Terminer une partie de force (bypass interaction) |
@@ -173,6 +213,10 @@ LOG_LEVEL=INFO  # Niveaux: DEBUG, INFO, WARN, ERROR, NONE
 | `/ratelimit reset @user` | Réinitialiser les limites d'un user |
 | `/ratelimit ban @user` | Bannir manuellement un utilisateur |
 | `/ratelimit unban @user` | Débannir un utilisateur |
+| `/monitoring dashboard` | Dashboard complet des métriques temps réel |
+| `/monitoring health` | Statut de santé du bot avec recommandations |
+| `/monitoring alerts <action>` | Gérer le système d'alertes (stats/enable/disable) |
+| `/monitoring history` | Historique des métriques sur 24 heures |
 | `/debugvoicemute` | Désactiver mute auto |
 | `/debug-info` | Afficher état partie |
 | `/debug-games` | Afficher toutes les parties actives |
@@ -198,9 +242,19 @@ Werewolf-bot/
 │   └── roles.js          # Constantes rôles
 │
 ├── utils/                # Utilitaires
+│   ├── config.js         # Configuration centralisée
 │   ├── validators.js     # Validations
 │   ├── commands.js       # Helpers commandes
+│   ├── rateLimiter.js    # Rate limiting
 │   └── interaction.js    # Gestion interactions
+│
+├── monitoring/           # Monitoring & alertes
+│   ├── metrics.js        # Collecteur de métriques
+│   └── alerts.js         # Système d'alertes webhook
+│
+├── database/             # Base de données
+│   ├── db.js             # API SQLite
+│   └── schema.sql        # Schéma des tables
 │
 ├── scripts/              # Scripts maintenance
 │   ├── health-check.js
@@ -304,13 +358,16 @@ module.exports = {
 
 | Métrique | v1.0 | v2.0 | v2.1 | Amélioration |
 |----------|------|------|------|--------------|
-| Sauvegardes/min | ~50 | ~5 | ~5* | 90% |
-| API calls/event | 2-3 | 0-1 | 0-1 | 60% |
-| Lignes de code | 2000 | 1350 | 1700 | - |
-| Erreurs Discord | Fréquentes | Rares | Rares | 95% |
-| Persistence | JSON | JSON | SQLite | Fiable |
-| Rate limiting | ❌ | ❌ | ✅ | Anti-spam |
-| Check rate limit | - | - | <0.1ms | Ultra-rapide |
+| Métrique | v1.0 | v2.0 | v2.1 | v2.2 |
+|----------|------|------|------|------|
+| Sauvegardes/min | ~50 | ~5 | ~5* | ~5* |
+| API calls/event | 2-3 | 0-1 | 0-1 | 0-1 |
+| Erreurs Discord | Fréquentes | Rares | Rares | ~0 |
+| Persistence | JSON | JSON | SQLite | SQLite |
+| Rate limiting | ❌ | ❌ | ✅ | ✅ |
+| Sécurité debug | ❌ | ❌ | ❌ | ✅ |
+| AFK timeout nuit | ❌ | ❌ | ❌ | ✅ 90s |
+| Chasseur /shoot | ❌ | ❌ | ❌ | ✅ |
 
 *\*SQLite avec WAL (Write-Ahead Logging) pour performances optimales*
 
@@ -336,12 +393,15 @@ ISC License - Voir LICENSE pour plus de détails
 
 ---
 
-**Version actuelle** : 2.0.2  
+**Version actuelle** : 2.2.0  
 **Node.js requis** : ≥ 16.9.0  
 **Discord.js** : ^14.25.1
 
 ## 📚 Documentation
 
+- [CONFIG.md](CONFIG.md) - Système de configuration centralisée
+- [MONITORING.md](MONITORING.md) - Système de monitoring et alertes
+- [RATE_LIMITING.md](RATE_LIMITING.md) - Protection anti-spam et rate limiting
 - [LOGGING.md](LOGGING.md) - Système de logging centralisé
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Guide de dépannage
 - [ERROR_10062.md](ERROR_10062.md) - Erreur "Interaction Expired" expliquée

@@ -77,7 +77,8 @@ module.exports = {
       }
     }
 
-    // Supprimer la partie de la mémoire
+    // Supprimer la partie de la mémoire et de la base de données
+    try { gameManager.db.deleteGame(targetChannelId); } catch (e) { logger.warn('Failed to delete game from DB', { error: e.message }); }
     gameManager.games.delete(targetChannelId);
     gameManager.saveState();
 

@@ -1,6 +1,6 @@
 // Validation utilities for the Werewolf bot
 
-const CATEGORY_ID = '1469976287790633146';
+const ConfigManager = require('./config');
 
 /**
  * Check if a channel is in the allowed game category
@@ -8,6 +8,14 @@ const CATEGORY_ID = '1469976287790633146';
  */
 async function isInGameCategory(interaction) {
   try {
+    const config = ConfigManager.getInstance();
+    const CATEGORY_ID = config.getCategoryId();
+    
+    if (!CATEGORY_ID) {
+      // Configuration non faite
+      return false;
+    }
+    
     // Try cache first (instant)
     let channel = interaction.guild.channels.cache.get(interaction.channelId);
     
@@ -50,8 +58,16 @@ function isPlayerInGame(game, userId) {
   };
 }
 
+/**
+ * Get the configured category ID
+ */
+function getCategoryId() {
+  const config = ConfigManager.getInstance();
+  return config.getCategoryId();
+}
+
 module.exports = {
-  CATEGORY_ID,
+  getCategoryId,
   isInGameCategory,
   isValidSnowflake,
   isAdmin,

@@ -1,11 +1,12 @@
-const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const { commands: logger } = require("../utils/logger");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("debug-games")
-    .setDescription("🐛 [DEBUG] Afficher toutes les parties actives"),
+    .setDescription("🐛 [DEBUG] Afficher toutes les parties actives")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   async execute(interaction) {
     if (!interaction.member.permissions.has("ADMINISTRATOR")) {

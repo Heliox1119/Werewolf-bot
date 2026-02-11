@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const gameManager = require("../game/gameManager");
-const { checkCategoryAndDefer, sendTemporaryMessage } = require("../utils/commands");
+const { sendTemporaryMessage } = require("../utils/commands");
+const { safeDefer } = require("../utils/interaction");
 const { commands: logger } = require("../utils/logger");
 
 module.exports = {
@@ -22,11 +23,10 @@ module.exports = {
       interactionAge: Date.now() - interaction.createdTimestamp
     });
     
-    // Vérification catégorie et defer
-    const deferSuccess = await checkCategoryAndDefer(interaction);
+    // Defer sans vérification de catégorie (end doit marcher depuis le channel de création)
+    const deferSuccess = await safeDefer(interaction);
     if (!deferSuccess) {
-      logger.warn('checkCategoryAndDefer failed for /end - continuing anyway to cleanup');
-      // Continue anyway to try to cleanup, just won't be able to reply
+      logger.warn('Failed to defer /end - continuing anyway to cleanup');
     }
     
     logger.debug('Checking for game in channel', { channelId: interaction.channelId });
@@ -63,6 +63,18 @@ module.exports = {
       return;
     }
 
+    // Vérifier que l'utilisateur est admin ou host de la partie
+    const isAdmin = interaction.member?.permissions?.has('ADMINISTRATOR') ?? false;
+    const isHost = game.lobbyHostId === interaction.user.id;
+    if (!isAdmin && !isHost) {
+      if (deferSuccess) {
+        try {
+          await interaction.editReply({ content: "❌ Seul l'hôte de la partie ou un admin peut terminer la partie.", flags: MessageFlags.Ephemeral });
+        } catch (e) { /* ignore */ }
+      }
+      return;
+    }
+
     logger.info('Game found, starting cleanup', { 
       channelId: interaction.channelId,
       playerCount: game.players.length,
@@ -84,7 +96,8 @@ module.exports = {
       }
     }
 
-    // Supprimer la partie de la mémoire et sauvegarder
+    // Supprimer la partie de la mémoire et de la base de données
+    try { gameManager.db.deleteGame(interaction.channelId); } catch (e) { logger.warn('Failed to delete game from DB', { error: e.message }); }
     gameManager.games.delete(interaction.channelId);
     gameManager.saveState();
 
