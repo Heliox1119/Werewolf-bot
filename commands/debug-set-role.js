@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, MessageFlags } = require("discord.js");
+const { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const ROLES = require("../game/roles");
 
@@ -16,6 +16,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("debug-set-role")
     .setDescription("🐛 [DEBUG] Forcer le role d'un joueur")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addStringOption(option =>
       option
         .setName("role")

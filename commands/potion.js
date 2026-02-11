@@ -3,6 +3,7 @@ const gameManager = require("../game/gameManager");
 const ROLES = require("../game/roles");
 const PHASES = require("../game/phases");
 const { safeReply } = require("../utils/interaction");
+const { isInGameCategory } = require("../utils/validators");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -27,8 +28,7 @@ module.exports = {
 
   async execute(interaction) {
     // Vérification catégorie
-    const channel = await interaction.guild.channels.fetch(interaction.channelId);
-    if (channel.parentId !== '1469976287790633146') {
+    if (!await isInGameCategory(interaction)) {
       await safeReply(interaction, { content: "❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.", flags: MessageFlags.Ephemeral });
       return;
     }
@@ -44,13 +44,28 @@ module.exports = {
       return;
     }
 
-    // Vérifier que c'est la sorcière
+    // Vérifier que c'est la nuit ET la sous-phase de la sorcière
+    if (game.phase !== PHASES.NIGHT) {
+      await safeReply(interaction, { content: "❌ La sorcière ne peut utiliser ses potions que la nuit !", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    if (game.subPhase !== PHASES.SORCIERE) {
+      await safeReply(interaction, { content: "❌ Ce n'est pas le tour de la sorcière", flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    // Vérifier que c'est la sorcière vivante
     const player = game.players.find(p => p.id === interaction.user.id);
     if (!player || player.role !== ROLES.WITCH) {
       await safeReply(interaction, { content: "❌ Tu n'es pas la sorcière", flags: MessageFlags.Ephemeral });
       return;
     }
+    if (!player.alive) {
+      await safeReply(interaction, { content: "❌ Tu es morte", flags: MessageFlags.Ephemeral });
+      return;
+    }
 
+    gameManager.clearNightAfkTimeout(game);
     const type = interaction.options.getString("type");
 
     if (type === "life") {
@@ -60,6 +75,8 @@ module.exports = {
       }
 
       game.witchPotions.life = false;
+      game.witchSave = true;
+      try { gameManager.db.useWitchPotion(game.mainChannelId, 'life'); } catch (e) { /* ignore */ }
       gameManager.logAction(game, `Sorciere utilise potion de vie`);
       await safeReply(interaction, { content: "✅ Potion de vie utilisée ! Tu sauveras la victime des loups cette nuit.", flags: MessageFlags.Ephemeral });
     } else if (type === "death") {
@@ -81,15 +98,17 @@ module.exports = {
       }
 
       game.witchPotions.death = false;
-      gameManager.kill(interaction.channelId, target.id);
+      game.witchKillTarget = target.id;
+      try { gameManager.db.useWitchPotion(game.mainChannelId, 'death'); } catch (e) { /* ignore */ }
       gameManager.logAction(game, `Sorciere empoisonne: ${target.username}`);
-      await safeReply(interaction, { content: `✅ **${target.username}** a été empoisonné !`, flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: `✅ **${target.username}** sera empoisonné à l'aube !`, flags: MessageFlags.Ephemeral });
     }
 
     if (game.phase === PHASES.NIGHT) {
       if (gameManager.hasAliveRealRole(game, ROLES.SEER)) {
         game.subPhase = PHASES.VOYANTE;
         await gameManager.announcePhase(interaction.guild, game, "La voyante se réveille...");
+        gameManager.startNightAfkTimeout(interaction.guild, game);
       } else {
         await gameManager.transitionToDay(interaction.guild, game);
       }

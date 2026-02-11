@@ -1,10 +1,11 @@
-const { SlashCommandBuilder, MessageFlags } = require("discord.js");
+const { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const gameManager = require("../game/gameManager");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("debug-fake-join")
     .setDescription("🐛 [DEBUG] Ajouter des joueurs fictifs")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addNumberOption(option =>
       option
         .setName("count")

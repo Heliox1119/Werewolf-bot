@@ -234,7 +234,7 @@ describe('GameManager', () => {
       game.players[1].inLove = true;
       game.players[2].alive = false;
       game.players[3].alive = false;
-      game.lovers = ['player-0', 'player-1'];
+      game.lovers = [['player-0', 'player-1']];
 
       const winner = gameManager.checkWinner(game);
       expect(winner).toBe('lovers');

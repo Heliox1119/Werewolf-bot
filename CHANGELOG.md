@@ -1,5 +1,71 @@
 # 📝 Changelog - Werewolf Bot
 
+## [2.2.0] - 2026-02-11 - Audit Critique, Sécurité, Chasseur, AFK Timeout
+
+### 🔐 Sécurité
+- **Commandes debug protégées** : Toutes les 7 commandes debug ont `setDefaultMemberPermissions(Administrator)`
+- **`/end` sécurisé** : Vérification admin ou host de la partie
+- **`/debug-voicemute` sécurisé** : Vérification admin dans `execute()`
+- **Category ID dynamique** : Remplacement du hardcode par `isInGameCategory()` via ConfigManager
+- **Protection DM** : Guard `guild null` en haut de `interactionCreate` pour éviter les crashes
+
+### 🏹 Nouvelles commandes
+- **`/shoot @joueur`** : Le Chasseur tire sur un joueur quand il meurt
+  - Détection automatique mort du Chasseur (nuit & vote du village)
+  - Message d'annonce + timeout 60s si AFK
+  - Vérifications : rôle, cible vivante, pas soi-même
+- **`/vote-end`** : Vote majoritaire pour arrêter la partie
+  - Seuls les joueurs vivants peuvent voter
+  - Majorité requise (ceil(alive/2))
+  - Cleanup channels automatique
+
+### ⏱️ AFK Timeout & Verrous
+- **Timeout nuit 90s** : Auto-avance si loups/sorcière/voyante ne jouent pas
+  - Timer relancé à chaque transition de sous-phase
+  - Nettoyé quand le rôle agit (`clearNightAfkTimeout`)
+- **Timeout chasseur 60s** : Perd son tir s'il ne tire pas à temps
+- **Verrou de transition** : `game._transitioning` empêche les double-transitions jour/nuit
+  - Bloc `try/finally` pour garantir le reset
+- **`clearGameTimers()`** : Nettoyage propre de tous les timers en fin de partie
+
+### 🐛 Corrections critiques
+- **Fix crash `command is not defined`** : Ajout lookup `client.commands.get()` (index.js)
+- **Fix desync DB/mémoire** : `db.deleteGame()` ajouté dans ~12 endroits (end, force-end, clear, debug-reset, create, index.js)
+- **Fix perte de précision snowflake** : Regex `/^\d{17,20}$/` garde les IDs comme strings dans `config.js`
+- **Fix boutons lobby** : Séparation `isChatInputCommand()` pour ne pas bloquer les buttons
+- **Fix syntaxe** : Accolade manquante dans bloc `__logWrapped` (index.js)
+- **Fix `addField` → `addFields`** : API discord.js v14 (debug-info.js)
+- **Fix sous-phase enforcement** : `/kill` vérifie LOUPS, `/potion` vérifie SORCIERE, `/see` vérifie VOYANTE
+- **Fix joueur mort** : Vérification `player.alive` pour sorcière, voyante, loups
+- **Fix double start** : Guard `game.startedAt` dans `gameManager.start()`
+- **Sync DB votes** : `db.addVote()` après chaque vote village
+- **Sync DB potions** : `db.useWitchPotion()` pour vie et mort
+- **Sync DB lobby leave** : `db.removePlayer()` quand un joueur quitte
+- **Fix reply wrapper** : try/catch sur `reply`, `editReply`, `followUp` (index.js)
+- **Fix vote-end** : Filtrage des votes de joueurs morts
+
+### 🔧 Améliorations techniques
+- Reply/editReply/followUp wrappés avec try/catch pour éviter les crashes
+- `category_check` retiré de `/clear` et `/end` (remplacé par `safeDefer`)
+- `lovers` format corrigé : array de pairs `[[id1, id2]]` au lieu de flat array
+
+### 📦 Nouveaux fichiers
+```
+commands/shoot.js       # Commande /shoot (Chasseur)
+commands/vote-end.js    # Commande /vote-end
+```
+
+### ✅ Tests
+- **77 tests passent** (0 failures)
+- Fix mocks : validators, config, logger
+- Fix `lovers` format dans tests (array de pairs)
+- Fix `smallPlayers` variable non déclarée
+
+### ⚠️ Breaking Changes
+Aucun - Rétrocompatible avec v2.1.0
+
+---
+
 ## [2.0.2] - 2026-02-09 - Hotfix Erreur 10062 Critique
 
 ### 🐛 Corrections Majeures
@@ -227,17 +293,25 @@ const voiceChannel = guild.channels.cache.get(voiceChannelId) ||
 
 ## 🔮 Roadmap Future
 
-### v2.1.0 (Planifié)
-- [ ] Rate limiting intelligent per-user
-- [ ] Metrics dashboard (parties/jour, joueurs actifs)
+### v2.1.0 (✅ Terminé)
+- [x] Rate limiting intelligent per-user
+- [x] Metrics dashboard (parties/jour, joueurs actifs)
 - [ ] Backup automatique horaire
 - [ ] Multi-guild support
 
-### v2.2.0 (Planifié)
-- [ ] Tests automatisés (Jest)
+### v2.2.0 (✅ Terminé)
+- [x] Tests automatisés (Jest) — 77 tests
+- [x] Audit sécurité complet
+- [x] Chasseur (/shoot) + AFK timeout
+- [x] Verrou de transition & clearGameTimers
+- [ ] CI/CD Pipeline
+- [ ] Docker containerization
+
+### v2.3.0 (Planifié)
 - [ ] CI/CD Pipeline
 - [ ] Docker containerization
 - [ ] WebSocket dashboard temps réel
+- [ ] Backup automatique horaire
 
 ### v3.0.0 (Long terme)
 - [ ] Web interface d'administration

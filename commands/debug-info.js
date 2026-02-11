@@ -1,10 +1,11 @@
-const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const gameManager = require("../game/gameManager");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("debug-info")
-    .setDescription("🐛 [DEBUG] Afficher l'état de la partie"),
+    .setDescription("🐛 [DEBUG] Afficher l'état de la partie")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   async execute(interaction) {
     if (!interaction.member.permissions.has("ADMINISTRATOR")) {
@@ -58,7 +59,7 @@ module.exports = {
       .map(p => `• \`${p.username}\` — **${p.role}** ${p.alive ? "✅" : "💀"}`)
       .join("\n");
 
-    embed.addField("👥 Liste des joueurs", playersList || "Vide", false);
+    embed.addFields({ name: "👥 Liste des joueurs", value: playersList || "Vide", inline: false });
 
     const votesList = Array.from(game.votes.entries())
       .map(([id, count]) => {
@@ -68,7 +69,7 @@ module.exports = {
       .join("\n");
 
     if (votesList) {
-      embed.addField("🗳️ Votes", votesList, false);
+      embed.addFields({ name: "🗳️ Votes", value: votesList, inline: false });
     }
 
     await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });

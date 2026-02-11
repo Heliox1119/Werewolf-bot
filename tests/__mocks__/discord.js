@@ -40,9 +40,20 @@ class MockMessage {
   createMessageComponentCollector(options = {}) {
     const EventEmitter = require('events');
     const collector = new EventEmitter();
+    collector._ended = false;
     collector.stop = jest.fn((reason) => {
-      setTimeout(() => collector.emit('end', [], reason), 0);
+      if (!collector._ended) {
+        collector._ended = true;
+        collector.emit('end', [], reason || 'user');
+      }
     });
+    // Auto-end after a short delay for testing
+    setTimeout(() => {
+      if (!collector._ended) {
+        collector._ended = true;
+        collector.emit('end', [], 'time');
+      }
+    }, 10);
     return collector;
   }
 }

@@ -1,13 +1,19 @@
-const { SlashCommandBuilder, MessageFlags } = require("discord.js");
+const { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const { checkCategoryAndDefer } = require("../utils/commands");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("debugvoicemute")
-    .setDescription("Désactiver le mute/unmute automatique pour la partie (debug)"),
+    .setDescription("🛠️ [ADMIN] Désactiver le mute/unmute automatique (debug)")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   async execute(interaction) {
+    // Vérification admin
+    if (!interaction.member.permissions.has("ADMINISTRATOR")) {
+      await interaction.reply({ content: "❌ Admin only", flags: MessageFlags.Ephemeral });
+      return;
+    }
     // Vérification catégorie et defer
     if (!await checkCategoryAndDefer(interaction)) return;
     const game = gameManager.getGameByChannelId(interaction.channelId);

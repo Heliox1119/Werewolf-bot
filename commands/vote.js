@@ -2,6 +2,7 @@ const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const PHASES = require("../game/phases");
 const { safeReply } = require("../utils/interaction");
+const { isInGameCategory } = require("../utils/validators");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -16,8 +17,7 @@ module.exports = {
 
   async execute(interaction) {
     // Vérification catégorie
-    const channel = await interaction.guild.channels.fetch(interaction.channelId);
-    if (channel.parentId !== '1469976287790633146') {
+    if (!await isInGameCategory(interaction)) {
       await safeReply(interaction, { content: "❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.", flags: MessageFlags.Ephemeral });
       return;
     }
@@ -30,6 +30,12 @@ module.exports = {
     const allowedChannels = [game.mainChannelId, game.villageChannelId].filter(Boolean);
     if (!allowedChannels.includes(interaction.channelId)) {
       await safeReply(interaction, { content: "❌ Cette commande ne peut être utilisée que dans le channel principal ou village", flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    // Vérifier que c'est le jour
+    if (game.phase !== PHASES.DAY) {
+      await safeReply(interaction, { content: "❌ Les votes ne sont possibles que pendant le jour !", flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -62,7 +68,7 @@ module.exports = {
     }
 
     const aliveReal = game.players.filter(p => p.alive && gameManager.isRealPlayerId(p.id));
-    if (game.phase === PHASES.DAY && aliveReal.length <= 1) {
+    if (aliveReal.length <= 1) {
       await safeReply(interaction, { content: "⚠️ Il ne reste qu'un seul joueur vivant. Fin de partie automatique.", flags: MessageFlags.Ephemeral });
       await gameManager.announceVictoryIfAny(interaction.guild, game);
       return;
@@ -90,12 +96,12 @@ module.exports = {
     await safeReply(interaction, { content: `✅ Tu as voté pour **${target.username}** (${game.votes.get(target.id)} votes)${note}`, flags: MessageFlags.Ephemeral });
     gameManager.logAction(game, `${interaction.user.username} vote contre ${target.username}${note}`);
 
-    if (game.phase === PHASES.DAY) {
-      const votedRealCount = aliveReal.filter(p => game.voteVoters.has(p.id)).length;
+    // Sync vote to DB
+    try { gameManager.db.addVote(game.mainChannelId, interaction.user.id, target.id, 'village', game.dayCount || 0); } catch (e) { /* ignore */ }
 
-      if (aliveReal.length > 0 && votedRealCount >= aliveReal.length) {
-        await gameManager.transitionToNight(interaction.guild, game);
-      }
+    const votedRealCount = aliveReal.filter(p => game.voteVoters.has(p.id)).length;
+    if (aliveReal.length > 0 && votedRealCount >= aliveReal.length) {
+      await gameManager.transitionToNight(interaction.guild, game);
     }
   }
 };

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, MessageFlags, EmbedBuilder, AttachmentBuilder } = require("discord.js");
+const { SlashCommandBuilder, MessageFlags, EmbedBuilder, AttachmentBuilder, PermissionFlagsBits } = require("discord.js");
 const path = require("path");
 const gameManager = require("../game/gameManager");
 const ROLES = require("../game/roles");
@@ -32,7 +32,8 @@ function getRoleImageName(role) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("debug-start-force")
-    .setDescription("🐛 [DEBUG] Forcer le démarrage (ignore vérif joueurs)"),
+    .setDescription("🐛 [DEBUG] Forcer le démarrage (ignore vérif joueurs)")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   async execute(interaction) {
     if (!interaction.member.permissions.has("ADMINISTRATOR")) {

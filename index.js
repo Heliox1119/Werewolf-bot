@@ -26,6 +26,10 @@ client.commands = new Collection();
 // Charger le middleware de rate limiting
 const { applyRateLimit } = require("./utils/rateLimitMiddleware");
 
+// Charger le système de monitoring
+const MetricsCollector = require("./monitoring/metrics");
+const AlertSystem = require("./monitoring/alerts");
+
 // Charger les commandes avec rate limiting automatique
 const commandFiles = fs.readdirSync("./commands").filter(file => file.endsWith(".js"));
 for (const file of commandFiles) {
@@ -40,6 +44,63 @@ for (const file of commandFiles) {
 client.once("clientReady", async () => {
   logger.success(`🐺 Connected as ${client.user.tag}`);
   logger.info('Registering slash commands...');
+
+  // Initialiser le système de configuration
+  try {
+    const ConfigManager = require('./utils/config');
+    const GameDatabase = require('./database/db');
+    const db = new GameDatabase();
+    ConfigManager.initialize(db.db); // Passer l'objet SQLite directement
+    
+    const config = ConfigManager.getInstance();
+    logger.success('Configuration system initialized');
+    
+    // Vérifier si le setup est complet
+    if (!config.isSetupComplete()) {
+      logger.warn('Bot setup incomplete! Use /setup wizard to configure');
+      const missing = config.getMissingSetupKeys();
+      logger.warn('Missing configuration:', { keys: missing.map(m => m.key) });
+    } else {
+      logger.success('Bot configuration complete');
+    }
+  } catch (error) {
+    logger.error('Failed to initialize configuration system', { error: error.message });
+  }
+
+  // Initialiser le système de monitoring
+  try {
+    const ConfigManager = require('./utils/config');
+    const config = ConfigManager.getInstance();
+    
+    // Utiliser le webhook de la configuration ou .env
+    const webhookUrl = config.getMonitoringWebhookUrl() || process.env.MONITORING_WEBHOOK_URL;
+    
+    MetricsCollector.initialize(client);
+    AlertSystem.initialize(webhookUrl);
+    
+    const metrics = MetricsCollector.getInstance();
+    const alerts = AlertSystem.getInstance();
+    
+    // Démarrer la collecte automatique avec intervalle configuré
+    const metricsInterval = config.getMetricsInterval();
+    metrics.startCollection(metricsInterval);
+    
+    // Activer/désactiver les alertes selon la config
+    alerts.setEnabled(config.isMonitoringAlertsEnabled());
+    
+    logger.success('Monitoring system initialized', { 
+      interval: `${metricsInterval / 1000}s`,
+      alertsEnabled: config.isMonitoringAlertsEnabled()
+    });
+    
+    // Envoyer une alerte de démarrage si webhook configuré
+    if (webhookUrl) {
+      const packageJson = require('./package.json');
+      await alerts.alertBotStarted(packageJson.version, 'N/A');
+    }
+  } catch (error) {
+    logger.error('Failed to initialize monitoring system', { error: error.message });
+  }
 
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
@@ -68,6 +129,7 @@ client.once("clientReady", async () => {
             const mainChannel = await guild.channels.fetch(game.mainChannelId).catch(() => null);
             if (!mainChannel) {
               logger.warn('Restored game has missing main channel, removing', { channelId, mainChannelId: game.mainChannelId });
+              try { gameManager.db.deleteGame(channelId); } catch (e) { /* ignore */ }
               gameManager.games.delete(channelId);
               gameManager.saveState();
               continue;
@@ -195,6 +257,12 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   }
 });
 client.on("interactionCreate", async interaction => {
+  // Ignorer les interactions en DM (toutes les commandes nécessitent un serveur)
+  if (!interaction.guild) {
+    try { await interaction.reply({ content: "❌ Ce bot ne fonctionne que dans un serveur.", ephemeral: true }); } catch (e) { /* ignore */ }
+    return;
+  }
+
   if (!interaction.__logWrapped) {
     interaction.__logWrapped = true;
 
@@ -209,84 +277,104 @@ client.on("interactionCreate", async interaction => {
     const originalReply = interaction.reply?.bind(interaction);
     if (originalReply) {
       interaction.reply = async (payload) => {
-        const result = await originalReply(payload);
-        interactionLogger.info('Reply sent', {
-          command: interaction.commandName || 'unknown',
-          channelId: interaction.channelId || 'unknown',
-          userId: interaction.user?.id || 'unknown',
-          content: formatContent(payload)
-        });
-        return result;
+        try {
+          const result = await originalReply(payload);
+          interactionLogger.info('Reply sent', {
+            command: interaction.commandName || 'unknown',
+            channelId: interaction.channelId || 'unknown',
+            userId: interaction.user?.id || 'unknown',
+            content: formatContent(payload)
+          });
+          return result;
+        } catch (err) {
+          interactionLogger.warn('Reply failed', { error: err.message, code: err.code });
+          throw err;
+        }
       };
     }
 
     const originalEditReply = interaction.editReply?.bind(interaction);
     if (originalEditReply) {
       interaction.editReply = async (payload) => {
-        const result = await originalEditReply(payload);
-        interactionLogger.info('Reply edited', {
-          command: interaction.commandName || 'unknown',
-          channelId: interaction.channelId || 'unknown',
-          userId: interaction.user?.id || 'unknown',
-          content: formatContent(payload)
-        });
-        return result;
+        try {
+          const result = await originalEditReply(payload);
+          interactionLogger.info('Reply edited', {
+            command: interaction.commandName || 'unknown',
+            channelId: interaction.channelId || 'unknown',
+            userId: interaction.user?.id || 'unknown',
+            content: formatContent(payload)
+          });
+          return result;
+        } catch (err) {
+          interactionLogger.warn('EditReply failed', { error: err.message, code: err.code });
+          throw err;
+        }
       };
     }
 
     const originalFollowUp = interaction.followUp?.bind(interaction);
     if (originalFollowUp) {
       interaction.followUp = async (payload) => {
-        const result = await originalFollowUp(payload);
-        interactionLogger.info('FollowUp sent', {
-          command: interaction.commandName || 'unknown',
-          channelId: interaction.channelId || 'unknown',
-          userId: interaction.user?.id || 'unknown',
-          content: formatContent(payload)
-        });
-        return result;
+        try {
+          const result = await originalFollowUp(payload);
+          interactionLogger.info('FollowUp sent', {
+            command: interaction.commandName || 'unknown',
+            channelId: interaction.channelId || 'unknown',
+            userId: interaction.user?.id || 'unknown',
+            content: formatContent(payload)
+          });
+          return result;
+        } catch (err) {
+          interactionLogger.warn('FollowUp failed', { error: err.message, code: err.code });
+          throw err;
+        }
       };
     }
 
-    const originalUpdate = interaction.update?.bind(interaction);
-    if (originalUpdate) {
-      interaction.update = async (payload) => {
-        const result = await originalUpdate(payload);
-        interactionLogger.info('Interaction updated', {
-          command: interaction.commandName || 'unknown',
-          channelId: interaction.channelId || 'unknown',
-          userId: interaction.user?.id || 'unknown',
-          content: formatContent(payload)
-        });
-        return result;
-      };
-    }
-  }
+    // Handle slash commands
+    if (interaction.isChatInputCommand()) {
+      const command = client.commands.get(interaction.commandName);
+      if (!command) return;
 
-  // Gérer les slash commands
-  if (interaction.isChatInputCommand()) {
-    const command = client.commands.get(interaction.commandName);
-    if (!command) return;
+      const startTime = Date.now();
+      let commandSuccess = true;
 
-    try {
-      logger.info('Command received', {
-        command: `/${interaction.commandName}`,
-        user: interaction.user?.username || 'unknown',
-        userId: interaction.user?.id || 'unknown',
-        channelId: interaction.channelId,
-        guildId: interaction.guildId
-      });
-      await command.execute(interaction);
-    } catch (err) {
-      logger.error('Command execution error', err);
       try {
-        await interaction.reply({ content: "Erreur interne 😵", flags: MessageFlags.Ephemeral });
-      } catch (e) {
-        // Interaction déjà traitée
+        logger.info('Command received', {
+          command: `/${interaction.commandName}`,
+          user: interaction.user?.username || 'unknown',
+          userId: interaction.user?.id || 'unknown',
+          channelId: interaction.channelId,
+          guildId: interaction.guildId
+        });
+        await command.execute(interaction);
+      } catch (err) {
+        commandSuccess = false;
+        logger.error('Command execution error', err);
+        
+        // Enregistrer l'erreur dans le monitoring
+        try {
+          const MetricsCollector = require('./monitoring/metrics');
+          const metrics = MetricsCollector.getInstance();
+          metrics.recordError('error');
+        } catch {}
+        
+        try {
+          await interaction.reply({ content: "Erreur interne 😵", flags: MessageFlags.Ephemeral });
+        } catch (e) {
+          // Interaction déjà traitée
+        }
+      } finally {
+        // Enregistrer les métriques de la commande
+        try {
+          const responseTime = Date.now() - startTime;
+          const MetricsCollector = require('./monitoring/metrics');
+          const metrics = MetricsCollector.getInstance();
+          metrics.recordCommand(interaction.commandName, responseTime, commandSuccess);
+        } catch {}
       }
+      return;
     }
-    return;
-  }
 
   // Gérer les boutons du lobby
   if (interaction.isButton()) {
@@ -324,10 +412,19 @@ client.on("interactionCreate", async interaction => {
         return;
       }
 
-      const CATEGORY_ID = "1469976287790633146";
+      // Get category ID from configuration
+      const ConfigManager = require('./utils/config');
+      const config = ConfigManager.getInstance();
+      const CATEGORY_ID = config.getCategoryId();
+      
+      if (!CATEGORY_ID) {
+        await safeEditReply(interaction, { content: "❌ Bot non configuré. Utilisez /setup category", flags: MessageFlags.Ephemeral });
+        return;
+      }
 
       if (buttonType === "game_cleanup") {
         const deletedCount = await gameManager.cleanupChannels(interaction.guild, game);
+        try { gameManager.db.deleteGame(game.mainChannelId); } catch (e) { /* ignore */ }
         gameManager.games.delete(game.mainChannelId);
         gameManager.saveState();
         await safeEditReply(interaction, { content: `✅ Partie nettoyee (${deletedCount} channels)` , flags: MessageFlags.Ephemeral });
@@ -336,6 +433,7 @@ client.on("interactionCreate", async interaction => {
 
       // Restart flow
       const deletedCount = await gameManager.cleanupChannels(interaction.guild, game);
+      try { gameManager.db.deleteGame(game.mainChannelId); } catch (e) { /* ignore */ }
       gameManager.games.delete(game.mainChannelId);
       gameManager.saveState();
 
@@ -356,6 +454,7 @@ client.on("interactionCreate", async interaction => {
       );
 
       if (!setupSuccess) {
+        try { gameManager.db.deleteGame(game.mainChannelId); } catch (e) { /* ignore */ }
         gameManager.games.delete(game.mainChannelId);
         await safeEditReply(interaction, { content: "❌ Erreur lors de la creation des channels", flags: MessageFlags.Ephemeral });
         return;
@@ -460,6 +559,8 @@ client.on("interactionCreate", async interaction => {
 
       const isHost = interaction.user.id === game.lobbyHostId;
       game.players.splice(playerIdx, 1);
+      // Sync player removal to DB
+      try { gameManager.db.removePlayer(channelId, interaction.user.id); } catch (e) { /* ignore */ }
 
       // Si c'était l'hôte
       if (isHost) {
@@ -486,7 +587,8 @@ client.on("interactionCreate", async interaction => {
               try { gameManager.disconnectVoice(game.voiceChannelId); } catch (e) { /* ignore */ }
             }
 
-            // Supprimer la partie de la mémoire et sauvegarder
+            // Supprimer la partie de la mémoire, de la DB et sauvegarder
+            try { gameManager.db.deleteGame(channelId); } catch (e) { /* ignore */ }
             gameManager.games.delete(channelId);
             try { await gameManager.saveState(); } catch (e) { /* best effort */ }
 
@@ -643,6 +745,7 @@ client.on("interactionCreate", async interaction => {
     }
 
     // Suppression de la gestion des anciens boutons help (plus de pagination)
+  }
   }
 });
 

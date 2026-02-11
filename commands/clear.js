@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const gameManager = require("../game/gameManager");
-const { checkCategoryAndDefer, sendTemporaryMessage } = require("../utils/commands");
+const { sendTemporaryMessage } = require("../utils/commands");
+const { safeDefer } = require("../utils/interaction");
 const { isAdmin } = require("../utils/validators");
 
 module.exports = {
@@ -9,8 +10,8 @@ module.exports = {
     .setDescription("🧹 Nettoyer les channels résiduels du jeu (admin)"),
 
   async execute(interaction) {
-    // Vérification catégorie et defer
-    if (!await checkCategoryAndDefer(interaction)) return;
+    // Defer sans vérification de catégorie (clear doit marcher partout)
+    await safeDefer(interaction);
     
     // Vérifier les permissions admin
     if (!isAdmin(interaction)) {
@@ -82,6 +83,17 @@ module.exports = {
         }
       }
 
+      // Supprimer les games de la base de données
+      for (const channelId of gameManager.games.keys()) {
+        try { gameManager.db.deleteGame(channelId); } catch (e) { /* ignore */ }
+      }
+      // Also clean orphaned DB games (not in memory but still in DB)
+      try {
+        const dbGames = gameManager.db.getAllGames();
+        for (const dbGame of dbGames) {
+          try { gameManager.db.deleteGame(dbGame.channel_id); } catch (e) { /* ignore */ }
+        }
+      } catch (e) { /* ignore */ }
       gameManager.games.clear();
       gameManager.saveState();
 

@@ -163,7 +163,7 @@ describe('Integration: Partie complète de loup-garou', () => {
   test('Scénario: Amoureux gagnent', () => {
     gameManager.create(channelId);
     
-    smallPlayers = players.slice(0, 6);
+    const smallPlayers = players.slice(0, 6);
     smallPlayers.forEach(p => gameManager.join(channelId, p));
 
     const roles = [
@@ -182,7 +182,7 @@ describe('Integration: Partie complète de loup-garou', () => {
     const lover2 = game.players[1];
     lover1.inLove = true;
     lover2.inLove = true;
-    game.lovers = [lover1.id, lover2.id];
+    game.lovers = [[lover1.id, lover2.id]];
 
     // Tous les autres meurent
     game.players.forEach(p => {

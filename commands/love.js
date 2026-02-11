@@ -2,6 +2,7 @@ const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const gameManager = require('../game/gameManager');
 const ROLES = require('../game/roles');
 const PHASES = require('../game/phases');
+const { isInGameCategory } = require('../utils/validators');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -12,9 +13,8 @@ module.exports = {
 
   async execute(interaction) {
     // Vérification catégorie
-    const channel = await interaction.guild.channels.fetch(interaction.channelId);
-    if (channel.parentId !== '1469976287790633146') {
-      await interaction.reply({ content: '❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.', flags: 64 });
+    if (!await isInGameCategory(interaction)) {
+      await interaction.reply({ content: '❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.', flags: MessageFlags.Ephemeral });
       return;
     }
     const game = gameManager.getGameByChannelId(interaction.channelId);
@@ -28,8 +28,14 @@ module.exports = {
     }
 
     const player = game.players.find(p => p.id === interaction.user.id);
-    if (!player || player.role !== 'Cupidon') {
+    if (!player || player.role !== ROLES.CUPID) {
       await interaction.reply({ content: '❌ Tu n\'es pas Cupidon dans cette partie.', flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    // Cupidon ne peut lier qu'un seul couple
+    if (game.lovers && game.lovers.length > 0) {
+      await interaction.reply({ content: '❌ Tu as déjà utilisé ton pouvoir ! Un seul couple est autorisé.', flags: MessageFlags.Ephemeral });
       return;
     }
 
