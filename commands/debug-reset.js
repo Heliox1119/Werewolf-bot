@@ -1,10 +1,11 @@
-const { SlashCommandBuilder, MessageFlags } = require("discord.js");
+const { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const gameManager = require("../game/gameManager");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("debug-reset")
-    .setDescription("🐛 [DEBUG] Réinitialiser la partie en mémoire"),
+    .setDescription("🐛 [DEBUG] Réinitialiser la partie en mémoire")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   async execute(interaction) {
     if (!interaction.member.permissions.has("ADMINISTRATOR")) {
@@ -23,7 +24,8 @@ module.exports = {
       gameManager.disconnectVoice(game.voiceChannelId);
     }
 
-    // Effacer la partie
+    // Effacer la partie de la mémoire et de la DB
+    try { gameManager.db.deleteGame(interaction.channelId); } catch (e) { /* ignore */ }
     gameManager.games.delete(interaction.channelId);
 
     await interaction.reply({

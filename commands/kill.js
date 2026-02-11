@@ -3,6 +3,7 @@ const gameManager = require("../game/gameManager");
 const ROLES = require("../game/roles");
 const PHASES = require("../game/phases");
 const { safeReply } = require("../utils/interaction");
+const { isInGameCategory } = require("../utils/validators");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -17,8 +18,7 @@ module.exports = {
 
   async execute(interaction) {
     // Vérification catégorie
-    const channel = await interaction.guild.channels.fetch(interaction.channelId);
-    if (channel.parentId !== '1469976287790633146') {
+    if (!await isInGameCategory(interaction)) {
       await safeReply(interaction, { content: "❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.", flags: MessageFlags.Ephemeral });
       return;
     }
@@ -34,10 +34,24 @@ module.exports = {
       return;
     }
 
-    // Vérifier que c'est un loup
+    // Vérifier que c'est la nuit ET la sous-phase des loups
+    if (game.phase !== PHASES.NIGHT) {
+      await safeReply(interaction, { content: "❌ Les loups ne chassent que la nuit !", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    if (game.subPhase !== PHASES.LOUPS) {
+      await safeReply(interaction, { content: "❌ Ce n'est pas le tour des loups", flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    // Vérifier que c'est un loup vivant
     const player = game.players.find(p => p.id === interaction.user.id);
     if (!player || player.role !== ROLES.WEREWOLF) {
       await safeReply(interaction, { content: "❌ Tu n'es pas un loup-garou", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    if (!player.alive) {
+      await safeReply(interaction, { content: "❌ Tu es mort", flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -55,6 +69,7 @@ module.exports = {
     }
 
     game.nightVictim = target.id;
+    gameManager.clearNightAfkTimeout(game);
     gameManager.logAction(game, `Loups choisissent: ${target.username}`);
     await safeReply(interaction, { content: `✅ ${target.username} a été choisi pour cette nuit.`, flags: MessageFlags.Ephemeral });
 
@@ -62,12 +77,14 @@ module.exports = {
     if (gameManager.hasAliveRealRole(game, ROLES.WITCH)) {
       game.subPhase = PHASES.SORCIERE;
       await gameManager.announcePhase(interaction.guild, game, "La sorcière se réveille...");
+      gameManager.startNightAfkTimeout(interaction.guild, game);
       return;
     }
 
     if (gameManager.hasAliveRealRole(game, ROLES.SEER)) {
       game.subPhase = PHASES.VOYANTE;
       await gameManager.announcePhase(interaction.guild, game, "La voyante se réveille...");
+      gameManager.startNightAfkTimeout(interaction.guild, game);
       return;
     }
 

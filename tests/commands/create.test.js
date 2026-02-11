@@ -7,7 +7,21 @@ const {
 
 // Mock les dépendances
 jest.mock('../../game/gameManager');
+jest.mock('../../utils/validators', () => ({
+  isInGameCategory: jest.fn(async () => true),
+  isValidSnowflake: jest.fn(() => true),
+  isAdmin: jest.fn(() => false),
+  isPlayerInGame: jest.fn(() => ({ inGame: true, alive: true })),
+  getCategoryId: jest.fn(() => '1469976287790633146')
+}));
 jest.mock('../../utils/logger', () => ({
+  app: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    success: jest.fn(),
+    debug: jest.fn()
+  },
   commands: {
     startTimer: jest.fn(() => ({ end: jest.fn() })),
     info: jest.fn(),
@@ -24,6 +38,16 @@ jest.mock('../../utils/logger', () => ({
     debug: jest.fn()
   }
 }));
+jest.mock('../../utils/config', () => {
+  const mockConfig = {
+    initialized: true,
+    get: jest.fn((key, defaultValue) => defaultValue),
+    getCategoryId: jest.fn(() => '1469976287790633146'),
+    getInstance: jest.fn()
+  };
+  mockConfig.getInstance = jest.fn(() => mockConfig);
+  return mockConfig;
+});
 
 describe('Commande /create', () => {
   let createCommand;

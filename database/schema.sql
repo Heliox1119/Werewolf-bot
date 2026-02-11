@@ -126,6 +126,74 @@ CREATE TABLE IF NOT EXISTS action_log (
 
 CREATE INDEX IF NOT EXISTS idx_log_game ON action_log(game_id, timestamp);
 
+-- Table des statistiques joueur
+CREATE TABLE IF NOT EXISTS player_stats (
+  player_id TEXT PRIMARY KEY,
+  username TEXT NOT NULL,
+  games_played INTEGER DEFAULT 0,
+  games_won INTEGER DEFAULT 0,
+  times_killed INTEGER DEFAULT 0,
+  times_survived INTEGER DEFAULT 0,
+  favorite_role TEXT,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+  updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_player_stats_games ON player_stats(games_played);
+
+-- Table des métriques de monitoring
+CREATE TABLE IF NOT EXISTS metrics (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  
+  -- Métriques système
+  memory_used INTEGER NOT NULL,
+  memory_total INTEGER NOT NULL,
+  memory_percentage REAL NOT NULL,
+  cpu_usage REAL NOT NULL,
+  uptime INTEGER NOT NULL,
+  
+  -- Métriques Discord
+  guilds INTEGER NOT NULL,
+  users INTEGER NOT NULL,
+  channels INTEGER NOT NULL,
+  latency INTEGER NOT NULL,
+  ws_status TEXT NOT NULL,
+  
+  -- Métriques jeux
+  active_games INTEGER DEFAULT 0,
+  total_players INTEGER DEFAULT 0,
+  games_created_24h INTEGER DEFAULT 0,
+  games_completed_24h INTEGER DEFAULT 0,
+  
+  -- Métriques commandes
+  commands_total INTEGER DEFAULT 0,
+  commands_errors INTEGER DEFAULT 0,
+  commands_rate_limited INTEGER DEFAULT 0,
+  commands_avg_response_time INTEGER DEFAULT 0,
+  
+  -- Métriques erreurs
+  errors_total INTEGER DEFAULT 0,
+  errors_critical INTEGER DEFAULT 0,
+  errors_warnings INTEGER DEFAULT 0,
+  errors_last_24h INTEGER DEFAULT 0,
+  
+  -- Statut de santé
+  health_status TEXT NOT NULL,
+  health_issues TEXT,
+  
+  -- Métadonnées
+  collected_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_metrics_collected ON metrics(collected_at);
+CREATE INDEX IF NOT EXISTS idx_metrics_health ON metrics(health_status);
+
+-- Vue pour les statistiques des dernières 24h
+CREATE VIEW IF NOT EXISTS metrics_24h AS
+SELECT * FROM metrics
+WHERE collected_at >= strftime('%s', 'now', '-1 day')
+ORDER BY collected_at DESC;
+
 -- Table de configuration (key-value store)
 CREATE TABLE IF NOT EXISTS config (
   key TEXT PRIMARY KEY,

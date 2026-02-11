@@ -58,6 +58,7 @@ class GameManager {
         const guild = bot ? bot.guilds.cache.get(process.env.GUILD_ID) : null;
         if (guild) {
           await this.cleanupChannels(guild, game);
+          this.clearGameTimers(game);
           this.games.delete(channelId);
           // Supprimer de la DB
           this.db.deleteGame(channelId);
@@ -73,6 +74,15 @@ class GameManager {
     if (timeoutId) {
       clearTimeout(timeoutId);
       this.lobbyTimeouts.delete(channelId);
+    }
+  }
+
+  // Nettoyer tous les timers d'une partie (AFK nuit, chasseur)
+  clearGameTimers(game) {
+    this.clearNightAfkTimeout(game);
+    if (game._hunterTimer) {
+      clearTimeout(game._hunterTimer);
+      game._hunterTimer = null;
     }
   }
 
@@ -122,6 +132,8 @@ class GameManager {
       voteVoters: new Map(),
       witchPotions: { life: true, death: true },
       nightVictim: null,
+      witchKillTarget: null,
+      witchSave: false,
       rules: { minPlayers, maxPlayers },
       actionLog: [],
       startedAt: null,
@@ -131,6 +143,14 @@ class GameManager {
 
     // Démarrer le timeout de lobby zombie (1h)
     this.setLobbyTimeout(channelId);
+    
+    // Enregistrer dans le monitoring
+    try {
+      const MetricsCollector = require('../monitoring/metrics');
+      const metrics = MetricsCollector.getInstance();
+      metrics.recordGameCreated();
+    } catch {}
+    
     return true;
   }
 
@@ -206,98 +226,165 @@ class GameManager {
 
   async transitionToDay(guild, game) {
     if (game.phase !== PHASES.NIGHT) return;
+    if (game._transitioning) return;
+    game._transitioning = true;
 
-    const newPhase = await this.nextPhase(guild, game);
-    if (newPhase !== PHASES.DAY) return;
+    try {
+      const newPhase = await this.nextPhase(guild, game);
+      if (newPhase !== PHASES.DAY) return;
 
-    if (game.voiceChannelId) {
-      this.playAmbience(game.voiceChannelId, 'day_ambience.mp3');
-    }
-
-    const mainChannel = game.villageChannelId
-      ? await guild.channels.fetch(game.villageChannelId)
-      : await guild.channels.fetch(game.mainChannelId);
-
-    await this.sendLogged(mainChannel, `☀️ **LE JOUR SE LÈVE**\n\n` +
-      `Tous les micros sont réactivés. Le village discute et vote !\n` +
-      `Utilisez \`/vote @joueur\` pour voter pour éliminer quelqu'un.`, { type: 'transitionToDay' });
-
-    if (game.nightVictim) {
-      const victimPlayer = game.players.find(p => p.id === game.nightVictim);
-      if (victimPlayer) {
-        if (game.voiceChannelId) {
-          this.playAmbience(game.voiceChannelId, 'death.mp3');
-        }
-        await this.sendLogged(mainChannel, `💀 **${victimPlayer.username}** s'est fait dévorer la nuit ! 🐺`, { type: 'nightVictim' });
-        this.kill(game.mainChannelId, game.nightVictim);
-        this.logAction(game, `Mort la nuit: ${victimPlayer.username}`);
+      if (game.voiceChannelId) {
+        this.playAmbience(game.voiceChannelId, 'day_ambience.mp3');
       }
-      game.nightVictim = null;
-      this.scheduleSave();
-    }
 
-    await this.announceVictoryIfAny(guild, game);
+      const mainChannel = game.villageChannelId
+        ? await guild.channels.fetch(game.villageChannelId)
+        : await guild.channels.fetch(game.mainChannelId);
+
+      await this.sendLogged(mainChannel, `☀️ **LE JOUR SE LÈVE**\n\n` +
+        `Tous les micros sont réactivés. Le village discute et vote !\n` +
+        `Utilisez \`/vote @joueur\` pour voter pour éliminer quelqu'un.`, { type: 'transitionToDay' });
+
+      // Collecter les morts de la nuit pour vérifier le chasseur après
+      const nightDeaths = [];
+
+      if (game.nightVictim) {
+        if (game.witchSave) {
+          await this.sendLogged(mainChannel, `✨ La victime des loups a été sauvée par la sorcière !`, { type: 'witchSave' });
+          this.logAction(game, 'Sorciere sauve la victime des loups');
+        } else {
+          const victimPlayer = game.players.find(p => p.id === game.nightVictim);
+          if (victimPlayer && victimPlayer.alive) {
+            if (game.voiceChannelId) {
+              this.playAmbience(game.voiceChannelId, 'death.mp3');
+            }
+            await this.sendLogged(mainChannel, `💀 **${victimPlayer.username}** s'est fait dévorer la nuit ! 🐺`, { type: 'nightVictim' });
+            this.kill(game.mainChannelId, game.nightVictim);
+            nightDeaths.push(victimPlayer);
+            this.logAction(game, `Mort la nuit: ${victimPlayer.username}`);
+          }
+        }
+        game.nightVictim = null;
+      }
+
+      // Résoudre la potion de mort de la sorcière (à l'aube)
+      if (game.witchKillTarget) {
+        const witchVictim = game.players.find(p => p.id === game.witchKillTarget);
+        if (witchVictim && witchVictim.alive) {
+          await this.sendLogged(mainChannel, `💀 **${witchVictim.username}** a été empoisonné pendant la nuit ! 🧪`, { type: 'witchKill' });
+          this.kill(game.mainChannelId, game.witchKillTarget);
+          nightDeaths.push(witchVictim);
+          this.logAction(game, `Empoisonné: ${witchVictim.username}`);
+        }
+        game.witchKillTarget = null;
+      }
+
+      game.witchSave = false;
+      this.scheduleSave();
+
+      // Vérifier si un chasseur est mort cette nuit — il doit tirer
+      for (const dead of nightDeaths) {
+        if (dead.role === ROLES.HUNTER) {
+          game._hunterMustShoot = dead.id;
+          await this.sendLogged(mainChannel, `🏹 **${dead.username}** était le Chasseur ! Il doit tirer sur quelqu'un avec \`/shoot @joueur\` !`, { type: 'hunterDeath' });
+          // Lancer un timeout de 60s pour le chasseur
+          this.startHunterTimeout(guild, game, dead.id);
+          break;
+        }
+      }
+
+      await this.announceVictoryIfAny(guild, game);
+    } finally {
+      game._transitioning = false;
+    }
   }
 
   async transitionToNight(guild, game) {
     if (game.phase !== PHASES.DAY) return;
+    if (game._transitioning) return;
+    game._transitioning = true;
 
-    const newPhase = await this.nextPhase(guild, game);
-    if (newPhase !== PHASES.NIGHT) return;
+    try {
+      const newPhase = await this.nextPhase(guild, game);
+      if (newPhase !== PHASES.NIGHT) return;
 
-    if (game.voiceChannelId) {
-      this.playAmbience(game.voiceChannelId, 'night_ambience.mp3');
-    }
-
-    const mainChannel = game.villageChannelId
-      ? await guild.channels.fetch(game.villageChannelId)
-      : await guild.channels.fetch(game.mainChannelId);
-
-    await this.sendLogged(mainChannel, `🌙 **LA NUIT TOMBE**\n\n` +
-      `Les micros se coupent pour tout le monde.\n` +
-      `Les loups choisissent leur victime avec \`/kill @joueur\``, { type: 'transitionToNight' });
-
-    const allVotes = Array.from(game.votes.entries()).sort((a, b) => b[1] - a[1]);
-    if (allVotes.length > 0) {
-      const [votedId, voteCount] = allVotes[0];
-      const votedPlayer = game.players.find(p => p.id === votedId);
-      if (votedPlayer && votedPlayer.alive) {
-        if (game.voiceChannelId) {
-          this.playAmbience(game.voiceChannelId, 'death.mp3');
-        }
-        await this.sendLogged(mainChannel, `🔨 **${votedPlayer.username}** a été éliminé par le village ! (${voteCount} votes)`, { type: 'dayVoteResult' });
-        this.kill(game.mainChannelId, votedId);
-        this.logAction(game, `Vote du village: ${votedPlayer.username} elimine`);
+      if (game.voiceChannelId) {
+        this.playAmbience(game.voiceChannelId, 'night_ambience.mp3');
       }
-    }
 
-    await this.announceVictoryIfAny(guild, game);
+      const mainChannel = game.villageChannelId
+        ? await guild.channels.fetch(game.villageChannelId)
+        : await guild.channels.fetch(game.mainChannelId);
+
+      await this.sendLogged(mainChannel, `🌙 **LA NUIT TOMBE**\n\n` +
+        `Les micros se coupent pour tout le monde.\n` +
+        `Les loups choisissent leur victime avec \`/kill @joueur\``, { type: 'transitionToNight' });
+
+      const allVotes = Array.from(game.votes.entries()).sort((a, b) => b[1] - a[1]);
+      if (allVotes.length > 0) {
+        const [votedId, voteCount] = allVotes[0];
+        const votedPlayer = game.players.find(p => p.id === votedId);
+        if (votedPlayer && votedPlayer.alive) {
+          if (game.voiceChannelId) {
+            this.playAmbience(game.voiceChannelId, 'death.mp3');
+          }
+          await this.sendLogged(mainChannel, `🔨 **${votedPlayer.username}** a été éliminé par le village ! (${voteCount} votes)`, { type: 'dayVoteResult' });
+          this.kill(game.mainChannelId, votedId);
+          this.logAction(game, `Vote du village: ${votedPlayer.username} elimine`);
+
+          // Vérifier si le joueur éliminé était le chasseur
+          if (votedPlayer.role === ROLES.HUNTER) {
+            game._hunterMustShoot = votedPlayer.id;
+            await this.sendLogged(mainChannel, `🏹 **${votedPlayer.username}** était le Chasseur ! Il doit tirer sur quelqu'un avec \`/shoot @joueur\` !`, { type: 'hunterDeath' });
+            this.startHunterTimeout(guild, game, votedPlayer.id);
+          }
+        }
+      }
+
+      // Lancer le timeout AFK pour les loups
+      this.startNightAfkTimeout(guild, game);
+
+      await this.announceVictoryIfAny(guild, game);
+    } finally {
+      game._transitioning = false;
+    }
   }
 
   async announceVictoryIfAny(guild, game) {
     if (game.phase === PHASES.ENDED) return;
-    const victor = this.checkVictory(game.mainChannelId);
+    const victor = this.checkWinner(game);
     if (!victor) return;
+
+    // Traduire le résultat pour l'affichage
+    const victorDisplay = { wolves: 'Loups-Garous 🐺', village: 'Village 🏡', lovers: 'Amoureux 💘' }[victor] || victor;
 
     game.phase = PHASES.ENDED;
     game.endedAt = Date.now();
-    this.logAction(game, `Victoire: ${victor}`);
+    this.clearGameTimers(game);
+    this.logAction(game, `Victoire: ${victorDisplay}`);
 
     const mainChannel = game.villageChannelId
       ? await guild.channels.fetch(game.villageChannelId)
       : await guild.channels.fetch(game.mainChannelId);
 
     if (game.voiceChannelId) {
-      if (victor === "Loups") {
+      if (victor === 'wolves') {
         this.playAmbience(game.voiceChannelId, 'victory_wolves.mp3');
       } else {
         this.playAmbience(game.voiceChannelId, 'victory_villagers.mp3');
       }
     }
 
-    await this.sendLogged(mainChannel, `\n🏆 **${victor}** a gagné la partie !`, { type: 'victory' });
+    await this.sendLogged(mainChannel, `\n🏆 **${victorDisplay}** a gagné la partie !`, { type: 'victory' });
 
-    await this.sendGameSummary(guild, game, victor, mainChannel);
+    // Enregistrer dans le monitoring
+    try {
+      const MetricsCollector = require('../monitoring/metrics');
+      const metrics = MetricsCollector.getInstance();
+      metrics.recordGameCompleted();
+    } catch {}
+
+    await this.sendGameSummary(guild, game, victorDisplay, mainChannel);
   }
 
   formatDurationMs(ms) {
@@ -430,6 +517,75 @@ class GameManager {
     } catch (e) { /* ignore */ }
   }
 
+  // --- Night AFK timeout ---
+  // Auto-avance la sous-phase si le rôle ne joue pas dans le délai imparti (90s)
+  startNightAfkTimeout(guild, game) {
+    this.clearNightAfkTimeout(game);
+    const NIGHT_AFK_DELAY = 90_000; // 90 secondes
+    game._nightAfkTimer = setTimeout(async () => {
+      try {
+        if (game.phase !== PHASES.NIGHT) return;
+        const mainChannel = game.villageChannelId
+          ? await guild.channels.fetch(game.villageChannelId)
+          : await guild.channels.fetch(game.mainChannelId);
+
+        const currentSub = game.subPhase;
+        if (currentSub === PHASES.LOUPS) {
+          await this.sendLogged(mainChannel, `⏰ Les loups n'ont pas choisi de victime à temps. La nuit passe sans attaque.`, { type: 'afkTimeout' });
+          this.logAction(game, 'AFK timeout: loups');
+        } else if (currentSub === PHASES.SORCIERE) {
+          await this.sendLogged(mainChannel, `⏰ La sorcière ne se réveille pas... La nuit continue.`, { type: 'afkTimeout' });
+          this.logAction(game, 'AFK timeout: sorcière');
+        } else if (currentSub === PHASES.VOYANTE) {
+          await this.sendLogged(mainChannel, `⏰ La voyante ne se réveille pas... La nuit continue.`, { type: 'afkTimeout' });
+          this.logAction(game, 'AFK timeout: voyante');
+        } else {
+          return; // Pas de timeout pour les autres sous-phases
+        }
+
+        await this.advanceSubPhase(guild, game);
+
+        // Si on est encore en nuit avec une sous-phase qui attend une action, relancer le timer
+        if (game.phase === PHASES.NIGHT && [PHASES.LOUPS, PHASES.SORCIERE, PHASES.VOYANTE].includes(game.subPhase)) {
+          this.startNightAfkTimeout(guild, game);
+        } else if (game.subPhase === PHASES.REVEIL) {
+          // Transition vers le jour
+          await this.transitionToDay(guild, game);
+        }
+      } catch (e) {
+        logger.error('Night AFK timeout error', { error: e.message });
+      }
+    }, NIGHT_AFK_DELAY);
+  }
+
+  clearNightAfkTimeout(game) {
+    if (game._nightAfkTimer) {
+      clearTimeout(game._nightAfkTimer);
+      game._nightAfkTimer = null;
+    }
+  }
+
+  // --- Hunter timeout ---
+  // Le chasseur a 60s pour tirer sinon il perd son tir
+  startHunterTimeout(guild, game, hunterId) {
+    if (game._hunterTimer) clearTimeout(game._hunterTimer);
+    const HUNTER_DELAY = 60_000; // 60 secondes
+    game._hunterTimer = setTimeout(async () => {
+      try {
+        if (game._hunterMustShoot !== hunterId) return;
+        game._hunterMustShoot = null;
+        const mainChannel = game.villageChannelId
+          ? await guild.channels.fetch(game.villageChannelId)
+          : await guild.channels.fetch(game.mainChannelId);
+        await this.sendLogged(mainChannel, `⏰ Le Chasseur n'a pas tiré à temps. Son tir est perdu.`, { type: 'hunterTimeout' });
+        this.logAction(game, 'AFK timeout: chasseur');
+        await this.announceVictoryIfAny(guild, game);
+      } catch (e) {
+        logger.error('Hunter timeout error', { error: e.message });
+      }
+    }, HUNTER_DELAY);
+  }
+
   join(channelId, user) {
     const game = this.games.get(channelId);
     if (!game || game.phase !== PHASES.NIGHT) return false;
@@ -458,6 +614,12 @@ class GameManager {
   start(channelId, rolesOverride = null) {
     const game = this.games.get(channelId);
     if (!game || game.players.length < 5) return null;
+
+    // Empêcher le double-start
+    if (game.startedAt) {
+      logger.warn('Game already started, ignoring duplicate start', { channelId });
+      return null;
+    }
 
     // If rolesOverride provided, use it; otherwise build default pool
     let rolesPool = [];
@@ -1064,51 +1226,45 @@ class GameManager {
   }
 
   getAlive(channelId) {
-    return this.games.get(channelId).players.filter(p => p.alive);
+    const game = this.games.get(channelId);
+    if (!game) return [];
+    return game.players.filter(p => p.alive);
   }
 
   kill(channelId, playerId) {
     const game = this.games.get(channelId);
+    if (!game) return;
     const player = game.players.find(p => p.id === playerId);
-    if (player) {
-      player.alive = false;
-      game.dead.push(player);
-      
-      // Synchroniser avec la DB
-      this.db.updatePlayer(channelId, playerId, { alive: false });
-      
-      // Si la victime fait partie d'un couple d'amoureux, l'autre meurt aussi
-      if (game.lovers && Array.isArray(game.lovers)) {
-        for (const pair of game.lovers) {
-          if (pair.includes(playerId)) {
-            const otherId = pair[0] === playerId ? pair[1] : pair[0];
-            const other = game.players.find(p => p.id === otherId);
-            if (other && other.alive) {
-              other.alive = false;
-              game.dead.push(other);
-              // Synchroniser avec la DB
-              this.db.updatePlayer(channelId, otherId, { alive: false });
-            }
+    if (!player || !player.alive) return;
+    player.alive = false;
+    game.dead.push(player);
+    
+    // Synchroniser avec la DB
+    this.db.updatePlayer(channelId, playerId, { alive: false });
+    
+    // Si la victime fait partie d'un couple d'amoureux, l'autre meurt aussi
+    if (game.lovers && Array.isArray(game.lovers)) {
+      for (const pair of game.lovers) {
+        if (Array.isArray(pair) && pair.includes(playerId)) {
+          const otherId = pair[0] === playerId ? pair[1] : pair[0];
+          const other = game.players.find(p => p.id === otherId);
+          if (other && other.alive) {
+            other.alive = false;
+            game.dead.push(other);
+            // Synchroniser avec la DB
+            this.db.updatePlayer(channelId, otherId, { alive: false });
           }
         }
       }
     }
   }
 
+  // checkVictory est remplacé par checkWinner --- voir plus bas
+  // Gardé comme alias pour compatibilité tests
   checkVictory(channelId) {
     const game = this.getGameByChannelId(channelId);
     if (!game) return null;
-    const alive = game.players.filter(p => p.alive);
-
-    const wolves = alive.filter(p => p.role === ROLES.WEREWOLF);
-    const villagers = alive.filter(p => p.role !== ROLES.WEREWOLF);
-
-    // Victoire villageois : tous les loups sont morts
-    if (wolves.length === 0) return "Village";
-    // Victoire loups : s'il reste autant ou plus de loups que de non-loups
-    if (wolves.length >= villagers.length) return "Loups";
-
-    return null;
+    return this.checkWinner(game);
   }
 
   async joinVoiceChannel(guild, voiceChannelId) {
@@ -1169,8 +1325,9 @@ class GameManager {
     const aliveVillagers = alivePlayers.filter(p => p.role !== ROLES.WEREWOLF);
 
     // Victoire des amoureux : il ne reste que les 2 amoureux
-    if (game.lovers && game.lovers.length === 2) {
-      const aliveLovers = alivePlayers.filter(p => game.lovers.includes(p.id));
+    if (game.lovers && game.lovers.length > 0 && Array.isArray(game.lovers[0])) {
+      const pair = game.lovers[0];
+      const aliveLovers = alivePlayers.filter(p => pair.includes(p.id));
       if (aliveLovers.length === 2 && alivePlayers.length === 2) {
         return 'lovers';
       }
@@ -1184,6 +1341,11 @@ class GameManager {
     // Victoire du village : tous les loups sont morts
     if (aliveWolves.length === 0 && aliveVillagers.length > 0) {
       return 'village';
+    }
+
+    // Victoire des loups : autant ou plus de loups que de non-loups
+    if (aliveWolves.length >= aliveVillagers.length) {
+      return 'wolves';
     }
 
     // Partie continue
@@ -1227,9 +1389,10 @@ class GameManager {
         endedAt: game.endedAt
       });
 
-      // Mettre à jour les lovers
-      if (game.lovers && game.lovers.length === 2) {
-        this.db.setLovers(channelId, game.lovers[0], game.lovers[1]);
+      // Mettre à jour les lovers (in-memory: [[id1, id2]], DB: flat pair)
+      if (game.lovers && game.lovers.length > 0 && Array.isArray(game.lovers[0])) {
+        const pair = game.lovers[0];
+        this.db.setLovers(channelId, pair[0], pair[1]);
       }
 
       // Synchroniser les joueurs
@@ -1286,8 +1449,9 @@ class GameManager {
         const players = this.db.getPlayers(channelId);
         const dead = players.filter(p => !p.alive);
         
-        // Charger les lovers
-        const lovers = this.db.getLovers(channelId);
+        // Charger les lovers (DB retourne [id1, id2], en mémoire on veut [[id1, id2]])
+        const loversFlat = this.db.getLovers(channelId);
+        const lovers = loversFlat.length === 2 ? [loversFlat] : [];
         
         // Charger les potions
         const witchPotions = this.db.getWitchPotions(channelId);
@@ -1319,6 +1483,8 @@ class GameManager {
           voteVoters: new Map(),
           witchPotions: witchPotions,
           nightVictim: null, // Pas persisté car temporaire
+          witchKillTarget: null, // Pas persisté car temporaire
+          witchSave: false,
           rules: { 
             minPlayers: dbGame.min_players, 
             maxPlayers: dbGame.max_players 
