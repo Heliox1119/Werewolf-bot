@@ -225,7 +225,8 @@ module.exports = {
       await witchChannel.send(
         `🧪 **Bienvenue, Sorcière !**\n` +
         `Tu possèdes 2 potions : une de **vie** et une de **mort**.\n` +
-        `Utilise \`/potion save\` ou \`/potion kill @joueur\``
+        `Utilise \`/potion type:Vie\` ou \`/potion type:Mort target:@joueur\`\n` +
+        `Chaque nuit, tu verras ici qui a été attaqué par les loups.`
       );
     }
 

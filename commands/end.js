@@ -64,7 +64,7 @@ module.exports = {
     }
 
     // Vérifier que l'utilisateur est admin ou host de la partie
-    const isAdmin = interaction.member?.permissions?.has('ADMINISTRATOR') ?? false;
+    const isAdmin = interaction.member?.permissions?.has('Administrator') ?? false;
     const isHost = game.lobbyHostId === interaction.user.id;
     if (!isAdmin && !isHost) {
       if (deferSuccess) {

@@ -9,7 +9,7 @@ module.exports = {
     .setDescription("Passer à la phase suivante (Nuit ↔ Jour)"),
 
   async execute(interaction) {
-    if (!interaction.member.permissions.has("ADMINISTRATOR")) {
+    if (!interaction.member.permissions.has('Administrator')) {
       const { safeReply } = require('../utils/interaction');
       await safeReply(interaction, { content: "❌ Admin only", flags: MessageFlags.Ephemeral });
       return;
@@ -25,6 +25,11 @@ module.exports = {
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
       await interaction.editReply({ content: "❌ Aucune partie ici", flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    if (game.phase === PHASES.ENDED) {
+      await interaction.editReply('❌ La partie est terminée. Utilise `/create` pour en lancer une nouvelle.');
       return;
     }
 

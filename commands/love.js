@@ -55,6 +55,17 @@ module.exports = {
       return;
     }
 
+    if (!pa.alive || !pb.alive) {
+      await safeReply(interaction, { content: '❌ Les cibles doivent être en vie.', flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    // Cupidon ne peut agir que la nuit
+    if (game.phase !== PHASES.NIGHT) {
+      await safeReply(interaction, { content: '❌ Cupidon ne peut lier les amoureux que pendant la nuit !', flags: MessageFlags.Ephemeral });
+      return;
+    }
+
     game.lovers.push([a.id, b.id]);
     gameManager.logAction(game, `Cupidon lie ${a.username} et ${b.username}`);
 

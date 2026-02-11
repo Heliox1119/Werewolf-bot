@@ -477,7 +477,7 @@ describe('GameManager', () => {
       gameManager.create('ch-cap');
       const game = gameManager.games.get('ch-cap');
       game.phase = PHASES.DAY;
-      game.dayCount = 1;
+      game.subPhase = PHASES.VOTE_CAPITAINE;
       game.players.push(
         createMockPlayer({ id: 'v1', alive: true }),
         createMockPlayer({ id: 't1', alive: true })
@@ -499,20 +499,20 @@ describe('GameManager', () => {
       expect(gameManager.voteCaptain('ch-cap2', 'v1', 't1').reason).toBe('not_day');
     });
 
-    test('refuse si pas le premier jour', () => {
+    test('refuse si mauvaise sous-phase', () => {
       gameManager.create('ch-cap3');
       const game = gameManager.games.get('ch-cap3');
       game.phase = PHASES.DAY;
-      game.dayCount = 2;
+      game.subPhase = PHASES.DELIBERATION;
 
-      expect(gameManager.voteCaptain('ch-cap3', 'v1', 't1').reason).toBe('not_first_day');
+      expect(gameManager.voteCaptain('ch-cap3', 'v1', 't1').reason).toBe('wrong_phase');
     });
 
     test('refuse si capitaine déjà élu', () => {
       gameManager.create('ch-cap4');
       const game = gameManager.games.get('ch-cap4');
       game.phase = PHASES.DAY;
-      game.dayCount = 1;
+      game.subPhase = PHASES.VOTE_CAPITAINE;
       game.captainId = 'someone';
 
       expect(gameManager.voteCaptain('ch-cap4', 'v1', 't1').reason).toBe('captain_already');
@@ -522,7 +522,7 @@ describe('GameManager', () => {
       gameManager.create('ch-cap5');
       const game = gameManager.games.get('ch-cap5');
       game.phase = PHASES.DAY;
-      game.dayCount = 1;
+      game.subPhase = PHASES.VOTE_CAPITAINE;
       game.players.push(
         createMockPlayer({ id: 'v1', alive: false }),
         createMockPlayer({ id: 't1', alive: true })
@@ -535,7 +535,7 @@ describe('GameManager', () => {
       gameManager.create('ch-cap6');
       const game = gameManager.games.get('ch-cap6');
       game.phase = PHASES.DAY;
-      game.dayCount = 1;
+      game.subPhase = PHASES.VOTE_CAPITAINE;
       game.players.push(
         createMockPlayer({ id: 'v1', alive: true }),
         createMockPlayer({ id: 't1', alive: true }),
@@ -555,7 +555,7 @@ describe('GameManager', () => {
       gameManager.create('ch-dec');
       const game = gameManager.games.get('ch-dec');
       game.phase = PHASES.DAY;
-      game.dayCount = 1;
+      game.subPhase = PHASES.VOTE_CAPITAINE;
       game.players.push(
         createMockPlayer({ id: 'p1', username: 'Winner', alive: true }),
         createMockPlayer({ id: 'p2', username: 'Loser', alive: true })
@@ -574,7 +574,7 @@ describe('GameManager', () => {
     test('retourne no_votes si aucun vote', () => {
       gameManager.create('ch-dec2');
       const game = gameManager.games.get('ch-dec2');
-      game.dayCount = 1;
+      game.subPhase = PHASES.VOTE_CAPITAINE;
 
       expect(gameManager.declareCaptain('ch-dec2').reason).toBe('no_votes');
     });
@@ -582,7 +582,7 @@ describe('GameManager', () => {
     test('retourne tie en cas d\'égalité', () => {
       gameManager.create('ch-dec3');
       const game = gameManager.games.get('ch-dec3');
-      game.dayCount = 1;
+      game.subPhase = PHASES.VOTE_CAPITAINE;
       game.players.push(
         createMockPlayer({ id: 'p1', alive: true }),
         createMockPlayer({ id: 'p2', alive: true })
@@ -600,7 +600,7 @@ describe('GameManager', () => {
     test('nettoie l\'état des votes après déclaration', () => {
       gameManager.create('ch-dec4');
       const game = gameManager.games.get('ch-dec4');
-      game.dayCount = 1;
+      game.subPhase = PHASES.VOTE_CAPITAINE;
       game.players.push(createMockPlayer({ id: 'p1', alive: true }));
       game.captainVotes.set('p1', 1);
       game.captainVoters.set('v1', 'p1');

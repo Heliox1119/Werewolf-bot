@@ -305,9 +305,14 @@ class GameManager {
               this.playAmbience(game.voiceChannelId, 'death.mp3');
             }
             await this.sendLogged(mainChannel, `💀 **${victimPlayer.username}** s'est fait dévorer la nuit ! 🐺`, { type: 'nightVictim' });
-            this.kill(game.mainChannelId, game.nightVictim);
+            const collateral = this.kill(game.mainChannelId, game.nightVictim);
             nightDeaths.push(victimPlayer);
             this.logAction(game, `Mort la nuit: ${victimPlayer.username}`);
+            for (const dead of collateral) {
+              await this.sendLogged(mainChannel, `💔 **${dead.username}** meurt de chagrin... (amoureux)`, { type: 'loverDeath' });
+              nightDeaths.push(dead);
+              this.logAction(game, `Mort d'amour: ${dead.username}`);
+            }
           }
         }
         game.nightVictim = null;
@@ -318,9 +323,14 @@ class GameManager {
         const witchVictim = game.players.find(p => p.id === game.witchKillTarget);
         if (witchVictim && witchVictim.alive) {
           await this.sendLogged(mainChannel, `💀 **${witchVictim.username}** a été empoisonné pendant la nuit ! 🧪`, { type: 'witchKill' });
-          this.kill(game.mainChannelId, game.witchKillTarget);
+          const collateral = this.kill(game.mainChannelId, game.witchKillTarget);
           nightDeaths.push(witchVictim);
           this.logAction(game, `Empoisonné: ${witchVictim.username}`);
+          for (const dead of collateral) {
+            await this.sendLogged(mainChannel, `💔 **${dead.username}** meurt de chagrin... (amoureux)`, { type: 'loverDeath' });
+            nightDeaths.push(dead);
+            this.logAction(game, `Mort d'amour: ${dead.username}`);
+          }
         }
         game.witchKillTarget = null;
       }
@@ -351,6 +361,9 @@ class GameManager {
     game._transitioning = true;
 
     try {
+      // IMPORTANT: Snapshot votes BEFORE nextPhase clears them
+      const voteSnapshot = Array.from(game.votes.entries()).sort((a, b) => b[1] - a[1]);
+
       const newPhase = await this.nextPhase(guild, game);
       if (newPhase !== PHASES.NIGHT) return;
 
@@ -366,23 +379,47 @@ class GameManager {
         `Les micros se coupent pour tout le monde.\n` +
         `Les loups choisissent leur victime avec \`/kill @joueur\``, { type: 'transitionToNight' });
 
-      const allVotes = Array.from(game.votes.entries()).sort((a, b) => b[1] - a[1]);
-      if (allVotes.length > 0) {
-        const [votedId, voteCount] = allVotes[0];
-        const votedPlayer = game.players.find(p => p.id === votedId);
-        if (votedPlayer && votedPlayer.alive) {
-          if (game.voiceChannelId) {
-            this.playAmbience(game.voiceChannelId, 'death.mp3');
-          }
-          await this.sendLogged(mainChannel, `🔨 **${votedPlayer.username}** a été éliminé par le village ! (${voteCount} votes)`, { type: 'dayVoteResult' });
-          this.kill(game.mainChannelId, votedId);
-          this.logAction(game, `Vote du village: ${votedPlayer.username} elimine`);
+      if (voteSnapshot.length > 0) {
+        const [votedId, voteCount] = voteSnapshot[0];
 
-          // Vérifier si le joueur éliminé était le chasseur
-          if (votedPlayer.role === ROLES.HUNTER) {
-            game._hunterMustShoot = votedPlayer.id;
-            await this.sendLogged(mainChannel, `🏹 **${votedPlayer.username}** était le Chasseur ! Il doit tirer sur quelqu'un avec \`/shoot @joueur\` !`, { type: 'hunterDeath' });
-            this.startHunterTimeout(guild, game, votedPlayer.id);
+        // Détecter les égalités
+        const tied = voteSnapshot.filter(([, c]) => c === voteCount);
+        if (tied.length > 1) {
+          // Égalité : le capitaine tranche ou personne n'est éliminé
+          const tiedNames = tied.map(([id]) => {
+            const p = game.players.find(pl => pl.id === id);
+            return p ? `**${p.username}**` : id;
+          }).join(', ');
+
+          if (game.captainId) {
+            await this.sendLogged(mainChannel, `⚖️ **Égalité !** ${tiedNames} sont à égalité avec ${voteCount} vote(s).\nLe capitaine <@${game.captainId}> doit départager avec \`/vote @joueur\`.`, { type: 'voteTie' });
+            this.logAction(game, `Égalité au vote: ${tiedNames}`);
+          } else {
+            await this.sendLogged(mainChannel, `⚖️ **Égalité !** ${tiedNames} sont à égalité avec ${voteCount} vote(s). Personne n'est éliminé.`, { type: 'voteTie' });
+            this.logAction(game, `Égalité au vote, pas d'élimination`);
+          }
+        } else {
+          const votedPlayer = game.players.find(p => p.id === votedId);
+          if (votedPlayer && votedPlayer.alive) {
+            if (game.voiceChannelId) {
+              this.playAmbience(game.voiceChannelId, 'death.mp3');
+            }
+            await this.sendLogged(mainChannel, `🔨 **${votedPlayer.username}** a été éliminé par le village ! (${voteCount} votes)`, { type: 'dayVoteResult' });
+            const collateral = this.kill(game.mainChannelId, votedId);
+            this.logAction(game, `Vote du village: ${votedPlayer.username} elimine`);
+
+            // Annoncer les morts des amoureux
+            for (const dead of collateral) {
+              await this.sendLogged(mainChannel, `💔 **${dead.username}** meurt de chagrin... (amoureux)`, { type: 'loverDeath' });
+              this.logAction(game, `Mort d'amour: ${dead.username}`);
+            }
+
+            // Vérifier si le joueur éliminé était le chasseur
+            if (votedPlayer.role === ROLES.HUNTER) {
+              game._hunterMustShoot = votedPlayer.id;
+              await this.sendLogged(mainChannel, `🏹 **${votedPlayer.username}** était le Chasseur ! Il doit tirer sur quelqu'un avec \`/shoot @joueur\` !`, { type: 'hunterDeath' });
+              this.startHunterTimeout(guild, game, votedPlayer.id);
+            }
           }
         }
       }
@@ -635,6 +672,9 @@ class GameManager {
   join(channelId, user) {
     const game = this.games.get(channelId);
     if (!game || game.phase !== PHASES.NIGHT) return false;
+
+    // Block joins after game has started
+    if (game.startedAt) return false;
 
     if (game.players.some(p => p.id === user.id)) return false;
 
@@ -1217,7 +1257,7 @@ class GameManager {
     const game = this.games.get(channelId);
     if (!game) return { ok: false, reason: "no_game" };
     if (game.phase !== PHASES.DAY) return { ok: false, reason: "not_day" };
-    if ((game.dayCount || 0) !== 1) return { ok: false, reason: "not_first_day" };
+    if (game.subPhase !== PHASES.VOTE_CAPITAINE) return { ok: false, reason: "wrong_phase" };
     if (game.captainId) return { ok: false, reason: "captain_already" };
 
     const voter = game.players.find(p => p.id === voterId);
@@ -1245,7 +1285,7 @@ class GameManager {
     const game = this.games.get(channelId);
     if (!game) return { ok: false, reason: "no_game" };
     if (game.captainId) return { ok: false, reason: "already_set" };
-    if ((game.dayCount || 0) !== 1) return { ok: false, reason: "not_first_day" };
+    if (game.subPhase !== PHASES.VOTE_CAPITAINE) return { ok: false, reason: "wrong_phase" };
 
     const entries = Array.from(game.captainVotes.entries());
     if (entries.length === 0) return { ok: false, reason: "no_votes" };
@@ -1282,9 +1322,9 @@ class GameManager {
 
   kill(channelId, playerId) {
     const game = this.games.get(channelId);
-    if (!game) return;
+    if (!game) return [];
     const player = game.players.find(p => p.id === playerId);
-    if (!player || !player.alive) return;
+    if (!player || !player.alive) return [];
     player.alive = false;
     game.dead.push(player);
     
@@ -1292,6 +1332,7 @@ class GameManager {
     this.db.updatePlayer(channelId, playerId, { alive: false });
     
     // Si la victime fait partie d'un couple d'amoureux, l'autre meurt aussi
+    const collateralDeaths = [];
     if (game.lovers && Array.isArray(game.lovers)) {
       for (const pair of game.lovers) {
         if (Array.isArray(pair) && pair.includes(playerId)) {
@@ -1300,12 +1341,14 @@ class GameManager {
           if (other && other.alive) {
             other.alive = false;
             game.dead.push(other);
+            collateralDeaths.push(other);
             // Synchroniser avec la DB
             this.db.updatePlayer(channelId, otherId, { alive: false });
           }
         }
       }
     }
+    return collateralDeaths;
   }
 
   // checkVictory est remplacé par checkWinner --- voir plus bas

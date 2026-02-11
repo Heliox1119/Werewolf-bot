@@ -205,7 +205,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     
     // Ne pas mute/unmute si la partie est terminée
     const PHASES = require('./game/phases');
-    if (game.phase === PHASES.ENDED || game.phase === 'Terminé') {
+    if (game.phase === PHASES.ENDED) {
       // Unmute everyone in the voice channel if the game is ended
       const guild = newState.guild;
       const voiceChannel = guild.channels.cache.get(game.voiceChannelId) || await guild.channels.fetch(game.voiceChannelId).catch(() => null);
@@ -237,11 +237,11 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
       if (!player || !player.alive) continue;
       
       try {
-        if (game.phase === 'Nuit' || game.phase === 'NIGHT') {
+        if (game.phase === PHASES.NIGHT) {
           if (!member.voice.serverMute) {
             await member.voice.setMute(true);
           }
-        } else if (game.phase === 'Jour' || game.phase === 'DAY') {
+        } else if (game.phase === PHASES.DAY) {
           if (member.voice.serverMute) {
             await member.voice.setMute(false);
           }
@@ -396,7 +396,7 @@ client.on("interactionCreate", async interaction => {
       const targetChannelId = arg1;
       const game = gameManager.getGameByChannelId(targetChannelId);
 
-      const isAdmin = interaction.member.permissions.has("ADMINISTRATOR");
+      const isAdmin = interaction.member.permissions.has('Administrator');
       const isHost = game && game.lobbyHostId === interaction.user.id;
       if (!isAdmin && !isHost) {
         await safeEditReply(interaction, { content: "❌ Admin ou hote requis", flags: MessageFlags.Ephemeral });

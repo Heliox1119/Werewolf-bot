@@ -47,7 +47,7 @@ const buildNightEmbed = () =>
     .addFields(
       { name: "🐺 Loups", value: "Salon 🐺-loups — `/kill @joueur` pour designer la victime. Une seule cible pour la nuit.", inline: false },
       { name: "🔮 Voyante", value: "Salon 🔮-voyante — `/see @joueur` pour connaitre le role d'un joueur vivant.", inline: false },
-      { name: "🧪 Sorciere", value: "Salon 🧪-sorciere — `/potion save` pour sauver la victime des loups, ou `/potion kill @joueur` pour empoisonner.", inline: false },
+      { name: "🧪 Sorciere", value: "Salon 🧪-sorciere — `/potion type:Vie` pour sauver la victime des loups, ou `/potion type:Mort target:@joueur` pour empoisonner.", inline: false },
       { name: "❤️ Cupidon", value: "Salon ❤️-cupidon — `/love @a @b` pour lier deux amoureux (1ere nuit uniquement).", inline: false },
       { name: "👧 Petite Fille", value: "Salon 🏘️-village — `/listen` pour recevoir un resume des loups. Attention a ne pas te faire reperer.", inline: false }
     )

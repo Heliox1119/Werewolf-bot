@@ -62,6 +62,11 @@ module.exports = {
       return;
     }
 
+    if (!targetPlayer.alive) {
+      await safeReply(interaction, { content: "❌ Ce joueur est déjà mort. Choisis un joueur en vie.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+
     gameManager.clearNightAfkTimeout(game);
     await safeReply(interaction, { content: `🔮 **${target.username}** est un **${targetPlayer.role}**`, flags: MessageFlags.Ephemeral });
     gameManager.logAction(game, `Voyante regarde ${target.username} (${targetPlayer.role})`);

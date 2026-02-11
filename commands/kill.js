@@ -68,6 +68,11 @@ module.exports = {
       return;
     }
 
+    if (targetPlayer.role === ROLES.WEREWOLF) {
+      await safeReply(interaction, { content: "❌ Tu ne peux pas tuer un autre loup-garou !", flags: MessageFlags.Ephemeral });
+      return;
+    }
+
     game.nightVictim = target.id;
     gameManager.clearNightAfkTimeout(game);
     gameManager.logAction(game, `Loups choisissent: ${target.username}`);

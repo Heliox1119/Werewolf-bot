@@ -74,11 +74,19 @@ module.exports = {
         return;
       }
 
+      if (!game.nightVictim) {
+        await safeReply(interaction, { content: "❌ Personne n'a été attaqué cette nuit. Potion inutile.", flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      const victimPlayer = game.players.find(p => p.id === game.nightVictim);
+      const victimName = victimPlayer ? victimPlayer.username : 'quelqu\'un';
+
       game.witchPotions.life = false;
       game.witchSave = true;
       try { gameManager.db.useWitchPotion(game.mainChannelId, 'life'); } catch (e) { /* ignore */ }
-      gameManager.logAction(game, `Sorciere utilise potion de vie`);
-      await safeReply(interaction, { content: "✅ Potion de vie utilisée ! Tu sauveras la victime des loups cette nuit.", flags: MessageFlags.Ephemeral });
+      gameManager.logAction(game, `Sorciere utilise potion de vie pour sauver ${victimName}`);
+      await safeReply(interaction, { content: `✅ Potion de vie utilisée ! **${victimName}** sera sauvé(e) à l'aube.`, flags: MessageFlags.Ephemeral });
     } else if (type === "death") {
       if (!game.witchPotions.death) {
         await safeReply(interaction, { content: "❌ Tu n'as plus de potion de mort", flags: MessageFlags.Ephemeral });
@@ -94,6 +102,11 @@ module.exports = {
       const targetPlayer = game.players.find(p => p.id === target.id);
       if (!targetPlayer || !targetPlayer.alive) {
         await safeReply(interaction, { content: "❌ Cible invalide", flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      if (target.id === interaction.user.id) {
+        await safeReply(interaction, { content: "❌ Tu ne peux pas t'empoisonner toi-même !", flags: MessageFlags.Ephemeral });
         return;
       }
 

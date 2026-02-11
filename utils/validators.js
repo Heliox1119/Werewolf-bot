@@ -43,7 +43,7 @@ function isValidSnowflake(id) {
  * Check if user is admin
  */
 function isAdmin(interaction) {
-  return interaction.member?.permissions?.has("ADMINISTRATOR") ?? false;
+  return interaction.member?.permissions?.has('Administrator') ?? false;
 }
 
 /**

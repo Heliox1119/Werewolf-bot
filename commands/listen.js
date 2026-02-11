@@ -42,6 +42,13 @@ module.exports = {
       return;
     }
 
+    // La Petite Fille ne peut espéonner que la nuit
+    const PHASES = require('../game/phases');
+    if (game.phase !== PHASES.NIGHT) {
+      await safeReply(interaction, { content: "❌ Tu ne peux écouter les loups que pendant la nuit !", flags: MessageFlags.Ephemeral });
+      return;
+    }
+
     if (!game.wolvesChannelId) {
       await safeReply(interaction, { content: "❌ Le channel des loups n'existe pas ou n'est pas encore créé.", flags: MessageFlags.Ephemeral });
       return;
