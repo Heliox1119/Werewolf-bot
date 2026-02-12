@@ -1397,32 +1397,34 @@ class GameManager {
   async applyDeadPlayerLockouts(guild) {
     if (!this._pendingLockouts || this._pendingLockouts.length === 0) return;
     const lockouts = this._pendingLockouts.splice(0);
-    const { PermissionsBitField } = require('discord.js');
 
-    for (const { channelId, playerId, role } of lockouts) {
+    for (const { channelId, playerId } of lockouts) {
       const game = this.games.get(channelId);
       if (!game) continue;
 
-      // Déterminer le channel privé du rôle
-      let roleChannelId = null;
-      if (role === ROLES.WEREWOLF) roleChannelId = game.wolvesChannelId;
-      else if (role === ROLES.SEER) roleChannelId = game.seerChannelId;
-      else if (role === ROLES.WITCH) roleChannelId = game.witchChannelId;
-      else if (role === ROLES.CUPID) roleChannelId = game.cupidChannelId;
+      // Tous les salons privés de la partie
+      const allRoleChannels = [
+        game.wolvesChannelId,
+        game.seerChannelId,
+        game.witchChannelId,
+        game.cupidChannelId,
+        game.villageChannelId
+      ].filter(Boolean);
 
-      if (!roleChannelId) continue;
-
-      try {
-        const channel = await guild.channels.fetch(roleChannelId);
-        if (!channel) continue;
-        await channel.permissionOverwrites.edit(playerId, {
-          ViewChannel: false,
-          SendMessages: false
-        });
-        logger.debug('Locked out dead player from role channel', { playerId, role, roleChannelId });
-      } catch (e) {
-        logger.warn('Failed to lockout dead player', { playerId, role, error: e.message });
+      for (const roleChannelId of allRoleChannels) {
+        try {
+          const channel = await guild.channels.fetch(roleChannelId);
+          if (!channel) continue;
+          // Les morts voient tout mais ne peuvent plus écrire
+          await channel.permissionOverwrites.edit(playerId, {
+            ViewChannel: true,
+            SendMessages: false
+          });
+        } catch (e) {
+          logger.warn('Failed to set dead player read-only', { playerId, roleChannelId, error: e.message });
+        }
       }
+      logger.debug('Dead player set to read-only on all channels', { playerId });
     }
   }
 
