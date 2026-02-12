@@ -117,7 +117,9 @@ class MetricsCollector {
    */
   saveSnapshotToDB() {
     try {
-      const db = require('../database/db');
+      const gameManager = require('../game/gameManager');
+      if (!gameManager || !gameManager.db) return;
+      const db = gameManager.db;
       this.collect(); // rafraîchir avant sauvegarde
       const m = this.metrics;
       const health = this.getHealthStatus();

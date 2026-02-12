@@ -6,7 +6,7 @@ module.exports = {
     .setName("debug-fake-join")
     .setDescription("🐛 [DEBUG] Ajouter des joueurs fictifs")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addNumberOption(option =>
+    .addIntegerOption(option =>
       option
         .setName("count")
         .setDescription("Nombre de joueurs à ajouter")
@@ -27,7 +27,7 @@ module.exports = {
       return;
     }
 
-    const count = interaction.options.getNumber("count");
+    const count = interaction.options.getInteger("count");
     const names = ["Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Henry", "Ivy", "Jack"];
     
     for (let i = 0; i < count; i++) {

@@ -68,7 +68,7 @@ module.exports = {
     }
 
     // Tuer la cible
-    gameManager.kill(game.mainChannelId, target.id);
+    const collateral = gameManager.kill(game.mainChannelId, target.id);
     gameManager.logAction(game, `Chasseur tire sur: ${target.username}`);
     try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'shoot', interaction.user.id, target.id); } catch (e) { /* ignore */ }
 
@@ -77,6 +77,13 @@ module.exports = {
       : await interaction.guild.channels.fetch(game.mainChannelId);
 
     await gameManager.sendLogged(mainChannel, `🏹 **${player.username}** le Chasseur a tiré sur **${target.username}** en mourant !`, { type: 'hunterShoot' });
+
+    // Annoncer les morts collatérales (amoureux)
+    for (const dead of collateral) {
+      await gameManager.sendLogged(mainChannel, `💔 **${dead.username}** meurt de chagrin... (amoureux)`, { type: 'loverDeath' });
+      gameManager.logAction(game, `Mort d'amour: ${dead.username}`);
+    }
+
     await safeReply(interaction, { content: `✅ Tu as tiré sur **${target.username}** !`, flags: MessageFlags.Ephemeral });
 
     // Vérifier si la cible du chasseur était aussi un chasseur (edge case improbable mais sécurisé)

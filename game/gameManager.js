@@ -437,6 +437,7 @@ class GameManager {
       }
 
       // Maintenant on passe à la nuit
+      game._captainTiebreak = null;
       const newPhase = await this.nextPhase(guild, game);
       if (newPhase !== PHASES.NIGHT) return;
 
@@ -451,7 +452,6 @@ class GameManager {
       // Lancer le timeout AFK pour les loups
       this.startNightAfkTimeout(guild, game);
 
-      await this.announceVictoryIfAny(guild, game);
     } finally {
       game._transitioning = false;
     }
@@ -469,6 +469,9 @@ class GameManager {
     game.endedAt = Date.now();
     this.clearGameTimers(game);
     this.logAction(game, `Victoire: ${victorDisplay}`);
+
+    // Unmute tous les joueurs à la fin de la partie
+    await this.updateVoicePerms(guild, game);
 
     const mainChannel = game.villageChannelId
       ? await guild.channels.fetch(game.villageChannelId)
@@ -496,9 +499,9 @@ class GameManager {
       const winningTeam = victor; // 'wolves', 'village', 'lovers', 'draw'
       for (const p of game.players) {
         const isWinner = winningTeam === 'draw' ? false
-          : winningTeam === 'lovers' ? (game.couple && game.couple.includes(p.id))
-          : winningTeam === 'wolves' ? (p.role === 'Loup-Garou' || p.role === 'Loup Blanc')
-          : !['Loup-Garou', 'Loup Blanc'].includes(p.role);
+          : winningTeam === 'lovers' ? (game.lovers && game.lovers[0] && game.lovers[0].includes(p.id))
+          : winningTeam === 'wolves' ? (p.role === ROLES.WEREWOLF)
+          : p.role !== ROLES.WEREWOLF;
         this.db.updatePlayerStats(p.id, p.username, {
           games_played: 1,
           games_won: isWinner ? 1 : 0,
@@ -1367,8 +1370,8 @@ class GameManager {
           }
         }
       }
-      // Le jour : unmute uniquement les joueurs inscrits à la partie ET vivants
-      else if (game.phase === PHASES.DAY) {
+      // Le jour ou partie terminée : unmute tout le monde
+      else if (game.phase === PHASES.DAY || game.phase === PHASES.ENDED) {
         for (const member of voiceChannel.members.values()) {
           try {
             const botId = guild.members.me ? guild.members.me.id : null;
@@ -1378,7 +1381,7 @@ class GameManager {
           }
 
           const player = game.players.find(p => p.id === member.id);
-          if (player && player.alive) {
+          if (player) {
             await member.voice.setMute(false);
           }
         }

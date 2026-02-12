@@ -20,8 +20,8 @@ module.exports = {
       await interaction.reply("❌ Aucune partie ici");
       return;
     }
-    if (game.players.length < 5) {
-      await interaction.reply("❌ Impossible de démarrer (minimum 5 joueurs)");
+    if (game.players.length < (game.rules?.minPlayers || 5)) {
+      await interaction.reply(`❌ Impossible de démarrer (minimum ${game.rules?.minPlayers || 5} joueurs)`);
       return;
     }
     const { safeDefer } = require('../utils/interaction');

@@ -603,8 +603,8 @@ client.on("interactionCreate", async interaction => {
         return;
       }
 
-      if (game.players.length < 5) {
-        await safeEditReply(interaction, { content: `❌ Minimum 5 joueurs requis (actuels: ${game.players.length})` });
+      if (game.players.length < (game.rules?.minPlayers || 5)) {
+        await safeEditReply(interaction, { content: `❌ Minimum ${game.rules?.minPlayers || 5} joueurs requis (actuels: ${game.players.length})` });
         return;
       }
 
@@ -680,6 +680,12 @@ async function gracefulShutdown(signal) {
 
     // Clear all game timers and save state
     gameManager.destroy();
+
+    // Destroy rate limiter
+    try {
+      const rateLimiter = require('./utils/rateLimiter');
+      rateLimiter.destroy();
+    } catch (e) { /* ignore */ }
 
     // Disconnect voice connections
     const voiceManager = require('./game/voiceManager');

@@ -14,10 +14,30 @@ module.exports = {
       await safeReply(interaction, { content: "❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.", flags: MessageFlags.Ephemeral });
       return;
     }
-    const ok = gameManager.join(interaction.channelId, interaction.user);
+    // Trouver la partie via n'importe quel channel de la catégorie
+    const game = gameManager.getGameByChannelId(interaction.channelId);
+    if (!game) {
+      await safeReply(interaction, { content: "❌ Aucune partie ici.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    const ok = gameManager.join(game.mainChannelId, interaction.user);
+    if (!ok) {
+      await safeReply(interaction, { content: "❌ Impossible de rejoindre (déjà inscrit ou partie en cours).", flags: MessageFlags.Ephemeral });
+      return;
+    }
     await safeReply(interaction, {
-      content: ok ? `✅ ${interaction.user.username} rejoint la partie`
-                  : "❌ Impossible de rejoindre"
+      content: `✅ ${interaction.user.username} rejoint la partie`
     });
+
+    // Mettre à jour le lobby embed
+    try {
+      if (game.lobbyMessageId) {
+        const { buildLobbyMessage } = require('../utils/lobbyBuilder');
+        const mainChannel = await interaction.guild.channels.fetch(game.mainChannelId);
+        const lobbyMessage = await mainChannel.messages.fetch(game.lobbyMessageId);
+        const lobbyData = buildLobbyMessage(game.players, game);
+        await lobbyMessage.edit(lobbyData);
+      }
+    } catch (e) { /* ignore */ }
   }
 };
