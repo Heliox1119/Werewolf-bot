@@ -21,6 +21,11 @@ module.exports = {
       return;
     }
 
+    if (!game.startedAt) {
+      await safeReply(interaction, { content: "❌ La partie n'a pas encore commencé.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+
     const player = game.players.find(p => p.id === interaction.user.id);
     if (!player) {
       await safeReply(interaction, { content: "❌ Tu n'es pas dans cette partie", flags: MessageFlags.Ephemeral });
