@@ -1,6 +1,5 @@
 const { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const gameManager = require("../game/gameManager");
-const ROLES = require("../game/roles");
 const { commands: logger } = require("../utils/logger");
 
 module.exports = {
@@ -29,30 +28,27 @@ module.exports = {
     const { safeDefer } = require('../utils/interaction');
     await safeDefer(interaction);
 
-    // Distribuer les rôles
-    const candidateRoles = [
-      ROLES.WEREWOLF,
-      ROLES.WEREWOLF,
-      ROLES.SEER,
-      ROLES.WITCH,
-      ROLES.HUNTER,
-      ROLES.PETITE_FILLE,
-      ROLES.CUPID
-    ];
-
-    let rolesPool = candidateRoles.slice(0, game.players.length);
-    game.players.forEach(p => {
-      const role = rolesPool.splice(Math.floor(Math.random() * rolesPool.length), 1)[0];
-      p.role = role || ROLES.VILLAGER;
-    });
-
-    game.startedAt = Date.now();
-    gameManager.logAction(game, 'Partie demarree (debug)');
-    for (const p of game.players) {
-      gameManager.logAction(game, `${p.username} => ${p.role}`);
+    // Utiliser gameManager.start() — bypass du minimum via override
+    // Si pas assez de joueurs pour les rôles, start() complète avec les Villageois
+    const startedGame = gameManager.start(interaction.channelId);
+    if (!startedGame) {
+      // start() échoue si minPlayers non atteint, forcer manuellement
+      const game2 = gameManager.games.get(interaction.channelId);
+      if (game2) {
+        game2.rules = { ...game2.rules, minPlayers: 1 };
+        const retried = gameManager.start(interaction.channelId);
+        if (!retried) {
+          await interaction.editReply("❌ Impossible de démarrer");
+          return;
+        }
+      } else {
+        await interaction.editReply("❌ Impossible de démarrer");
+        return;
+      }
     }
 
-    const setupSuccess = await gameManager.postStartGame(interaction.guild, game, interaction.client);
+    const finalGame = gameManager.games.get(interaction.channelId);
+    const setupSuccess = await gameManager.postStartGame(interaction.guild, finalGame, interaction.client, interaction);
 
     if (!setupSuccess) {
       await interaction.editReply("❌ Erreur lors de setupChannels");

@@ -70,6 +70,7 @@ module.exports = {
     gameManager.clearNightAfkTimeout(game);
     await safeReply(interaction, { content: `🔮 **${target.username}** est un **${targetPlayer.role}**`, flags: MessageFlags.Ephemeral });
     gameManager.logAction(game, `Voyante regarde ${target.username} (${targetPlayer.role})`);
+    try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'see', interaction.user.id, target.id); } catch (e) { /* ignore */ }
 
     if (game.phase === PHASES.NIGHT) {
       // Passer par advanceSubPhase (VOYANTE → REVEIL → DAY)

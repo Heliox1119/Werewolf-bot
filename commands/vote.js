@@ -156,6 +156,15 @@ module.exports = {
     await safeReply(interaction, { content: `✅ Tu as voté pour **${target.username}** (${game.votes.get(target.id)} votes)${note}`, flags: MessageFlags.Ephemeral });
     gameManager.logAction(game, `${interaction.user.username} vote contre ${target.username}${note}`);
 
+    // Annonce publique dans le village
+    try {
+      const villageChannel = game.villageChannelId
+        ? await interaction.guild.channels.fetch(game.villageChannelId)
+        : await interaction.guild.channels.fetch(game.mainChannelId);
+      const votedRealSoFar = aliveReal.filter(p => game.voteVoters.has(p.id)).length;
+      await villageChannel.send(`🗳️ **${interaction.user.username}** a voté. (${votedRealSoFar}/${aliveReal.length})`);
+    } catch (e) { /* ignore */ }
+
     // Sync vote to DB
     try { gameManager.db.addVote(game.mainChannelId, interaction.user.id, target.id, 'village', game.dayCount || 0); } catch (e) { /* ignore */ }
 

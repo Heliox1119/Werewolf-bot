@@ -146,7 +146,7 @@ module.exports = {
       return;
     }
 
-    const success = await gameManager.postStartGame(interaction.guild, startedGame, interaction.client);
+    const success = await gameManager.postStartGame(interaction.guild, startedGame, interaction.client, interaction);
     if (!success) {
       await interaction.editReply(
         "❌ **Erreur lors de la création des channels !**\n\n" +

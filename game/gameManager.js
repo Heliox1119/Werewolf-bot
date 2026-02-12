@@ -491,6 +491,26 @@ class GameManager {
       metrics.recordGameCompleted();
     } catch {}
 
+    // L4: Mettre à jour les stats des joueurs
+    try {
+      const winningTeam = victor; // 'wolves', 'village', 'lovers', 'draw'
+      for (const p of game.players) {
+        const isWinner = winningTeam === 'draw' ? false
+          : winningTeam === 'lovers' ? (game.couple && game.couple.includes(p.id))
+          : winningTeam === 'wolves' ? (p.role === 'Loup-Garou' || p.role === 'Loup Blanc')
+          : !['Loup-Garou', 'Loup Blanc'].includes(p.role);
+        this.db.updatePlayerStats(p.id, p.username, {
+          games_played: 1,
+          games_won: isWinner ? 1 : 0,
+          times_killed: p.alive ? 0 : 1,
+          times_survived: p.alive ? 1 : 0,
+          favorite_role: p.role || null
+        });
+      }
+    } catch (e) {
+      this.logAction(game, `Erreur stats joueurs: ${e.message}`);
+    }
+
     await this.sendGameSummary(guild, game, victorDisplay, mainChannel);
   }
 
@@ -806,19 +826,27 @@ class GameManager {
    * Post-start : permissions, voice, DMs rôles, messages channels privés, message village.
    * Centralise la logique dupliquée entre start.js, debug-start-force.js et lobby_start.
    */
-  async postStartGame(guild, game, client) {
+  async postStartGame(guild, game, client, interaction = null) {
     const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
     const pathMod = require('path');
     const { getRoleDescription, getRoleImageName } = require('../utils/roleHelpers');
 
+    const updateProgress = async (msg) => {
+      if (!interaction) return;
+      try { await interaction.editReply({ content: msg }); } catch {}
+    };
+
     // 1. Permissions channels
+    await updateProgress('⏳ Configuration des permissions...');
     const setupSuccess = await this.updateChannelPermissions(guild, game);
     if (!setupSuccess) return false;
 
     // 2. Permissions vocales
+    await updateProgress('⏳ Configuration vocale...');
     await this.updateVoicePerms(guild, game);
 
     // 3. Envoyer les rôles en DM
+    await updateProgress('⏳ Envoi des rôles en DM...');
     for (const player of game.players) {
       if (typeof player.id !== 'string' || !/^\d+$/.test(player.id)) continue;
       try {
@@ -844,6 +872,7 @@ class GameManager {
     }
 
     // 4. Messages dans les channels privés
+    await updateProgress('⏳ Configuration des channels privés...');
     if (game.wolvesChannelId) {
       try {
         const wolvesChannel = await guild.channels.fetch(game.wolvesChannelId);
@@ -874,6 +903,7 @@ class GameManager {
     }
 
     // 5. Message dans le channel village
+    await updateProgress('✅ Partie lancée ! La nuit tombe...');
     try {
       const villageChannel = game.villageChannelId
         ? await guild.channels.fetch(game.villageChannelId)

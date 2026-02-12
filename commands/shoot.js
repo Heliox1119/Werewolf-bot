@@ -70,6 +70,7 @@ module.exports = {
     // Tuer la cible
     gameManager.kill(game.mainChannelId, target.id);
     gameManager.logAction(game, `Chasseur tire sur: ${target.username}`);
+    try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'shoot', interaction.user.id, target.id); } catch (e) { /* ignore */ }
 
     const mainChannel = game.villageChannelId
       ? await interaction.guild.channels.fetch(game.villageChannelId)

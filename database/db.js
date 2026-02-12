@@ -418,6 +418,99 @@ class GameDatabase {
 
   // ===== UTILITY =====
 
+  // ===== PLAYER STATS =====
+
+  updatePlayerStats(playerId, username, updates) {
+    try {
+      // Upsert: insérer ou mettre à jour
+      const existing = this.db.prepare('SELECT * FROM player_stats WHERE player_id = ?').get(playerId);
+      if (!existing) {
+        this.db.prepare(`
+          INSERT INTO player_stats (player_id, username, games_played, games_won, times_killed, times_survived, favorite_role)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          playerId, username,
+          updates.games_played || 0, updates.games_won || 0,
+          updates.times_killed || 0, updates.times_survived || 0,
+          updates.favorite_role || null
+        );
+      } else {
+        this.db.prepare(`
+          UPDATE player_stats SET
+            username = ?,
+            games_played = games_played + ?,
+            games_won = games_won + ?,
+            times_killed = times_killed + ?,
+            times_survived = times_survived + ?,
+            updated_at = strftime('%s', 'now')
+          WHERE player_id = ?
+        `).run(
+          username,
+          updates.games_played || 0, updates.games_won || 0,
+          updates.times_killed || 0, updates.times_survived || 0,
+          playerId
+        );
+      }
+      return true;
+    } catch (err) {
+      logger.error('Failed to update player stats', { error: err.message });
+      return false;
+    }
+  }
+
+  getPlayerStats(playerId) {
+    try {
+      return this.db.prepare('SELECT * FROM player_stats WHERE player_id = ?').get(playerId) || null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  // ===== METRICS SNAPSHOTS =====
+
+  insertMetricsSnapshot(data) {
+    try {
+      const stmt = this.db.prepare(`
+        INSERT INTO metrics (
+          memory_used, memory_total, memory_percentage, cpu_usage, uptime,
+          guilds, users, channels, latency, ws_status,
+          active_games, total_players, games_created_24h, games_completed_24h,
+          commands_total, commands_errors, commands_rate_limited, commands_avg_response_time,
+          errors_total, errors_critical, errors_warnings, errors_last_24h,
+          health_status, health_issues
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      stmt.run(
+        data.system.memory.used, data.system.memory.total, data.system.memory.percentage,
+        data.system.cpu.usage, data.system.uptime,
+        data.discord.guilds, data.discord.users, data.discord.channels,
+        data.discord.latency, String(data.discord.wsStatus),
+        data.game.activeGames, data.game.totalPlayers,
+        data.game.gamesCreated24h, data.game.gamesCompleted24h,
+        data.commands.total, data.commands.errors,
+        data.commands.rateLimited, data.commands.avgResponseTime,
+        data.errors.total, data.errors.critical,
+        data.errors.warnings, data.errors.last24h,
+        data.health?.status || 'UNKNOWN', JSON.stringify(data.health?.issues || [])
+      );
+      return true;
+    } catch (err) {
+      logger.error('Failed to insert metrics snapshot', { error: err.message });
+      return false;
+    }
+  }
+
+  // Nettoyer les vieilles métriques (garder 7 jours)
+  cleanupOldMetrics(daysToKeep = 7) {
+    try {
+      const cutoff = Math.floor(Date.now() / 1000) - (daysToKeep * 86400);
+      this.db.prepare('DELETE FROM metrics WHERE collected_at < ?').run(cutoff);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
   close() {
     this.db.close();
     logger.info('Database connection closed');

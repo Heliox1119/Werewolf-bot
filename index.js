@@ -592,15 +592,6 @@ client.on("interactionCreate", async interaction => {
     }
 
     if (buttonType === "lobby_start") {
-      // Always acknowledge interaction before editReply
-      if (!interaction.deferred && !interaction.replied) {
-        try {
-          await interaction.deferReply();
-        } catch (e) {
-          interactionLogger.error('Failed to defer reply for lobby_start', e);
-        }
-      }
-
       const game = gameManager.games.get(channelId);
       if (!game) {
         await safeEditReply(interaction, { content: "❌ Aucune partie trouvée" });
@@ -625,7 +616,7 @@ client.on("interactionCreate", async interaction => {
           return;
         }
 
-        const success = await gameManager.postStartGame(interaction.guild, startedGame, interaction.client);
+        const success = await gameManager.postStartGame(interaction.guild, startedGame, interaction.client, interaction);
         if (!success) {
           await safeEditReply(interaction, "❌ **Erreur lors de la création des permissions !**");
           return;

@@ -72,6 +72,7 @@ module.exports = {
 
     game.lovers.push([a.id, b.id]);
     gameManager.logAction(game, `Cupidon lie ${a.username} et ${b.username}`);
+    try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'love', interaction.user.id, a.id); } catch (e) { /* ignore */ }
 
     try {
       await a.send(`💘 Tu as été lié.e par Cupidon avec **${b.username}**. Si l'un de vous meurt, l'autre mourra de chagrin.`);

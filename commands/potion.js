@@ -86,6 +86,7 @@ module.exports = {
       game.witchSave = true;
       try { gameManager.db.useWitchPotion(game.mainChannelId, 'life'); } catch (e) { /* ignore */ }
       gameManager.logAction(game, `Sorciere utilise potion de vie pour sauver ${victimName}`);
+      try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'save', interaction.user.id, game.nightVictim); } catch (e) { /* ignore */ }
       await safeReply(interaction, { content: `✅ Potion de vie utilisée ! **${victimName}** sera sauvé(e) à l'aube.`, flags: MessageFlags.Ephemeral });
     } else if (type === "death") {
       if (!game.witchPotions.death) {
@@ -114,6 +115,7 @@ module.exports = {
       game.witchKillTarget = target.id;
       try { gameManager.db.useWitchPotion(game.mainChannelId, 'death'); } catch (e) { /* ignore */ }
       gameManager.logAction(game, `Sorciere empoisonne: ${target.username}`);
+      try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'poison', interaction.user.id, target.id); } catch (e) { /* ignore */ }
       await safeReply(interaction, { content: `✅ **${target.username}** sera empoisonné à l'aube !`, flags: MessageFlags.Ephemeral });
     }
 

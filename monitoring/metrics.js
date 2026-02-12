@@ -86,6 +86,11 @@ class MetricsCollector {
     this.cleanupInterval = setInterval(() => {
       this.cleanupHistory();
     }, 3600000); // 1 heure
+
+    // L6: Sauvegarder les métriques en DB toutes les heures
+    this.snapshotInterval = setInterval(() => {
+      this.saveSnapshotToDB();
+    }, 3600000);
   }
 
   /**
@@ -100,7 +105,53 @@ class MetricsCollector {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
+    if (this.snapshotInterval) {
+      clearInterval(this.snapshotInterval);
+      this.snapshotInterval = null;
+    }
     logger.info('Metrics collection stopped');
+  }
+
+  /**
+   * L6: Sauvegarde un snapshot des métriques dans la base de données
+   */
+  saveSnapshotToDB() {
+    try {
+      const db = require('../database/db');
+      this.collect(); // rafraîchir avant sauvegarde
+      const m = this.metrics;
+      const health = this.getHealthStatus();
+      db.insertMetricsSnapshot({
+        memory_used: m.system.memory.used,
+        memory_total: m.system.memory.total,
+        memory_percentage: m.system.memory.percentage,
+        cpu_usage: m.system.cpu.usage,
+        uptime: m.system.uptime,
+        guilds: m.discord.guilds,
+        users: m.discord.users,
+        channels: m.discord.channels,
+        latency: m.discord.latency,
+        ws_status: String(m.discord.wsStatus),
+        active_games: m.game.activeGames,
+        total_players: m.game.totalPlayers,
+        games_created_24h: m.game.gamesCreated24h,
+        games_completed_24h: m.game.gamesCompleted24h,
+        commands_total: m.commands.total,
+        commands_errors: m.commands.errors,
+        commands_rate_limited: m.commands.rateLimited,
+        commands_avg_response: m.commands.avgResponseTime,
+        errors_total: m.errors.total,
+        errors_critical: m.errors.critical,
+        errors_warnings: m.errors.warnings,
+        errors_last_24h: m.errors.last24h,
+        health_status: health.status,
+        health_issues: JSON.stringify(health.issues)
+      });
+      db.cleanupOldMetrics(7);
+      logger.debug('Metrics snapshot saved to DB');
+    } catch (e) {
+      logger.warn('Failed to save metrics snapshot', { error: e.message });
+    }
   }
 
   /**

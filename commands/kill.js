@@ -92,6 +92,7 @@ module.exports = {
       game.wolfVotes = null; // Reset
       gameManager.clearNightAfkTimeout(game);
       gameManager.logAction(game, `Loups choisissent: ${target.username} (consensus ${votesForTarget}/${totalWolves})`);
+      try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'kill', interaction.user.id, target.id); } catch (e) { /* ignore */ }
       await safeReply(interaction, { content: `✅ Consensus atteint ! ${target.username} sera la victime cette nuit.`, flags: MessageFlags.Ephemeral });
 
       // Auto-chain to next night role or day
@@ -139,6 +140,7 @@ module.exports = {
         game.wolfVotes = null;
         gameManager.clearNightAfkTimeout(game);
         gameManager.logAction(game, `Loups choisissent: ${winnerPlayer.username} (pluralité)`);
+        try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'kill', interaction.user.id, winnerId); } catch (e) { /* ignore */ }
         await wolvesChannel.send(`🐺 La meute a choisi **${winnerPlayer.username}** comme victime !`);
         await safeReply(interaction, { content: `✅ Tous les loups ont voté. ${winnerPlayer.username} sera la victime.`, flags: MessageFlags.Ephemeral });
 
