@@ -349,7 +349,14 @@ class GameManager {
         }
       }
 
-      await this.announceVictoryIfAny(guild, game);
+      // Vérifier victoire avant d'avancer les sous-phases du jour
+      const victoryResult = this.checkWinner(game);
+      if (victoryResult) {
+        await this.announceVictoryIfAny(guild, game);
+      } else {
+        // Avancer vers VOTE_CAPITAINE ou DELIBERATION
+        await this.advanceSubPhase(guild, game);
+      }
     } finally {
       game._transitioning = false;
     }
@@ -364,36 +371,29 @@ class GameManager {
       // IMPORTANT: Snapshot votes BEFORE nextPhase clears them
       const voteSnapshot = Array.from(game.votes.entries()).sort((a, b) => b[1] - a[1]);
 
-      const newPhase = await this.nextPhase(guild, game);
-      if (newPhase !== PHASES.NIGHT) return;
-
-      if (game.voiceChannelId) {
-        this.playAmbience(game.voiceChannelId, 'night_ambience.mp3');
-      }
-
       const mainChannel = game.villageChannelId
         ? await guild.channels.fetch(game.villageChannelId)
         : await guild.channels.fetch(game.mainChannelId);
 
-      await this.sendLogged(mainChannel, `🌙 **LA NUIT TOMBE**\n\n` +
-        `Les micros se coupent pour tout le monde.\n` +
-        `Les loups choisissent leur victime avec \`/kill @joueur\``, { type: 'transitionToNight' });
-
+      // --- Résolution des votes AVANT de changer de phase ---
       if (voteSnapshot.length > 0) {
         const [votedId, voteCount] = voteSnapshot[0];
-
-        // Détecter les égalités
         const tied = voteSnapshot.filter(([, c]) => c === voteCount);
+
         if (tied.length > 1) {
-          // Égalité : le capitaine tranche ou personne n'est éliminé
           const tiedNames = tied.map(([id]) => {
             const p = game.players.find(pl => pl.id === id);
             return p ? `**${p.username}**` : id;
           }).join(', ');
 
           if (game.captainId) {
-            await this.sendLogged(mainChannel, `⚖️ **Égalité !** ${tiedNames} sont à égalité avec ${voteCount} vote(s).\nLe capitaine <@${game.captainId}> doit départager avec \`/vote @joueur\`.`, { type: 'voteTie' });
-            this.logAction(game, `Égalité au vote: ${tiedNames}`);
+            // Égalité + capitaine : on reste en JOUR, le capitaine départage
+            game._captainTiebreak = tied.map(([id]) => id);
+            game.votes.clear();
+            if (game.voteVoters) game.voteVoters.clear();
+            await this.sendLogged(mainChannel, `⚖️ **Égalité !** ${tiedNames} sont à égalité avec ${voteCount} vote(s).\nLe capitaine <@${game.captainId}> doit départager : \`/vote @joueur\` parmi les ex-aequo.`, { type: 'voteTie' });
+            this.logAction(game, `Égalité au vote — capitaine doit départager: ${tiedNames}`);
+            return; // On NE passe PAS à la nuit
           } else {
             await this.sendLogged(mainChannel, `⚖️ **Égalité !** ${tiedNames} sont à égalité avec ${voteCount} vote(s). Personne n'est éliminé.`, { type: 'voteTie' });
             this.logAction(game, `Égalité au vote, pas d'élimination`);
@@ -408,13 +408,12 @@ class GameManager {
             const collateral = this.kill(game.mainChannelId, votedId);
             this.logAction(game, `Vote du village: ${votedPlayer.username} elimine`);
 
-            // Annoncer les morts des amoureux
             for (const dead of collateral) {
               await this.sendLogged(mainChannel, `💔 **${dead.username}** meurt de chagrin... (amoureux)`, { type: 'loverDeath' });
               this.logAction(game, `Mort d'amour: ${dead.username}`);
             }
 
-            // Vérifier si le joueur éliminé était le chasseur
+            // Vérifier chasseur
             if (votedPlayer.role === ROLES.HUNTER) {
               game._hunterMustShoot = votedPlayer.id;
               await this.sendLogged(mainChannel, `🏹 **${votedPlayer.username}** était le Chasseur ! Il doit tirer sur quelqu'un avec \`/shoot @joueur\` !`, { type: 'hunterDeath' });
@@ -423,6 +422,25 @@ class GameManager {
           }
         }
       }
+
+      // Vérifier victoire après les éliminations du jour
+      const victoryCheck = this.checkWinner(game);
+      if (victoryCheck) {
+        await this.announceVictoryIfAny(guild, game);
+        return;
+      }
+
+      // Maintenant on passe à la nuit
+      const newPhase = await this.nextPhase(guild, game);
+      if (newPhase !== PHASES.NIGHT) return;
+
+      if (game.voiceChannelId) {
+        this.playAmbience(game.voiceChannelId, 'night_ambience.mp3');
+      }
+
+      await this.sendLogged(mainChannel, `🌙 **LA NUIT TOMBE**\n\n` +
+        `Les micros se coupent pour tout le monde.\n` +
+        `Les loups choisissent leur victime avec \`/kill @joueur\``, { type: 'transitionToNight' });
 
       // Lancer le timeout AFK pour les loups
       this.startNightAfkTimeout(guild, game);
@@ -533,12 +551,18 @@ class GameManager {
       const villageChannel = game.villageChannelId ? await guild.channels.fetch(game.villageChannelId) : null;
       let msg = '';
       let sound = '';
-      if (victory === "Village") {
+      if (victory === 'village') {
         msg = '🎉 **VICTOIRE DES VILLAGEOIS !**\nTous les loups-garous ont été éliminés.';
         sound = 'victory_villagers.mp3';
-      } else if (victory === "Loups") {
+      } else if (victory === 'wolves') {
         msg = '🐺 **VICTOIRE DES LOUPS-GAROUS !**\nLes loups sont en supériorité numérique.';
         sound = 'victory_wolves.mp3';
+      } else if (victory === 'lovers') {
+        msg = '💘 **VICTOIRE DES AMOUREUX !**\nLes amoureux sont les derniers survivants.';
+        sound = 'victory_villagers.mp3';
+      } else if (victory === 'draw') {
+        msg = '🤝 **ÉGALITÉ !**\nPlus personne ne peut gagner.';
+        sound = 'victory_villagers.mp3';
       }
       if (villageChannel) await this.sendLogged(villageChannel, msg, { type: 'victory' });
       if (game.voiceChannelId) {

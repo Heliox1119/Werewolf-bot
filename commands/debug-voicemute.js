@@ -10,7 +10,7 @@ module.exports = {
 
   async execute(interaction) {
     // Vérification admin
-    if (!interaction.member.permissions.has("ADMINISTRATOR")) {
+    if (!interaction.member.permissions.has('Administrator')) {
       await interaction.reply({ content: "❌ Admin only", flags: MessageFlags.Ephemeral });
       return;
     }

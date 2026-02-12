@@ -21,13 +21,13 @@ module.exports = {
     }
 
     const target = interaction.options.getUser('target');
-    const res = gameManager.voteCaptain(interaction.channelId, interaction.user.id, target.id);
+    const res = gameManager.voteCaptain(game.mainChannelId, interaction.user.id, target.id);
 
     if (!res.ok) {
       let msg = '❌ Impossible de voter.';
       switch (res.reason) {
         case 'not_day': msg = '❌ Ce n\'est pas le jour.'; break;
-        case 'not_first_day': msg = '❌ Le vote pour capitaine n\'a lieu que le premier jour.'; break;
+        case 'wrong_phase': msg = '❌ Ce n\'est pas le moment de voter pour le capitaine.'; break;
         case 'captain_already': msg = '❌ Le capitaine a déjà été élu.'; break;
         case 'not_in_game': msg = '❌ Tu ne fais pas partie de la partie.'; break;
         case 'voter_dead': msg = '❌ Les morts ne peuvent pas voter.'; break;

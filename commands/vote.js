@@ -63,6 +63,58 @@ module.exports = {
       return;
     }
 
+    // --- Départage capitaine ---
+    if (game._captainTiebreak && Array.isArray(game._captainTiebreak)) {
+      if (interaction.user.id !== game.captainId) {
+        await safeReply(interaction, { content: "⚖️ Seul le capitaine peut départager l'égalité.", flags: MessageFlags.Ephemeral });
+        return;
+      }
+      if (!game._captainTiebreak.includes(target.id)) {
+        const tiedNames = game._captainTiebreak.map(id => {
+          const p = game.players.find(pl => pl.id === id);
+          return p ? p.username : id;
+        }).join(', ');
+        await safeReply(interaction, { content: `❌ Tu dois choisir parmi les ex-aequo : ${tiedNames}`, flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      // Capitaine a choisi — éliminer la cible
+      const villageChannel = game.villageChannelId
+        ? await interaction.guild.channels.fetch(game.villageChannelId)
+        : await interaction.guild.channels.fetch(game.mainChannelId);
+
+      if (game.voiceChannelId) {
+        gameManager.playAmbience(game.voiceChannelId, 'death.mp3');
+      }
+      await villageChannel.send(`⚖️🔨 Le capitaine a tranché : **${targetPlayer.username}** est éliminé !`);
+      const collateral = gameManager.kill(game.mainChannelId, target.id);
+      gameManager.logAction(game, `Départage capitaine: ${targetPlayer.username} éliminé`);
+
+      for (const dead of collateral) {
+        await villageChannel.send(`💔 **${dead.username}** meurt de chagrin... (amoureux)`);
+        gameManager.logAction(game, `Mort d'amour: ${dead.username}`);
+      }
+
+      // Vérifier chasseur
+      if (targetPlayer.role === require('../game/roles').HUNTER) {
+        game._hunterMustShoot = targetPlayer.id;
+        await villageChannel.send(`🏹 **${targetPlayer.username}** était le Chasseur ! Il doit tirer avec \`/shoot @joueur\` !`);
+        gameManager.startHunterTimeout(interaction.guild, game, targetPlayer.id);
+      }
+
+      game._captainTiebreak = null;
+      await safeReply(interaction, { content: `✅ Tu as départagé en faveur de **${target.username}**`, flags: MessageFlags.Ephemeral });
+
+      // Vérifier victoire puis passer à la nuit
+      const victory = gameManager.checkWinner(game);
+      if (victory) {
+        await gameManager.announceVictoryIfAny(interaction.guild, game);
+      } else {
+        await gameManager.transitionToNight(interaction.guild, game);
+      }
+      return;
+    }
+
     if (!game.voteVoters) {
       game.voteVoters = new Map();
     }

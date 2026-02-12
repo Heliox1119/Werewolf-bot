@@ -21,7 +21,7 @@ module.exports = {
       return safeReply(interaction, { content: '❌ Cette commande doit être utilisée dans le salon village', flags: MessageFlags.Ephemeral });
     }
 
-    const res = gameManager.declareCaptain(interaction.channelId);
+    const res = gameManager.declareCaptain(game.mainChannelId);
     if (!res.ok) {
       if (res.reason === 'no_votes') return safeReply(interaction, { content: '❌ Aucun vote enregistré pour le capitaine.', flags: MessageFlags.Ephemeral });
       if (res.reason === 'tie') {

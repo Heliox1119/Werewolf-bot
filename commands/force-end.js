@@ -14,7 +14,7 @@ module.exports = {
 
   async execute(interaction) {
     // Check admin
-    if (!interaction.member.permissions.has("ADMINISTRATOR")) {
+    if (!interaction.member.permissions.has('Administrator')) {
       await interaction.reply({ 
         content: "❌ Cette commande nécessite les permissions d'administrateur.", 
         flags: MessageFlags.Ephemeral 

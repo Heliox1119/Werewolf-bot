@@ -9,7 +9,7 @@ module.exports = {
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   async execute(interaction) {
-    if (!interaction.member.permissions.has("ADMINISTRATOR")) {
+    if (!interaction.member.permissions.has('Administrator')) {
       await interaction.reply({ content: "❌ Admin only", flags: MessageFlags.Ephemeral });
       return;
     }
