@@ -1,411 +1,236 @@
 # 🐺 Werewolf Discord Bot
 
-Un bot Discord complet pour jouer au Loup-Garou avec gestion vocale automatique et audio d'ambiance.
+Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion vocale automatique, audio d'ambiance et lobby interactif.
 
-## 🎉 Nouveautés v2.3.0
+![Version](https://img.shields.io/badge/version-2.3.0-blue)
+![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
+![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
+![Tests](https://img.shields.io/badge/tests-191%20passed-brightgreen)
 
-### 🔍 Audit complet — 32 corrections
-- **5 CRITICAL** : capitaine double-vote, victoire loups, permissions channels, couple duplicate, vote fantôme
-- **7 HIGH** : consensus loups, sorcière double-poison, cleanup channels, debug-games crash, monitoring sécurisé, double AFK timeout, message loups
-- **12 MEDIUM** : lobby image, dédup start, voice leak, CPU metric, WS status, listen/love sub-phases, cupidon phase, vote-end catégorie, restart voicemute, guild doc, ratelimit safe reply
-- **8 LOW** : double-defer, debug-start-force dupliqué, progress feedback, player_stats, night_actions, metrics snapshots, votes publics, commande /skip
-
-### 👻 Mode spectateur
-- Les joueurs morts voient tous les salons en lecture seule (loups, voyante, sorcière, cupidon)
-
-### 🆕 Nouvelles commandes
-- **`/skip`** : Passer son action de nuit (Voyante, Sorcière, Cupidon)
-
-### 📊 Base de données enrichie
-- **`player_stats`** : Statistiques joueurs peuplées à chaque fin de partie
-- **`night_actions`** : Actions de nuit enregistrées (kill, see, save, poison, love, shoot)
-- **`metrics`** : Snapshots métriques sauvegardés toutes les heures avec nettoyage auto 7j
-
-### ⏳ UX améliorée
-- **Feedback de progression** pendant le lancement (permissions → DMs → channels)
-- **Annonce publique des votes** dans le village (compteur sans révéler la cible)
-- **Lobby redesigné** avec grille de slots, rôles par équipe, tips dynamiques
-
-### ✅ Tests
-- **191 tests, 15 suites, 0 failures**
+---
 
 ## ✨ Fonctionnalités
 
 ### 🎮 Gameplay
-- **Lobby interactif** avec boutons Discord
-- **Phases automatiques** (Nuit/Jour) avec mute/unmute vocal
-- **7 rôles** : Loup-Garou, Villageois, Voyante, Sorcière, Chasseur, Petite Fille, Cupidon
-- **Système de votes** (village + élection capitaine)
-- **Victoire automatique** détectée avec annonces
-- **Audio d'ambiance** : nuit, jour, mort, victoire
+- **Lobby interactif** — Boutons Rejoindre / Quitter / Démarrer avec aperçu des rôles en temps réel
+- **7 rôles** — Loup-Garou, Villageois, Voyante, Sorcière, Chasseur, Petite Fille, Cupidon
+- **Phases automatiques** — Alternance Nuit / Jour avec mute/unmute vocal automatique
+- **Système de votes** — Vote du village, élection du capitaine (vote ×2), égalité départagée
+- **Détection de victoire** — Village, Loups, Amoureux, Égalité
+- **Audio d'ambiance** — Sons de nuit, jour, mort et victoire dans le vocal
+- **Mode spectateur** — Les joueurs morts voient tous les salons en lecture seule
 
 ### ⚙️ Administration
-- **Règles configurables** : min/max joueurs
-- **Commandes debug** pour tester
-- **Nettoyage automatique** des channels
-- **Auto-cleanup** des lobbys inactifs (1h)
-- **Rate limiting admin** : Gestion complète des limites et bans
-- **Base de données** : Persistance SQLite fiable
+- **Configuration par commandes** — `/setup wizard` pour tout configurer
+- **Règles personnalisables** — Min/max joueurs ajustables
+- **Commandes debug** — Joueurs fictifs, forcer un démarrage, inspecter l'état
+- **Nettoyage automatique** — Channels de jeu et lobbys inactifs (1h)
+- **Rate limiting** — Protection anti-spam avec ban automatique
+- **Monitoring** — Dashboard temps réel, alertes webhook, historique 24h
 
-### ⚡ Performance (v2.0)
-- **90% moins de sauvegardes** grâce au debouncing
-- **60% moins d'appels API** avec le cache Discord
-- **Gestion d'erreurs robuste** (zéro crash)
-- **Code optimisé** (-650 lignes dupliquées)
+### 🗄️ Technique
+- **Persistance SQLite** — État des parties, stats joueurs, actions de nuit, métriques
+- **Gestion d'erreurs robuste** — safeReply, graceful shutdown, zero crash en production
+- **191 tests automatisés** — 15 suites, 0 failures
+
+---
 
 ## 🚀 Installation
 
 ### Prérequis
-- Node.js ≥ 16.9.0
-- Bot Discord avec permissions :
-  - Manage Channels
-  - Manage Roles
-  - Connect/Speak
-  - Send Messages
-  - Mute Members
+- **Node.js** ≥ 16.9.0
+- Un **bot Discord** avec les permissions : Manage Channels, Manage Roles, Connect, Speak, Send Messages, Mute Members
 
-### Configuration
+### Mise en place
 
-1. **Cloner le projet**
 ```bash
-git clone <repo>
+# 1. Cloner et installer
+git clone https://github.com/Heliox1119/Werewolf-bot.git
 cd Werewolf-bot
-```
-
-2. **Installer les dépendances**
-```bash
 npm install
+
+# 2. Configurer l'environnement
+cp .env.example .env   # ou créer manuellement
 ```
 
-3. **Créer le fichier .env**
+Remplir le fichier `.env` :
 ```env
 TOKEN=votre_token_bot_discord
 CLIENT_ID=id_application_discord
 GUILD_ID=id_serveur_discord
+LOG_LEVEL=INFO    # DEBUG | INFO | WARN | ERROR | NONE
 ```
 
-4. **Créer les dossiers audio**
 ```bash
+# 3. Ajouter les fichiers audio (optionnel)
 mkdir audio
-```
-Placer les fichiers audio :
-- `night_ambience.mp3`
-- `day_ambience.mp3`
-- `death.mp3`
-- `victory_villagers.mp3`
-- `victory_wolves.mp3`
+# Placer : night_ambience.mp3, day_ambience.mp3, death.mp3,
+#          victory_villagers.mp3, victory_wolves.mp3
 
-5. **Lancer le bot**
-```bash
+# 4. Lancer le bot
 npm start
 ```
 
-6. **Configuration initiale (Discord)**
+### Configuration Discord
 
-Une fois le bot démarré, utilisez la commande `/setup wizard` sur Discord :
-
+Une fois le bot en ligne, dans Discord :
 ```
-/setup wizard
-```
-
-L'assistant vous guidera pour :
-- ✅ Configurer la catégorie Discord (requis)
-- ⚙️ Configurer le webhook monitoring (optionnel)
-- 🎮 Définir les règles par défaut (optionnel)
-
-**Configuration rapide :**
-```
-# 1. Créer une catégorie sur votre serveur (ex: "Werewolf Games")
-# 2. Utiliser /setup
-/setup category category:#votre-categorie
-
-# 3. Vérifier la configuration
-/setup status
+/setup wizard          # Assistant interactif (recommandé)
+# ou manuellement :
+/setup category #ma-catégorie
+/setup status          # Vérifier la config
 ```
 
-**Note :** Le bot refusera de créer des parties tant que la catégorie n'est pas configurée.
+> ⚠️ Le bot refuse de créer des parties sans catégorie configurée.
 
-7. **Vérifier la santé du bot**
-```bash
-npm run health
-```
+---
 
-7. **Lancer le bot**
-```bash
-npm start
-```
-
-## � Système de Logging
-
-Le bot utilise un système de logging centralisé avec niveaux, couleurs et timestamps.
-
-### Configuration
-
-Ajouter dans `.env` :
-```env
-LOG_LEVEL=INFO  # Niveaux: DEBUG, INFO, WARN, ERROR, NONE
-```
-
-### Niveaux Disponibles
-
-- **DEBUG** : Tous les détails techniques (développement)
-- **INFO** : Événements normaux (production - par défaut)
-- **WARN** : Problèmes non-critiques
-- **ERROR** : Erreurs nécessitant attention
-- **NONE** : Désactive les logs
-
-### Exemples de Logs
-
-```
-[2026-02-09T16:39:44.113Z] [SUCCESS] [APP] 🐺 Connected as WerewolfBot#1234
-[2026-02-09T16:39:44.200Z] [INFO] [GAME] Starting game creation {"channelId":"123"}
-[2026-02-09T16:39:44.500Z] [SUCCESS] [GAME] ✅ Village channel created
-[2026-02-09T16:39:45.100Z] [ERROR] [GAME] ❌ Failed to create channel
-```
-
-**Documentation complète** : Voir [LOGGING.md](LOGGING.md)
-
-## �📋 Commandes
+## 📋 Commandes
 
 ### Joueurs
 
 | Commande | Description |
 |----------|-------------|
-| `/create` | Créer une partie |
+| `/create` | Créer une partie (lobby interactif) |
 | `/join` | Rejoindre la partie |
-| `/help` | Afficher l'aide |
+| `/help` | Afficher l'aide des commandes |
 
 ### En jeu
 
 | Commande | Description | Rôle |
 |----------|-------------|------|
-| `/kill @joueur` | Tuer un joueur | Loups-Garous |
-| `/see @joueur` | Voir le rôle | Voyante |
-| `/potion save/kill` | Utiliser potion | Sorcière |
-| `/shoot @joueur` | Tirer en mourant | Chasseur |
-| `/love @a @b` | Lier deux amoureux | Cupidon |
-| `/listen` | Espionner les loups | Petite Fille |
-| `/vote @joueur` | Voter pour éliminer | Tous |
-| `/vote-end` | Voter pour arrêter la partie | Tous |
-| `/captainvote @joueur` | Voter pour capitaine | Tous |
-| `/declarecaptain` | Déclarer le capitaine | Village |
-| `/nextphase` | Passer phase suivante | Tous |
-| `/end` | Terminer la partie | Admin/Host |
+| `/kill @joueur` | Désigner la victime de la nuit | 🐺 Loups-Garous |
+| `/see @joueur` | Découvrir le rôle d'un joueur | 🔮 Voyante |
+| `/potion type:Vie/Mort` | Utiliser une potion | 🧪 Sorcière |
+| `/love @a @b` | Lier deux amoureux | 💘 Cupidon |
+| `/shoot @joueur` | Tirer en mourant | 🏹 Chasseur |
+| `/listen` | Espionner les loups | 👧 Petite Fille |
+| `/skip` | Passer son action de nuit | Voyante / Sorcière / Cupidon |
+| `/vote @joueur` | Voter pour éliminer quelqu'un | Tous (vivants) |
+| `/captainvote @joueur` | Voter pour le capitaine | Tous (vivants) |
+| `/declarecaptain` | Déclarer le capitaine élu | Village |
+| `/nextphase` | Avancer à la phase suivante | Tous |
+| `/vote-end` | Voter pour arrêter la partie | Tous (vivants) |
+| `/end` | Terminer la partie | Admin / Host |
 
-### Admin
+### Administration
 
 | Commande | Description |
 |----------|-------------|
-| `/setup wizard` | Assistant de configuration initiale |
-| `/setup category <category>` | Configurer la catégorie Discord |
-| `/setup webhook [url]` | Configurer le webhook de monitoring |
-| `/setup rules [min] [max]` | Configurer règles par défaut |
-| `/setup monitoring [interval] [alerts]` | Configurer le monitoring |
-| `/setup status` | Afficher la configuration actuelle |
-| `/clear` | Nettoyer tous les channels |
-| `/end` | Terminer la partie (dans le channel actuel) |
-| `/force-end` | Terminer une partie de force (bypass interaction) |
-| `/setrules` | Définir min/max joueurs |
-| `/ratelimit stats` | Statistiques globales de rate limiting |
-| `/ratelimit user @user` | Stats détaillées d'un utilisateur |
-| `/ratelimit reset @user` | Réinitialiser les limites d'un user |
-| `/ratelimit ban @user` | Bannir manuellement un utilisateur |
-| `/ratelimit unban @user` | Débannir un utilisateur |
-| `/monitoring dashboard` | Dashboard complet des métriques temps réel |
-| `/monitoring health` | Statut de santé du bot avec recommandations |
-| `/monitoring alerts <action>` | Gérer le système d'alertes (stats/enable/disable) |
-| `/monitoring history` | Historique des métriques sur 24 heures |
-| `/debugvoicemute` | Désactiver mute auto |
-| `/debug-info` | Afficher état partie |
-| `/debug-games` | Afficher toutes les parties actives |
+| `/setup wizard` | Assistant de configuration |
+| `/setup category` | Définir la catégorie Discord |
+| `/setup rules min max` | Règles par défaut (joueurs) |
+| `/setup webhook url` | Webhook de monitoring |
+| `/setup status` | Voir la configuration |
+| `/setrules` | Modifier min/max joueurs d'une partie |
+| `/clear` | Nettoyer les channels de jeu |
+| `/force-end` | Terminer une partie (bypass) |
+| `/monitoring dashboard` | Métriques temps réel |
+| `/monitoring health` | Santé du bot |
+| `/ratelimit stats` | Stats anti-spam |
+
+### Debug (Admin uniquement)
+
+| Commande | Description |
+|----------|-------------|
+| `/debug-fake-join` | Ajouter des joueurs fictifs |
+| `/debug-start-force` | Forcer le démarrage |
+| `/debug-set-role` | Changer le rôle d'un joueur |
+| `/debug-info` | État de la partie |
+| `/debug-games` | Toutes les parties actives |
+| `/debug-reset` | Supprimer la partie |
+| `/debug-voicemute` | Désactiver le mute vocal |
+
+---
+
+## 🎯 Comment jouer
+
+1. **Créer** — Un joueur tape `/create` dans la catégorie configurée
+2. **Rejoindre** — Les joueurs cliquent sur le bouton **Rejoindre** du lobby
+3. **Démarrer** — L'hôte clique sur **Démarrer** quand il y a assez de joueurs
+4. **Nuit** — Chaque rôle agit dans son salon privé (90s max par rôle)
+5. **Jour** — Le village discute et vote pour éliminer un suspect
+6. **Victoire** — Quand un camp a gagné, le récapitulatif s'affiche avec option de relancer
+
+---
 
 ## 🏗️ Architecture
 
 ```
 Werewolf-bot/
-├── index.js              # Point d'entrée
-├── package.json          # Dependencies
-├── .env                  # Configuration
-│
-├── commands/             # Commandes slash
-│   ├── create.js
-│   ├── join.js
-│   ├── kill.js
-│   └── ...
-│
-├── game/                 # Logique de jeu
-│   ├── gameManager.js    # Gestion parties
-│   ├── voiceManager.js   # Gestion audio
-│   ├── phases.js         # Constantes phases
-│   └── roles.js          # Constantes rôles
-│
-├── utils/                # Utilitaires
-│   ├── config.js         # Configuration centralisée
-│   ├── validators.js     # Validations
-│   ├── commands.js       # Helpers commandes
-│   ├── rateLimiter.js    # Rate limiting
-│   ├── roleHelpers.js    # Descriptions & images rôles
-│   └── interaction.js    # Gestion interactions
-│
-├── monitoring/           # Monitoring & alertes
-│   ├── metrics.js        # Collecteur de métriques
-│   └── alerts.js         # Système d'alertes webhook
-│
-├── database/             # Base de données
-│   ├── db.js             # API SQLite
-│   └── schema.sql        # Schéma des tables
-│
-├── scripts/              # Scripts maintenance
-│   ├── health-check.js
-│   └── clear_commands.js
-│
-├── audio/                # Fichiers audio
-├── data/                 # Données (auto-créé)
-└── img/                  # Images embed
+├── index.js                # Point d'entrée, handlers Discord
+├── commands/               # Commandes slash (auto-chargées)
+├── game/
+│   ├── gameManager.js      # Logique de jeu, phases, victoire
+│   ├── voiceManager.js     # Audio & connexions vocales
+│   ├── phases.js           # Constantes de phases
+│   └── roles.js            # Constantes de rôles
+├── utils/
+│   ├── config.js           # Configuration centralisée (SQLite)
+│   ├── interaction.js      # safeReply, safeDefer
+│   ├── lobbyBuilder.js     # Construction du lobby embed
+│   ├── rateLimiter.js      # Token bucket anti-spam
+│   └── validators.js       # Validations communes
+├── database/
+│   ├── db.js               # API SQLite (parties, joueurs, stats)
+│   └── schema.sql          # Schéma des tables
+├── monitoring/
+│   ├── metrics.js          # Collecteur système/Discord/jeu
+│   └── alerts.js           # Alertes webhook
+├── tests/                  # 191 tests Jest
+├── audio/                  # Sons d'ambiance (.mp3)
+└── img/                    # Images des rôles
 ```
-
-## 📖 Documentation
-
-- [OPTIMIZATIONS.md](OPTIMIZATIONS.md) - Détails des optimisations v2.0
-- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Guide de dépannage
-- [CHANGELOG.md](CHANGELOG.md) - Historique des versions
-
-## 🎯 Utilisation Rapide
-
-```bash
-# Démarrer le bot
-npm start
-
-# Vérifier la santé
-npm run health
-
-# Nettoyer les commandes Discord
-npm run clear-commands
-```
-
-### Discord
-
-1. Dans la catégorie dédiée : `/create`
-2. Les joueurs cliquent sur "Rejoindre"
-3. L'hôte clique sur "Démarrer"
-4. Le jeu commence automatiquement !
-
-## � Documentation
-
-- **[DATABASE.md](DATABASE.md)** : Architecture SQLite, schéma, API, migration
-- **[RATE_LIMITING.md](RATE_LIMITING.md)** : Configuration, algorithme Token Bucket, API
-- **[RATE_LIMITING_SUMMARY.md](RATE_LIMITING_SUMMARY.md)** : Résumé exécutif du rate limiting
-- **[LOGGING.md](LOGGING.md)** : Système de logging, niveaux, configuration
-- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** : Guide de dépannage complet
-- **[INTERACTION_BEST_PRACTICES.md](INTERACTION_BEST_PRACTICES.md)** : Bonnes pratiques Discord
-- **[MIGRATION.md](MIGRATION.md)** : Guide de migration JSON → SQLite
-- **[CHANGELOG.md](CHANGELOG.md)** : Historique des versions
-
-## �🐛 Dépannage
-
-### Le bot ne répond pas
-```bash
-# Vérifier les logs
-node index.js
-
-# Vérifier le health
-npm run health
-```
-
-### Erreurs d'interaction
-- Consultez [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
-- La plupart sont auto-résolues par les helpers
-
-### Audio ne marche pas
-- Vérifier ffmpeg-static : `npm install ffmpeg-static`
-- Vérifier permissions "Speak" du bot
-- Vérifier fichiers dans `/audio/`
-
-## 🔧 Développement
-
-### Ajouter une commande
-
-1. Créer `commands/ma-commande.js`
-```javascript
-const { SlashCommandBuilder } = require("discord.js");
-const { checkCategoryAndDefer } = require("../utils/commands");
-
-module.exports = {
-  data: new SlashCommandBuilder()
-    .setName("ma-commande")
-    .setDescription("Description"),
-
-  async execute(interaction) {
-    if (!await checkCategoryAndDefer(interaction)) return;
-    
-    // Votre logique ici
-    await interaction.editReply("✅ Commande exécutée");
-  }
-};
-```
-
-2. Redémarrer le bot
-
-### Bonnes pratiques
-
-- ✅ Toujours utiliser `checkCategoryAndDefer()` en début de commande
-- ✅ Utiliser `scheduleSave()` au lieu de `saveState()`
-- ✅ Utiliser les validators dans `utils/validators.js`
-- ✅ Gérer les erreurs proprement (pas de catch vide)
-
-## 📊 Performances
-
-| Métrique | v1.0 | v2.0 | v2.1 | v2.2 |
-|----------|------|------|------|------|
-| Sauvegardes/min | ~50 | ~5 | ~5* | ~5* |
-| API calls/event | 2-3 | 0-1 | 0-1 | 0-1 |
-| Erreurs Discord | Fréquentes | Rares | Rares | ~0 |
-| Persistence | JSON | JSON | SQLite | SQLite |
-| Rate limiting | ❌ | ❌ | ✅ | ✅ |
-| Sécurité debug | ❌ | ❌ | ❌ | ✅ |
-| AFK timeout nuit | ❌ | ❌ | ❌ | ✅ 90s |
-| Chasseur /shoot | ❌ | ❌ | ❌ | ✅ |
-| Tests | — | — | 77 | 191 |
-
-*\*SQLite avec WAL (Write-Ahead Logging) pour performances optimales*
-
-## 🤝 Contribution
-
-Les contributions sont bienvenues !
-
-1. Fork le projet
-2. Créer une branche (`git checkout -b feature/AmazingFeature`)
-3. Commit (`git commit -m 'Add some AmazingFeature'`)
-4. Push (`git push origin feature/AmazingFeature`)
-5. Ouvrir une Pull Request
-
-## 📝 License
-
-ISC License - Voir LICENSE pour plus de détails
-
-## 🙏 Remerciements
-
-- Discord.js pour l'excellente librairie
-- @discordjs/voice pour le support audio
-- La communauté Discord pour les tests
 
 ---
 
-**Version actuelle** : 2.2.1  
-**Node.js requis** : ≥ 16.9.0  
-**Discord.js** : ^14.25.1
+## 🧪 Tests
+
+```bash
+npm test                    # Lancer tous les tests
+npm run health              # Vérifier la santé du bot
+npm run clear-commands      # Réinitialiser les commandes Discord
+```
+
+---
+
+## 📊 Historique des versions
+
+| Version | Highlights |
+|---------|-----------|
+| **v2.3.0** | Audit complet (47 fixes), mode spectateur, `/skip`, stats joueurs en DB |
+| **v2.2.1** | Hardening production (26 fixes), 191 tests, safeReply partout |
+| **v2.2.0** | Commandes debug sécurisées, `/shoot`, `/vote-end`, AFK timeout 90s |
+| **v2.1.0** | SQLite, rate limiting, monitoring, configuration centralisée |
+| **v2.0.0** | Debouncing, cache API, optimisations (-650 lignes) |
+
+Détails complets : [CHANGELOG.md](CHANGELOG.md)
+
+---
 
 ## 📚 Documentation
 
-- [CONFIG.md](CONFIG.md) - Système de configuration centralisée
-- [MONITORING.md](MONITORING.md) - Système de monitoring et alertes
-- [RATE_LIMITING.md](RATE_LIMITING.md) - Protection anti-spam et rate limiting
-- [LOGGING.md](LOGGING.md) - Système de logging centralisé
-- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Guide de dépannage
-- [ERROR_10062.md](ERROR_10062.md) - Erreur "Interaction Expired" expliquée
-- [INTERACTION_BEST_PRACTICES.md](INTERACTION_BEST_PRACTICES.md) - Bonnes pratiques interactions Discord
-- [OPTIMIZATIONS.md](OPTIMIZATIONS.md) - Optimisations techniques v2.0
-- [CHANGELOG.md](CHANGELOG.md) - Historique des versions
-- [MIGRATION.md](MIGRATION.md) - Guide de migration
+| Document | Contenu |
+|----------|---------|
+| [CHANGELOG.md](CHANGELOG.md) | Historique détaillé des versions |
+| [CONFIG.md](CONFIG.md) | Système de configuration |
+| [DATABASE.md](DATABASE.md) | Architecture SQLite, schéma, API |
+| [MONITORING.md](MONITORING.md) | Monitoring et alertes |
+| [RATE_LIMITING.md](RATE_LIMITING.md) | Protection anti-spam |
+| [LOGGING.md](LOGGING.md) | Système de logging |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Guide de dépannage |
+| [TESTING.md](TESTING.md) | Guide des tests |
 
-💡 Pour plus d'aide : `/help` dans Discord ou consultez la documentation ci-dessus
+---
+
+## 🤝 Contribution
+
+1. Fork le projet
+2. Créer une branche (`git checkout -b feature/ma-feature`)
+3. Commit (`git commit -m 'feat: description'`)
+4. Push (`git push origin feature/ma-feature`)
+5. Ouvrir une Pull Request
+
+---
+
+**Version** : 2.3.0 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **License** : ISC
