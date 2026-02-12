@@ -128,6 +128,9 @@ module.exports = {
     }
     
     game.lobbyHostId = interaction.user.id;
+    const defaultRules = config.getDefaultGameRules();
+    const minPlayers = defaultRules.minPlayers || 5;
+    const maxPlayers = defaultRules.maxPlayers || 10;
     game.rules = { minPlayers, maxPlayers };
     game._lobbyCreatedAt = Date.now();
 
