@@ -12,6 +12,14 @@ class VoiceManager {
 
   async joinChannel(voiceChannel) {
     try {
+      // Nettoyer une connexion existante pour éviter les fuites de listeners
+      const existing = this.connections.get(voiceChannel.id);
+      if (existing) {
+        try { existing.destroy(); } catch (e) { /* ignore */ }
+        this.connections.delete(voiceChannel.id);
+        this.players.delete(voiceChannel.id);
+      }
+
       const connection = joinVoiceChannel({
         channelId: voiceChannel.id,
         guildId: voiceChannel.guild.id,

@@ -578,6 +578,10 @@ class GameManager {
       return; // Stopper l'enchaînement des phases
     }
     switch (game.subPhase) {
+      case PHASES.CUPIDON:
+        game.subPhase = PHASES.LOUPS;
+        await this.announcePhase(guild, game, "Les loups se réveillent...");
+        break;
       case PHASES.LOUPS:
         game.subPhase = PHASES.SORCIERE;
         await this.announcePhase(guild, game, "La sorcière se réveille...");
@@ -781,6 +785,12 @@ class GameManager {
 
     game.startedAt = Date.now();
     
+    // Si Cupidon est en jeu, la première nuit commence par la sous-phase CUPIDON
+    const hasCupid = game.players.some(p => p.role === ROLES.CUPID && p.alive);
+    if (hasCupid) {
+      game.subPhase = PHASES.CUPIDON;
+    }
+
     // Mettre à jour startedAt dans la DB
     this.db.updateGame(channelId, { startedAt: game.startedAt });
     
@@ -790,6 +800,110 @@ class GameManager {
     }
 
     return game;
+  }
+
+  /**
+   * Post-start : permissions, voice, DMs rôles, messages channels privés, message village.
+   * Centralise la logique dupliquée entre start.js, debug-start-force.js et lobby_start.
+   */
+  async postStartGame(guild, game, client) {
+    const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
+    const pathMod = require('path');
+    const { getRoleDescription, getRoleImageName } = require('../utils/roleHelpers');
+
+    // 1. Permissions channels
+    const setupSuccess = await this.updateChannelPermissions(guild, game);
+    if (!setupSuccess) return false;
+
+    // 2. Permissions vocales
+    await this.updateVoicePerms(guild, game);
+
+    // 3. Envoyer les rôles en DM
+    for (const player of game.players) {
+      if (typeof player.id !== 'string' || !/^\d+$/.test(player.id)) continue;
+      try {
+        const user = await client.users.fetch(player.id);
+        const embed = new EmbedBuilder()
+          .setTitle(`Ton role : ${player.role}`)
+          .setDescription(getRoleDescription(player.role))
+          .setColor(0xFF6B6B);
+
+        const imageName = getRoleImageName(player.role);
+        const files = [];
+        if (imageName) {
+          const imagePath = pathMod.join(__dirname, '..', 'img', imageName);
+          files.push(new AttachmentBuilder(imagePath, { name: imageName }));
+          embed.setImage(`attachment://${imageName}`);
+        }
+
+        logger.info('DM send', { userId: user.id, username: user.username, content: '[role embed]' });
+        await user.send({ embeds: [embed], files });
+      } catch (err) {
+        logger.warn(`Erreur envoi DM rôle à ${player.id}:`, { error: err.message });
+      }
+    }
+
+    // 4. Messages dans les channels privés
+    if (game.wolvesChannelId) {
+      try {
+        const wolvesChannel = await guild.channels.fetch(game.wolvesChannelId);
+        const wolves = game.players.filter(p => p.role === ROLES.WEREWOLF);
+        await this.sendLogged(wolvesChannel, `🐺 **Bienvenue aux Loups-Garous !**\nVous êtes ${wolves.length} dans cette nuit.\nUtilisez \`/kill @joueur\` pour désigner votre victime.`, { type: 'wolvesWelcome' });
+      } catch (e) { logger.warn('Failed to send wolves welcome', { error: e.message }); }
+    }
+
+    if (game.seerChannelId) {
+      try {
+        const seerChannel = await guild.channels.fetch(game.seerChannelId);
+        await this.sendLogged(seerChannel, `🔮 **Bienvenue, Voyante !**\nUtilisez \`/see @joueur\` pour découvrir le rôle d'un joueur.`, { type: 'seerWelcome' });
+      } catch (e) { logger.warn('Failed to send seer welcome', { error: e.message }); }
+    }
+
+    if (game.witchChannelId) {
+      try {
+        const witchChannel = await guild.channels.fetch(game.witchChannelId);
+        await this.sendLogged(witchChannel, `🧪 **Bienvenue, Sorcière !**\nTu possèdes 2 potions : une de **vie** et une de **mort**.\nUtilise \`/potion type:Vie\` ou \`/potion type:Mort target:@joueur\`\nChaque nuit, tu verras ici qui a été attaqué par les loups.`, { type: 'witchWelcome' });
+      } catch (e) { logger.warn('Failed to send witch welcome', { error: e.message }); }
+    }
+
+    if (game.cupidChannelId) {
+      try {
+        const cupidChannel = await guild.channels.fetch(game.cupidChannelId);
+        await this.sendLogged(cupidChannel, `💘 **Bienvenue, Cupidon !**\nUtilise \`/love @a @b\` pour lier deux joueurs. Ils vivront et mourront ensemble.`, { type: 'cupidWelcome' });
+      } catch (e) { logger.warn('Failed to send cupid welcome', { error: e.message }); }
+    }
+
+    // 5. Message dans le channel village
+    try {
+      const villageChannel = game.villageChannelId
+        ? await guild.channels.fetch(game.villageChannelId)
+        : await guild.channels.fetch(game.mainChannelId);
+
+      const nightMsg = game.subPhase === PHASES.CUPIDON
+        ? `🌙 **LA NUIT TOMBE**\n\n` +
+          `✅ Les rôles ont été distribués en DM\n` +
+          `✅ Channels privés créés pour les rôles spéciaux\n` +
+          `🎤 **Rejoignez le channel vocal 🎤-partie**\n\n` +
+          `**Cette nuit :**\n` +
+          `• Cupidon choisit deux amoureux avec \`/love @a @b\`\n` +
+          `• Puis les loups choisiront leur victime`
+        : `🌙 **LA NUIT TOMBE**\n\n` +
+          `✅ Les rôles ont été distribués en DM\n` +
+          `✅ Channels privés créés pour les rôles spéciaux\n` +
+          `🎤 **Rejoignez le channel vocal 🎤-partie**\n\n` +
+          `**Cette nuit :**\n` +
+          `• Les loups choisissent leur victime avec \`/kill @joueur\` (dans leur channel)\n` +
+          `• Les autres ne peuvent PAS parler (micros coupés)`;
+
+      await this.sendLogged(villageChannel, nightMsg, { type: 'nightStart' });
+    } catch (e) { logger.warn('Failed to send village night message', { error: e.message }); }
+
+    // 6. Lancer le timeout AFK si on est en sous-phase loups
+    if (game.subPhase === PHASES.LOUPS) {
+      this.startNightAfkTimeout(guild, game);
+    }
+
+    return true;
   }
 
   async createInitialChannels(guild, mainChannelId, game, categoryId = null) {
@@ -1275,7 +1389,15 @@ class GameManager {
     if (game.phase === PHASES.NIGHT) {
       game.nightVictim = null;
       game.wolfVotes = null; // Reset wolf consensus votes
-      game.subPhase = PHASES.LOUPS;
+      // Première nuit avec Cupidon vivant : sous-phase CUPIDON d'abord
+      const isFirstNight = (game.dayCount || 0) === 0;
+      const cupidAlive = this.hasAliveRealRole(game, ROLES.CUPID);
+      const cupidNotUsed = !game.lovers || game.lovers.length === 0;
+      if (isFirstNight && cupidAlive && cupidNotUsed) {
+        game.subPhase = PHASES.CUPIDON;
+      } else {
+        game.subPhase = PHASES.LOUPS;
+      }
     } else {
       game.subPhase = PHASES.REVEIL;
     }

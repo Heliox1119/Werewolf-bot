@@ -1,7 +1,8 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = require('discord.js');
+const path = require('path');
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-const LOBBY_IMAGE = 'img/LG.jpg';
+const LOBBY_IMAGE = path.join(__dirname, '..', 'img', 'LG.jpg');
 const SEPARATOR = '─────────────────────────────';
 
 const ROLE_LIST = [
@@ -224,7 +225,7 @@ function buildLobbyEmbed(game, hostId) {
   return {
     embed,
     buttons: mainButtons,
-    files: [LOBBY_IMAGE]
+    files: [new AttachmentBuilder(LOBBY_IMAGE, { name: 'LG.jpg' })]
   };
 }
 

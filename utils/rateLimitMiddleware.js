@@ -30,10 +30,11 @@ function withRateLimit(executeFunction, commandName) {
         retryAfter: check.retryAfter
       });
 
-      await interaction.reply({
-        content: `⏱️ **Rate Limit**\n\n${check.reason}`,
-        flags: 64 // Ephemeral
-      });
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({ content: `⏱️ **Rate Limit**\n\n${check.reason}`, flags: 64 });
+      } else {
+        await interaction.reply({ content: `⏱️ **Rate Limit**\n\n${check.reason}`, flags: 64 });
+      }
       return;
     }
 
@@ -77,10 +78,11 @@ async function checkUserBanned(userId, interaction = null) {
   const check = rateLimiter.checkLimit(userId, 'event-action');
   
   if (!check.allowed && interaction) {
-    await interaction.reply({
-      content: `⏱️ ${check.reason}`,
-      flags: 64
-    });
+    if (interaction.deferred || interaction.replied) {
+      await interaction.followUp({ content: `⏱️ ${check.reason}`, flags: 64 });
+    } else {
+      await interaction.reply({ content: `⏱️ ${check.reason}`, flags: 64 });
+    }
     return false;
   }
 

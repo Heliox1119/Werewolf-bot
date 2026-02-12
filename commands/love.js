@@ -60,9 +60,13 @@ module.exports = {
       return;
     }
 
-    // Cupidon ne peut agir que la nuit
+    // Cupidon ne peut agir que la nuit, pendant sa sous-phase
     if (game.phase !== PHASES.NIGHT) {
       await safeReply(interaction, { content: '❌ Cupidon ne peut lier les amoureux que pendant la nuit !', flags: MessageFlags.Ephemeral });
+      return;
+    }
+    if (game.subPhase !== PHASES.CUPIDON) {
+      await safeReply(interaction, { content: '❌ Ce n\'est pas le moment d\'utiliser ton pouvoir.', flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -78,19 +82,7 @@ module.exports = {
 
     await interaction.reply({ content: `✅ ${a.username} et ${b.username} sont désormais amoureux.`, flags: MessageFlags.Ephemeral });
 
-    if (game.phase === PHASES.NIGHT) {
-      if (gameManager.hasAliveRealRole(game, ROLES.WEREWOLF)) {
-        game.subPhase = PHASES.LOUPS;
-        await gameManager.announcePhase(interaction.guild, game, "Les loups se réveillent...");
-      } else if (gameManager.hasAliveRealRole(game, ROLES.WITCH)) {
-        game.subPhase = PHASES.SORCIERE;
-        await gameManager.announcePhase(interaction.guild, game, "La sorcière se réveille...");
-      } else if (gameManager.hasAliveRealRole(game, ROLES.SEER)) {
-        game.subPhase = PHASES.VOYANTE;
-        await gameManager.announcePhase(interaction.guild, game, "La voyante se réveille...");
-      } else {
-        await gameManager.transitionToDay(interaction.guild, game);
-      }
-    }
+    // Avancer la sous-phase après l'action de Cupidon
+    await gameManager.advanceSubPhase(interaction.guild, game);
   }
 };

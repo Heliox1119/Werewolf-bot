@@ -37,7 +37,7 @@ describe('Commande /love', () => {
     gameManager.create(channelId);
     const game = gameManager.games.get(channelId);
     game.phase = PHASES.NIGHT;
-    game.subPhase = PHASES.LOUPS;
+    game.subPhase = PHASES.CUPIDON;
     game.cupidChannelId = 'ch-cupid';
     game.villageChannelId = 'ch-village';
     game.mainChannelId = channelId;
@@ -136,7 +136,7 @@ describe('Commande /love', () => {
       createMockPlayer({ id: '123456789012345678', role: ROLES.WEREWOLF, alive: true })
     );
     gameManager.logAction = jest.fn();
-    gameManager.announcePhase = jest.fn();
+    gameManager.advanceSubPhase = jest.fn();
 
     const userA = { id: 'p1', username: 'Alice', send: jest.fn() };
     const userB = { id: 'p2', username: 'Bob', send: jest.fn() };
@@ -162,7 +162,7 @@ describe('Commande /love', () => {
       createMockPlayer({ id: '123456789012345678', role: ROLES.WEREWOLF, alive: true })
     );
     gameManager.logAction = jest.fn();
-    gameManager.announcePhase = jest.fn();
+    gameManager.advanceSubPhase = jest.fn();
 
     const interaction = createMockInteraction({ commandName: 'love', channelId: 'ch-cupid', userId: 'cupid1' });
     interaction.options.getUser = jest.fn()
@@ -171,7 +171,6 @@ describe('Commande /love', () => {
 
     await loveCommand.execute(interaction);
 
-    expect(game.subPhase).toBe(PHASES.LOUPS);
-    expect(gameManager.announcePhase).toHaveBeenCalled();
+    expect(gameManager.advanceSubPhase).toHaveBeenCalled();
   });
 });

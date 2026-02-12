@@ -51,6 +51,7 @@ describe('Commande /start', () => {
 
     gameManager.getGameByChannelId = jest.fn(() => mockGame);
     gameManager.start = jest.fn(() => mockGame);
+    gameManager.postStartGame = jest.fn(async () => true);
     gameManager.updateChannelPermissions = jest.fn(async () => true);
     gameManager.updateVoicePerms = jest.fn(async () => true);
 
@@ -89,8 +90,7 @@ describe('Commande /start', () => {
     await waitFor(100);
 
     expect(gameManager.start).toHaveBeenCalled();
-    expect(gameManager.updateChannelPermissions).toHaveBeenCalled();
-    expect(gameManager.updateVoicePerms).toHaveBeenCalled();
+    expect(gameManager.postStartGame).toHaveBeenCalled();
   });
 
   test('propose une sélection de rôles si trop de candidats', async () => {
@@ -118,8 +118,8 @@ describe('Commande /start', () => {
 
     await waitFor(200);
 
-    // Vérifie que fetch a été appelé pour chaque joueur
-    expect(mockInteraction.client.users.fetch).toHaveBeenCalled();
+    // Vérifie que postStartGame a été appelé
+    expect(gameManager.postStartGame).toHaveBeenCalled();
   });
 
   test('envoie des messages dans les channels privés', async () => {
@@ -134,8 +134,8 @@ describe('Commande /start', () => {
 
     await waitFor(200);
 
-    // Devrait envoyer dans village, wolves, seer, witch
-    expect(mockSend).toHaveBeenCalled();
+    // postStartGame gère maintenant les messages channels
+    expect(gameManager.postStartGame).toHaveBeenCalled();
   });
 
   test('refuse si la partie n\'existe pas', async () => {
@@ -148,7 +148,7 @@ describe('Commande /start', () => {
   });
 
   test('gère l\'échec de mise à jour des permissions', async () => {
-    gameManager.updateChannelPermissions = jest.fn(async () => false);
+    gameManager.postStartGame = jest.fn(async () => false);
 
     await startCommand.execute(mockInteraction);
 

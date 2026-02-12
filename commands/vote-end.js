@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const { safeReply } = require("../utils/interaction");
+const { isInGameCategory } = require("../utils/validators");
 const { commands: logger } = require("../utils/logger");
 
 module.exports = {
@@ -9,6 +10,11 @@ module.exports = {
     .setDescription("Voter pour arrêter la partie en cours"),
 
   async execute(interaction) {
+    // Vérification catégorie
+    if (!await isInGameCategory(interaction)) {
+      await safeReply(interaction, { content: "❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.", flags: MessageFlags.Ephemeral });
+      return;
+    }
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
       await safeReply(interaction, { content: "❌ Aucune partie en cours ici", flags: MessageFlags.Ephemeral });

@@ -1,10 +1,8 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, AttachmentBuilder, MessageFlags } = require("discord.js");
-const path = require("path");
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const { commands: logger } = require("../utils/logger");
 const ROLES = require("../game/roles");
 const { isInGameCategory } = require("../utils/validators");
-const { getRoleDescription, getRoleImageName } = require("../utils/roleHelpers");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -148,12 +146,8 @@ module.exports = {
       return;
     }
 
-    const setupSuccess = await gameManager.updateChannelPermissions(
-      interaction.guild,
-      startedGame
-    );
-
-    if (!setupSuccess) {
+    const success = await gameManager.postStartGame(interaction.guild, startedGame, interaction.client);
+    if (!success) {
       await interaction.editReply(
         "❌ **Erreur lors de la création des channels !**\n\n" +
         "Vérifications :\n" +
@@ -164,87 +158,6 @@ module.exports = {
       return;
     }
 
-    // Initialiser les permissions vocales (mute tous les joueurs la nuit)
-    await gameManager.updateVoicePerms(interaction.guild, startedGame);
-
     await interaction.editReply("🌙 La nuit tombe… channels privés créés et rôles envoyés !");
-
-    // Envoyer les rôles en DM (ignorer les IDs non-valide, ex: joueurs fake_...)
-    for (const player of startedGame.players) {
-      if (typeof player.id !== 'string' || !/^\d+$/.test(player.id)) {
-        logger.debug(`Skip DM for non-snowflake id: ${player.id}`);
-        continue;
-      }
-
-      try {
-        const user = await interaction.client.users.fetch(player.id);
-        const embed = new EmbedBuilder()
-          .setTitle(`Ton role : ${player.role}`)
-          .setDescription(getRoleDescription(player.role))
-          .setColor(0xFF6B6B);
-
-        const imageName = getRoleImageName(player.role);
-        const files = [];
-        if (imageName) {
-          const imagePath = path.join(__dirname, "..", "img", imageName);
-          files.push(new AttachmentBuilder(imagePath, { name: imageName }));
-          embed.setImage(`attachment://${imageName}`);
-        }
-
-        logger.info('DM send', { userId: user.id, username: user.username, content: '[role embed]' });
-        await user.send({ embeds: [embed], files });
-      } catch (err) {
-        logger.warn(`Erreur envoi DM rôle à ${player.id}:`, { error: err.message });
-      }
-    }
-
-    // Messages dans les channels privés
-    if (startedGame.wolvesChannelId) {
-      const wolvesChannel = await interaction.guild.channels.fetch(startedGame.wolvesChannelId);
-      const wolves = startedGame.players.filter(p => p.role === ROLES.WEREWOLF);
-      logger.info('Channel send', { channelId: wolvesChannel.id, channelName: wolvesChannel.name, content: '[wolves welcome]' });
-      await wolvesChannel.send(
-        `🐺 **Bienvenue aux Loups-Garous !**\n` +
-        `Vous êtes ${wolves.length} dans cette nuit.\n` +
-        `Utilisez \`/kill @joueur\` pour désigner votre victime.`
-      );
-    }
-
-    if (startedGame.seerChannelId) {
-      const seerChannel = await interaction.guild.channels.fetch(startedGame.seerChannelId);
-      logger.info('Channel send', { channelId: seerChannel.id, channelName: seerChannel.name, content: '[seer welcome]' });
-      await seerChannel.send(
-        `🔮 **Bienvenue, Voyante !**\n` +
-        `Utilisez \`/see @joueur\` pour découvrir le rôle d'un joueur.`
-      );
-    }
-
-    if (startedGame.witchChannelId) {
-      const witchChannel = await interaction.guild.channels.fetch(startedGame.witchChannelId);
-      logger.info('Channel send', { channelId: witchChannel.id, channelName: witchChannel.name, content: '[witch welcome]' });
-      await witchChannel.send(
-        `🧪 **Bienvenue, Sorcière !**\n` +
-        `Tu possèdes 2 potions : une de **vie** et une de **mort**.\n` +
-        `Utilise \`/potion type:Vie\` ou \`/potion type:Mort target:@joueur\`\n` +
-        `Chaque nuit, tu verras ici qui a été attaqué par les loups.`
-      );
-    }
-
-    // Message dans le channel village (système)
-    const villageChannel = startedGame.villageChannelId
-      ? await interaction.guild.channels.fetch(startedGame.villageChannelId)
-      : await interaction.guild.channels.fetch(interaction.channelId);
-
-    logger.info('Channel send', { channelId: villageChannel.id, channelName: villageChannel.name, content: '[night system message]' });
-    await villageChannel.send(
-      `🌙 **LA NUIT TOMBE**\n\n` +
-      `✅ Les rôles ont été distribués en DM\n` +
-      `✅ Channels privés créés pour les rôles spéciaux\n` +
-      `🎤 **Rejoignez le channel vocal 🎤-partie**\n\n` +
-      `**Cette nuit :**\n` +
-      `• Les loups choisissent leur victime avec \`/kill @joueur\` (dans leur channel)\n` +
-      `• Les autres ne peuvent PAS parler (micros coupés)\n\n` +
-      `Utilisez \`/nextphase\` pour passer au jour quand la nuit est finie !`
-    );
   }
 };

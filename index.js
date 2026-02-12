@@ -1,15 +1,16 @@
 require("dotenv").config();
 
-const { Client, GatewayIntentBits, Collection, REST, Routes, EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require("discord.js");
+const { Client, GatewayIntentBits, Collection, REST, Routes, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
 const gameManager = require("./game/gameManager");
-const ROLES = require("./game/roles");
-const { getRoleDescription, getRoleImageName } = require("./utils/roleHelpers");
 const { app: logger, discord: discordLogger, interaction: interactionLogger } = require("./utils/logger");
 const { safeEditReply } = require("./utils/interaction");
 
 // Validation des variables d'environnement requises
+// NOTE: Ce bot est conçu pour un seul serveur (mono-guild).
+// GUILD_ID permet l'enregistrement instantané des commandes (guild commands).
+// Pour du multi-guild, utiliser Routes.applicationCommands() et retirer GUILD_ID.
 const REQUIRED_ENV = ['TOKEN', 'CLIENT_ID', 'GUILD_ID'];
 for (const key of REQUIRED_ENV) {
   if (!process.env[key]) {
@@ -433,7 +434,10 @@ client.on("interactionCreate", async interaction => {
       gameManager.games.delete(game.mainChannelId);
       gameManager.saveState();
 
-      const ok = gameManager.create(game.mainChannelId, game.rules || { minPlayers: 5, maxPlayers: 10 });
+      const ok = gameManager.create(game.mainChannelId, {
+        ...(game.rules || { minPlayers: 5, maxPlayers: 10 }),
+        disableVoiceMute: game.disableVoiceMute || false
+      });
       if (!ok) {
         await safeEditReply(interaction, { content: "❌ Impossible de relancer la partie", flags: MessageFlags.Ephemeral });
         return;
@@ -621,78 +625,11 @@ client.on("interactionCreate", async interaction => {
           return;
         }
 
-        // Mettre à jour les permissions des channels
-        const setupSuccess = await gameManager.updateChannelPermissions(
-          interaction.guild,
-          startedGame
-        );
-
-        if (!setupSuccess) {
-          await safeEditReply(interaction, 
-            "❌ **Erreur lors de la création des permissions !**"
-          );
+        const success = await gameManager.postStartGame(interaction.guild, startedGame, interaction.client);
+        if (!success) {
+          await safeEditReply(interaction, "❌ **Erreur lors de la création des permissions !**");
           return;
         }
-
-        // Initialiser les permissions vocales
-        await gameManager.updateVoicePerms(interaction.guild, startedGame);
-
-        // Envoyer les rôles en DM
-        for (const player of startedGame.players) {
-          if (typeof player.id !== 'string' || !/^\d+$/.test(player.id)) {
-            continue;
-          }
-
-          try {
-            const user = await interaction.client.users.fetch(player.id);
-            const embed = new EmbedBuilder()
-              .setTitle(`Ton role : ${player.role}`)
-              .setDescription(getRoleDescription(player.role))
-              .setColor(0xFF6B6B);
-
-            const imageName = getRoleImageName(player.role);
-            const files = [];
-            if (imageName) {
-              const imagePath = path.join(__dirname, "img", imageName);
-              files.push(new AttachmentBuilder(imagePath, { name: imageName }));
-              embed.setImage(`attachment://${imageName}`);
-            }
-
-            logger.info('DM send', { userId: user.id, username: user.username, content: '[role embed]' });
-            await user.send({ embeds: [embed], files });
-          } catch (err) {
-            logger.warn(`[Lobby] Failed to send DM to player ${player.id}`, err);
-          }
-        }
-
-        // Messages dans les channels privés
-        const ROLES = require("./game/roles");
-        if (startedGame.wolvesChannelId) {
-          const wolvesChannel = await interaction.guild.channels.fetch(startedGame.wolvesChannelId);
-          const wolves = startedGame.players.filter(p => p.role === ROLES.WEREWOLF);
-          logger.info('Channel send', { channelId: wolvesChannel.id, channelName: wolvesChannel.name, content: '[wolves welcome]' });
-          await wolvesChannel.send(
-            `🐺 **Bienvenue aux Loups-Garous !**\n` +
-            `Vous êtes ${wolves.length} dans cette nuit.\n` +
-            `Utilisez \`/kill @joueur\` pour désigner votre victime.`
-          );
-        }
-
-        // Message dans le channel village
-        const villageChannel = startedGame.villageChannelId
-          ? await interaction.guild.channels.fetch(startedGame.villageChannelId)
-          : await interaction.guild.channels.fetch(channelId);
-
-        logger.info('Channel send', { channelId: villageChannel.id, channelName: villageChannel.name, content: '[night system message]' });
-        await villageChannel.send(
-          `🌙 **LA NUIT TOMBE**\n\n` +
-          `✅ Les rôles ont été distribués en DM\n` +
-          `🎤 **Rejoignez le channel vocal 🎤-partie**\n\n` +
-          `**Cette nuit :**\n` +
-          `• Les loups choisissent leur victime avec \`/kill @joueur\`\n` +
-          `• Les autres ne peuvent PAS parler (micros coupés)\n\n` +
-          `Utilisez \`/nextphase\` pour passer au jour !`
-        );
 
         await safeEditReply(interaction, "🌙 **La partie a démarré !** Les rôles ont été envoyés en DM.");
       } catch (err) {

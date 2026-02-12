@@ -42,10 +42,14 @@ module.exports = {
       return;
     }
 
-    // La Petite Fille ne peut espéonner que la nuit
+    // La Petite Fille ne peut espionner que pendant la sous-phase des loups
     const PHASES = require('../game/phases');
     if (game.phase !== PHASES.NIGHT) {
       await safeReply(interaction, { content: "❌ Tu ne peux écouter les loups que pendant la nuit !", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    if (game.subPhase !== PHASES.LOUPS) {
+      await safeReply(interaction, { content: "❌ Les loups ne sont pas en train de délibérer.", flags: MessageFlags.Ephemeral });
       return;
     }
 

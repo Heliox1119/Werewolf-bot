@@ -129,6 +129,21 @@ class MetricsCollector {
   collectSystemMetrics() {
     const used = process.memoryUsage();
     const total = os.totalmem();
+
+    // Calcul CPU en pourcentage via delta entre deux mesures
+    const now = Date.now();
+    const currentCpuUsage = process.cpuUsage();
+    let cpuPercent = 0;
+    if (this._prevCpu && this._prevCpuTime) {
+      const userDelta = currentCpuUsage.user - this._prevCpu.user;
+      const systemDelta = currentCpuUsage.system - this._prevCpu.system;
+      const timeDelta = (now - this._prevCpuTime) * 1000; // ms → µs
+      if (timeDelta > 0) {
+        cpuPercent = Math.min(100, Math.round(((userDelta + systemDelta) / timeDelta) * 100));
+      }
+    }
+    this._prevCpu = currentCpuUsage;
+    this._prevCpuTime = now;
     
     this.metrics.system = {
       memory: {
@@ -137,7 +152,7 @@ class MetricsCollector {
         percentage: Math.round((used.heapUsed / used.heapTotal) * 100)
       },
       cpu: {
-        usage: Math.round(process.cpuUsage().user / 1000000) // Approximation
+        usage: cpuPercent
       },
       uptime: Math.floor((Date.now() - this.startTime) / 1000) // secondes
     };

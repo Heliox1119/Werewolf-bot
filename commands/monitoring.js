@@ -137,7 +137,7 @@ module.exports = {
     });
     
     // Métriques Discord
-    const wsStatus = currentMetrics.discord.wsStatus === 'READY' ? '🟢 Connecté' : '🔴 Déconnecté';
+    const wsStatus = currentMetrics.discord.wsStatus === 0 ? '🟢 Connecté' : '🔴 Déconnecté';
     
     embed.addFields({
       name: '📡 Discord',
