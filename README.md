@@ -2,33 +2,32 @@
 
 Un bot Discord complet pour jouer au Loup-Garou avec gestion vocale automatique et audio d'ambiance.
 
-## 🎉 Nouveautés v2.2.1
+## 🎉 Nouveautés v2.3.0
 
-### 🔒 Hardening production (26 fixes)
-- **Validation env vars** au démarrage (TOKEN, CLIENT_ID, GUILD_ID)
-- **Graceful shutdown** avec SIGTERM/SIGINT handlers
-- **`safeReply` partout** — plus de `interaction.reply` brut
-- **Logger centralisé** — tout `console.log/error` remplacé
-- **Réponses éphémères** pour `/see` et `/love` (aucune fuite d'info)
-- **Audio validation** : vérification `existsSync` avant lecture
-- **DB sync complète** : nightVictim, witchKillTarget, witchSave persistés
-- **Debounced save** (500ms) pour réduire les écritures DB
-- **`checkWinner` draw** quand tous les joueurs meurent
-- **Code mort supprimé** : `getSaveFilePath()`, `data/games.json`
-- **`roleHelpers.js`** : descriptions/images rôles factorisées
+### 🔍 Audit complet — 32 corrections
+- **5 CRITICAL** : capitaine double-vote, victoire loups, permissions channels, couple duplicate, vote fantôme
+- **7 HIGH** : consensus loups, sorcière double-poison, cleanup channels, debug-games crash, monitoring sécurisé, double AFK timeout, message loups
+- **12 MEDIUM** : lobby image, dédup start, voice leak, CPU metric, WS status, listen/love sub-phases, cupidon phase, vote-end catégorie, restart voicemute, guild doc, ratelimit safe reply
+- **8 LOW** : double-defer, debug-start-force dupliqué, progress feedback, player_stats, night_actions, metrics snapshots, votes publics, commande /skip
 
-### ✅ Tests ×2.5
-- **191 tests** (était 77) — 8 nouvelles suites + gameManager étendu
-- **15 suites, 0 failures**
-- Couverture : vote, kill, potion, see, love, validators, roleHelpers, interaction
+### 👻 Mode spectateur
+- Les joueurs morts voient tous les salons en lecture seule (loups, voyante, sorcière, cupidon)
 
-### 📋 v2.2.0 — Sécurité & Chasseur
-- **Commandes debug protégées** : Toutes requièrent la permission Administrateur
-- **`/shoot`** : Le Chasseur tire sur un joueur à sa mort (timeout 60s)
-- **`/vote-end`** : Vote majoritaire des joueurs vivants pour arrêter la partie
-- **Timeout nuit 90s** : Auto-avance si un rôle ne joue pas
-- **Verrou de transition** : Empêche les double-transitions jour/nuit
-- Fix crash `command is not defined`, désync DB/mémoire, double start, etc.
+### 🆕 Nouvelles commandes
+- **`/skip`** : Passer son action de nuit (Voyante, Sorcière, Cupidon)
+
+### 📊 Base de données enrichie
+- **`player_stats`** : Statistiques joueurs peuplées à chaque fin de partie
+- **`night_actions`** : Actions de nuit enregistrées (kill, see, save, poison, love, shoot)
+- **`metrics`** : Snapshots métriques sauvegardés toutes les heures avec nettoyage auto 7j
+
+### ⏳ UX améliorée
+- **Feedback de progression** pendant le lancement (permissions → DMs → channels)
+- **Annonce publique des votes** dans le village (compteur sans révéler la cible)
+- **Lobby redesigné** avec grille de slots, rôles par équipe, tips dynamiques
+
+### ✅ Tests
+- **191 tests, 15 suites, 0 failures**
 
 ## ✨ Fonctionnalités
 

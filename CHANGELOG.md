@@ -1,5 +1,63 @@
 # 📝 Changelog - Werewolf Bot
 
+## [2.3.0] - 2026-02-12 - Audit complet, Spectateur, /skip, Stats DB
+
+### 🔍 Audit complet — 32 corrections (5 CRITICAL, 7 HIGH, 12 MEDIUM, 8 LOW)
+
+#### CRITICAL
+- **Capitaine double-vote** : Le vote du capitaine compte désormais ×2 correctement
+- **Victoire loups** : Détection fiable quand les loups sont en majorité
+- **Permissions channels** : Permissions correctes pour tous les rôles spéciaux
+- **Couple duplicate** : Empêche la double-liaison par Cupidon
+- **Vote fantôme** : Les morts ne peuvent plus voter
+
+#### HIGH
+- **Consensus loups** : Système de vote à majorité/pluralité fonctionnel
+- **Sorcière double-poison** : Impossibilité d'utiliser la potion de mort deux fois
+- **Cleanup channels** : Nettoyage complet des channels de jeu
+- **debug-games crash** : Fix accès à des propriétés nulles
+- **Monitoring sécurisé** : Gestion des erreurs dans le collecteur de métriques
+- **Double AFK timeout** : Empêche les timers en double
+- **Message loups** : Affichage correct de la victime et du compteur
+
+#### MEDIUM
+- Lobby image, dédup start, voice leak, CPU metric, WS status
+- listen/love sub-phases, cupidon phase, rename action→status
+- vote-end catégorie, restart voicemute, guild doc, ratelimit safe reply
+
+#### LOW
+- **L1** : Suppression du double-defer redondant dans lobby_start
+- **L2** : `debug-start-force` réécrit pour utiliser `gameManager.start()`
+- **L3** : Feedback de progression pendant `postStartGame`
+- **L4** : Table `player_stats` peuplée à chaque fin de partie
+- **L5** : `night_actions` enregistrées en DB (kill, see, save, poison, love, shoot)
+- **L6** : Snapshots métriques en DB toutes les heures + nettoyage 7j
+- **L7** : Annonce publique des votes dans le village
+- **L8** : Nouvelle commande `/skip` pour passer les actions de nuit
+
+### 👻 Mode spectateur
+- Les joueurs morts voient tous les salons en lecture seule
+
+### 🆕 Nouvelles commandes
+- **`/skip`** : Passer son action de nuit (Voyante, Sorcière, Cupidon)
+
+### 📊 Base de données enrichie
+- `player_stats` : games_played, games_won, times_killed, times_survived, favorite_role
+- `night_actions` : game_id, night_number, action_type, actor_id, target_id
+- `metrics` : 24 colonnes système/discord/game/commands/errors/health
+
+### ⏳ UX
+- Feedback de progression pendant le lancement de partie
+- Annonce publique des votes (compteur sans révéler la cible)
+- Lobby redesigné v2 avec grille de slots, rôles par équipe, tips
+
+### 📦 Nouveaux fichiers
+```
+commands/skip.js    # Commande /skip (passer action de nuit)
+```
+
+---
+
 ## [2.2.1] - 2026-02-11 - Hardening Production, Tests ×2.5
 
 ### 🔒 Hardening production (26 fixes)

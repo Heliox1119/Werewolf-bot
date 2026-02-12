@@ -1,6 +1,6 @@
 {
   "name": "werewolf-bot",
-  "version": "2.1.0",
+  "version": "2.3.0",
   "description": "Discord Werewolf game bot with voice control and ambient audio",
   "main": "index.js",
   "scripts": {
