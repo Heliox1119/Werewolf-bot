@@ -336,8 +336,9 @@ module.exports = {
    */
   async showHistory(interaction, metrics) {
     const history = metrics.getHistory();
+    const count = history.timestamps ? history.timestamps.length : 0;
     
-    if (history.length === 0) {
+    if (count === 0) {
       await interaction.reply({
         content: '📊 Pas encore d\'historique disponible',
         ephemeral: true
@@ -345,20 +346,20 @@ module.exports = {
       return;
     }
     
-    // Calculer les moyennes
-    const avgMemory = history.reduce((sum, m) => sum + m.system.memory.percentage, 0) / history.length;
-    const avgLatency = history.reduce((sum, m) => sum + m.discord.latency, 0) / history.length;
-    const avgResponseTime = history.reduce((sum, m) => sum + m.commands.avgResponseTime, 0) / history.length;
+    // Calculer les moyennes sur les tableaux parallèles
+    const sum = (arr) => arr.reduce((s, v) => s + (v || 0), 0);
+    const avgMemory = sum(history.memory) / count;
+    const avgLatency = sum(history.latency) / count;
     
     // Trouver les pics
-    const maxMemory = Math.max(...history.map(m => m.system.memory.percentage));
-    const maxLatency = Math.max(...history.map(m => m.discord.latency));
+    const maxMemory = Math.max(...history.memory);
+    const maxLatency = Math.max(...history.latency);
     
     const embed = new EmbedBuilder()
       .setTitle('📈 Historique des métriques (24h)')
       .setColor(0x9B59B6)
       .setTimestamp()
-      .setFooter({ text: `${history.length} points de données` });
+      .setFooter({ text: `${count} points de données` });
     
     embed.addFields({
       name: '💾 Mémoire',
@@ -379,17 +380,14 @@ module.exports = {
     });
     
     embed.addFields({
-      name: '⚡ Performance',
-      value: [
-        `**Temps de réponse moy.:** ${avgResponseTime.toFixed(0)}ms`,
-        `**Commandes totales:** ${history[history.length - 1].commands.total}`
-      ].join('\n'),
+      name: '🎮 Parties actives',
+      value: `**Dernière valeur:** ${history.activeGames[count - 1] || 0}`,
       inline: true
     });
     
     // Graphique ASCII simple pour la mémoire
     const memoryGraph = this.createASCIIGraph(
-      history.slice(-12).map(m => m.system.memory.percentage),
+      history.memory.slice(-12),
       'Mémoire (12 dernières heures)'
     );
     

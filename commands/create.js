@@ -82,11 +82,7 @@ module.exports = {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-    // Récupérer les options min/max joueurs
-    const minPlayers = interaction.options?.getInteger?.("min") ?? 5;
-    const maxPlayers = interaction.options?.getInteger?.("max") ?? 10;
-
-    const ok = gameManager.create(interaction.channelId, { minPlayers, maxPlayers });
+    const ok = gameManager.create(interaction.channelId);
     if (!ok) {
       logger.warn('Failed to create game - already exists', { channelId: interaction.channelId });
       const errorMsg = "❌ Une partie existe déjà ici";

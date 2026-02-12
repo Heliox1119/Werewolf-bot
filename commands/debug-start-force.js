@@ -96,7 +96,7 @@ module.exports = {
 
     // Envoyer les rôles en DM
     for (const player of game.players) {
-      if (!player.id.startsWith("fake_")) continue; // Skip fake users
+      if (player.id.startsWith("fake_")) continue; // Skip fake users
       try {
         const user = await interaction.client.users.fetch(player.id);
         const embed = new EmbedBuilder()

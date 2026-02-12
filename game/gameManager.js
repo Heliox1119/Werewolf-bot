@@ -338,6 +338,9 @@ class GameManager {
       game.witchSave = false;
       this.scheduleSave();
 
+      // Appliquer les lockouts de channels pour les joueurs morts
+      await this.applyDeadPlayerLockouts(guild);
+
       // Vérifier si un chasseur est mort cette nuit — il doit tirer
       for (const dead of nightDeaths) {
         if (dead.role === ROLES.HUNTER) {
@@ -422,6 +425,9 @@ class GameManager {
           }
         }
       }
+
+      // Appliquer les lockouts de channels pour les joueurs morts
+      await this.applyDeadPlayerLockouts(guild);
 
       // Vérifier victoire après les éliminations du jour
       const victoryCheck = this.checkWinner(game);
@@ -638,6 +644,7 @@ class GameManager {
 
         const currentSub = game.subPhase;
         if (currentSub === PHASES.LOUPS) {
+          game.wolfVotes = null; // Reset wolf consensus on timeout
           await this.sendLogged(mainChannel, `⏰ Les loups n'ont pas choisi de victime à temps. La nuit passe sans attaque.`, { type: 'afkTimeout' });
           this.logAction(game, 'AFK timeout: loups');
         } else if (currentSub === PHASES.SORCIERE) {
@@ -723,7 +730,8 @@ class GameManager {
 
   start(channelId, rolesOverride = null) {
     const game = this.games.get(channelId);
-    if (!game || game.players.length < 5) return null;
+    const minRequired = (game && game.rules && game.rules.minPlayers) || 5;
+    if (!game || game.players.length < minRequired) return null;
 
     // Empêcher le double-start
     if (game.startedAt) {
@@ -1266,6 +1274,7 @@ class GameManager {
     // Reset night victim only when a new night starts
     if (game.phase === PHASES.NIGHT) {
       game.nightVictim = null;
+      game.wolfVotes = null; // Reset wolf consensus votes
       game.subPhase = PHASES.LOUPS;
     } else {
       game.subPhase = PHASES.REVEIL;
@@ -1355,6 +1364,10 @@ class GameManager {
     // Synchroniser avec la DB
     this.db.updatePlayer(channelId, playerId, { alive: false });
     
+    // Révoquer l'accès aux channels privés du rôle
+    this._pendingLockouts = this._pendingLockouts || [];
+    this._pendingLockouts.push({ channelId, playerId, role: player.role });
+    
     // Si la victime fait partie d'un couple d'amoureux, l'autre meurt aussi
     const collateralDeaths = [];
     if (game.lovers && Array.isArray(game.lovers)) {
@@ -1368,11 +1381,49 @@ class GameManager {
             collateralDeaths.push(other);
             // Synchroniser avec la DB
             this.db.updatePlayer(channelId, otherId, { alive: false });
+            // Révoquer l'accès pour l'amoureux aussi
+            this._pendingLockouts.push({ channelId, playerId: otherId, role: other.role });
           }
         }
       }
     }
     return collateralDeaths;
+  }
+
+  /**
+   * Révoque l'accès aux channels privés pour les joueurs morts.
+   * Doit être appelé avec un guild après kill() pour appliquer les changements Discord.
+   */
+  async applyDeadPlayerLockouts(guild) {
+    if (!this._pendingLockouts || this._pendingLockouts.length === 0) return;
+    const lockouts = this._pendingLockouts.splice(0);
+    const { PermissionsBitField } = require('discord.js');
+
+    for (const { channelId, playerId, role } of lockouts) {
+      const game = this.games.get(channelId);
+      if (!game) continue;
+
+      // Déterminer le channel privé du rôle
+      let roleChannelId = null;
+      if (role === ROLES.WEREWOLF) roleChannelId = game.wolvesChannelId;
+      else if (role === ROLES.SEER) roleChannelId = game.seerChannelId;
+      else if (role === ROLES.WITCH) roleChannelId = game.witchChannelId;
+      else if (role === ROLES.CUPID) roleChannelId = game.cupidChannelId;
+
+      if (!roleChannelId) continue;
+
+      try {
+        const channel = await guild.channels.fetch(roleChannelId);
+        if (!channel) continue;
+        await channel.permissionOverwrites.edit(playerId, {
+          ViewChannel: false,
+          SendMessages: false
+        });
+        logger.debug('Locked out dead player from role channel', { playerId, role, roleChannelId });
+      } catch (e) {
+        logger.warn('Failed to lockout dead player', { playerId, role, error: e.message });
+      }
+    }
   }
 
   // checkVictory est remplacé par checkWinner --- voir plus bas

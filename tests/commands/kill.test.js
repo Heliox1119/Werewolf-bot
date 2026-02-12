@@ -165,7 +165,8 @@ describe('Commande /kill', () => {
     gameManager.transitionToDay = jest.fn();
     gameManager.clearNightAfkTimeout = jest.fn();
     gameManager.logAction = jest.fn();
-
+    // isRealPlayerId returns false for 'wolf1' (not numeric) → single non-real wolf = immediate consensus via plurality
+    // Mock guild.channels.fetch for wolf channel message
     const interaction = createMockInteraction({ commandName: 'kill', channelId: 'ch-wolves', userId: 'wolf1' });
     interaction.options.getUser = jest.fn(() => ({ id: '123456789012345678', username: 'Victim' }));
 
@@ -173,7 +174,7 @@ describe('Commande /kill', () => {
 
     expect(game.nightVictim).toBe('123456789012345678');
     expect(safeReply).toHaveBeenCalledWith(interaction, expect.objectContaining({
-      content: expect.stringContaining('choisi')
+      content: expect.stringContaining('Victim')
     }));
   });
 

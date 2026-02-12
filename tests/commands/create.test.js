@@ -107,8 +107,7 @@ describe('Commande /create', () => {
 
     expect(mockInteraction.deferred).toBe(true);
     expect(gameManager.create).toHaveBeenCalledWith(
-      'channel-123',
-      expect.any(Object)
+      'channel-123'
     );
   });
 
