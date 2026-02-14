@@ -252,4 +252,4 @@ Full details: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-**Version**: 2.4.0 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **License**: ISC
+**Version**: 2.5.1 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **License**: ISC
