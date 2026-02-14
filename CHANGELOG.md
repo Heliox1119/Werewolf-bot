@@ -1,5 +1,14 @@
 # 📝 Changelog - Werewolf Bot
 
+## [2.5.1] - 2025-02-15 - Correctifs de stabilité
+
+### 🐛 Corrections de bugs
+- **Validation de catégorie** : La commande `/create` vérifie désormais que la catégorie Discord existe avant de créer les channels. Fallback automatique sur la catégorie du channel courant si la catégorie configurée est introuvable.
+- **Orphan cleanup** : Le nettoyage des channels orphelins ne supprime plus les catégories Discord (type 4). Ajout de gardes dans les 3 emplacements de cleanup (startup, `cleanupOrphanChannels`, `cleanupCategoryChannels`).
+- Ajout de `salvateurChannelId` et `spectatorChannelId` aux vérifications de propriété lors du cleanup.
+
+---
+
 ## [2.5.0] - 2025-02-14 - Nice-to-Have : Rôles, Spectateurs, Thèmes
 
 ### 🎭 Nouveaux rôles (3)
