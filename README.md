@@ -2,7 +2,7 @@
 
 Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion vocale automatique, audio d'ambiance et lobby interactif.
 
-![Version](https://img.shields.io/badge/version-2.3.0-blue)
+![Version](https://img.shields.io/badge/version-2.4.0-blue)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
 ![Tests](https://img.shields.io/badge/tests-191%20passed-brightgreen)
@@ -28,8 +28,15 @@ Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion
 - **Rate limiting** — Protection anti-spam avec ban automatique
 - **Monitoring** — Dashboard temps réel, alertes webhook, historique 24h
 
+### 🌍 Internationalisation
+- **Multilingue FR / EN** — Commande `/lang` pour basculer la langue du bot
+- **500+ clés de traduction** — Tous les messages, embeds, boutons et alertes traduits
+- **Persistance** — La langue choisie est sauvegardée en base de données
+- **Extensible** — Ajouter une langue = créer un fichier `locales/xx.js`
+
 ### 🗄️ Technique
 - **Persistance SQLite** — État des parties, stats joueurs, actions de nuit, métriques
+- **i18n centralisé** — Singleton `I18n`, interpolation `{{variable}}`, fallback automatique
 - **Gestion d'erreurs robuste** — safeReply, graceful shutdown, zero crash en production
 - **191 tests automatisés** — 15 suites, 0 failures
 
@@ -125,6 +132,7 @@ Une fois le bot en ligne, dans Discord :
 | `/setrules` | Modifier min/max joueurs d'une partie |
 | `/clear` | Nettoyer les channels de jeu |
 | `/force-end` | Terminer une partie (bypass) |
+| `/lang fr\|en` | Changer la langue du bot |
 | `/monitoring dashboard` | Métriques temps réel |
 | `/monitoring health` | Santé du bot |
 | `/ratelimit stats` | Stats anti-spam |
@@ -165,8 +173,12 @@ Werewolf-bot/
 │   ├── voiceManager.js     # Audio & connexions vocales
 │   ├── phases.js           # Constantes de phases
 │   └── roles.js            # Constantes de rôles
+├── locales/
+│   ├── fr.js               # Locale française (~500+ clés)
+│   └── en.js               # Locale anglaise (~500+ clés)
 ├── utils/
 │   ├── config.js           # Configuration centralisée (SQLite)
+│   ├── i18n.js             # Système i18n (t(), translateRole/Phase)
 │   ├── interaction.js      # safeReply, safeDefer
 │   ├── lobbyBuilder.js     # Construction du lobby embed
 │   ├── rateLimiter.js      # Token bucket anti-spam
@@ -198,6 +210,7 @@ npm run clear-commands      # Réinitialiser les commandes Discord
 
 | Version | Highlights |
 |---------|-----------|
+| **v2.4.0** | Système i18n centralisé FR/EN, commande `/lang`, 500+ clés traduites |
 | **v2.3.0** | Audit complet (47 fixes), mode spectateur, `/skip`, stats joueurs en DB |
 | **v2.2.1** | Hardening production (26 fixes), 191 tests, safeReply partout |
 | **v2.2.0** | Commandes debug sécurisées, `/shoot`, `/vote-end`, AFK timeout 90s |
@@ -233,4 +246,4 @@ Détails complets : [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-**Version** : 2.3.0 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **License** : ISC
+**Version** : 2.4.0 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **License** : ISC
