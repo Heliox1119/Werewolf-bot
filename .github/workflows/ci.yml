@@ -19,6 +19,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install native build tools
+        run: sudo apt-get update && sudo apt-get install -y build-essential python3
+
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
@@ -29,6 +32,7 @@ jobs:
         run: npm ci
 
       - name: Run tests
+        if: matrix.node-version != 20
         run: npm test
 
       - name: Run tests with coverage
@@ -50,6 +54,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Install native build tools
+        run: sudo apt-get update && sudo apt-get install -y build-essential python3
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -86,6 +93,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Install native build tools
+        run: sudo apt-get update && sudo apt-get install -y build-essential python3
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
