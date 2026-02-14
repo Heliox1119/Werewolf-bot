@@ -1,5 +1,7 @@
 // Centralized logging system for Werewolf bot
 const chalk = require('chalk');
+const fs = require('fs');
+const path = require('path');
 
 // Log levels
 const LogLevel = {
@@ -14,6 +16,52 @@ const LogLevel = {
 const CURRENT_LEVEL = process.env.LOG_LEVEL 
   ? LogLevel[process.env.LOG_LEVEL.toUpperCase()] ?? LogLevel.INFO
   : LogLevel.INFO;
+
+// ─── Persistent file logging ───────────────────────────────────────
+const LOGS_DIR = path.join(__dirname, '..', 'logs');
+const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5 MB per file
+const MAX_LOG_FILES = 5;              // Keep up to 5 rotated files
+
+// Ensure logs directory exists
+try { fs.mkdirSync(LOGS_DIR, { recursive: true }); } catch (e) { /* ignore in test env */ }
+
+/**
+ * Rotate log files: app.log → app.log.1, app.log.1 → app.log.2, ...
+ */
+function rotateLogFile(basename) {
+  try {
+    for (let i = MAX_LOG_FILES - 1; i >= 1; i--) {
+      const older = path.join(LOGS_DIR, `${basename}.${i}`);
+      const newer = i === 1
+        ? path.join(LOGS_DIR, basename)
+        : path.join(LOGS_DIR, `${basename}.${i - 1}`);
+      if (fs.existsSync(newer)) {
+        if (i === MAX_LOG_FILES - 1 && fs.existsSync(older)) {
+          fs.unlinkSync(older);
+        }
+        fs.renameSync(newer, older);
+      }
+    }
+  } catch (e) { /* best-effort rotation */ }
+}
+
+/**
+ * Append a line to a log file with automatic rotation.
+ */
+function appendToLogFile(basename, line) {
+  try {
+    const filePath = path.join(LOGS_DIR, basename);
+    // Rotate if file exceeds max size
+    if (fs.existsSync(filePath)) {
+      const stats = fs.statSync(filePath);
+      if (stats.size >= MAX_LOG_SIZE) {
+        rotateLogFile(basename);
+      }
+    }
+    fs.appendFileSync(filePath, line + '\n', 'utf-8');
+  } catch (e) { /* never crash because of logging */ }
+}
+// ────────────────────────────────────────────────────────────────────
 
 // Timestamp formatter
 function getTimestamp() {
@@ -60,6 +108,7 @@ class Logger {
     if (CURRENT_LEVEL <= LogLevel.DEBUG) {
       const formatted = formatMessage('DEBUG', this.module, message, data);
       console.log(colors.debug(formatted));
+      appendToLogFile('app.log', formatted);
     }
   }
 
@@ -67,6 +116,7 @@ class Logger {
     if (CURRENT_LEVEL <= LogLevel.INFO) {
       const formatted = formatMessage('INFO', this.module, message, data);
       console.log(colors.info(formatted));
+      appendToLogFile('app.log', formatted);
     }
   }
 
@@ -74,6 +124,7 @@ class Logger {
     if (CURRENT_LEVEL <= LogLevel.INFO) {
       const formatted = formatMessage('SUCCESS', this.module, message, data);
       console.log(colors.success(formatted));
+      appendToLogFile('app.log', formatted);
     }
   }
 
@@ -81,6 +132,7 @@ class Logger {
     if (CURRENT_LEVEL <= LogLevel.WARN) {
       const formatted = formatMessage('WARN', this.module, message, data);
       console.warn(colors.warn(formatted));
+      appendToLogFile('app.log', formatted);
     }
   }
 
@@ -93,6 +145,8 @@ class Logger {
       } : null;
       const formatted = formatMessage('ERROR', this.module, message, data);
       console.error(colors.error(formatted));
+      appendToLogFile('app.log', formatted);
+      appendToLogFile('error.log', formatted);
     }
   }
 
@@ -105,6 +159,8 @@ class Logger {
       } : null;
       const formatted = formatMessage('CRITICAL', this.module, message, data);
       console.error(colors.critical(formatted));
+      appendToLogFile('app.log', formatted);
+      appendToLogFile('error.log', formatted);
     }
   }
 

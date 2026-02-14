@@ -132,7 +132,37 @@ client.once("clientReady", async () => {
     );
 
     logger.success("✅ Slash commands registered (guild)", { count: client.commands.size });
-    
+
+      // ─── Permission check ─────────────────────────────────────────
+      try {
+        const guild = client.guilds.cache.get(process.env.GUILD_ID) 
+          || await client.guilds.fetch(process.env.GUILD_ID);
+        const botMember = guild.members.me;
+        
+        const REQUIRED_PERMS = [
+          'ManageChannels',
+          'ManageRoles', 
+          'MuteMembers',
+          'SendMessages',
+          'EmbedLinks',
+          'Connect',
+          'Speak',
+          'ViewChannel',
+          'ReadMessageHistory'
+        ];
+        
+        const missing = REQUIRED_PERMS.filter(p => !botMember.permissions.has(p));
+        
+        if (missing.length > 0) {
+          logger.warn('⚠️ Bot is missing permissions — some features may fail', { missing });
+        } else {
+          logger.success('✅ All required permissions granted');
+        }
+      } catch (err) {
+        logger.error('Could not verify permissions', err);
+      }
+      // ──────────────────────────────────────────────────────────────
+
       // Charger l'état sauvegardé des parties et tenter une restauration minimale
       try {
         logger.info('Loading saved game state...');
@@ -669,7 +699,40 @@ process.on('uncaughtException', (error) => {
     // Silently ignore "Unknown interaction" errors
     return;
   }
-  logger.critical('Uncaught Exception:', error);
+  logger.critical('Uncaught Exception — saving state before crash', error);
+  // Best-effort state save before crash
+  try { gameManager.saveState(); } catch (e) { /* ignore */ }
+  process.exit(1);
+});
+
+// ─── Discord client resilience ─────────────────────────────────────
+client.on('error', (error) => {
+  logger.error('Discord client error', error);
+});
+
+client.on('warn', (message) => {
+  logger.warn('Discord client warning', { message });
+});
+
+client.on('shardError', (error) => {
+  logger.error('WebSocket shard error', error);
+});
+
+client.on('shardDisconnect', (event, shardId) => {
+  logger.warn(`Shard ${shardId} disconnected`, { code: event?.code, reason: event?.reason });
+});
+
+client.on('shardReconnecting', (shardId) => {
+  logger.info(`Shard ${shardId} reconnecting...`);
+});
+
+client.on('shardResume', (shardId, replayedEvents) => {
+  logger.success(`Shard ${shardId} resumed`, { replayedEvents });
+});
+
+client.on('invalidated', () => {
+  logger.critical('Session invalidated — restarting...');
+  try { gameManager.saveState(); } catch (e) { /* ignore */ }
   process.exit(1);
 });
 
