@@ -1067,6 +1067,20 @@ class GameManager {
   async createInitialChannels(guild, mainChannelId, game, categoryId = null) {
     const timer = logger.startTimer('createInitialChannels');
     try {
+      // Validate category exists before using it
+      if (categoryId) {
+        try {
+          const cat = await guild.channels.fetch(categoryId);
+          if (!cat || cat.type !== 4) {
+            logger.warn('Category invalid, creating channels without parent', { categoryId });
+            categoryId = null;
+          }
+        } catch {
+          logger.warn('Category not found, creating channels without parent', { categoryId });
+          categoryId = null;
+        }
+      }
+
       logger.info("Creating initial game channels...", { mainChannelId, categoryId });
       
       // Créer le channel village (visible de tous) pour les messages système

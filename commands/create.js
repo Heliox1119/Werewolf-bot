@@ -59,8 +59,31 @@ module.exports = {
       // Get category ID from configuration
       const ConfigManager = require('../utils/config');
       const config = ConfigManager.getInstance();
-      const CATEGORY_ID = config.getCategoryId();
+      let CATEGORY_ID = config.getCategoryId();
       
+      // Validate that the configured category actually exists on Discord
+      if (CATEGORY_ID) {
+        try {
+          const cat = await interaction.guild.channels.fetch(CATEGORY_ID);
+          if (!cat || cat.type !== 4) { // 4 = GuildCategory
+            logger.warn('Configured category does not exist or is not a category, falling back', { CATEGORY_ID });
+            CATEGORY_ID = null;
+          }
+        } catch {
+          logger.warn('Configured category not found on Discord, falling back', { CATEGORY_ID });
+          CATEGORY_ID = null;
+        }
+      }
+
+      // Fallback: use the current channel's parent category
+      if (!CATEGORY_ID) {
+        const currentChannel = await interaction.guild.channels.fetch(interaction.channelId);
+        if (currentChannel && currentChannel.parentId) {
+          CATEGORY_ID = currentChannel.parentId;
+          logger.info('Using current channel parent as category', { CATEGORY_ID });
+        }
+      }
+
       if (!CATEGORY_ID) {
         await interaction.editReply({
           content: t('error.not_configured'),
