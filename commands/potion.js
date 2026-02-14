@@ -16,8 +16,8 @@ module.exports = {
         .setDescription("Type de potion")
         .setRequired(true)
         .addChoices(
-          { name: t('ui.potion_choice_life'), value: "life" },
-          { name: t('ui.potion_choice_death'), value: "death" }
+          { name: "Vie (sauver)", value: "life" },
+          { name: "Mort (tuer)", value: "death" }
         )
     )
     .addUserOption(option =>

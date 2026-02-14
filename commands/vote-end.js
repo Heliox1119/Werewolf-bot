@@ -4,7 +4,6 @@ const { safeReply } = require("../utils/interaction");
 const { isInGameCategory } = require("../utils/validators");
 const { commands: logger } = require("../utils/logger");
 const { t } = require('../utils/i18n');
-const { t } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
