@@ -247,6 +247,30 @@ class MockGameDatabase {
 
   // ===== UTILITY =====
 
+  // ===== PLAYER STATS =====
+
+  updatePlayerStats(playerId, username, updates) {
+    return true;
+  }
+
+  getPlayerStats(playerId) {
+    return null;
+  }
+
+  // ===== GAME HISTORY =====
+
+  saveGameHistory(game, winner) {
+    return true;
+  }
+
+  getGuildHistory(guildId, limit = 10) {
+    return [];
+  }
+
+  getGlobalStats() {
+    return { total_games: 0, village_wins: 0, wolves_wins: 0, lovers_wins: 0, avg_duration: 0, avg_players: 0 };
+  }
+
   close() {
     // Mock: rien à fermer
   }

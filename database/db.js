@@ -58,6 +58,29 @@ class GameDatabase {
         this.db.exec('ALTER TABLE games ADD COLUMN guild_id TEXT');
         logger.info('Migration: added guild_id column (multi-guild support)');
       }
+
+      // Migration: create game_history table if it doesn't exist
+      const tables = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='game_history'").get();
+      if (!tables) {
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS game_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT,
+            channel_id TEXT NOT NULL,
+            winner TEXT,
+            player_count INTEGER DEFAULT 0,
+            duration_seconds INTEGER DEFAULT 0,
+            day_count INTEGER DEFAULT 0,
+            players_json TEXT,
+            started_at INTEGER,
+            ended_at INTEGER,
+            created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+          )
+        `);
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_history_guild ON game_history(guild_id)');
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_history_ended ON game_history(ended_at)');
+        logger.info('Migration: created game_history table');
+      }
     } catch (err) {
       logger.error('Schema migration error', { error: err.message });
     }
@@ -466,6 +489,73 @@ class GameDatabase {
   getPlayerStats(playerId) {
     try {
       return this.db.prepare('SELECT * FROM player_stats WHERE player_id = ?').get(playerId) || null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  // ===== GAME HISTORY =====
+
+  saveGameHistory(game, winner) {
+    try {
+      const durationSec = game.startedAt && game.endedAt
+        ? Math.floor((game.endedAt - game.startedAt) / 1000)
+        : 0;
+
+      const playersJson = JSON.stringify(
+        (game.players || []).map(p => ({
+          id: p.id,
+          username: p.username,
+          role: p.role,
+          alive: p.alive
+        }))
+      );
+
+      this.db.prepare(`
+        INSERT INTO game_history (guild_id, channel_id, winner, player_count, duration_seconds, day_count, players_json, started_at, ended_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        game.guildId || null,
+        game.mainChannelId,
+        winner || null,
+        (game.players || []).length,
+        durationSec,
+        game.dayCount || 0,
+        playersJson,
+        game.startedAt || null,
+        game.endedAt || null
+      );
+
+      logger.info('Game history saved', { channel: game.mainChannelId, winner });
+      return true;
+    } catch (err) {
+      logger.error('Failed to save game history', { error: err.message });
+      return false;
+    }
+  }
+
+  getGuildHistory(guildId, limit = 10) {
+    try {
+      return this.db.prepare(
+        'SELECT * FROM game_history WHERE guild_id = ? ORDER BY ended_at DESC LIMIT ?'
+      ).all(guildId, limit);
+    } catch (err) {
+      return [];
+    }
+  }
+
+  getGlobalStats() {
+    try {
+      return this.db.prepare(`
+        SELECT 
+          COUNT(*) as total_games,
+          SUM(CASE WHEN winner = 'village' THEN 1 ELSE 0 END) as village_wins,
+          SUM(CASE WHEN winner = 'wolves' THEN 1 ELSE 0 END) as wolves_wins,
+          SUM(CASE WHEN winner = 'lovers' THEN 1 ELSE 0 END) as lovers_wins,
+          AVG(duration_seconds) as avg_duration,
+          AVG(player_count) as avg_players
+        FROM game_history
+      `).get();
     } catch (err) {
       return null;
     }

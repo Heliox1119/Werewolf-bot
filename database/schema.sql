@@ -132,6 +132,24 @@ CREATE TABLE IF NOT EXISTS action_log (
 
 CREATE INDEX IF NOT EXISTS idx_log_game ON action_log(game_id, timestamp);
 
+-- Table de l'historique des parties terminées
+CREATE TABLE IF NOT EXISTS game_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT,
+  channel_id TEXT NOT NULL,
+  winner TEXT, -- 'wolves', 'village', 'lovers', 'draw'
+  player_count INTEGER DEFAULT 0,
+  duration_seconds INTEGER DEFAULT 0,
+  day_count INTEGER DEFAULT 0,
+  players_json TEXT, -- JSON array [{id, username, role, alive}]
+  started_at INTEGER,
+  ended_at INTEGER,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_history_guild ON game_history(guild_id);
+CREATE INDEX IF NOT EXISTS idx_history_ended ON game_history(ended_at);
+
 -- Table des statistiques joueur
 CREATE TABLE IF NOT EXISTS player_stats (
   player_id TEXT PRIMARY KEY,

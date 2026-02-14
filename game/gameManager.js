@@ -11,6 +11,8 @@ const TIMEOUTS = {
   LOBBY_AUTO_CLEANUP: 60 * 60 * 1000, // 1h
   NIGHT_AFK: 90_000,                   // 90s
   HUNTER_SHOOT: 60_000,                // 60s
+  DAY_DELIBERATION: 180_000,           // 3 min de discussion
+  DAY_VOTE: 120_000,                   // 2 min pour voter
   RECENT_COMMAND_WINDOW: 5_000,        // 5s
   RECENT_COMMAND_CLEANUP: 30_000,      // 30s
   RECENT_COMMAND_INTERVAL: 60_000      // 60s interval de nettoyage
@@ -94,6 +96,7 @@ class GameManager {
   // Nettoyer tous les timers d'une partie (AFK nuit, chasseur)
   clearGameTimers(game) {
     this.clearNightAfkTimeout(game);
+    this.clearDayTimeout(game);
     if (game._hunterTimer) {
       clearTimeout(game._hunterTimer);
       game._hunterTimer = null;
@@ -369,6 +372,7 @@ class GameManager {
     if (game._transitioning) return;
     if (game.phase !== PHASES.DAY) return;
     game._transitioning = true;
+    this.clearDayTimeout(game);
 
     try {
       // IMPORTANT: Snapshot votes BEFORE nextPhase clears them
@@ -467,6 +471,9 @@ class GameManager {
     game.endedAt = Date.now();
     this.clearGameTimers(game);
     this.logAction(game, `Victoire: ${victorDisplay}`);
+
+    // Archiver la partie dans l'historique
+    try { this.db.saveGameHistory(game, victor); } catch (e) { /* ignore */ }
 
     // Unmute tous les joueurs à la fin de la partie
     await this.updateVoicePerms(guild, game);
@@ -627,15 +634,19 @@ class GameManager {
         } else {
           game.subPhase = PHASES.DELIBERATION;
           await this.announcePhase(guild, game, t('phase.deliberation_announce'));
+          this.startDayTimeout(guild, game, 'deliberation');
         }
         break;
       case PHASES.VOTE_CAPITAINE:
         game.subPhase = PHASES.DELIBERATION;
         await this.announcePhase(guild, game, t('phase.deliberation_announce'));
+        this.startDayTimeout(guild, game, 'deliberation');
         break;
       case PHASES.DELIBERATION:
-        // Ici, on attendra un bouton du capitaine pour passer à la phase de vote
-        await this.announcePhase(guild, game, t('phase.captain_can_vote'));
+        // Passage en phase de vote
+        game.subPhase = PHASES.VOTE;
+        await this.announcePhase(guild, game, t('phase.vote_announce'));
+        this.startDayTimeout(guild, game, 'vote');
         break;
       case PHASES.VOTE:
       default:
@@ -723,6 +734,47 @@ class GameManager {
         logger.error('Hunter timeout error', { error: e.message });
       }
     }, HUNTER_DELAY);
+  }
+
+  // --- Day timeout ---
+  // Auto-ends deliberation or vote if players are AFK during the day
+  startDayTimeout(guild, game, type = 'deliberation') {
+    this.clearDayTimeout(game);
+    const delay = type === 'vote' ? TIMEOUTS.DAY_VOTE : TIMEOUTS.DAY_DELIBERATION;
+    const label = type === 'vote' ? 'vote' : 'deliberation';
+
+    game._dayTimer = setTimeout(async () => {
+      try {
+        if (game.phase !== PHASES.DAY) return;
+
+        const mainChannel = game.villageChannelId
+          ? await guild.channels.fetch(game.villageChannelId)
+          : await guild.channels.fetch(game.mainChannelId);
+
+        if (type === 'deliberation') {
+          // End of deliberation → move to vote phase
+          await this.sendLogged(mainChannel, t('game.afk_deliberation'), { type: 'afkTimeout' });
+          this.logAction(game, 'Timeout: fin de la délibération');
+          game.subPhase = PHASES.VOTE;
+          await this.announcePhase(guild, game, t('phase.vote_announce'));
+          this.startDayTimeout(guild, game, 'vote');
+        } else {
+          // End of vote → transition to night (even with 0 votes)
+          await this.sendLogged(mainChannel, t('game.afk_vote'), { type: 'afkTimeout' });
+          this.logAction(game, 'Timeout: fin du vote');
+          await this.transitionToNight(guild, game);
+        }
+      } catch (e) {
+        logger.error('Day timeout error', { error: e.message, type: label });
+      }
+    }, delay);
+  }
+
+  clearDayTimeout(game) {
+    if (game._dayTimer) {
+      clearTimeout(game._dayTimer);
+      game._dayTimer = null;
+    }
   }
 
   join(channelId, user) {
