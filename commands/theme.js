@@ -7,11 +7,11 @@ const { safeReply } = require("../utils/interaction");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("theme")
-    .setDescription(t('cmd.theme.desc'))
+    .setDescription(t('theme.desc'))
     .addStringOption(option =>
       option
         .setName("name")
-        .setDescription(t('cmd.theme.option_name'))
+        .setDescription(t('theme.option_name'))
         .setRequired(true)
         .addChoices(
           { name: "🐺 Classic", value: "classic" },
@@ -27,15 +27,15 @@ module.exports = {
 
     const success = setTheme(guildId, themeName);
     if (!success) {
-      return safeReply(interaction, { content: t('cmd.theme.invalid'), ephemeral: true });
+      return safeReply(interaction, { content: t('theme.invalid'), ephemeral: true });
     }
 
     const themes = listThemes();
     const selected = themes.find(th => th.key === themeName);
 
     const embed = new EmbedBuilder()
-      .setTitle(t('cmd.theme.title'))
-      .setDescription(t('cmd.theme.applied', { theme: `${selected.emoji} ${selected.name}` }))
+      .setTitle(t('theme.title'))
+      .setDescription(t('theme.applied', { theme: `${selected.emoji} ${selected.name}` }))
       .setColor(getColor(guildId, 'primary'))
       .addFields(
         themes.map(th => ({

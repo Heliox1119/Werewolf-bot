@@ -5,7 +5,7 @@
 
 Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion vocale automatique, audio d'ambiance et lobby interactif.
 
-![Version](https://img.shields.io/badge/version-2.4.0-blue)
+![Version](https://img.shields.io/badge/version-2.5.1-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
@@ -17,12 +17,12 @@ Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion
 
 ### 🎮 Gameplay
 - **Lobby interactif** — Boutons Rejoindre / Quitter / Démarrer avec aperçu des rôles en temps réel
-- **7 rôles** — Loup-Garou, Villageois, Voyante, Sorcière, Chasseur, Petite Fille, Cupidon
+- **10 rôles** — Loup-Garou, Villageois, Voyante, Sorcière, Chasseur, Petite Fille, Cupidon, Salvateur, Ancien, Idiot du Village
 - **Phases automatiques** — Alternance Nuit / Jour avec mute/unmute vocal automatique
 - **Système de votes** — Vote du village, élection du capitaine (vote ×2), égalité départagée
 - **Détection de victoire** — Village, Loups, Amoureux, Égalité
 - **Audio d'ambiance** — Sons de nuit, jour, mort et victoire dans le vocal
-- **Mode spectateur** — Les joueurs morts voient tous les salons en lecture seule
+- **Mode spectateur** — Les joueurs morts voient tous les salons en lecture seule, salon spectateur dédié
 
 ### ⚙️ Administration
 - **Configuration par commandes** — `/setup wizard` pour tout configurer
@@ -43,6 +43,7 @@ Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion
 - **i18n centralisé** — Singleton `I18n`, interpolation `{{variable}}`, fallback automatique
 - **Gestion d'erreurs robuste** — safeReply, graceful shutdown, zero crash en production
 - **191 tests automatisés** — 15 suites, 0 failures
+- **Thèmes d'embed** — 4 palettes de couleurs, commande `/theme`, 12 couleurs sémantiques
 
 ---
 
@@ -214,6 +215,7 @@ npm run clear-commands      # Réinitialiser les commandes Discord
 
 | Version | Highlights |
 |---------|-----------|
+| **v2.5.1** | Nouveaux rôles (Salvateur, Ancien, Idiot), mode spectateur, thèmes d'embed, correctifs |
 | **v2.4.0** | Système i18n centralisé FR/EN, commande `/lang`, 500+ clés traduites |
 | **v2.3.0** | Audit complet (47 fixes), mode spectateur, `/skip`, stats joueurs en DB |
 | **v2.2.1** | Hardening production (26 fixes), 191 tests, safeReply partout |

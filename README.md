@@ -5,7 +5,7 @@
 
 A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice management, ambient audio and interactive lobby.
 
-![Version](https://img.shields.io/badge/version-2.4.0-blue)
+![Version](https://img.shields.io/badge/version-2.5.1-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
@@ -17,12 +17,12 @@ A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice ma
 
 ### 🎮 Gameplay
 - **Interactive lobby** — Join / Leave / Start buttons with real-time role preview
-- **7 roles** — Werewolf, Villager, Seer, Witch, Hunter, Little Girl, Cupid
+- **10 roles** — Werewolf, Villager, Seer, Witch, Hunter, Little Girl, Cupid, Salvateur, Ancien, Idiot du Village
 - **Automatic phases** — Night / Day cycle with automatic voice mute/unmute
 - **Voting system** — Village vote, captain election (×2 vote), tie-breaking
 - **Victory detection** — Village, Wolves, Lovers, Draw
 - **Ambient audio** — Night, day, death and victory sounds in voice channel
-- **Spectator mode** — Dead players can see all channels in read-only
+- **Spectator mode** — Dead players can see all channels in read-only, dedicated spectator channel
 
 ### ⚙️ Administration
 - **Setup via commands** — `/setup wizard` for guided configuration
@@ -43,6 +43,7 @@ A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice ma
 - **Centralized i18n** — `I18n` singleton, `{{variable}}` interpolation, automatic fallback
 - **Robust error handling** — safeReply, graceful shutdown, zero crash in production
 - **191 automated tests** — 15 suites, 0 failures
+- **Embed themes** — 4 color palettes, `/theme` command, 12 semantic colors
 
 ---
 
@@ -214,6 +215,7 @@ npm run clear-commands      # Reset Discord commands
 
 | Version | Highlights |
 |---------|-----------|
+| **v2.5.1** | New roles (Salvateur, Ancien, Idiot), spectator mode, embed themes, bugfixes |
 | **v2.4.0** | Centralized i18n system FR/EN, `/lang` command, 500+ translated keys |
 | **v2.3.0** | Full audit (47 fixes), spectator mode, `/skip`, player stats in DB |
 | **v2.2.1** | Production hardening (26 fixes), 191 tests, safeReply everywhere |
