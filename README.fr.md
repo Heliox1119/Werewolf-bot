@@ -1,6 +1,7 @@
 # 🐺 Werewolf Discord Bot
 
-> **🇬🇧 [English](README.md)** | 🇫🇷 Français
+[![English](https://img.shields.io/badge/lang-English-blue)](README.md)
+[![Français](https://img.shields.io/badge/lang-Français-red)](README.fr.md)
 
 Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion vocale automatique, audio d'ambiance et lobby interactif.
 
