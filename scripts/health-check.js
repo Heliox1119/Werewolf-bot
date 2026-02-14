@@ -9,13 +9,10 @@ console.log('🔍 Werewolf Bot - Health Check\n');
 let issuesFound = 0;
 
 // Check 1: Environment variables
-console.log('✓ Checking .env file...');
-if (!fs.existsSync('.env')) {
-  console.log('  ❌ .env file not found');
-  issuesFound++;
-} else {
+console.log('✓ Checking environment...');
+const requiredVars = ['TOKEN', 'CLIENT_ID', 'GUILD_ID'];
+if (fs.existsSync('.env')) {
   const envContent = fs.readFileSync('.env', 'utf-8');
-  const requiredVars = ['TOKEN', 'CLIENT_ID', 'GUILD_ID'];
   requiredVars.forEach(varName => {
     if (!envContent.includes(varName)) {
       console.log(`  ❌ Missing ${varName} in .env`);
@@ -23,7 +20,16 @@ if (!fs.existsSync('.env')) {
     }
   });
   if (issuesFound === 0) {
-    console.log('  ✅ All environment variables present');
+    console.log('  ✅ All environment variables present (.env)');
+  }
+} else {
+  // In CI or Docker, env vars may be set directly
+  const missing = requiredVars.filter(v => !process.env[v]);
+  if (missing.length > 0) {
+    console.log('  ❌ .env file not found and missing env vars: ' + missing.join(', '));
+    issuesFound++;
+  } else {
+    console.log('  ✅ All environment variables present (env)');
   }
 }
 
