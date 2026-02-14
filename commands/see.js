@@ -4,6 +4,7 @@ const ROLES = require("../game/roles");
 const PHASES = require("../game/phases");
 const { isInGameCategory } = require("../utils/validators");
 const { safeReply } = require("../utils/interaction");
+const { t, translateRole } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -19,38 +20,38 @@ module.exports = {
   async execute(interaction) {
     // Vérification catégorie
     if (!await isInGameCategory(interaction)) {
-      await safeReply(interaction, { content: "❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.action_forbidden'), flags: MessageFlags.Ephemeral });
       return;
     }
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
-      await safeReply(interaction, { content: "❌ Aucune partie ici", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.no_game'), flags: MessageFlags.Ephemeral });
       return;
     }
     // Vérifier que c'est le channel de la voyante
     if (interaction.channelId !== game.seerChannelId) {
-      await safeReply(interaction, { content: "❌ Cette commande ne peut être utilisée que dans le channel de la voyante", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.only_seer_channel'), flags: MessageFlags.Ephemeral });
       return;
     }
 
     // Vérifier que c'est la nuit ET la sous-phase de la voyante
     if (game.phase !== PHASES.NIGHT) {
-      await safeReply(interaction, { content: "❌ La voyante ne peut utiliser son pouvoir que la nuit !", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.seer_night_only'), flags: MessageFlags.Ephemeral });
       return;
     }
     if (game.subPhase !== PHASES.VOYANTE) {
-      await safeReply(interaction, { content: "❌ Ce n'est pas le tour de la voyante", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.not_seer_turn'), flags: MessageFlags.Ephemeral });
       return;
     }
 
     // Vérifier que c'est la voyante vivante
     const player = game.players.find(p => p.id === interaction.user.id);
     if (!player || player.role !== ROLES.SEER) {
-      await safeReply(interaction, { content: "❌ Tu n'es pas la voyante", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.not_seer'), flags: MessageFlags.Ephemeral });
       return;
     }
     if (!player.alive) {
-      await safeReply(interaction, { content: "❌ Tu es morte, tu ne peux plus espionner", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.seer_dead'), flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -58,17 +59,17 @@ module.exports = {
     const targetPlayer = game.players.find(p => p.id === target.id);
 
     if (!targetPlayer) {
-      await safeReply(interaction, { content: "❌ Joueur non trouvé", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.player_not_found'), flags: MessageFlags.Ephemeral });
       return;
     }
 
     if (!targetPlayer.alive) {
-      await safeReply(interaction, { content: "❌ Ce joueur est déjà mort. Choisis un joueur en vie.", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.target_already_dead'), flags: MessageFlags.Ephemeral });
       return;
     }
 
     gameManager.clearNightAfkTimeout(game);
-    await safeReply(interaction, { content: `🔮 **${target.username}** est un **${targetPlayer.role}**`, flags: MessageFlags.Ephemeral });
+    await safeReply(interaction, { content: t('cmd.see.result', { name: target.username, role: translateRole(targetPlayer.role) }), flags: MessageFlags.Ephemeral });
     gameManager.logAction(game, `Voyante regarde ${target.username} (${targetPlayer.role})`);
     try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'see', interaction.user.id, target.id); } catch (e) { /* ignore */ }
 

@@ -4,6 +4,7 @@ const { sendTemporaryMessage } = require("../utils/commands");
 const { safeDefer } = require("../utils/interaction");
 const { isAdmin, getCategoryId } = require("../utils/validators");
 const { game: logger } = require("../utils/logger");
+const { t } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -16,7 +17,7 @@ module.exports = {
     
     // Vérifier les permissions admin
     if (!isAdmin(interaction)) {
-      await interaction.editReply({ content: "❌ Tu dois être administrateur", flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: t('error.admin_required'), flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -105,15 +106,13 @@ module.exports = {
       // Envoyer message temporaire avec nettoyage auto
       await sendTemporaryMessage(
         interaction,
-        `🧹 **Nettoyage terminé !**\n\n` +
-        `✅ ${deletedCount} channel(s) supprimé(s)\n` +
-        `✅ ${gamesCount} partie(s) supprimée(s) de la mémoire`,
+        t('cleanup.success', { channels: deletedCount, games: gamesCount }),
         2000
       );
 
     } catch (error) {
       logger.error("❌ Erreur clear:", { error: error.message });
-      await interaction.editReply("❌ Erreur lors du nettoyage");
+      await interaction.editReply(t('error.cleanup_error'));
     }
   }
 };

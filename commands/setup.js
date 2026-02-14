@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
 const logger = require('../utils/logger').app;
+const { t } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -108,7 +109,7 @@ module.exports = {
           break;
         default:
           await interaction.reply({
-            content: '❌ Sous-commande inconnue',
+            content: t('error.unknown_subcommand'),
             ephemeral: true
           });
       }
@@ -125,7 +126,7 @@ module.exports = {
       });
 
       const reply = {
-        content: '❌ Erreur lors de l\'exécution de la commande setup',
+        content: t('error.setup_execution_error'),
         ephemeral: true
       };
 
@@ -145,7 +146,7 @@ module.exports = {
 
     if (!category || category.type !== ChannelType.GuildCategory) {
       await interaction.reply({
-        content: '❌ Vous devez spécifier une catégorie valide',
+        content: t('error.invalid_category'),
         ephemeral: true
       });
       return;
@@ -155,11 +156,11 @@ module.exports = {
 
     if (success) {
       const embed = new EmbedBuilder()
-        .setTitle('✅ Catégorie configurée')
-        .setDescription(`La catégorie **${category.name}** a été définie pour les channels de jeu.`)
+        .setTitle(t('cmd.setup.category_title'))
+        .setDescription(t('cmd.setup.category_desc', { name: category.name }))
         .addFields(
-          { name: '📋 ID', value: category.id, inline: true },
-          { name: '📍 Position', value: `Position ${category.position}`, inline: true }
+          { name: t('cmd.setup.field_id'), value: category.id, inline: true },
+          { name: t('cmd.setup.field_position'), value: t('cmd.setup.position_value', { position: category.position }), inline: true }
         )
         .setColor(0x2ECC71)
         .setTimestamp();
@@ -169,13 +170,13 @@ module.exports = {
       // Vérifier si le setup est complet
       if (config.isSetupComplete()) {
         await interaction.followUp({
-          content: '🎉 **Setup complet !** Le bot est maintenant configuré et prêt à l\'emploi.',
+          content: t('cmd.setup.setup_complete'),
           ephemeral: true
         });
       }
     } else {
       await interaction.reply({
-        content: '❌ Erreur lors de la configuration de la catégorie',
+        content: t('error.category_config_failed'),
         ephemeral: true
       });
     }
@@ -191,7 +192,7 @@ module.exports = {
       // Désactiver le webhook
       config.setMonitoringWebhookUrl(null);
       await interaction.reply({
-        content: '✅ Webhook désactivé',
+        content: t('cmd.setup.webhook_disabled'),
         ephemeral: true
       });
       return;
@@ -200,7 +201,7 @@ module.exports = {
     // Vérifier que l'URL est valide
     if (!url.startsWith('https://discord.com/api/webhooks/')) {
       await interaction.reply({
-        content: '❌ URL de webhook invalide. Elle doit commencer par `https://discord.com/api/webhooks/`',
+        content: t('error.webhook_invalid'),
         ephemeral: true
       });
       return;
@@ -210,11 +211,11 @@ module.exports = {
 
     if (success) {
       const embed = new EmbedBuilder()
-        .setTitle('✅ Webhook configuré')
-        .setDescription('Le webhook de monitoring a été configuré avec succès.')
+        .setTitle(t('cmd.setup.webhook_title'))
+        .setDescription(t('cmd.setup.webhook_desc'))
         .addFields(
-          { name: '🔗 URL', value: url.substring(0, 50) + '...', inline: false },
-          { name: '📡 Statut', value: 'Les alertes seront envoyées sur ce webhook', inline: false }
+          { name: t('cmd.setup.field_url'), value: url.substring(0, 50) + '...', inline: false },
+          { name: t('cmd.setup.field_status'), value: t('cmd.setup.webhook_status_value'), inline: false }
         )
         .setColor(0x2ECC71)
         .setTimestamp();
@@ -227,8 +228,8 @@ module.exports = {
         const alerts = AlertSystem.getInstance();
         alerts.setWebhookUrl(url);
         await alerts.sendAlert(
-          'Configuration réussie',
-          'Le webhook de monitoring a été configuré avec succès.',
+          t('cmd.setup.webhook_test_title'),
+          t('cmd.setup.webhook_test_desc'),
           'info'
         );
       } catch (error) {
@@ -236,7 +237,7 @@ module.exports = {
       }
     } else {
       await interaction.reply({
-        content: '❌ Erreur lors de la configuration du webhook',
+        content: t('error.webhook_config_failed'),
         ephemeral: true
       });
     }
@@ -251,7 +252,7 @@ module.exports = {
 
     if (!minPlayers && !maxPlayers) {
       await interaction.reply({
-        content: '❌ Vous devez spécifier au moins un paramètre',
+        content: t('error.specify_parameter'),
         ephemeral: true
       });
       return;
@@ -267,7 +268,7 @@ module.exports = {
     // Validation
     if (newRules.minPlayers > newRules.maxPlayers) {
       await interaction.reply({
-        content: '❌ Le minimum de joueurs ne peut pas être supérieur au maximum',
+        content: t('error.min_greater_than_max'),
         ephemeral: true
       });
       return;
@@ -277,11 +278,11 @@ module.exports = {
 
     if (success) {
       const embed = new EmbedBuilder()
-        .setTitle('✅ Règles configurées')
-        .setDescription('Les règles par défaut des parties ont été mises à jour.')
+        .setTitle(t('cmd.setup.rules_title'))
+        .setDescription(t('cmd.setup.rules_desc'))
         .addFields(
-          { name: '👥 Minimum', value: newRules.minPlayers.toString(), inline: true },
-          { name: '👥 Maximum', value: newRules.maxPlayers.toString(), inline: true }
+          { name: t('cmd.setup.field_min'), value: newRules.minPlayers.toString(), inline: true },
+          { name: t('cmd.setup.field_max'), value: newRules.maxPlayers.toString(), inline: true }
         )
         .setColor(0x2ECC71)
         .setTimestamp();
@@ -289,7 +290,7 @@ module.exports = {
       await interaction.reply({ embeds: [embed], ephemeral: true });
     } else {
       await interaction.reply({
-        content: '❌ Erreur lors de la configuration des règles',
+        content: t('error.rules_config_failed'),
         ephemeral: true
       });
     }
@@ -304,7 +305,7 @@ module.exports = {
 
     if (interval === null && alertsEnabled === null) {
       await interaction.reply({
-        content: '❌ Vous devez spécifier au moins un paramètre',
+        content: t('error.specify_parameter'),
         ephemeral: true
       });
       return;
@@ -315,7 +316,7 @@ module.exports = {
     if (interval !== null) {
       const intervalMs = interval * 1000;
       config.setMetricsInterval(intervalMs);
-      changes.push(`• Intervalle: ${interval}s`);
+      changes.push(t('cmd.setup.interval_change', { interval }));
 
       // Redémarrer la collecte avec le nouvel intervalle
       try {
@@ -329,7 +330,7 @@ module.exports = {
 
     if (alertsEnabled !== null) {
       config.setMonitoringAlertsEnabled(alertsEnabled);
-      changes.push(`• Alertes: ${alertsEnabled ? 'Activées' : 'Désactivées'}`);
+      changes.push(alertsEnabled ? t('cmd.setup.alerts_enabled') : t('cmd.setup.alerts_disabled'));
 
       // Mettre à jour le système d'alertes
       try {
@@ -342,10 +343,10 @@ module.exports = {
     }
 
     const embed = new EmbedBuilder()
-      .setTitle('✅ Monitoring configuré')
-      .setDescription('Les paramètres de monitoring ont été mis à jour.')
+      .setTitle(t('cmd.setup.monitoring_title'))
+      .setDescription(t('cmd.setup.monitoring_desc'))
       .addFields({
-        name: '🔧 Changements',
+        name: t('cmd.setup.field_changes'),
         value: changes.join('\n'),
         inline: false
       })
@@ -363,11 +364,11 @@ module.exports = {
     const setupComplete = summary.setupComplete;
 
     const embed = new EmbedBuilder()
-      .setTitle('⚙️ Configuration du bot')
+      .setTitle(t('cmd.setup.status_title'))
       .setDescription(
         setupComplete
-          ? '✅ **Setup complet** - Le bot est configuré et prêt'
-          : '⚠️ **Setup incomplet** - Configuration requise'
+          ? t('cmd.setup.status_complete')
+          : t('cmd.setup.status_incomplete')
       )
       .setColor(setupComplete ? 0x2ECC71 : 0xF39C12)
       .setTimestamp();
@@ -376,24 +377,24 @@ module.exports = {
     const categoryId = summary.discord.categoryId;
     const categoryInfo = categoryId
       ? `<#${categoryId}> (${categoryId})`
-      : '❌ Non configuré - Utilisez `/setup category`';
+      : t('cmd.setup.category_not_set');
 
     embed.addFields({
-      name: '📡 Discord',
+      name: t('cmd.setup.field_discord'),
       value: [
-        `**Catégorie:** ${categoryInfo}`,
-        `**Emojis:** ${summary.discord.emojis} configurés`
+        t('cmd.setup.status_category', { info: categoryInfo }),
+        t('cmd.setup.status_emojis', { count: summary.discord.emojis })
       ].join('\n'),
       inline: false
     });
 
     // Monitoring
     embed.addFields({
-      name: '📊 Monitoring',
+      name: t('cmd.setup.field_monitoring'),
       value: [
-        `**Webhook:** ${summary.monitoring.webhookUrl}`,
-        `**Alertes:** ${summary.monitoring.alertsEnabled ? '✅ Activées' : '❌ Désactivées'}`,
-        `**Intervalle:** ${summary.monitoring.metricsInterval}`
+        t('cmd.setup.status_webhook', { url: summary.monitoring.webhookUrl }),
+        t('cmd.setup.status_alerts', { status: summary.monitoring.alertsEnabled ? t('cmd.setup.status_alerts_on') : t('cmd.setup.status_alerts_off') }),
+        t('cmd.setup.status_interval', { interval: summary.monitoring.metricsInterval })
       ].join('\n'),
       inline: false
     });
@@ -401,19 +402,19 @@ module.exports = {
     // Jeux
     const rules = summary.game.defaultRules;
     embed.addFields({
-      name: '🎮 Parties',
+      name: t('cmd.setup.field_games'),
       value: [
-        `**Joueurs:** ${rules.minPlayers}-${rules.maxPlayers}`,
-        `**Rôles activés:** ${summary.game.enabledRoles}`,
-        `**Timeout lobby:** ${summary.game.lobbyTimeout}`
+        t('cmd.setup.status_players', { range: `${rules.minPlayers}-${rules.maxPlayers}` }),
+        t('cmd.setup.status_roles', { roles: summary.game.enabledRoles }),
+        t('cmd.setup.status_lobby_timeout', { timeout: summary.game.lobbyTimeout })
       ].join('\n'),
       inline: false
     });
 
     // Statistiques
     embed.addFields({
-      name: '📈 Statistiques',
-      value: `**Clés totales:** ${summary.totalKeys}`,
+      name: t('cmd.setup.field_stats'),
+      value: t('cmd.setup.status_total_keys', { count: summary.totalKeys }),
       inline: false
     });
 
@@ -421,12 +422,12 @@ module.exports = {
     if (!setupComplete) {
       const missing = config.getMissingSetupKeys();
       embed.addFields({
-        name: '⚠️ Configuration requise',
+        name: t('cmd.setup.missing_config'),
         value: missing.map(m => `• **${m.description}** (\`${m.key}\`)`).join('\n'),
         inline: false
       });
 
-      embed.setFooter({ text: 'Utilisez /setup wizard pour une configuration guidée' });
+      embed.setFooter({ text: t('cmd.setup.status_footer') });
     }
 
     await interaction.reply({ embeds: [embed], ephemeral: true });
@@ -439,18 +440,15 @@ module.exports = {
     // Vérifier si déjà configuré
     if (config.isSetupComplete()) {
       await interaction.reply({
-        content: '✅ Le bot est déjà configuré ! Utilisez `/setup status` pour voir la configuration.',
+        content: t('cmd.setup.already_configured'),
         ephemeral: true
       });
       return;
     }
 
     const embed = new EmbedBuilder()
-      .setTitle('🧙 Assistant de configuration')
-      .setDescription(
-        'Bienvenue dans l\'assistant de configuration du bot Werewolf !\n\n' +
-        'Pour configurer le bot, suivez ces étapes :'
-      )
+      .setTitle(t('cmd.setup.wizard_title'))
+      .setDescription(t('cmd.setup.wizard_desc'))
       .setColor(0x3498DB)
       .setTimestamp();
 
@@ -460,11 +458,11 @@ module.exports = {
     // Catégorie (requis)
     if (!config.getCategoryId()) {
       steps.push({
-        name: '1️⃣ Catégorie Discord (Requis)',
+        name: t('cmd.setup.wizard_step1_title'),
         value: [
-          '**Action :** Créer une catégorie sur votre serveur',
-          '**Commande :** `/setup category`',
-          '**Info :** Les channels de jeu seront créés dans cette catégorie'
+          t('cmd.setup.wizard_step1_action'),
+          t('cmd.setup.wizard_step1_cmd'),
+          t('cmd.setup.wizard_step1_info')
         ].join('\n'),
         inline: false
       });
@@ -473,11 +471,11 @@ module.exports = {
     // Webhook (optionnel)
     if (!config.getMonitoringWebhookUrl()) {
       steps.push({
-        name: '2️⃣ Webhook monitoring (Optionnel)',
+        name: t('cmd.setup.wizard_step2_title'),
         value: [
-          '**Action :** Créer un webhook dans un salon (ex: #bot-logs)',
-          '**Commande :** `/setup webhook url:<webhook_url>`',
-          '**Info :** Recevez des alertes automatiques sur les problèmes du bot'
+          t('cmd.setup.wizard_step2_action'),
+          t('cmd.setup.wizard_step2_cmd'),
+          t('cmd.setup.wizard_step2_info')
         ].join('\n'),
         inline: false
       });
@@ -485,11 +483,11 @@ module.exports = {
 
     // Règles (optionnel)
     steps.push({
-      name: '3️⃣ Règles par défaut (Optionnel)',
+      name: t('cmd.setup.wizard_step3_title'),
       value: [
-        '**Commande :** `/setup rules min_players:5 max_players:10`',
-        '**Info :** Définir les règles par défaut des parties',
-        `**Actuel :** ${config.getDefaultGameRules().minPlayers}-${config.getDefaultGameRules().maxPlayers} joueurs`
+        t('cmd.setup.wizard_step3_cmd'),
+        t('cmd.setup.wizard_step3_info'),
+        t('cmd.setup.wizard_step3_current', { range: `${config.getDefaultGameRules().minPlayers}-${config.getDefaultGameRules().maxPlayers}` })
       ].join('\n'),
       inline: false
     });
@@ -500,8 +498,8 @@ module.exports = {
 
     // Instructions finales
     embed.addFields({
-      name: '✅ Vérification',
-      value: 'Utilisez `/setup status` pour vérifier votre configuration',
+      name: t('cmd.setup.wizard_verify_title'),
+      value: t('cmd.setup.wizard_verify_value'),
       inline: false
     });
 

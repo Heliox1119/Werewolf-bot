@@ -6,6 +6,7 @@ const path = require("path");
 const gameManager = require("./game/gameManager");
 const { app: logger, discord: discordLogger, interaction: interactionLogger } = require("./utils/logger");
 const { safeEditReply } = require("./utils/interaction");
+const { t } = require('./utils/i18n');
 
 // Validation des variables d'environnement requises
 // NOTE: Ce bot est conçu pour un seul serveur (mono-guild).
@@ -65,6 +66,10 @@ client.once("clientReady", async () => {
     
     const config = ConfigManager.getInstance();
     logger.success('Configuration system initialized');
+
+    // Initialiser le système i18n
+    const i18n = require('./utils/i18n');
+    i18n.initialize(db.db);
     
     // Vérifier si le setup est complet
     if (!config.isSetupComplete()) {
@@ -256,7 +261,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 client.on("interactionCreate", async interaction => {
   // Ignorer les interactions en DM (toutes les commandes nécessitent un serveur)
   if (!interaction.guild) {
-    try { await interaction.reply({ content: "❌ Ce bot ne fonctionne que dans un serveur.", ephemeral: true }); } catch (e) { /* ignore */ }
+    try { await interaction.reply({ content: t('error.bot_only_in_server'), ephemeral: true }); } catch (e) { /* ignore */ }
     return;
   }
 
@@ -357,7 +362,7 @@ client.on("interactionCreate", async interaction => {
         } catch {}
         
         try {
-          await interaction.reply({ content: "Erreur interne 😵", flags: MessageFlags.Ephemeral });
+          await interaction.reply({ content: t('error.internal'), flags: MessageFlags.Ephemeral });
         } catch (e) {
           // Interaction déjà traitée
         }
@@ -400,12 +405,12 @@ client.on("interactionCreate", async interaction => {
       const isAdmin = interaction.member.permissions.has('Administrator');
       const isHost = game && game.lobbyHostId === interaction.user.id;
       if (!isAdmin && !isHost) {
-        await safeEditReply(interaction, { content: "❌ Admin ou hote requis", flags: MessageFlags.Ephemeral });
+        await safeEditReply(interaction, { content: t('error.admin_or_host_required'), flags: MessageFlags.Ephemeral });
         return;
       }
 
       if (!game) {
-        await safeEditReply(interaction, { content: "❌ Aucune partie a nettoyer", flags: MessageFlags.Ephemeral });
+        await safeEditReply(interaction, { content: t('error.no_game_to_cleanup'), flags: MessageFlags.Ephemeral });
         return;
       }
 
@@ -415,7 +420,7 @@ client.on("interactionCreate", async interaction => {
       const CATEGORY_ID = config.getCategoryId();
       
       if (!CATEGORY_ID) {
-        await safeEditReply(interaction, { content: "❌ Bot non configuré. Utilisez /setup category", flags: MessageFlags.Ephemeral });
+        await safeEditReply(interaction, { content: t('error.bot_not_configured'), flags: MessageFlags.Ephemeral });
         return;
       }
 
@@ -424,7 +429,7 @@ client.on("interactionCreate", async interaction => {
         try { gameManager.db.deleteGame(game.mainChannelId); } catch (e) { /* ignore */ }
         gameManager.games.delete(game.mainChannelId);
         gameManager.saveState();
-        await safeEditReply(interaction, { content: `✅ Partie nettoyee (${deletedCount} channels)` , flags: MessageFlags.Ephemeral });
+        await safeEditReply(interaction, { content: t('cleanup.button_success', { n: deletedCount }), flags: MessageFlags.Ephemeral });
         return;
       }
 
@@ -439,7 +444,7 @@ client.on("interactionCreate", async interaction => {
         disableVoiceMute: game.disableVoiceMute || false
       });
       if (!ok) {
-        await safeEditReply(interaction, { content: "❌ Impossible de relancer la partie", flags: MessageFlags.Ephemeral });
+        await safeEditReply(interaction, { content: t('error.restart_impossible'), flags: MessageFlags.Ephemeral });
         return;
       }
 
@@ -457,7 +462,7 @@ client.on("interactionCreate", async interaction => {
       if (!setupSuccess) {
         try { gameManager.db.deleteGame(game.mainChannelId); } catch (e) { /* ignore */ }
         gameManager.games.delete(game.mainChannelId);
-        await safeEditReply(interaction, { content: "❌ Erreur lors de la creation des channels", flags: MessageFlags.Ephemeral });
+        await safeEditReply(interaction, { content: t('error.channel_creation_button_failed'), flags: MessageFlags.Ephemeral });
         return;
       }
 
@@ -479,29 +484,29 @@ client.on("interactionCreate", async interaction => {
 
       gameManager.join(game.mainChannelId, interaction.user);
 
-      await safeEditReply(interaction, { content: "✅ Partie relancee", flags: MessageFlags.Ephemeral });
+      await safeEditReply(interaction, { content: t('cleanup.restart_success'), flags: MessageFlags.Ephemeral });
       return;
     }
 
     if (buttonType === "lobby_join") {
       const game = gameManager.games.get(channelId);
       if (!game) {
-        await safeEditReply(interaction, { content: "❌ Aucune partie trouvée" });
+        await safeEditReply(interaction, { content: t('error.no_game_found_button') });
         return;
       }
 
       const alreadyJoined = game.players.some(p => p.id === interaction.user.id);
       if (alreadyJoined) {
-        await safeEditReply(interaction, { content: "❌ Tu as déjà rejoint la partie" });
+        await safeEditReply(interaction, { content: t('error.already_joined') });
         return;
       }
 
       const joined = gameManager.join(channelId, interaction.user);
       if (joined) {
-        await safeEditReply(interaction, { content: `✅ ${interaction.user.username} rejoint la partie !` });
+        await safeEditReply(interaction, { content: t('lobby.join_success_button', { name: interaction.user.username }) });
         await updateLobbyEmbed(interaction.guild, channelId);
       } else {
-        await safeEditReply(interaction, { content: "❌ Impossible de rejoindre (la partie a peut-être déjà commencé)" });
+        await safeEditReply(interaction, { content: t('error.cannot_join') });
       }
       return;
     }
@@ -509,13 +514,13 @@ client.on("interactionCreate", async interaction => {
     if (buttonType === "lobby_leave") {
       const game = gameManager.games.get(channelId);
       if (!game) {
-        await safeEditReply(interaction, { content: "❌ Aucune partie trouvée" });
+        await safeEditReply(interaction, { content: t('error.no_game_found_button') });
         return;
       }
 
       const playerIdx = game.players.findIndex(p => p.id === interaction.user.id);
       if (playerIdx === -1) {
-        await safeEditReply(interaction, { content: "❌ Tu n'es pas dans cette partie" });
+        await safeEditReply(interaction, { content: t('error.not_in_game_button') });
         return;
       }
 
@@ -531,14 +536,14 @@ client.on("interactionCreate", async interaction => {
           const newHost = game.players[0];
           game.lobbyHostId = newHost.id;
           await safeEditReply(interaction, { 
-            content: `✅ ${interaction.user.username} a quitté la partie\n🎭 ${newHost.username} est le nouveau host` 
+            content: t('lobby.leave_host_transfer', { name: interaction.user.username, newHost: newHost.username }) 
           });
           await updateLobbyEmbed(interaction.guild, channelId);
           return;
         } 
         // Sinon, la partie est vide → nettoyer automatiquement
         else {
-          await safeEditReply(interaction, { content: `✅ ${interaction.user.username} a quitté la partie\n🧹 Nettoyage automatique...` });
+          await safeEditReply(interaction, { content: t('lobby.leave_auto_cleanup', { name: interaction.user.username }) });
 
           try {
             // Nettoyer les channels (même logique que /end)
@@ -555,7 +560,7 @@ client.on("interactionCreate", async interaction => {
             try { await gameManager.saveState(); } catch (e) { /* best effort */ }
 
             // D'abord envoyer le message de résultat
-            const reply = await safeEditReply(interaction, `🐺 Partie terminée automatiquement ! ${deleted} channel(s) supprimé(s).`);
+            const reply = await safeEditReply(interaction, t('lobby.auto_ended', { n: deleted }));
 
             // Puis nettoyer les anciens messages du bot (en excluant celui qu'on vient de créer)
             if (reply) {
@@ -579,14 +584,14 @@ client.on("interactionCreate", async interaction => {
             }
           } catch (err) {
             logger.error("❌ Erreur nettoyage automatique lobby_leave:", err);
-            await safeEditReply(interaction, "❌ Erreur lors du nettoyage automatique");
+            await safeEditReply(interaction, t('error.cleanup_auto_error'));
           }
           return;
         }
       }
 
       // Joueur normal qui quitte
-      await safeEditReply(interaction, { content: `✅ ${interaction.user.username} a quitté la partie` });
+      await safeEditReply(interaction, { content: t('lobby.leave_success', { name: interaction.user.username }) });
       await updateLobbyEmbed(interaction.guild, channelId);
       return;
     }
@@ -594,17 +599,17 @@ client.on("interactionCreate", async interaction => {
     if (buttonType === "lobby_start") {
       const game = gameManager.games.get(channelId);
       if (!game) {
-        await safeEditReply(interaction, { content: "❌ Aucune partie trouvée" });
+        await safeEditReply(interaction, { content: t('error.no_game_found_button') });
         return;
       }
 
       if (interaction.user.id !== game.lobbyHostId) {
-        await safeEditReply(interaction, { content: "❌ Seul le host peut démarrer la partie" });
+        await safeEditReply(interaction, { content: t('error.only_host_can_start') });
         return;
       }
 
       if (game.players.length < (game.rules?.minPlayers || 5)) {
-        await safeEditReply(interaction, { content: `❌ Minimum ${game.rules?.minPlayers || 5} joueurs requis (actuels: ${game.players.length})` });
+        await safeEditReply(interaction, { content: t('error.min_players_required', { min: game.rules?.minPlayers || 5, count: game.players.length }) });
         return;
       }
 
@@ -612,20 +617,20 @@ client.on("interactionCreate", async interaction => {
         // Démarrer le jeu avec les rôles par défaut
         const startedGame = gameManager.start(channelId);
         if (!startedGame) {
-          await safeEditReply(interaction, '❌ Impossible de démarrer la partie.');
+          await safeEditReply(interaction, t('error.cannot_start'));
           return;
         }
 
         const success = await gameManager.postStartGame(interaction.guild, startedGame, interaction.client, interaction);
         if (!success) {
-          await safeEditReply(interaction, "❌ **Erreur lors de la création des permissions !**");
+          await safeEditReply(interaction, t('error.permissions_creation_failed'));
           return;
         }
 
-        await safeEditReply(interaction, "🌙 **La partie a démarré !** Les rôles ont été envoyés en DM.");
+        await safeEditReply(interaction, t('game.started_button'));
       } catch (err) {
         logger.error("❌ Erreur démarrage depuis lobby:", err);
-        await safeEditReply(interaction, "❌ Erreur lors du démarrage de la partie");
+        await safeEditReply(interaction, t('error.start_error'));
       }
       return;
     }

@@ -3,6 +3,7 @@ const gameManager = require("../game/gameManager");
 const { sendTemporaryMessage } = require("../utils/commands");
 const { safeDefer } = require("../utils/interaction");
 const { commands: logger } = require("../utils/logger");
+const { t, translateRole } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -42,14 +43,12 @@ module.exports = {
         activeGames: allGames 
       });
       
-      let message = "❌ **Aucune partie dans ce channel**\n\n";
+      let message = t('error.no_game_in_channel') + "\n\n";
       
       if (allGames.length > 0) {
-        message += `⚠️ Il y a ${allGames.length} partie(s) active(s) dans d'autres channels.\n`;
-        message += `Utilise \`/debug-games\` pour voir où elles sont.\n\n`;
-        message += `💡 Tu dois utiliser \`/end\` dans le channel où tu as créé la partie (avec \`/create\`).`;
+        message += t('cleanup.end_other_hint', { n: allGames.length });
       } else {
-        message += "💡 Utilise `/create` pour créer une nouvelle partie.";
+        message += t('cleanup.end_no_games');
       }
       
       // Try to reply, but don't fail if we can't
@@ -69,7 +68,7 @@ module.exports = {
     if (!isAdmin && !isHost) {
       if (deferSuccess) {
         try {
-          await interaction.editReply({ content: "❌ Seul l'hôte de la partie ou un admin peut terminer la partie.", flags: MessageFlags.Ephemeral });
+          await interaction.editReply({ content: t('error.host_or_admin_only'), flags: MessageFlags.Ephemeral });
         } catch (e) { /* ignore */ }
       }
       return;
@@ -111,7 +110,7 @@ module.exports = {
       try {
         await sendTemporaryMessage(
           interaction,
-          `🐺 Partie terminée ! ${deleted} channel(s) supprimé(s).`,
+          t('game.ended', { deleted: deleted }),
           2000
         );
       } catch (e) {

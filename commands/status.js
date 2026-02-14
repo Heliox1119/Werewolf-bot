@@ -2,6 +2,7 @@ const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const { isInGameCategory } = require("../utils/validators");
 const { safeReply } = require("../utils/interaction");
+const { t, translatePhase } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -11,31 +12,31 @@ module.exports = {
   async execute(interaction) {
     // Vérification catégorie
     if (!await isInGameCategory(interaction)) {
-      await safeReply(interaction, { content: "❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.action_forbidden'), flags: MessageFlags.Ephemeral });
       return;
     }
     const game = gameManager.getGameByChannelId(interaction.channelId);
-    if (!game) return safeReply(interaction, { content: "❌ Aucune partie ici", flags: MessageFlags.Ephemeral });
+    if (!game) return safeReply(interaction, { content: t('error.no_game'), flags: MessageFlags.Ephemeral });
     const alive = game.players.filter(p => p.alive);
     const dead = game.players.filter(p => !p.alive);
-    let message = `🎭 **État de la Partie**\n\n`;
-    message += `📍 **Phase**: ${game.phase}\n`;
-    message += `🧑 **Vivants**: ${alive.length}\n`;
-    message += `⚰️ **Morts**: ${dead.length}\n`;
+    let message = t('status.title') + `\n\n`;
+    message += t('status.phase', { phase: translatePhase(game.phase) }) + `\n`;
+    message += t('status.alive', { n: alive.length }) + `\n`;
+    message += t('status.dead', { n: dead.length }) + `\n`;
     if (game.captainId) {
       const cap = game.players.find(p => p.id === game.captainId);
-      if (cap) message += `\n👑 **Capitaine**: ${cap.username}\n`;
+      if (cap) message += `\n` + t('status.captain', { name: cap.username }) + `\n`;
     }
     message += `\n`;
     if (alive.length > 0) {
-      message += `**Vivants:**\n${alive.map(p => `  • ${p.username}`).join("\n")}\n\n`;
+      message += t('status.alive_list') + `\n${alive.map(p => `  • ${p.username}`).join("\n")}\n\n`;
     }
     if (dead.length > 0) {
-      message += `**Morts:**\n${dead.map(p => `  • ${p.username}`).join("\n")}`;
+      message += t('status.dead_list') + `\n${dead.map(p => `  • ${p.username}`).join("\n")}`;
     }
     const victory = gameManager.checkVictory(interaction.channelId);
     if (victory) {
-      message += `\n\n🏆 **${victory}** a gagné!`;
+      message += `\n\n` + t('status.victory', { name: victory });
     }
     await safeReply(interaction, { content: message });
   }

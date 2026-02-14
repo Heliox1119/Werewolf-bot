@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const gameManager = require("../game/gameManager");
+const { t } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -17,13 +18,13 @@ module.exports = {
 
   async execute(interaction) {
     if (!interaction.member.permissions.has('Administrator')) {
-      await interaction.reply({ content: "❌ Admin only", flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: t('error.admin_only'), flags: MessageFlags.Ephemeral });
       return;
     }
 
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
-      await interaction.reply({ content: "❌ Aucune partie ici", flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: t('error.no_game'), flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -52,7 +53,7 @@ module.exports = {
     } catch (e) { /* ignore */ }
 
     await interaction.reply({
-      content: `✅ ${count} joueur(s) fictif(s) ajouté(s) !\n\n👥 Total : ${game.players.length} joueur(s)`,
+      content: t('cmd.debug_fake_join.success', { count, total: game.players.length }),
       flags: MessageFlags.Ephemeral
     });
   }

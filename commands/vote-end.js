@@ -3,6 +3,8 @@ const gameManager = require("../game/gameManager");
 const { safeReply } = require("../utils/interaction");
 const { isInGameCategory } = require("../utils/validators");
 const { commands: logger } = require("../utils/logger");
+const { t } = require('../utils/i18n');
+const { t } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -12,28 +14,28 @@ module.exports = {
   async execute(interaction) {
     // Vérification catégorie
     if (!await isInGameCategory(interaction)) {
-      await safeReply(interaction, { content: "❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.action_forbidden'), flags: MessageFlags.Ephemeral });
       return;
     }
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
-      await safeReply(interaction, { content: "❌ Aucune partie en cours ici", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.no_game_running'), flags: MessageFlags.Ephemeral });
       return;
     }
 
     if (!game.startedAt) {
-      await safeReply(interaction, { content: "❌ La partie n'a pas encore commencé.", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.game_not_started'), flags: MessageFlags.Ephemeral });
       return;
     }
 
     const player = game.players.find(p => p.id === interaction.user.id);
     if (!player) {
-      await safeReply(interaction, { content: "❌ Tu n'es pas dans cette partie", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.player_not_in_game'), flags: MessageFlags.Ephemeral });
       return;
     }
 
     if (!player.alive) {
-      await safeReply(interaction, { content: "❌ Tu es mort, tu ne peux pas voter", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.dead_cannot_vote'), flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -44,7 +46,7 @@ module.exports = {
 
     // Vérifier si le joueur a déjà voté
     if (game.endVotes.has(interaction.user.id)) {
-      await safeReply(interaction, { content: "❌ Tu as déjà voté pour arrêter la partie", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.already_voted_end'), flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -77,8 +79,7 @@ module.exports = {
         const channel = await guild.channels.fetch(villageChannelId).catch(() => null);
         if (channel) {
           await channel.send(
-            `🗳️ **Vote d'arrêt adopté** (${currentVotes}/${alivePlayers.length})\n\n` +
-            `La majorité des joueurs a voté pour arrêter la partie. Fin de la partie !`
+            t('cmd.vote_end.adopted', { n: currentVotes, total: alivePlayers.length })
           );
         }
       } catch (e) { /* ignore */ }
@@ -99,12 +100,11 @@ module.exports = {
       logger.success('Game ended by vote', { channelId: game.mainChannelId, deletedChannels: deleted });
 
       await safeReply(interaction, {
-        content: `🗳️ **Partie arrêtée par vote !** (${currentVotes}/${alivePlayers.length})\n🗑️ ${deleted} channel(s) supprimé(s).`
+        content: t('cmd.vote_end.success', { n: currentVotes, total: alivePlayers.length, deleted })
       });
     } else {
       await safeReply(interaction, {
-        content: `🗳️ **${interaction.user.username}** vote pour arrêter la partie (**${currentVotes}/${votesNeeded}** votes nécessaires)\n\n` +
-          `💡 Les autres joueurs peuvent utiliser \`/vote-end\` pour voter aussi.`
+        content: t('cmd.vote_end.cast', { name: interaction.user.username, n: currentVotes, m: votesNeeded })
       });
     }
   }

@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { game: logger } = require('../utils/logger');
 const GameDatabase = require('../database/db');
+const { t, translateRole, translateRoleDesc, tips } = require('../utils/i18n');
 
 // Timeouts configurables (en ms)
 const TIMEOUTS = {
@@ -287,16 +288,14 @@ class GameManager {
         ? await guild.channels.fetch(game.villageChannelId)
         : await guild.channels.fetch(game.mainChannelId);
 
-      await this.sendLogged(mainChannel, `☀️ **LE JOUR SE LÈVE**\n\n` +
-        `Tous les micros sont réactivés. Le village discute et vote !\n` +
-        `Utilisez \`/vote @joueur\` pour voter pour éliminer quelqu'un.`, { type: 'transitionToDay' });
+      await this.sendLogged(mainChannel, t('game.day_begins'), { type: 'transitionToDay' });
 
       // Collecter les morts de la nuit pour vérifier le chasseur après
       const nightDeaths = [];
 
       if (game.nightVictim) {
         if (game.witchSave) {
-          await this.sendLogged(mainChannel, `✨ La victime des loups a été sauvée par la sorcière !`, { type: 'witchSave' });
+          await this.sendLogged(mainChannel, t('game.witch_saved'), { type: 'witchSave' });
           this.logAction(game, 'Sorciere sauve la victime des loups');
         } else {
           const victimPlayer = game.players.find(p => p.id === game.nightVictim);
@@ -304,12 +303,12 @@ class GameManager {
             if (game.voiceChannelId) {
               this.playAmbience(game.voiceChannelId, 'death.mp3');
             }
-            await this.sendLogged(mainChannel, `💀 **${victimPlayer.username}** s'est fait dévorer la nuit ! 🐺`, { type: 'nightVictim' });
+            await this.sendLogged(mainChannel, t('game.night_victim', { name: victimPlayer.username }), { type: 'nightVictim' });
             const collateral = this.kill(game.mainChannelId, game.nightVictim);
             nightDeaths.push(victimPlayer);
             this.logAction(game, `Mort la nuit: ${victimPlayer.username}`);
             for (const dead of collateral) {
-              await this.sendLogged(mainChannel, `💔 **${dead.username}** meurt de chagrin... (amoureux)`, { type: 'loverDeath' });
+              await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
               nightDeaths.push(dead);
               this.logAction(game, `Mort d'amour: ${dead.username}`);
             }
@@ -322,12 +321,12 @@ class GameManager {
       if (game.witchKillTarget) {
         const witchVictim = game.players.find(p => p.id === game.witchKillTarget);
         if (witchVictim && witchVictim.alive) {
-          await this.sendLogged(mainChannel, `💀 **${witchVictim.username}** a été empoisonné pendant la nuit ! 🧪`, { type: 'witchKill' });
+          await this.sendLogged(mainChannel, t('game.witch_kill', { name: witchVictim.username }), { type: 'witchKill' });
           const collateral = this.kill(game.mainChannelId, game.witchKillTarget);
           nightDeaths.push(witchVictim);
           this.logAction(game, `Empoisonné: ${witchVictim.username}`);
           for (const dead of collateral) {
-            await this.sendLogged(mainChannel, `💔 **${dead.username}** meurt de chagrin... (amoureux)`, { type: 'loverDeath' });
+            await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
             nightDeaths.push(dead);
             this.logAction(game, `Mort d'amour: ${dead.username}`);
           }
@@ -345,8 +344,7 @@ class GameManager {
       for (const dead of nightDeaths) {
         if (dead.role === ROLES.HUNTER) {
           game._hunterMustShoot = dead.id;
-          await this.sendLogged(mainChannel, `🏹 **${dead.username}** était le Chasseur ! Il doit tirer sur quelqu'un avec \`/shoot @joueur\` !`, { type: 'hunterDeath' });
-          // Lancer un timeout de 60s pour le chasseur
+          await this.sendLogged(mainChannel, t('game.hunter_death', { name: dead.username }), { type: 'hunterDeath' });
           this.startHunterTimeout(guild, game, dead.id);
           break;
         }
@@ -394,11 +392,11 @@ class GameManager {
             game._captainTiebreak = tied.map(([id]) => id);
             game.votes.clear();
             if (game.voteVoters) game.voteVoters.clear();
-            await this.sendLogged(mainChannel, `⚖️ **Égalité !** ${tiedNames} sont à égalité avec ${voteCount} vote(s).\nLe capitaine <@${game.captainId}> doit départager : \`/vote @joueur\` parmi les ex-aequo.`, { type: 'voteTie' });
+            await this.sendLogged(mainChannel, t('game.vote_tie_captain', { names: tiedNames, count: voteCount, captainId: game.captainId }), { type: 'voteTie' });
             this.logAction(game, `Égalité au vote — capitaine doit départager: ${tiedNames}`);
             return; // On NE passe PAS à la nuit
           } else {
-            await this.sendLogged(mainChannel, `⚖️ **Égalité !** ${tiedNames} sont à égalité avec ${voteCount} vote(s). Personne n'est éliminé.`, { type: 'voteTie' });
+            await this.sendLogged(mainChannel, t('game.vote_tie_no_captain', { names: tiedNames, count: voteCount }), { type: 'voteTie' });
             this.logAction(game, `Égalité au vote, pas d'élimination`);
           }
         } else {
@@ -407,19 +405,19 @@ class GameManager {
             if (game.voiceChannelId) {
               this.playAmbience(game.voiceChannelId, 'death.mp3');
             }
-            await this.sendLogged(mainChannel, `🔨 **${votedPlayer.username}** a été éliminé par le village ! (${voteCount} votes)`, { type: 'dayVoteResult' });
+            await this.sendLogged(mainChannel, t('game.vote_result', { name: votedPlayer.username, count: voteCount }), { type: 'dayVoteResult' });
             const collateral = this.kill(game.mainChannelId, votedId);
             this.logAction(game, `Vote du village: ${votedPlayer.username} elimine`);
 
             for (const dead of collateral) {
-              await this.sendLogged(mainChannel, `💔 **${dead.username}** meurt de chagrin... (amoureux)`, { type: 'loverDeath' });
+              await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
               this.logAction(game, `Mort d'amour: ${dead.username}`);
             }
 
             // Vérifier chasseur
             if (votedPlayer.role === ROLES.HUNTER) {
               game._hunterMustShoot = votedPlayer.id;
-              await this.sendLogged(mainChannel, `🏹 **${votedPlayer.username}** était le Chasseur ! Il doit tirer sur quelqu'un avec \`/shoot @joueur\` !`, { type: 'hunterDeath' });
+              await this.sendLogged(mainChannel, t('game.hunter_death', { name: votedPlayer.username }), { type: 'hunterDeath' });
               this.startHunterTimeout(guild, game, votedPlayer.id);
             }
           }
@@ -445,9 +443,7 @@ class GameManager {
         this.playAmbience(game.voiceChannelId, 'night_ambience.mp3');
       }
 
-      await this.sendLogged(mainChannel, `🌙 **LA NUIT TOMBE**\n\n` +
-        `Les micros se coupent pour tout le monde.\n` +
-        `Les loups choisissent leur victime avec \`/kill @joueur\``, { type: 'transitionToNight' });
+      await this.sendLogged(mainChannel, t('game.night_falls'), { type: 'transitionToNight' });
 
       // Lancer le timeout AFK pour les loups
       this.startNightAfkTimeout(guild, game);
@@ -463,7 +459,7 @@ class GameManager {
     if (victor === null) return;
 
     // Traduire le résultat pour l'affichage
-    const victorDisplay = { wolves: 'Loups-Garous 🐺', village: 'Village 🏡', lovers: 'Amoureux 💘', draw: 'Égalité 🤝' }[victor] || victor;
+    const victorDisplay = t(`game.victory_${victor}_display`) || victor;
 
     game.phase = PHASES.ENDED;
     game.endedAt = Date.now();
@@ -485,7 +481,7 @@ class GameManager {
       }
     }
 
-    await this.sendLogged(mainChannel, `\n🏆 **${victorDisplay}** a gagné la partie !`, { type: 'victory' });
+    await this.sendLogged(mainChannel, t('game.victory', { victor: victorDisplay }), { type: 'victory' });
 
     // Enregistrer dans le monitoring
     try {
@@ -534,33 +530,33 @@ class GameManager {
         : 'N/A';
 
       const players = game.players
-        .map(p => `${p.alive ? '✅' : '💀'} ${p.username} — ${p.role || 'Sans role'}`)
+        .map(p => `${p.alive ? '✅' : '💀'} ${p.username} — ${p.role ? translateRole(p.role) : t('summary.no_role')}`)
         .join('\n');
 
       const actions = (game.actionLog || [])
         .slice(-20)
         .map(a => `• ${a.text}`)
-        .join('\n') || 'Aucune action enregistree';
+        .join('\n') || t('summary.no_actions');
 
       const embed = new EmbedBuilder()
-        .setTitle('Recapitulatif de la partie')
+        .setTitle(t('summary.title'))
         .setColor(0xFFD166)
         .addFields(
-          { name: '🏆 Vainqueur', value: victor, inline: true },
-          { name: '⏱️ Duree', value: duration, inline: true },
-          { name: '👥 Joueurs', value: players.slice(0, 1024) || 'Aucun', inline: false },
-          { name: '📜 Actions', value: actions.slice(0, 1024), inline: false }
+          { name: t('summary.winner'), value: victor, inline: true },
+          { name: t('summary.duration'), value: duration, inline: true },
+          { name: t('summary.players'), value: players.slice(0, 1024) || t('summary.no_players'), inline: false },
+          { name: t('summary.actions'), value: actions.slice(0, 1024), inline: false }
         )
         .setTimestamp(new Date());
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`game_restart:${game.mainChannelId}`)
-          .setLabel('Relancer')
+          .setLabel(t('ui.btn.restart'))
           .setStyle(ButtonStyle.Success),
         new ButtonBuilder()
           .setCustomId(`game_cleanup:${game.mainChannelId}`)
-          .setLabel('Nettoyer')
+          .setLabel(t('ui.btn.cleanup'))
           .setStyle(ButtonStyle.Danger)
       );
 
@@ -581,16 +577,16 @@ class GameManager {
       let msg = '';
       let sound = '';
       if (victory === 'village') {
-        msg = '🎉 **VICTOIRE DES VILLAGEOIS !**\nTous les loups-garous ont été éliminés.';
+        msg = t('game.victory_village');
         sound = 'victory_villagers.mp3';
       } else if (victory === 'wolves') {
-        msg = '🐺 **VICTOIRE DES LOUPS-GAROUS !**\nLes loups sont en supériorité numérique.';
+        msg = t('game.victory_wolves');
         sound = 'victory_wolves.mp3';
       } else if (victory === 'lovers') {
-        msg = '💘 **VICTOIRE DES AMOUREUX !**\nLes amoureux sont les derniers survivants.';
+        msg = t('game.victory_lovers');
         sound = 'victory_villagers.mp3';
       } else if (victory === 'draw') {
-        msg = '🤝 **ÉGALITÉ !**\nPlus personne ne peut gagner.';
+        msg = t('game.victory_draw');
         sound = 'victory_villagers.mp3';
       }
       if (villageChannel) await this.sendLogged(villageChannel, msg, { type: 'victory' });
@@ -603,19 +599,19 @@ class GameManager {
     switch (game.subPhase) {
       case PHASES.CUPIDON:
         game.subPhase = PHASES.LOUPS;
-        await this.announcePhase(guild, game, "Les loups se réveillent...");
+        await this.announcePhase(guild, game, t('phase.wolves_wake'));
         break;
       case PHASES.LOUPS:
         game.subPhase = PHASES.SORCIERE;
-        await this.announcePhase(guild, game, "La sorcière se réveille...");
+        await this.announcePhase(guild, game, t('phase.witch_wakes'));
         break;
       case PHASES.SORCIERE:
         game.subPhase = PHASES.VOYANTE;
-        await this.announcePhase(guild, game, "La voyante se réveille...");
+        await this.announcePhase(guild, game, t('phase.seer_wakes'));
         break;
       case PHASES.VOYANTE:
         game.subPhase = PHASES.REVEIL;
-        await this.announcePhase(guild, game, "Le village se réveille...");
+        await this.announcePhase(guild, game, t('phase.village_wakes'));
         break;
       case PHASES.REVEIL:
         // Si premier jour et pas de capitaine, ou si le capitaine est mort, on refait un vote capitaine
@@ -625,24 +621,24 @@ class GameManager {
         if ((isFirstDay && !game.captainId) || captainDead) {
           game.captainId = null; // reset
           game.subPhase = PHASES.VOTE_CAPITAINE;
-          await this.announcePhase(guild, game, "Vote du capitaine ! Utilisez /captainvote puis /declarecaptain");
+          await this.announcePhase(guild, game, t('phase.captain_vote_announce'));
         } else {
           game.subPhase = PHASES.DELIBERATION;
-          await this.announcePhase(guild, game, "Délibération du village...");
+          await this.announcePhase(guild, game, t('phase.deliberation_announce'));
         }
         break;
       case PHASES.VOTE_CAPITAINE:
         game.subPhase = PHASES.DELIBERATION;
-        await this.announcePhase(guild, game, "Délibération du village...");
+        await this.announcePhase(guild, game, t('phase.deliberation_announce'));
         break;
       case PHASES.DELIBERATION:
         // Ici, on attendra un bouton du capitaine pour passer à la phase de vote
-        await this.announcePhase(guild, game, "Le capitaine peut lancer le vote avec le bouton 'Vote' !");
+        await this.announcePhase(guild, game, t('phase.captain_can_vote'));
         break;
       case PHASES.VOTE:
       default:
         game.subPhase = PHASES.LOUPS;
-        await this.announcePhase(guild, game, "La nuit tombe, les loups se réveillent...");
+        await this.announcePhase(guild, game, t('phase.night_wolves_wake'));
         break;
     }
     this.scheduleSave();
@@ -672,13 +668,13 @@ class GameManager {
         const currentSub = game.subPhase;
         if (currentSub === PHASES.LOUPS) {
           game.wolfVotes = null; // Reset wolf consensus on timeout
-          await this.sendLogged(mainChannel, `⏰ Les loups n'ont pas choisi de victime à temps. La nuit passe sans attaque.`, { type: 'afkTimeout' });
+          await this.sendLogged(mainChannel, t('game.afk_wolves'), { type: 'afkTimeout' });
           this.logAction(game, 'AFK timeout: loups');
         } else if (currentSub === PHASES.SORCIERE) {
-          await this.sendLogged(mainChannel, `⏰ La sorcière ne se réveille pas... La nuit continue.`, { type: 'afkTimeout' });
+          await this.sendLogged(mainChannel, t('game.afk_witch'), { type: 'afkTimeout' });
           this.logAction(game, 'AFK timeout: sorcière');
         } else if (currentSub === PHASES.VOYANTE) {
-          await this.sendLogged(mainChannel, `⏰ La voyante ne se réveille pas... La nuit continue.`, { type: 'afkTimeout' });
+          await this.sendLogged(mainChannel, t('game.afk_seer'), { type: 'afkTimeout' });
           this.logAction(game, 'AFK timeout: voyante');
         } else {
           return; // Pas de timeout pour les autres sous-phases
@@ -718,7 +714,7 @@ class GameManager {
         const mainChannel = game.villageChannelId
           ? await guild.channels.fetch(game.villageChannelId)
           : await guild.channels.fetch(game.mainChannelId);
-        await this.sendLogged(mainChannel, `⏰ Le Chasseur n'a pas tiré à temps. Son tir est perdu.`, { type: 'hunterTimeout' });
+        await this.sendLogged(mainChannel, t('game.hunter_timeout'), { type: 'hunterTimeout' });
         this.logAction(game, 'AFK timeout: chasseur');
         await this.announceVictoryIfAny(guild, game);
       } catch (e) {
@@ -840,23 +836,23 @@ class GameManager {
     };
 
     // 1. Permissions channels
-    await updateProgress('⏳ Configuration des permissions...');
+    await updateProgress(t('progress.permissions'));
     const setupSuccess = await this.updateChannelPermissions(guild, game);
     if (!setupSuccess) return false;
 
     // 2. Permissions vocales
-    await updateProgress('⏳ Configuration vocale...');
+    await updateProgress(t('progress.voice'));
     await this.updateVoicePerms(guild, game);
 
     // 3. Envoyer les rôles en DM
-    await updateProgress('⏳ Envoi des rôles en DM...');
+    await updateProgress(t('progress.dm'));
     for (const player of game.players) {
       if (typeof player.id !== 'string' || !/^\d+$/.test(player.id)) continue;
       try {
         const user = await client.users.fetch(player.id);
         const embed = new EmbedBuilder()
-          .setTitle(`Ton role : ${player.role}`)
-          .setDescription(getRoleDescription(player.role))
+          .setTitle(t('role.dm_title', { role: translateRole(player.role) }))
+          .setDescription(translateRoleDesc(player.role))
           .setColor(0xFF6B6B);
 
         const imageName = getRoleImageName(player.role);
@@ -875,58 +871,46 @@ class GameManager {
     }
 
     // 4. Messages dans les channels privés
-    await updateProgress('⏳ Configuration des channels privés...');
+    await updateProgress(t('progress.channels'));
     if (game.wolvesChannelId) {
       try {
         const wolvesChannel = await guild.channels.fetch(game.wolvesChannelId);
         const wolves = game.players.filter(p => p.role === ROLES.WEREWOLF);
-        await this.sendLogged(wolvesChannel, `🐺 **Bienvenue aux Loups-Garous !**\nVous êtes ${wolves.length} dans cette nuit.\nUtilisez \`/kill @joueur\` pour désigner votre victime.`, { type: 'wolvesWelcome' });
+        await this.sendLogged(wolvesChannel, t('welcome.wolves', { n: wolves.length }), { type: 'wolvesWelcome' });
       } catch (e) { logger.warn('Failed to send wolves welcome', { error: e.message }); }
     }
 
     if (game.seerChannelId) {
       try {
         const seerChannel = await guild.channels.fetch(game.seerChannelId);
-        await this.sendLogged(seerChannel, `🔮 **Bienvenue, Voyante !**\nUtilisez \`/see @joueur\` pour découvrir le rôle d'un joueur.`, { type: 'seerWelcome' });
+        await this.sendLogged(seerChannel, t('welcome.seer'), { type: 'seerWelcome' });
       } catch (e) { logger.warn('Failed to send seer welcome', { error: e.message }); }
     }
 
     if (game.witchChannelId) {
       try {
         const witchChannel = await guild.channels.fetch(game.witchChannelId);
-        await this.sendLogged(witchChannel, `🧪 **Bienvenue, Sorcière !**\nTu possèdes 2 potions : une de **vie** et une de **mort**.\nUtilise \`/potion type:Vie\` ou \`/potion type:Mort target:@joueur\`\nChaque nuit, tu verras ici qui a été attaqué par les loups.`, { type: 'witchWelcome' });
+        await this.sendLogged(witchChannel, t('welcome.witch'), { type: 'witchWelcome' });
       } catch (e) { logger.warn('Failed to send witch welcome', { error: e.message }); }
     }
 
     if (game.cupidChannelId) {
       try {
         const cupidChannel = await guild.channels.fetch(game.cupidChannelId);
-        await this.sendLogged(cupidChannel, `💘 **Bienvenue, Cupidon !**\nUtilise \`/love @a @b\` pour lier deux joueurs. Ils vivront et mourront ensemble.`, { type: 'cupidWelcome' });
+        await this.sendLogged(cupidChannel, t('welcome.cupid'), { type: 'cupidWelcome' });
       } catch (e) { logger.warn('Failed to send cupid welcome', { error: e.message }); }
     }
 
     // 5. Message dans le channel village
-    await updateProgress('✅ Partie lancée ! La nuit tombe...');
+    await updateProgress(t('progress.done'));
     try {
       const villageChannel = game.villageChannelId
         ? await guild.channels.fetch(game.villageChannelId)
         : await guild.channels.fetch(game.mainChannelId);
 
       const nightMsg = game.subPhase === PHASES.CUPIDON
-        ? `🌙 **LA NUIT TOMBE**\n\n` +
-          `✅ Les rôles ont été distribués en DM\n` +
-          `✅ Channels privés créés pour les rôles spéciaux\n` +
-          `🎤 **Rejoignez le channel vocal 🎤-partie**\n\n` +
-          `**Cette nuit :**\n` +
-          `• Cupidon choisit deux amoureux avec \`/love @a @b\`\n` +
-          `• Puis les loups choisiront leur victime`
-        : `🌙 **LA NUIT TOMBE**\n\n` +
-          `✅ Les rôles ont été distribués en DM\n` +
-          `✅ Channels privés créés pour les rôles spéciaux\n` +
-          `🎤 **Rejoignez le channel vocal 🎤-partie**\n\n` +
-          `**Cette nuit :**\n` +
-          `• Les loups choisissent leur victime avec \`/kill @joueur\` (dans leur channel)\n` +
-          `• Les autres ne peuvent PAS parler (micros coupés)`;
+        ? t('game.night_start_cupid')
+        : t('game.night_start_default');
 
       await this.sendLogged(villageChannel, nightMsg, { type: 'nightStart' });
     } catch (e) { logger.warn('Failed to send village night message', { error: e.message }); }
@@ -947,7 +931,7 @@ class GameManager {
       // Créer le channel village (visible de tous) pour les messages système
       logger.debug("Creating village channel...");
       const villageChannel = await guild.channels.create({
-        name: "🏘️-village",
+        name: t('channel.village'),
         type: 0, // GUILD_TEXT
         parent: categoryId || undefined
       });
@@ -957,7 +941,7 @@ class GameManager {
       // Créer le channel des loups (accessible à tous pour l'instant)
       logger.debug("Creating wolves channel...");
       const wolvesChannel = await guild.channels.create({
-        name: "🐺-loups",
+        name: t('channel.wolves'),
         type: 0, // GUILD_TEXT
         parent: categoryId || undefined,
         permissionOverwrites: [
@@ -973,7 +957,7 @@ class GameManager {
       // Créer le channel de la voyante
       logger.debug("Creating seer channel...");
       const seerChannel = await guild.channels.create({
-        name: "🔮-voyante",
+        name: t('channel.seer'),
         type: 0, // GUILD_TEXT
         parent: categoryId || undefined,
         permissionOverwrites: [
@@ -989,7 +973,7 @@ class GameManager {
       // Créer le channel de la sorcière
       logger.debug("Creating witch channel...");
       const witchChannel = await guild.channels.create({
-        name: "🧪-sorciere",
+        name: t('channel.witch'),
         type: 0, // GUILD_TEXT
         parent: categoryId || undefined,
         permissionOverwrites: [
@@ -1005,7 +989,7 @@ class GameManager {
       // Créer le channel de Cupidon
       logger.debug("Creating cupid channel...");
       const cupidChannel = await guild.channels.create({
-        name: "💘-cupidon",
+        name: t('channel.cupid'),
         type: 0, // GUILD_TEXT
         parent: categoryId || undefined,
         permissionOverwrites: [
@@ -1021,7 +1005,7 @@ class GameManager {
       // Créer le channel vocal
       logger.debug("Creating voice channel...");
       const voiceChannel = await guild.channels.create({
-        name: "🎤-partie",
+        name: t('channel.voice'),
         type: 2, // GUILD_VOICE
         parent: categoryId || undefined
       });

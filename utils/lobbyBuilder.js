@@ -1,32 +1,22 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = require('discord.js');
 const path = require('path');
+const { t, translateRole, tips: getTips } = require('./i18n');
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const LOBBY_IMAGE = path.join(__dirname, '..', 'img', 'LG.jpg');
 const SEPARATOR = '─────────────────────────────';
 
 const ROLE_LIST = [
-  { emoji: '🐺', name: 'Loup-Garou',    count: 2, minPlayers: 5, team: 'evil'    },
-  { emoji: '🔮', name: 'Voyante',       count: 1, minPlayers: 5, team: 'village'  },
-  { emoji: '🧪', name: 'Sorcière',      count: 1, minPlayers: 5, team: 'village'  },
-  { emoji: '🏹', name: 'Chasseur',      count: 1, minPlayers: 5, team: 'village'  },
-  { emoji: '👁️', name: 'Petite Fille',  count: 1, minPlayers: 6, team: 'village'  },
-  { emoji: '💘', name: 'Cupidon',       count: 1, minPlayers: 7, team: 'neutral' },
-  { emoji: '🧑‍🌾', name: 'Villageois',   count: null, minPlayers: 5, team: 'village' }
+  { emoji: '🐺', nameKey: 'werewolf',     count: 2, minPlayers: 5, team: 'evil'    },
+  { emoji: '🔮', nameKey: 'seer',         count: 1, minPlayers: 5, team: 'village'  },
+  { emoji: '🧪', nameKey: 'witch',         count: 1, minPlayers: 5, team: 'village'  },
+  { emoji: '🏹', nameKey: 'hunter',        count: 1, minPlayers: 5, team: 'village'  },
+  { emoji: '👁️', nameKey: 'petite_fille',  count: 1, minPlayers: 6, team: 'village'  },
+  { emoji: '💘', nameKey: 'cupid',         count: 1, minPlayers: 7, team: 'neutral' },
+  { emoji: '🧑‍🌾', nameKey: 'villager',     count: null, minPlayers: 5, team: 'village' }
 ];
 
-const TIPS = [
-  '💡 Le Chasseur tire en mourant — attention à qui il vise !',
-  '💡 La Sorcière a 2 potions : une de vie, une de mort.',
-  '💡 La Voyante peut découvrir le rôle d\'un joueur chaque nuit.',
-  '💡 Le capitaine a un vote qui compte double.',
-  '💡 Les amoureux de Cupidon gagnent ensemble... ou meurent ensemble.',
-  '💡 La Petite Fille peut espionner les loups, mais gare à elle !',
-  '💡 Discutez bien le jour — c\'est la clé de la victoire du village.',
-  '💡 Les loups doivent se coordonner en secret la nuit.',
-  '💡 Un vote bien ciblé peut retourner toute la partie !',
-  '💡 Le village gagne quand tous les loups sont éliminés.',
-];
+// Tips are now loaded from locale files via i18n
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -51,12 +41,12 @@ function buildProgressBar(current, min, max) {
 
   let status;
   if (current >= max) {
-    status = '🟢 **COMPLET**';
+    status = t('lobby.status_complete');
   } else if (current >= min) {
-    status = '🟢 **Prêt !**';
+    status = t('lobby.status_ready');
   } else {
     const remaining = min - current;
-    status = `🔴 **${remaining}** encore`;
+    status = t('lobby.status_remaining', { n: remaining });
   }
 
   return `${bar}\n\`${current}\` / \`${max}\` joueurs  ·  ${status}`;
@@ -67,12 +57,12 @@ function buildProgressBar(current, min, max) {
  */
 function buildPlayerList(players, max) {
   if (players.length === 0) {
-    return `> 🪑 *Aucun joueur — sois le premier !*\n> \n> ${'⬜'.repeat(Math.min(max, 10))} \`0/${max}\``;
+    return `> ${t('lobby.no_players')}\n> \n> ${'⬜'.repeat(Math.min(max, 10))} \`0/${max}\``;
   }
 
   const lines = players.map((p, i) => {
     const icon = i === 0 ? '👑' : '🎮';
-    const tag = i === 0 ? ' *(host)*' : '';
+    const tag = i === 0 ? ` ${t('lobby.host_tag')}` : '';
     return `> ${icon} **${p.username}**${tag}`;
   });
 
@@ -101,26 +91,26 @@ function buildRolesPreview(playerCount) {
   // Evil team
   const wolves = active.filter(r => r.team === 'evil');
   if (wolves.length > 0) {
-    const wolfLine = wolves.map(r => `${r.emoji} ${r.name} ×${r.count}`).join('  ');
-    lines.push(`🔴 **Maléfiques** ─ ${wolfLine}`);
+    const wolfLine = wolves.map(r => `${r.emoji} ${t(`role.${r.nameKey}`)} ×${r.count}`).join('  ');
+    lines.push(`${t('lobby.team_evil')} ─ ${wolfLine}`);
   }
 
   // Village team
   const village = active.filter(r => r.team === 'village' && r.count !== null);
   if (village.length > 0) {
-    const villageLine = village.map(r => `${r.emoji} ${r.name}`).join('  ');
-    const villagerSuffix = villagerCount > 0 ? `  🧑‍🌾 Villageois ×${villagerCount}` : '';
-    lines.push(`🔵 **Village** ─ ${villageLine}${villagerSuffix}`);
+    const villageLine = village.map(r => `${r.emoji} ${t(`role.${r.nameKey}`)}`).join('  ');
+    const villagerSuffix = villagerCount > 0 ? `  🧑‍🌾 ${t('role.villager')} ×${villagerCount}` : '';
+    lines.push(`${t('lobby.team_village')} ─ ${villageLine}${villagerSuffix}`);
   }
 
   // Neutral
   const neutral = active.filter(r => r.team === 'neutral');
   if (neutral.length > 0) {
-    const neutralLine = neutral.map(r => `${r.emoji} ${r.name}`).join('  ');
-    lines.push(`🟡 **Neutre** ─ ${neutralLine}`);
+    const neutralLine = neutral.map(r => `${r.emoji} ${t(`role.${r.nameKey}`)}`).join('  ');
+    lines.push(`${t('lobby.team_neutral')} ─ ${neutralLine}`);
   }
 
-  lines.push(`\n> **${active.filter(r => r.count !== null).length + (villagerCount > 0 ? 1 : 0)}** rôles différents · **${playerCount}** cartes distribuées`);
+  lines.push(`\n> ${t('lobby.roles_count', { n: active.filter(r => r.count !== null).length + (villagerCount > 0 ? 1 : 0), m: playerCount })}`);
 
   return lines.join('\n');
 }
@@ -139,7 +129,8 @@ function getLobbyColor(current, min, max) {
  * Get a rotating tip based on time
  */
 function getRandomTip() {
-  return TIPS[Math.floor(Math.random() * TIPS.length)];
+  const tipList = getTips();
+  return tipList[Math.floor(Math.random() * tipList.length)];
 }
 
 // ─── Main Builder ────────────────────────────────────────────────────────────
@@ -157,14 +148,14 @@ function buildLobbyEmbed(game, hostId) {
   // Title changes with state
   let title, description;
   if (isFull) {
-    title = '🐺  Lobby complet — Prêt à jouer !';
-    description = `Tous les joueurs sont réunis. Le host peut lancer la partie !`;
+    title = t('lobby.title_full');
+    description = t('lobby.desc_full');
   } else if (canStart) {
-    title = '🐺  Lobby ouvert — En attente...';
-    description = `La partie peut démarrer ! D'autres joueurs peuvent encore rejoindre.`;
+    title = t('lobby.title_ready');
+    description = t('lobby.desc_ready');
   } else {
-    title = '🐺  Lobby ouvert — Recrutement';
-    description = `Clique sur **Rejoindre** pour participer à la partie.\nEncore **${min - playerCount}** joueur(s) nécessaire(s) pour démarrer.`;
+    title = t('lobby.title_recruiting');
+    description = t('lobby.desc_recruiting', { n: min - playerCount });
   }
 
   const embed = new EmbedBuilder()
@@ -175,24 +166,24 @@ function buildLobbyEmbed(game, hostId) {
     )
     .addFields(
       {
-        name: `👥  Joueurs  ──  ${playerCount}/${max}`,
+        name: t('lobby.field_players', { n: playerCount, max }),
         value: buildPlayerList(game.players, max),
         inline: false
       },
       {
-        name: '🎭  Rôles en jeu',
+        name: t('lobby.field_roles'),
         value: playerCount >= min
           ? buildRolesPreview(playerCount)
-          : `> *Les rôles seront dévoilés quand **${min}** joueurs seront réunis*\n> \n> 🐺 ×2  🔮  🧪  🏹  + ???`,
+          : `> ${t('lobby.roles_hidden', { min })}\n> \n> 🐺 ×2  🔮  🧪  🏹  + ???`,
         inline: false
       },
       {
-        name: `📋  Informations`,
+        name: t('lobby.field_info'),
         value: [
-          `> 👑 **Host** · <@${hostId}>`,
-          game.voiceChannelId ? `> 🎤 **Vocal** · <#${game.voiceChannelId}>` : `> 🎤 **Vocal** · *en attente*`,
-          `> 📏 **Joueurs** · ${min} min — ${max} max`,
-          `> ⏱️ **Créée** · <t:${Math.floor((game._lobbyCreatedAt || Date.now()) / 1000)}:R>`
+          `> ${t('lobby.info_host')} · <@${hostId}>`,
+          game.voiceChannelId ? `> ${t('lobby.info_voice')} · <#${game.voiceChannelId}>` : `> ${t('lobby.info_voice')} · ${t('lobby.info_voice_waiting')}`,
+          `> ${t('lobby.info_players', { min, max })}`,
+          `> ${t('lobby.info_created')} · <t:${Math.floor((game._lobbyCreatedAt || Date.now()) / 1000)}:R>`
         ].join('\n'),
         inline: false
       }
@@ -206,18 +197,18 @@ function buildLobbyEmbed(game, hostId) {
   const mainButtons = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`lobby_join:${game.mainChannelId}`)
-      .setLabel(isFull ? 'Complet' : 'Rejoindre')
+      .setLabel(isFull ? t('ui.btn.join_full') : t('ui.btn.join'))
       .setEmoji(isFull ? '🚫' : '⚔️')
       .setStyle(isFull ? ButtonStyle.Secondary : ButtonStyle.Success)
       .setDisabled(isFull),
     new ButtonBuilder()
       .setCustomId(`lobby_leave:${game.mainChannelId}`)
-      .setLabel('Quitter')
+      .setLabel(t('ui.btn.leave'))
       .setEmoji('🚪')
       .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId(`lobby_start:${game.mainChannelId}`)
-      .setLabel(canStart ? '🎬 Lancer la partie !' : `Encore ${min - playerCount}...`)
+      .setLabel(canStart ? t('ui.btn.start_ready') : t('ui.btn.start_waiting', { n: min - playerCount }))
       .setStyle(canStart ? ButtonStyle.Primary : ButtonStyle.Secondary)
       .setDisabled(!canStart)
   );

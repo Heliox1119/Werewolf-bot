@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { app: logger } = require('../utils/logger');
+const { t } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -64,7 +65,7 @@ module.exports = {
           break;
         default:
           await interaction.reply({ 
-            content: '❌ Sous-commande inconnue', 
+            content: t('cmd.monitoring.unknown_subcommand'), 
             ephemeral: true 
           });
       }
@@ -81,7 +82,7 @@ module.exports = {
       });
       
       const reply = {
-        content: '❌ Erreur lors de l\'exécution de la commande monitoring',
+        content: t('cmd.monitoring.error'),
         ephemeral: true
       };
       
@@ -115,8 +116,8 @@ module.exports = {
     };
     
     const embed = new EmbedBuilder()
-      .setTitle('📊 Dashboard de Monitoring')
-      .setDescription(`**Statut global:** ${statusIcons[healthStatus.status]} ${healthStatus.status}`)
+      .setTitle(t('cmd.monitoring.dashboard.title'))
+      .setDescription(t('cmd.monitoring.dashboard.global_status', { icon: statusIcons[healthStatus.status], status: healthStatus.status }))
       .setColor(colors[healthStatus.status])
       .setTimestamp()
       .setFooter({ text: 'Werewolf Bot Monitoring' });
@@ -126,38 +127,38 @@ module.exports = {
     const cpuBar = this.createProgressBar(currentMetrics.system.cpu, 100);
     
     embed.addFields({
-      name: '💻 Système',
+      name: t('cmd.monitoring.dashboard.system'),
       value: [
-        `**Mémoire:** ${memoryBar} ${currentMetrics.system.memory.percentage}%`,
+        `**${t('cmd.monitoring.dashboard.memory')}:** ${memoryBar} ${currentMetrics.system.memory.percentage}%`,
         `└─ ${currentMetrics.system.memory.used}MB / ${currentMetrics.system.memory.total}MB`,
-        `**CPU:** ${cpuBar} ${currentMetrics.system.cpu}%`,
-        `**Uptime:** ${this.formatUptime(currentMetrics.system.uptime)}`
+        `**${t('cmd.monitoring.dashboard.cpu')}:** ${cpuBar} ${currentMetrics.system.cpu}%`,
+        `**${t('cmd.monitoring.dashboard.uptime')}:** ${this.formatUptime(currentMetrics.system.uptime)}`
       ].join('\n'),
       inline: false
     });
     
     // Métriques Discord
-    const wsStatus = currentMetrics.discord.wsStatus === 0 ? '🟢 Connecté' : '🔴 Déconnecté';
+    const wsStatus = currentMetrics.discord.wsStatus === 0 ? t('cmd.monitoring.dashboard.ws_connected') : t('cmd.monitoring.dashboard.ws_disconnected');
     
     embed.addFields({
-      name: '📡 Discord',
+      name: t('cmd.monitoring.dashboard.discord'),
       value: [
-        `**Serveurs:** ${currentMetrics.discord.guilds}`,
-        `**Utilisateurs:** ${currentMetrics.discord.users.toLocaleString()}`,
-        `**Latence:** ${currentMetrics.discord.latency}ms`,
-        `**WebSocket:** ${wsStatus}`
+        `**${t('cmd.monitoring.dashboard.servers')}:** ${currentMetrics.discord.guilds}`,
+        `**${t('cmd.monitoring.dashboard.users')}:** ${currentMetrics.discord.users.toLocaleString()}`,
+        `**${t('cmd.monitoring.dashboard.latency')}:** ${currentMetrics.discord.latency}ms`,
+        `**${t('cmd.monitoring.dashboard.websocket')}:** ${wsStatus}`
       ].join('\n'),
       inline: true
     });
     
     // Métriques jeux
     embed.addFields({
-      name: '🎮 Parties',
+      name: t('cmd.monitoring.dashboard.games'),
       value: [
-        `**Actives:** ${currentMetrics.game.activeGames}`,
-        `**Joueurs:** ${currentMetrics.game.totalPlayers}`,
-        `**Créées (24h):** ${currentMetrics.game.gamesCreated24h}`,
-        `**Terminées (24h):** ${currentMetrics.game.gamesCompleted24h}`
+        `**${t('cmd.monitoring.dashboard.active')}:** ${currentMetrics.game.activeGames}`,
+        `**${t('cmd.monitoring.dashboard.total_players')}:** ${currentMetrics.game.totalPlayers}`,
+        `**${t('cmd.monitoring.dashboard.created_24h')}:** ${currentMetrics.game.gamesCreated24h}`,
+        `**${t('cmd.monitoring.dashboard.completed_24h')}:** ${currentMetrics.game.gamesCompleted24h}`
       ].join('\n'),
       inline: true
     });
@@ -168,12 +169,12 @@ module.exports = {
       : '0.0';
     
     embed.addFields({
-      name: '🔨 Commandes',
+      name: t('cmd.monitoring.dashboard.commands'),
       value: [
-        `**Total:** ${currentMetrics.commands.total}`,
-        `**Erreurs:** ${currentMetrics.commands.errors} (${errorRate}%)`,
-        `**Rate limited:** ${currentMetrics.commands.rateLimited}`,
-        `**Temps moy.:** ${currentMetrics.commands.avgResponseTime}ms`
+        `**${t('cmd.monitoring.dashboard.total')}:** ${currentMetrics.commands.total}`,
+        `**${t('cmd.monitoring.dashboard.errors')}:** ${currentMetrics.commands.errors} (${errorRate}%)`,
+        `**${t('cmd.monitoring.dashboard.rate_limited')}:** ${currentMetrics.commands.rateLimited}`,
+        `**${t('cmd.monitoring.dashboard.avg_response')}:** ${currentMetrics.commands.avgResponseTime}ms`
       ].join('\n'),
       inline: false
     });
@@ -181,7 +182,7 @@ module.exports = {
     // Problèmes détectés
     if (healthStatus.issues.length > 0) {
       embed.addFields({
-        name: '⚠️ Problèmes détectés',
+        name: t('cmd.monitoring.dashboard.issues'),
         value: healthStatus.issues.map(issue => `• ${issue}`).join('\n'),
         inline: false
       });
@@ -209,31 +210,31 @@ module.exports = {
     };
     
     const statusDescriptions = {
-      HEALTHY: 'Tous les systèmes fonctionnent normalement',
-      DEGRADED: 'Certaines métriques sont au-dessus des seuils normaux',
-      UNHEALTHY: 'Le bot rencontre des problèmes critiques'
+      HEALTHY: t('cmd.monitoring.health.healthy'),
+      DEGRADED: t('cmd.monitoring.health.degraded'),
+      UNHEALTHY: t('cmd.monitoring.health.unhealthy'),
     };
     
     const embed = new EmbedBuilder()
-      .setTitle(`${statusIcons[healthStatus.status]} Statut de santé`)
+      .setTitle(t('cmd.monitoring.health.title', { icon: statusIcons[healthStatus.status] }))
       .setDescription(statusDescriptions[healthStatus.status])
       .setColor(colors[healthStatus.status])
       .setTimestamp();
     
     if (healthStatus.issues.length > 0) {
       embed.addFields({
-        name: '⚠️ Problèmes',
+        name: t('cmd.monitoring.health.issues'),
         value: healthStatus.issues.map(issue => `• ${issue}`).join('\n'),
         inline: false
       });
     } else {
       embed.addFields({
-        name: '✅ Vérifications',
+        name: t('cmd.monitoring.health.checks_ok'),
         value: [
-          '• Mémoire: OK',
-          '• Latence: OK',
-          '• WebSocket: OK',
-          '• Taux d\'erreur: OK'
+          `• ${t('cmd.monitoring.health.memory_ok')}`,
+          `• ${t('cmd.monitoring.health.latency_ok')}`,
+          `• ${t('cmd.monitoring.health.websocket_ok')}`,
+          `• ${t('cmd.monitoring.health.error_rate_ok')}`
         ].join('\n'),
         inline: false
       });
@@ -244,23 +245,23 @@ module.exports = {
       const recommendations = [];
       
       if (healthStatus.issues.some(i => i.includes('mémoire'))) {
-        recommendations.push('• Redémarrer le bot pour libérer la mémoire');
-        recommendations.push('• Vérifier les memory leaks dans les parties actives');
+        recommendations.push(`• ${t('cmd.monitoring.health.rec_restart')}`);
+        recommendations.push(`• ${t('cmd.monitoring.health.rec_memory_leak')}`);
       }
       
       if (healthStatus.issues.some(i => i.includes('latence'))) {
-        recommendations.push('• Vérifier la connexion internet');
-        recommendations.push('• Contacter Discord si le problème persiste');
+        recommendations.push(`• ${t('cmd.monitoring.health.rec_check_internet')}`);
+        recommendations.push(`• ${t('cmd.monitoring.health.rec_contact_discord')}`);
       }
       
       if (healthStatus.issues.some(i => i.includes('erreur'))) {
-        recommendations.push('• Consulter les logs pour identifier les erreurs');
-        recommendations.push('• Vérifier les permissions du bot');
+        recommendations.push(`• ${t('cmd.monitoring.health.rec_check_logs')}`);
+        recommendations.push(`• ${t('cmd.monitoring.health.rec_check_perms')}`);
       }
       
       if (recommendations.length > 0) {
         embed.addFields({
-          name: '💡 Recommandations',
+          name: t('cmd.monitoring.health.recommendations'),
           value: recommendations.join('\n'),
           inline: false
         });
@@ -281,12 +282,12 @@ module.exports = {
         const stats = alerts.getAlertStats();
         
         const embed = new EmbedBuilder()
-          .setTitle('📊 Statistiques des alertes')
+          .setTitle(t('cmd.monitoring.alerts.stats_title'))
           .setColor(0x3498DB)
           .setTimestamp();
         
         embed.addFields({
-          name: '📈 Total',
+          name: t('cmd.monitoring.alerts.total'),
           value: stats.total.toString(),
           inline: true
         });
@@ -297,14 +298,14 @@ module.exports = {
             .join('\n');
           
           embed.addFields({
-            name: '📊 Par type',
+            name: t('cmd.monitoring.alerts.by_type'),
             value: byTypeText,
             inline: false
           });
         } else {
           embed.addFields({
-            name: '📊 Par type',
-            value: 'Aucune alerte envoyée',
+            name: t('cmd.monitoring.alerts.by_type'),
+            value: t('cmd.monitoring.alerts.no_alerts'),
             inline: false
           });
         }
@@ -316,7 +317,7 @@ module.exports = {
       case 'enable':
         alerts.setEnabled(true);
         await interaction.reply({
-          content: '✅ Système d\'alertes activé',
+          content: t('cmd.monitoring.alerts.enabled'),
           ephemeral: true
         });
         break;
@@ -324,7 +325,7 @@ module.exports = {
       case 'disable':
         alerts.setEnabled(false);
         await interaction.reply({
-          content: '⚠️ Système d\'alertes désactivé',
+          content: t('cmd.monitoring.alerts.disabled'),
           ephemeral: true
         });
         break;
@@ -340,7 +341,7 @@ module.exports = {
     
     if (count === 0) {
       await interaction.reply({
-        content: '📊 Pas encore d\'historique disponible',
+        content: t('cmd.monitoring.history.no_data'),
         ephemeral: true
       });
       return;
@@ -356,43 +357,43 @@ module.exports = {
     const maxLatency = Math.max(...history.latency);
     
     const embed = new EmbedBuilder()
-      .setTitle('📈 Historique des métriques (24h)')
+      .setTitle(t('cmd.monitoring.history.title'))
       .setColor(0x9B59B6)
       .setTimestamp()
-      .setFooter({ text: `${count} points de données` });
+      .setFooter({ text: t('cmd.monitoring.history.data_points', { count }) });
     
     embed.addFields({
-      name: '💾 Mémoire',
+      name: t('cmd.monitoring.history.memory'),
       value: [
-        `**Moyenne:** ${avgMemory.toFixed(1)}%`,
-        `**Pic:** ${maxMemory.toFixed(1)}%`
+        `**${t('cmd.monitoring.history.average')}:** ${avgMemory.toFixed(1)}%`,
+        `**${t('cmd.monitoring.history.peak')}:** ${maxMemory.toFixed(1)}%`
       ].join('\n'),
       inline: true
     });
     
     embed.addFields({
-      name: '📡 Latence',
+      name: t('cmd.monitoring.history.latency'),
       value: [
-        `**Moyenne:** ${avgLatency.toFixed(0)}ms`,
-        `**Pic:** ${maxLatency.toFixed(0)}ms`
+        `**${t('cmd.monitoring.history.average')}:** ${avgLatency.toFixed(0)}ms`,
+        `**${t('cmd.monitoring.history.peak')}:** ${maxLatency.toFixed(0)}ms`
       ].join('\n'),
       inline: true
     });
     
     embed.addFields({
-      name: '🎮 Parties actives',
-      value: `**Dernière valeur:** ${history.activeGames[count - 1] || 0}`,
+      name: t('cmd.monitoring.history.active_games'),
+      value: `**${t('cmd.monitoring.history.last_value')}:** ${history.activeGames[count - 1] || 0}`,
       inline: true
     });
     
     // Graphique ASCII simple pour la mémoire
     const memoryGraph = this.createASCIIGraph(
       history.memory.slice(-12),
-      'Mémoire (12 dernières heures)'
+      t('cmd.monitoring.history.graph_title')
     );
     
     embed.addFields({
-      name: '📊 Graphique mémoire',
+      name: t('cmd.monitoring.history.memory_graph'),
       value: '```\n' + memoryGraph + '\n```',
       inline: false
     });
@@ -422,18 +423,18 @@ module.exports = {
     const minutes = Math.floor((seconds % 3600) / 60);
     
     const parts = [];
-    if (days > 0) parts.push(`${days}j`);
-    if (hours > 0) parts.push(`${hours}h`);
-    if (minutes > 0) parts.push(`${minutes}m`);
+    if (days > 0) parts.push(`${days}${t('cmd.monitoring.uptime.days')}`);
+    if (hours > 0) parts.push(`${hours}${t('cmd.monitoring.uptime.hours')}`);
+    if (minutes > 0) parts.push(`${minutes}${t('cmd.monitoring.uptime.minutes')}`);
     
-    return parts.join(' ') || '< 1m';
+    return parts.join(' ') || t('cmd.monitoring.uptime.less_than_1m');
   },
 
   /**
    * Crée un graphique ASCII simple
    */
   createASCIIGraph(values, title) {
-    if (values.length === 0) return 'Pas de données';
+    if (values.length === 0) return t('cmd.monitoring.history.no_graph_data');
     
     const height = 5;
     const max = Math.max(...values);
@@ -464,7 +465,7 @@ module.exports = {
     
     // Échelle X
     lines.push('     ' + '─'.repeat(values.length));
-    lines.push(`     ${values.length}h ago → now`);
+    lines.push(`     ${t('cmd.monitoring.history.time_axis', { count: values.length })}`);
     
     return lines.join('\n');
   }

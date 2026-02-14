@@ -2,6 +2,7 @@ const { SlashCommandBuilder, ChannelType, MessageFlags } = require("discord.js")
 const gameManager = require("../game/gameManager");
 const PHASES = require("../game/phases");
 const { isInGameCategory } = require("../utils/validators");
+const { t } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -11,37 +12,37 @@ module.exports = {
   async execute(interaction) {
     if (!interaction.member.permissions.has('Administrator')) {
       const { safeReply } = require('../utils/interaction');
-      await safeReply(interaction, { content: "❌ Admin only", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.admin_only'), flags: MessageFlags.Ephemeral });
       return;
     }
     // Vérification catégorie
     if (!await isInGameCategory(interaction)) {
       const { safeReply } = require('../utils/interaction');
-      await safeReply(interaction, { content: "❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.action_forbidden'), flags: MessageFlags.Ephemeral });
       return;
     }
     const { safeDefer } = require('../utils/interaction');
     await safeDefer(interaction);
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
-      await interaction.editReply({ content: "❌ Aucune partie ici", flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: t('error.no_game'), flags: MessageFlags.Ephemeral });
       return;
     }
 
     if (game.phase === PHASES.ENDED) {
-      await interaction.editReply('❌ La partie est terminée. Utilise `/create` pour en lancer une nouvelle.');
+      await interaction.editReply(t('error.game_ended'));
       return;
     }
 
     if (game.phase === PHASES.NIGHT) {
       await gameManager.transitionToDay(interaction.guild, game);
-      await interaction.editReply('✅ Phase avancée (debug)');
+      await interaction.editReply(t('cmd.nextphase.success'));
       return;
     }
 
     if (game.phase === PHASES.DAY) {
       await gameManager.transitionToNight(interaction.guild, game);
-      await interaction.editReply('✅ Phase avancée (debug)');
+      await interaction.editReply(t('cmd.nextphase.success'));
       return;
     }
   }

@@ -2,6 +2,7 @@ const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const { checkCategoryAndDefer } = require("../utils/commands");
 const { isAdmin } = require("../utils/validators");
+const { t } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -24,26 +25,26 @@ module.exports = {
     
     // Vérification admin
     if (!isAdmin(interaction)) {
-      await interaction.editReply({ content: "❌ Tu dois être administrateur", flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: t('error.admin_required'), flags: MessageFlags.Ephemeral });
       return;
     }
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
-      await interaction.editReply({ content: "❌ Aucune partie ici", flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: t('error.no_game_dot'), flags: MessageFlags.Ephemeral });
       return;
     }
     const min = interaction.options.getInteger("min");
     const max = interaction.options.getInteger("max");
     if (min < 3 || min > 6) {
-      await interaction.editReply({ content: "❌ Le minimum doit être entre 3 et 6.", flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: t('error.min_out_of_range'), flags: MessageFlags.Ephemeral });
       return;
     }
     if (max < min || max > 20) {
-      await interaction.editReply({ content: "❌ Le maximum doit être entre le minimum et 20.", flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: t('error.max_out_of_range'), flags: MessageFlags.Ephemeral });
       return;
     }
     game.rules = { minPlayers: min, maxPlayers: max };
     gameManager.scheduleSave();
-    await interaction.editReply({ content: `✅ Règles mises à jour : min ${min}, max ${max} joueurs.`, flags: MessageFlags.Ephemeral });
+    await interaction.editReply({ content: t('cmd.setrules.success', { min, max }), flags: MessageFlags.Ephemeral });
   }
 };

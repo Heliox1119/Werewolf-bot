@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const { commands: logger } = require("../utils/logger");
+const { t } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -16,7 +17,7 @@ module.exports = {
     // Check admin
     if (!interaction.member.permissions.has('Administrator')) {
       await interaction.reply({ 
-        content: "❌ Cette commande nécessite les permissions d'administrateur.", 
+        content: t('error.admin_permission_required'), 
         flags: MessageFlags.Ephemeral 
       });
       return;
@@ -36,16 +37,16 @@ module.exports = {
     
     if (!game) {
       const allGames = Array.from(gameManager.games.keys());
-      let message = `❌ Aucune partie trouvée dans <#${targetChannelId}>\n\n`;
+      let message = t('cleanup.force_end_no_game', { id: targetChannelId }) + `\n\n`;
       
       if (allGames.length > 0) {
         message += `📊 **Parties actives** :\n`;
         for (const channelId of allGames) {
           message += `• <#${channelId}> (\`${channelId}\`)\n`;
         }
-        message += `\n💡 Utilise \`/force-end channel-id:<id>\` pour terminer une partie spécifique.`;
+        message += `\n` + t('cleanup.force_end_hint');
       } else {
-        message += "Aucune partie active sur le serveur.";
+        message += t('cleanup.force_end_no_active');
       }
       
       await interaction.editReply(message);
@@ -88,10 +89,7 @@ module.exports = {
     });
 
     await interaction.editReply(
-      `✅ **Partie terminée de force**\n\n` +
-      `📺 Channel: <#${targetChannelId}>\n` +
-      `🗑️ ${deleted} channel(s) supprimé(s)\n` +
-      `📊 Parties restantes: ${gameManager.games.size}`
+      t('cleanup.force_end_success', { id: targetChannelId, n: deleted, m: gameManager.games.size })
     );
   }
 };

@@ -2,6 +2,7 @@ const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const { isInGameCategory } = require("../utils/validators");
 const { safeReply } = require("../utils/interaction");
+const { t } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -11,22 +12,22 @@ module.exports = {
   async execute(interaction) {
     // Vérification catégorie
     if (!await isInGameCategory(interaction)) {
-      await safeReply(interaction, { content: "❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.action_forbidden'), flags: MessageFlags.Ephemeral });
       return;
     }
     // Trouver la partie via n'importe quel channel de la catégorie
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
-      await safeReply(interaction, { content: "❌ Aucune partie ici.", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.no_game_dot'), flags: MessageFlags.Ephemeral });
       return;
     }
     const ok = gameManager.join(game.mainChannelId, interaction.user);
     if (!ok) {
-      await safeReply(interaction, { content: "❌ Impossible de rejoindre (déjà inscrit ou partie en cours).", flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.join_failed'), flags: MessageFlags.Ephemeral });
       return;
     }
     await safeReply(interaction, {
-      content: `✅ ${interaction.user.username} rejoint la partie`
+      content: t('lobby.join_success', { name: interaction.user.username })
     });
 
     // Mettre à jour le lobby embed

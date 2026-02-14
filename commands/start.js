@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const { commands: logger } = require("../utils/logger");
+const { t, translateRole } = require('../utils/i18n');
 const ROLES = require("../game/roles");
 const { isInGameCategory } = require("../utils/validators");
 
@@ -12,16 +13,16 @@ module.exports = {
   async execute(interaction) {
     // Vérification catégorie
     if (!await isInGameCategory(interaction)) {
-      await interaction.reply({ content: "❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu.", flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: t('error.action_forbidden'), flags: MessageFlags.Ephemeral });
       return;
     }
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
-      await interaction.reply({ content: "❌ Aucune partie ici", flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: t('error.no_game'), flags: MessageFlags.Ephemeral });
       return;
     }
     if (game.players.length < (game.rules?.minPlayers || 5)) {
-      await interaction.reply({ content: `❌ Impossible de démarrer (minimum ${game.rules?.minPlayers || 5} joueurs)`, flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: t('error.not_enough_players', { min: game.rules?.minPlayers || 5 }), flags: MessageFlags.Ephemeral });
       return;
     }
     const { safeDefer } = require('../utils/interaction');
@@ -43,8 +44,8 @@ module.exports = {
     if (candidateRoles.length > game.players.length) {
       // Interactive selection
       const embed = new EmbedBuilder()
-        .setTitle('Sélection des rôles')
-        .setDescription(`Il y a ${candidateRoles.length} rôles candidats pour ${game.players.length} joueurs. Désélectionne les rôles à retirer puis confirme.`)
+        .setTitle(t('ui.role_select_title'))
+        .setDescription(t('ui.role_select_desc', { n: candidateRoles.length, m: game.players.length }))
         .setColor(0x00AE86);
 
       const rows = [];
@@ -56,7 +57,7 @@ module.exports = {
           const idx = i + j;
           const btn = new ButtonBuilder()
             .setCustomId(`role_toggle:${idx}`)
-            .setLabel(slice[j])
+            .setLabel(translateRole(slice[j]))
             .setStyle(ButtonStyle.Secondary);
           actionRow.addComponents(btn);
         }
@@ -65,8 +66,8 @@ module.exports = {
 
       // add confirm/cancel row
       const controlRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('confirm_roles').setLabel('Confirmer').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('cancel_roles').setLabel('Annuler').setStyle(ButtonStyle.Danger)
+        new ButtonBuilder().setCustomId('confirm_roles').setLabel(t('ui.btn.confirm')).setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('cancel_roles').setLabel(t('ui.btn.cancel')).setStyle(ButtonStyle.Danger)
       );
       rows.push(controlRow);
 
@@ -77,7 +78,7 @@ module.exports = {
 
       collector.on('collect', async i => {
         if (i.user.id !== interaction.user.id) {
-          await i.reply({ content: 'Seul·e l\'initiateur·ice peut configurer les rôles', flags: MessageFlags.Ephemeral });
+          await i.reply({ content: t('error.only_initiator'), flags: MessageFlags.Ephemeral });
           return;
         }
 
@@ -88,7 +89,7 @@ module.exports = {
 
           // build updated embed
           const selectedList = Array.from(selected).map(k => candidateRoles[k]);
-          const description = `Rôles sélectionnés (${selectedList.length}/${game.players.length}):\n${selectedList.join(', ')}`;
+          const description = t('ui.role_selected_desc', { n: selectedList.length, m: game.players.length, list: selectedList.map(r => translateRole(r)).join(', ') });
           const newEmbed = EmbedBuilder.from(embed).setDescription(description);
           await i.update({ embeds: [newEmbed], components: rows });
           return;
@@ -99,22 +100,22 @@ module.exports = {
           if (chosen.length !== game.players.length) {
             const diff = chosen.length - game.players.length;
             if (diff > 0) {
-              await i.reply({ content: `❌ Trop de rôles sélectionnés (${chosen.length}). Désélectionne ${diff} rôles.`, flags: MessageFlags.Ephemeral });
+              await i.reply({ content: t('error.too_many_roles', { count: chosen.length, diff: diff }), flags: MessageFlags.Ephemeral });
             } else {
-              await i.reply({ content: `❌ Pas assez de rôles sélectionnés (${chosen.length}). Sélectionne ${-diff} rôles supplémentaires.`, flags: MessageFlags.Ephemeral });
+              await i.reply({ content: t('error.not_enough_roles', { count: chosen.length, diff: -diff }), flags: MessageFlags.Ephemeral });
             }
             return;
           }
 
           rolesToUse = chosen.slice();
           collector.stop('confirmed');
-          await i.update({ content: '✅ Rôles confirmés, démarrage de la partie...', embeds: [], components: [] });
+          await i.update({ content: t('cmd.roles_confirmed'), embeds: [], components: [] });
           return;
         }
 
         if (i.customId === 'cancel_roles') {
           collector.stop('cancelled');
-          await i.update({ content: '❌ Sélection annulée.', embeds: [], components: [] });
+          await i.update({ content: t('error.selection_cancelled'), embeds: [], components: [] });
           return;
         }
       });
@@ -124,9 +125,9 @@ module.exports = {
         collector.on('end', async (collected, reason) => {
           if (reason !== 'confirmed') {
             if (reason === 'cancelled') {
-              await interaction.followUp({ content: 'Démarrage annulé.', flags: MessageFlags.Ephemeral });
+              await interaction.followUp({ content: t('game.cancelled'), flags: MessageFlags.Ephemeral });
             } else {
-              await interaction.followUp({ content: '❌ Temps écoulé, démarrage annulé.', flags: MessageFlags.Ephemeral });
+              await interaction.followUp({ content: t('error.time_expired'), flags: MessageFlags.Ephemeral });
             }
           }
           resolve(reason);
@@ -142,22 +143,16 @@ module.exports = {
     // Appeler start avec les rôles choisis
     const startedGame = gameManager.start(interaction.channelId, rolesToUse);
     if (!startedGame) {
-      await interaction.editReply('❌ Impossible de démarrer la partie.');
+      await interaction.editReply(t('error.cannot_start'));
       return;
     }
 
     const success = await gameManager.postStartGame(interaction.guild, startedGame, interaction.client, interaction);
     if (!success) {
-      await interaction.editReply(
-        "❌ **Erreur lors de la création des channels !**\n\n" +
-        "Vérifications :\n" +
-        "1. Le bot a-t-il la permission **Manage Channels** ?\n" +
-        "2. Le bot est-il au-dessus des rôles utilisateurs ?\n" +
-        "3. Regarde la console du bot pour plus de détails"
-      );
+      await interaction.editReply(t('error.channel_creation_failed'));
       return;
     }
 
-    await interaction.editReply("🌙 La nuit tombe… channels privés créés et rôles envoyés !");
+    await interaction.editReply(t('game.started_command'));
   }
 };

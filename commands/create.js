@@ -3,6 +3,7 @@ const gameManager = require("../game/gameManager");
 const { checkCategoryAndDefer, sendTemporaryMessage } = require("../utils/commands");
 const { safeReply } = require("../utils/interaction");
 const { commands: logger } = require("../utils/logger");
+const { t, translateRole } = require('../utils/i18n');
 const { buildLobbyMessage } = require("../utils/lobbyBuilder");
 
 module.exports = {
@@ -16,7 +17,7 @@ module.exports = {
     // FIRST: Check for duplicate command (Discord auto-retry protection)
     if (gameManager.isRecentDuplicate('create', interaction.channelId, interaction.user.id)) {
       logger.warn('Ignoring duplicate /create (Discord retry)');
-      await safeReply(interaction, { content: '⏳ Creation deja en cours, reessaie dans quelques secondes.', flags: MessageFlags.Ephemeral });
+      await safeReply(interaction, { content: t('error.creation_in_progress'), flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -42,7 +43,7 @@ module.exports = {
     if (gameManager.creationsInProgress.has(interaction.channelId)) {
       logger.warn('Creation already in progress', { channelId: interaction.channelId });
       if (deferSuccess) {
-        await interaction.editReply('⏳ Une création est déjà en cours...');
+        await interaction.editReply(t('error.creation_in_progress'));
       }
       return;
     }
@@ -62,7 +63,7 @@ module.exports = {
       
       if (!CATEGORY_ID) {
         await interaction.editReply({
-          content: '❌ Le bot n\'est pas configuré. Un administrateur doit utiliser `/setup category` pour configurer la catégorie des channels de jeu.',
+          content: t('error.not_configured'),
           flags: MessageFlags.Ephemeral
         });
         return;
@@ -85,7 +86,7 @@ module.exports = {
     const ok = gameManager.create(interaction.channelId);
     if (!ok) {
       logger.warn('Failed to create game - already exists', { channelId: interaction.channelId });
-      const errorMsg = "❌ Une partie existe déjà ici";
+      const errorMsg = t('error.game_already_exists');
       try {
         if (deferSuccess) {
           await interaction.editReply(errorMsg);
@@ -113,7 +114,7 @@ module.exports = {
       logger.error('CRITICAL: game.create() returned true but game not in Map!', { 
         channelId: interaction.channelId 
       });
-      const errorMsg = "❌ Erreur critique lors de la création de la partie";
+      const errorMsg = t('error.critical_creation');
       try {
         if (deferSuccess) {
           await interaction.editReply(errorMsg);
@@ -146,11 +147,7 @@ module.exports = {
       logger.error('Failed to create channels - rolling back', { channelId: interaction.channelId });
       try { gameManager.db.deleteGame(interaction.channelId); } catch (e) { /* ignore */ }
       gameManager.games.delete(interaction.channelId);
-      const errorMsg = "❌ **Erreur lors de la création des channels !**\n\n" +
-        "Vérifications :\n" +
-        "1. Le bot a-t-il la permission **Manage Channels** ?\n" +
-        "2. Le bot est-il au-dessus des rôles utilisateurs ?\n" +
-        "3. Regarde la console du bot pour plus de détails";
+      const errorMsg = t('error.channel_creation_failed');
       try {
         if (deferSuccess) {
           await interaction.editReply(errorMsg);
@@ -191,17 +188,7 @@ module.exports = {
 
     // Répondre à l'interaction
     logger.debug('Sending final reply');
-    const successMsg = "🐺 **Partie créée !**\n\n" +
-      "✅ 6 channels ont été créés :\n" +
-      "  • 🏘️-village (messages système)\n" +
-      "  • 🐺-loups (rôle privé)\n" +
-      "  • 🔮-voyante (rôle privé)\n" +
-      "  • 🧪-sorciere (rôle privé)\n" +
-      "  • ❤️-cupidon (rôle privé)\n" +
-      "  • 🎤-partie (channel vocal)\n\n" +
-      "🎵 L'ambiance nocturne joue maintenant...\n\n" +
-      "💬 Le **lobby** est affiché ci-dessous ⬇️\n\n" +
-      `⚠️ **Important** : Pour terminer la partie, utilise \`/end\` **dans ce channel** (<#${interaction.channelId}>)`;
+    const successMsg = t('create.success', { channelId: interaction.channelId });
     
     try {
       if (deferSuccess) {

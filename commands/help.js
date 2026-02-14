@@ -6,6 +6,7 @@ const {
   StringSelectMenuBuilder,
   ComponentType
 } = require("discord.js");
+const { t } = require('../utils/i18n');
 
 const COLORS = {
   PRIMARY: 0xFF6B6B,
@@ -15,66 +16,62 @@ const COLORS = {
 
 const buildOverviewEmbed = () =>
   new EmbedBuilder()
-    .setTitle("🐺 Loup-Garou Bot — Aide")
+    .setTitle(t('help.title'))
     .setColor(COLORS.PRIMARY)
-    .setDescription(
-      "Bienvenue ! Choisis une section ci-dessous pour afficher l'aide detaillee."
-    )
+    .setDescription(t('help.description'))
     .addFields(
-      { name: "🚀 Demarrage rapide", value: "`/create` → lobby → `Rejoindre` → `Demarrer`", inline: false },
-      { name: "⏩ Enchainement", value: "Les phases s'enchainent automatiquement.", inline: false }
+      { name: t('help.quick_start_title'), value: t('help.quick_start_value'), inline: false },
+      { name: t('help.flow_title'), value: t('help.flow_value'), inline: false }
     )
-    .setFooter({ text: "Werewolf Bot • Aide" });
+    .setFooter({ text: t('help.footer') });
 
 const buildSetupEmbed = () =>
   new EmbedBuilder()
-    .setTitle("🧩 Mise en place")
+    .setTitle(t('help.setup_title'))
     .setColor(COLORS.PRIMARY)
-    .setDescription(
-      "Tout se passe dans la categorie de jeu."
-    )
+    .setDescription(t('help.setup_desc'))
     .addFields(
-      { name: "🧪 Creer une partie", value: "`/create` — cree les salons (village, roles, vocal), lance l'ambiance et affiche le lobby. Utilise `min` et `max` si disponibles pour regler les joueurs.", inline: false },
-      { name: "👥 Rejoindre", value: "`/join` — ajoute ton profil au lobby. Possible uniquement avant le demarrage.", inline: false },
-      { name: "▶ Demarrer", value: "`/start` — distribue les roles en DM (embed + image), applique les permissions et lance la nuit.", inline: false }
+      { name: t('help.setup_create_title'), value: t('help.setup_create_value'), inline: false },
+      { name: t('help.setup_join_title'), value: t('help.setup_join_value'), inline: false },
+      { name: t('help.setup_start_title'), value: t('help.setup_start_value'), inline: false }
     )
-    .setFooter({ text: "Astuce: le lobby propose les boutons Rejoindre / Quitter / Demarrer" });
+    .setFooter({ text: t('help.setup_footer') });
 
 const buildNightEmbed = () =>
   new EmbedBuilder()
-    .setTitle("🌙 Actions de nuit")
+    .setTitle(t('help.night_title'))
     .setColor(COLORS.INFO)
     .addFields(
-      { name: "🐺 Loups", value: "Salon 🐺-loups — `/kill @joueur` pour designer la victime. Une seule cible pour la nuit.", inline: false },
-      { name: "🔮 Voyante", value: "Salon 🔮-voyante — `/see @joueur` pour connaitre le role d'un joueur vivant.", inline: false },
-      { name: "🧪 Sorciere", value: "Salon 🧪-sorciere — `/potion type:Vie` pour sauver la victime des loups, ou `/potion type:Mort target:@joueur` pour empoisonner.", inline: false },
-      { name: "❤️ Cupidon", value: "Salon ❤️-cupidon — `/love @a @b` pour lier deux amoureux (1ere nuit uniquement).", inline: false },
-      { name: "👧 Petite Fille", value: "Salon 🏘️-village — `/listen` pour recevoir un resume des loups. Attention a ne pas te faire reperer.", inline: false }
+      { name: t('help.night_wolves_title'), value: t('help.night_wolves_value'), inline: false },
+      { name: t('help.night_seer_title'), value: t('help.night_seer_value'), inline: false },
+      { name: t('help.night_witch_title'), value: t('help.night_witch_value'), inline: false },
+      { name: t('help.night_cupid_title'), value: t('help.night_cupid_value'), inline: false },
+      { name: t('help.night_petite_fille_title'), value: t('help.night_petite_fille_value'), inline: false }
     )
-    .setFooter({ text: "Les phases nocturnes s'enchainent automatiquement" });
+    .setFooter({ text: t('help.night_footer') });
 
 const buildDayEmbed = () =>
   new EmbedBuilder()
-    .setTitle("☀️ Actions de jour")
+    .setTitle(t('help.day_title'))
     .setColor(COLORS.INFO)
     .addFields(
-      { name: "🗳️ Vote", value: "Salon principal ou 🏘️-village — `/vote @joueur` pour eliminer quelqu'un. Le jour passe a la nuit quand tous les joueurs reels ont vote.", inline: false },
-      { name: "🏅 Capitaine", value: "`/captainvote @joueur` pour voter. Ensuite `/declarecaptain` pour annoncer l'elu. Le capitaine a une voix x2.", inline: false },
-      { name: "🏹 Chasseur", value: "`/shoot @joueur` uniquement si tu es elimine. Tu peux tirer une derniere fois.", inline: false }
+      { name: t('help.day_vote_title'), value: t('help.day_vote_value'), inline: false },
+      { name: t('help.day_captain_title'), value: t('help.day_captain_value'), inline: false },
+      { name: t('help.day_hunter_title'), value: t('help.day_hunter_value'), inline: false }
     )
-    .setFooter({ text: "Le jour passe a la nuit quand tous les joueurs reels ont vote" });
+    .setFooter({ text: t('help.day_footer') });
 
 const buildAdminEmbed = () =>
   new EmbedBuilder()
-    .setTitle("🛠️ Admin & Debug")
+    .setTitle(t('help.admin_title'))
     .setColor(COLORS.WARN)
     .addFields(
-      { name: "🧹 Fin de partie", value: "`/end` — termine la partie en cours et supprime les salons associes.", inline: false },
-      { name: "🧯 Nettoyage", value: "`/clear` — supprime les salons residuels si le bot a crash ou si une partie est bloquee.", inline: false },
-      { name: "⏭️ Debug phase", value: "`/nextphase` — admin uniquement pour forcer une transition.", inline: false },
-      { name: "🐛 Debug", value: "`/debug-*` — outils de test (faux joueurs, reset, info).", inline: false }
+      { name: t('help.admin_end_title'), value: t('help.admin_end_value'), inline: false },
+      { name: t('help.admin_clear_title'), value: t('help.admin_clear_value'), inline: false },
+      { name: t('help.admin_debug_phase_title'), value: t('help.admin_debug_phase_value'), inline: false },
+      { name: t('help.admin_debug_title'), value: t('help.admin_debug_value'), inline: false }
     )
-    .setFooter({ text: "Utilise ces commandes avec prudence" });
+    .setFooter({ text: t('help.admin_footer') });
 
 const HELP_SECTIONS = {
   overview: buildOverviewEmbed,
@@ -92,13 +89,13 @@ module.exports = {
   async execute(interaction) {
     const select = new StringSelectMenuBuilder()
       .setCustomId("help_menu")
-      .setPlaceholder("Choisis une section")
+      .setPlaceholder(t('ui.select.placeholder'))
       .addOptions(
-        { label: "Vue d'ensemble", value: "overview", description: "Demarrage rapide et resume", emoji: "📌" },
-        { label: "Mise en place", value: "setup", description: "Creer et demarrer une partie", emoji: "🧩" },
-        { label: "Actions de nuit", value: "night", description: "Roles et commandes nocturnes", emoji: "🌙" },
-        { label: "Actions de jour", value: "day", description: "Vote et capitaine", emoji: "☀️" },
-        { label: "Admin & Debug", value: "admin", description: "Outils de moderation", emoji: "🛠️" }
+        { label: t('ui.select.overview'), value: "overview", description: t('ui.select.overview_desc'), emoji: "📌" },
+        { label: t('ui.select.setup'), value: "setup", description: t('ui.select.setup_desc'), emoji: "🧩" },
+        { label: t('ui.select.night'), value: "night", description: t('ui.select.night_desc'), emoji: "🌙" },
+        { label: t('ui.select.day'), value: "day", description: t('ui.select.day_desc'), emoji: "☀️" },
+        { label: t('ui.select.admin'), value: "admin", description: t('ui.select.admin_desc'), emoji: "🛠️" }
       );
 
     const row = new ActionRowBuilder().addComponents(select);
@@ -118,7 +115,7 @@ module.exports = {
 
     collector.on("collect", async (selectInteraction) => {
       if (selectInteraction.user.id !== interaction.user.id) {
-        await selectInteraction.reply({ content: "❌ Seul l'auteur peut utiliser ce menu.", flags: MessageFlags.Ephemeral });
+        await selectInteraction.reply({ content: t('error.help_author_only'), flags: MessageFlags.Ephemeral });
         return;
       }
 

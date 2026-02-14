@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const { checkCategoryAndDefer } = require("../utils/commands");
+const { t } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -11,19 +12,19 @@ module.exports = {
   async execute(interaction) {
     // Vérification admin
     if (!interaction.member.permissions.has('Administrator')) {
-      await interaction.reply({ content: "❌ Admin only", flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: t('error.admin_only'), flags: MessageFlags.Ephemeral });
       return;
     }
     // Vérification catégorie et defer
     if (!await checkCategoryAndDefer(interaction)) return;
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
-      await interaction.editReply({ content: "❌ Aucune partie ici", flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: t('error.no_game'), flags: MessageFlags.Ephemeral });
       return;
     }
     // Ajoute un flag debug
     game.disableVoiceMute = true;
     gameManager.scheduleSave();
-    await interaction.editReply({ content: "🛠️ Mute/unmute automatique désactivé pour cette partie.", flags: MessageFlags.Ephemeral });
+    await interaction.editReply({ content: t('cmd.debug_voicemute.success'), flags: MessageFlags.Ephemeral });
   }
 };

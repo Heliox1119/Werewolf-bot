@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const ROLES = require("../game/roles");
+const { t } = require('../utils/i18n');
 
 const ROLE_MAP = {
   WEREWOLF: ROLES.WEREWOLF,
@@ -41,13 +42,13 @@ module.exports = {
 
   async execute(interaction) {
     if (!interaction.member.permissions.has('Administrator')) {
-      await interaction.reply({ content: "❌ Admin only", flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: t('error.admin_only'), flags: MessageFlags.Ephemeral });
       return;
     }
 
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
-      await interaction.reply({ content: "❌ Aucune partie ici", flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: t('error.no_game'), flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -57,7 +58,7 @@ module.exports = {
 
     const player = game.players.find(p => p.id === target.id);
     if (!player) {
-      await interaction.reply({ content: "❌ Joueur non trouve dans la partie", flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: t('cmd.debug_set_role.player_not_found'), flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -69,7 +70,7 @@ module.exports = {
     await gameManager.updateVoicePerms(interaction.guild, game);
 
     await interaction.reply({
-      content: `✅ Role mis a jour: ${target.username} => ${newRole}`,
+      content: t('cmd.debug_set_role.success', { name: target.username, role: newRole }),
       flags: MessageFlags.Ephemeral
     });
   }

@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const gameManager = require("../game/gameManager");
+const { t } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -9,13 +10,13 @@ module.exports = {
 
   async execute(interaction) {
     if (!interaction.member.permissions.has('Administrator')) {
-      await interaction.reply({ content: "❌ Admin only", flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: t('error.admin_only'), flags: MessageFlags.Ephemeral });
       return;
     }
 
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
-      await interaction.reply({ content: "❌ Aucune partie ici", flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: t('error.no_game'), flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -29,7 +30,7 @@ module.exports = {
     gameManager.games.delete(interaction.channelId);
 
     await interaction.reply({
-      content: "✅ Partie supprimée de la mémoire ! Utilise `/create` pour recommencer.",
+      content: t('cmd.debug_reset.success'),
       flags: MessageFlags.Ephemeral
     });
   }

@@ -4,6 +4,10 @@ process.env.TOKEN = 'test-token-123';
 process.env.CLIENT_ID = '123456789';
 process.env.GUILD_ID = '987654321';
 
+// Initialize i18n for tests (loads FR locale, no DB needed)
+const i18n = require('../utils/i18n');
+i18n.initialize(null);
+
 // Suppress console logs in tests unless VERBOSE is set
 if (!process.env.VERBOSE) {
   global.console = {

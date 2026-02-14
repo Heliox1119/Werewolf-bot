@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const { commands: logger } = require("../utils/logger");
+const { t } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -10,18 +11,18 @@ module.exports = {
 
   async execute(interaction) {
     if (!interaction.member.permissions.has('Administrator')) {
-      await interaction.reply({ content: "❌ Admin only", flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: t('error.admin_only'), flags: MessageFlags.Ephemeral });
       return;
     }
 
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
-      await interaction.reply({ content: "❌ Aucune partie ici", flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: t('error.no_game'), flags: MessageFlags.Ephemeral });
       return;
     }
 
     if (game.players.length === 0) {
-      await interaction.reply({ content: "❌ Ajoute au moins 1 joueur d'abord", flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: t('cmd.debug_start_force.need_player'), flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -38,11 +39,11 @@ module.exports = {
         game2.rules = { ...game2.rules, minPlayers: 1 };
         const retried = gameManager.start(interaction.channelId);
         if (!retried) {
-          await interaction.editReply("❌ Impossible de démarrer");
+          await interaction.editReply(t('cmd.debug_start_force.cannot_start'));
           return;
         }
       } else {
-        await interaction.editReply("❌ Impossible de démarrer");
+        await interaction.editReply(t('cmd.debug_start_force.cannot_start'));
         return;
       }
     }
@@ -51,10 +52,10 @@ module.exports = {
     const setupSuccess = await gameManager.postStartGame(interaction.guild, finalGame, interaction.client, interaction);
 
     if (!setupSuccess) {
-      await interaction.editReply("❌ Erreur lors de setupChannels");
+      await interaction.editReply(t('cmd.debug_start_force.setup_error'));
       return;
     }
 
-    await interaction.editReply("🌙 Jeu lancé en debug !");
+    await interaction.editReply(t('cmd.debug_start_force.success'));
   }
 };
