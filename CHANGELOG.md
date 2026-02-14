@@ -1,5 +1,46 @@
 # 📝 Changelog - Werewolf Bot
 
+## [2.4.0] - 2026-02-14 - Système i18n centralisé (FR + EN)
+
+### 🌍 Internationalisation complète
+- **Système i18n centralisé** : Singleton `I18n` dans `utils/i18n.js` avec interpolation `{{variable}}`
+- **Commande `/lang`** : Bascule entre français et anglais (admin-only), persisté en DB
+- **500+ clés de traduction** dans 22+ catégories (errors, game, lobby, roles, phases, commands, alerts, etc.)
+- **Fallback automatique** : Si une clé manque dans la langue courante, retour au français
+
+### 📁 Nouveaux fichiers
+```
+utils/i18n.js       # Gestionnaire i18n (singleton, t(), translateRole/Phase/RoleDesc, tips)
+locales/fr.js       # Locale française complète (~500+ clés)
+locales/en.js       # Locale anglaise complète (~500+ clés)
+commands/lang.js    # Commande /lang pour changer la langue
+```
+
+### 🔧 Fichiers modifiés (35 fichiers)
+- **game/gameManager.js** : ~45 chaînes → `t()` (phases, victoires, DMs, channels, résumé)
+- **utils/lobbyBuilder.js** : ~30 chaînes → `t()` (lobby, boutons, rôles, tips, progression)
+- **28 fichiers de commandes** : Tous les messages utilisateur sous `t()`
+  - vote, kill, potion, see, love, shoot, listen, skip, start, create, end
+  - help, status, clear, captainvote, declarecaptain, vote-end, setrules, join, force-end
+  - setup, monitoring, ratelimit, nextphase, debug-*
+- **index.js** : Initialisation i18n + handlers boutons (lobby_join/leave/start, game_restart/cleanup)
+- **utils/rateLimiter.js** : Messages rate limit traduits
+- **utils/commands.js** : Message catégorie interdite traduit
+- **utils/config.js** : Labels de configuration traduits
+- **utils/roleHelpers.js** : Instructions de rôle traduites
+- **monitoring/alerts.js** : ~30 chaînes d'alertes traduites
+- **tests/setup.js** : Initialisation i18n pour les tests
+
+### 🏗️ Architecture
+- Constantes internes (`Loup-Garou`, `Nuit`, etc.) inchangées dans `roles.js`/`phases.js`
+- Traduction à l'affichage via `translateRole()`, `translatePhase()`, `translateRoleDesc()`
+- Persistance de la langue en table `config` (clé `bot.locale`)
+
+### ✅ Tests
+- 191/191 tests passent
+
+---
+
 ## [2.3.0] - 2026-02-12 - Audit complet, Spectateur, /skip, Stats DB
 
 ### 🔍 Audit complet — 32 corrections (5 CRITICAL, 7 HIGH, 12 MEDIUM, 8 LOW)
