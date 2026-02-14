@@ -81,7 +81,7 @@ module.exports = {
       }
 
       const victimPlayer = game.players.find(p => p.id === game.nightVictim);
-      const victimName = victimPlayer ? victimPlayer.username : 'quelqu\'un';
+      const victimName = victimPlayer ? victimPlayer.username : t('game.someone');
 
       game.witchPotions.life = false;
       game.witchSave = true;
@@ -123,7 +123,7 @@ module.exports = {
     if (game.phase === PHASES.NIGHT) {
       if (gameManager.hasAliveRealRole(game, ROLES.SEER)) {
         game.subPhase = PHASES.VOYANTE;
-        await gameManager.announcePhase(interaction.guild, game, "La voyante se réveille...");
+        await gameManager.announcePhase(interaction.guild, game, t('phase.seer_wakes'));
         gameManager.startNightAfkTimeout(interaction.guild, game);
       } else {
         await gameManager.transitionToDay(interaction.guild, game);

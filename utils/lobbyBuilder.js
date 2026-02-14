@@ -162,7 +162,7 @@ function buildLobbyEmbed(game, hostId) {
     .setTitle(title)
     .setDescription(
       `${description}\n\n` +
-      `**Progression**\n${buildProgressBar(playerCount, min, max)}`
+      `**${t('progress.label')}**\n${buildProgressBar(playerCount, min, max)}`
     )
     .addFields(
       {

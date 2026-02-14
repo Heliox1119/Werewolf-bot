@@ -3,6 +3,7 @@ const { MessageFlags } = require('discord.js');
 const { isInGameCategory } = require('./validators');
 const { safeDefer, safeReply, safeEditReply } = require('./interaction');
 const { commands: logger } = require('./logger');
+const { t } = require('./i18n');
 
 /**
  * Ensure interaction is properly deferred/replied before proceeding
@@ -43,7 +44,7 @@ async function checkCategoryAndDefer(interaction) {
     // Use editReply since we already deferred
     try {
       await interaction.editReply({
-        content: "❌ Action interdite ici. Utilisez cette commande dans la catégorie dédiée au jeu."
+        content: t('error.action_forbidden')
       });
     } catch (e) {
       logger.error('Failed to edit reply for category check', e);

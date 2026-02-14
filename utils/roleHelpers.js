@@ -1,16 +1,17 @@
 const ROLES = require('../game/roles');
+const { t } = require('./i18n');
 
 function getRoleDescription(role) {
   const descriptions = {
-    [ROLES.WEREWOLF]: "Salon: 🐺-loups. Commande: /kill @joueur (choisir la victime la nuit).",
-    [ROLES.VILLAGER]: "Salon: 🏘️-village. Commande: /vote @joueur (voter le jour).",
-    [ROLES.SEER]: "Salon: 🔮-voyante. Commande: /see @joueur (connaitre le role la nuit).",
-    [ROLES.WITCH]: "Salon: 🧪-sorciere. Commandes: /potion save ou /potion kill @joueur (la nuit).",
-    [ROLES.HUNTER]: "Salon: 🏘️-village. Commande: /shoot @joueur (si tu es elimine).",
-    [ROLES.PETITE_FILLE]: "Salon: 🏘️-village. Commande: /listen (espionner les loups la nuit).",
-    [ROLES.CUPID]: "Salon: ❤️-cupidon. Commande: /love @a @b (au debut de la partie)."
+    [ROLES.WEREWOLF]: t('role.instruction.werewolf'),
+    [ROLES.VILLAGER]: t('role.instruction.villager'),
+    [ROLES.SEER]: t('role.instruction.seer'),
+    [ROLES.WITCH]: t('role.instruction.witch'),
+    [ROLES.HUNTER]: t('role.instruction.hunter'),
+    [ROLES.PETITE_FILLE]: t('role.instruction.petite_fille'),
+    [ROLES.CUPID]: t('role.instruction.cupid')
   };
-  return descriptions[role] || "Rôle inconnu";
+  return descriptions[role] || t('role.instruction.unknown');
 }
 
 function getRoleImageName(role) {

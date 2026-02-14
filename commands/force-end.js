@@ -40,7 +40,7 @@ module.exports = {
       let message = t('cleanup.force_end_no_game', { id: targetChannelId }) + `\n\n`;
       
       if (allGames.length > 0) {
-        message += `📊 **Parties actives** :\n`;
+        message += t('cleanup.active_games_list');
         for (const channelId of allGames) {
           message += `• <#${channelId}> (\`${channelId}\`)\n`;
         }

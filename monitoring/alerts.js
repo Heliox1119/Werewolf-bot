@@ -1,4 +1,5 @@
 const { app: logger } = require('../utils/logger');
+const { t } = require('../utils/i18n');
 const { EmbedBuilder, WebhookClient } = require('discord.js');
 
 /**
@@ -126,12 +127,12 @@ class AlertSystem {
     if (!this.canSendAlert(alertType)) return false;
     
     const sent = await this.sendAlert(
-      'Mémoire élevée',
-      `L'utilisation mémoire a atteint un niveau critique.`,
+      t('alerts.memory_title'),
+      t('alerts.memory_desc'),
       'warning',
       [
         { name: '💾 Utilisation', value: `${memoryPercentage}%`, inline: true },
-        { name: '📊 Détails', value: `${memoryUsed}MB / ${memoryTotal}MB`, inline: true },
+        { name: t('alerts.details'), value: `${memoryUsed}MB / ${memoryTotal}MB`, inline: true },
         { name: '⚠️ Seuil', value: `${this.rules.highMemory.threshold}%`, inline: true }
       ]
     );
@@ -148,13 +149,13 @@ class AlertSystem {
     if (!this.canSendAlert(alertType)) return false;
     
     const sent = await this.sendAlert(
-      'Latence élevée',
-      `La latence Discord API est anormalement élevée.`,
+      t('alerts.latency_title'),
+      t('alerts.latency_desc'),
       'warning',
       [
-        { name: '⏱️ Latence actuelle', value: `${latency}ms`, inline: true },
+        { name: t('alerts.latency_current'), value: `${latency}ms`, inline: true },
         { name: '⚠️ Seuil', value: `${this.rules.highLatency.threshold}ms`, inline: true },
-        { name: '📡 Impact', value: 'Commandes ralenties', inline: true }
+        { name: t('alerts.latency_impact'), value: t('alerts.commands_slowed'), inline: true }
       ]
     );
     
@@ -170,12 +171,12 @@ class AlertSystem {
     if (!this.canSendAlert(alertType)) return false;
     
     const sent = await this.sendAlert(
-      'Taux d\'erreur élevé',
-      `Le nombre d'erreurs de commandes dépasse le seuil acceptable.`,
+      t('alerts.error_rate_title'),
+      t('alerts.error_rate_desc'),
       'error',
       [
-        { name: '📈 Taux d\'erreur', value: `${errorRate.toFixed(1)}%`, inline: true },
-        { name: '❌ Erreurs', value: `${errorCount}/${totalCommands}`, inline: true },
+        { name: t('alerts.error_rate_field'), value: `${errorRate.toFixed(1)}%`, inline: true },
+        { name: t('alerts.errors_field'), value: `${errorCount}/${totalCommands}`, inline: true },
         { name: '⚠️ Seuil', value: `${this.rules.highErrorRate.threshold}%`, inline: true }
       ]
     );
@@ -192,7 +193,7 @@ class AlertSystem {
     if (!this.canSendAlert(alertType)) return false;
     
     const fields = [
-      { name: '❌ Erreur', value: error.message || 'Unknown error', inline: false }
+      { name: t('alerts.error_field'), value: error.message || 'Unknown error', inline: false }
     ];
     
     if (error.stack) {
@@ -202,15 +203,15 @@ class AlertSystem {
     
     if (Object.keys(context).length > 0) {
       fields.push({ 
-        name: '🔍 Contexte', 
+        name: t('alerts.context_field'), 
         value: `\`\`\`json\n${JSON.stringify(context, null, 2).slice(0, 500)}\`\`\``, 
         inline: false 
       });
     }
     
     const sent = await this.sendAlert(
-      'Erreur critique',
-      `Une erreur critique s'est produite dans le bot.`,
+      t('alerts.critical_title'),
+      t('alerts.critical_desc'),
       'critical',
       fields
     );
@@ -227,13 +228,13 @@ class AlertSystem {
     if (!this.canSendAlert(alertType)) return false;
     
     const sent = await this.sendAlert(
-      'Bot déconnecté',
-      `Le bot s'est déconnecté de Discord.`,
+      t('alerts.disconnect_title'),
+      t('alerts.disconnect_desc'),
       'critical',
       [
-        { name: '⚠️ Raison', value: reason, inline: true },
-        { name: '⏰ Heure', value: new Date().toLocaleString('fr-FR'), inline: true },
-        { name: '🔄 Action', value: 'Tentative de reconnexion automatique', inline: true }
+        { name: t('alerts.reason_field'), value: reason, inline: true },
+        { name: t('alerts.time_field'), value: new Date().toLocaleString('fr-FR'), inline: true },
+        { name: t('alerts.action_field'), value: t('alerts.auto_reconnect'), inline: true }
       ]
     );
     
@@ -249,14 +250,14 @@ class AlertSystem {
     if (!this.canSendAlert(alertType)) return false;
     
     const sent = await this.sendAlert(
-      'Abus de rate limiting détecté',
-      `Un utilisateur tente de spam les commandes.`,
+      t('alerts.ratelimit_title'),
+      t('alerts.ratelimit_desc'),
       'warning',
       [
-        { name: '👤 Utilisateur', value: `<@${userId}>`, inline: true },
-        { name: '🔨 Commande', value: commandName, inline: true },
+        { name: t('alerts.user_field'), value: `<@${userId}>`, inline: true },
+        { name: t('alerts.command_field'), value: commandName, inline: true },
         { name: '⚠️ Violations', value: violations.toString(), inline: true },
-        { name: '🛡️ Action', value: 'Ban temporaire appliqué', inline: false }
+        { name: t('alerts.action_applied'), value: t('alerts.temp_ban_applied'), inline: false }
       ]
     );
     
@@ -269,13 +270,13 @@ class AlertSystem {
    */
   async alertBotStarted(version, uptime) {
     const sent = await this.sendAlert(
-      'Bot démarré',
-      `Le bot Werewolf a démarré avec succès.`,
+      t('alerts.startup_title'),
+      t('alerts.startup_desc'),
       'info',
       [
         { name: '📦 Version', value: version, inline: true },
-        { name: '⏱️ Uptime précédent', value: uptime || 'N/A', inline: true },
-        { name: '✅ Statut', value: 'En ligne', inline: true }
+        { name: t('alerts.previous_uptime'), value: uptime || 'N/A', inline: true },
+        { name: t('alerts.status_field'), value: t('alerts.online'), inline: true }
       ]
     );
     
@@ -287,17 +288,17 @@ class AlertSystem {
    */
   async sendDailySummary(metrics) {
     const sent = await this.sendAlert(
-      'Résumé quotidien',
-      `Statistiques des dernières 24 heures.`,
+      t('alerts.daily_title'),
+      t('alerts.daily_desc'),
       'info',
       [
-        { name: '🎮 Parties', value: `${metrics.game.gamesCreated24h} créées, ${metrics.game.gamesCompleted24h} terminées`, inline: false },
-        { name: '🔨 Commandes', value: `${metrics.commands.total} (${metrics.commands.errors} erreurs)`, inline: true },
-        { name: '⚠️ Erreurs', value: metrics.errors.last24h.toString(), inline: true },
-        { name: '🛡️ Rate limits', value: metrics.commands.rateLimited.toString(), inline: true },
-        { name: '📊 Latence moy.', value: `${metrics.discord.latency}ms`, inline: true },
-        { name: '💾 Mémoire moy.', value: `${metrics.system.memory.percentage}%`, inline: true },
-        { name: '⏱️ Uptime', value: this.formatUptime(metrics.system.uptime), inline: true }
+        { name: t('alerts.games_field'), value: t('alerts.games_value', { created: metrics.game.gamesCreated24h, finished: metrics.game.gamesCompleted24h }), inline: false },
+        { name: t('alerts.commands_field'), value: `${metrics.commands.total} (${metrics.commands.errors} erreurs)`, inline: true },
+        { name: t('alerts.errors_label'), value: metrics.errors.last24h.toString(), inline: true },
+        { name: t('alerts.ratelimits_field'), value: metrics.commands.rateLimited.toString(), inline: true },
+        { name: t('alerts.avg_latency'), value: `${metrics.discord.latency}ms`, inline: true },
+        { name: t('alerts.avg_memory'), value: `${metrics.system.memory.percentage}%`, inline: true },
+        { name: t('alerts.uptime_field'), value: this.formatUptime(metrics.system.uptime), inline: true }
       ]
     );
     

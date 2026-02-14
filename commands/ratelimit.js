@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
 const rateLimiter = require("../utils/rateLimiter");
+const { t } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -97,12 +98,12 @@ async function handleStats(interaction) {
   const stats = rateLimiter.getGlobalStats();
 
   const embed = new EmbedBuilder()
-    .setTitle("📊 Rate Limiting - Statistiques Globales")
+    .setTitle(t('cmd.ratelimit.stats_title'))
     .setColor(0x5865F2)
     .addFields(
-      { name: "👥 Utilisateurs trackés", value: stats.totalUsers.toString(), inline: true },
-      { name: "🚫 Utilisateurs bannis", value: stats.bannedUsers.toString(), inline: true },
-      { name: "🪣 Buckets actifs", value: stats.totalBuckets.toString(), inline: true }
+      { name: t('cmd.ratelimit.tracked_users'), value: stats.totalUsers.toString(), inline: true },
+      { name: t('cmd.ratelimit.banned_users'), value: stats.bannedUsers.toString(), inline: true },
+      { name: t('cmd.ratelimit.active_buckets'), value: stats.totalBuckets.toString(), inline: true }
     )
     .setTimestamp();
 
@@ -114,14 +115,14 @@ async function handleUserStats(interaction) {
   const stats = rateLimiter.getUserStats(user.id);
 
   const embed = new EmbedBuilder()
-    .setTitle(`📊 Rate Limiting - ${user.username}`)
+    .setTitle(t('cmd.ratelimit.user_title', { name: user.username }))
     .setColor(stats.banned ? 0xFF0000 : 0x00FF00)
-    .setDescription(stats.banned ? `🚫 **BANNI**: ${stats.banInfo.reason}` : "✅ Utilisateur actif");
+    .setDescription(stats.banned ? t('cmd.ratelimit.user_banned', { reason: stats.banInfo.reason }) : t('cmd.ratelimit.user_active'));
 
   if (stats.banned) {
     const retryAfter = Math.ceil((stats.banInfo.bannedUntil - Date.now()) / 1000);
     embed.addFields({
-      name: "⏱️ Débannissement dans",
+      name: t('cmd.ratelimit.unban_in'),
       value: `${retryAfter}s (${stats.banInfo.violations} violations)`,
       inline: false
     });
@@ -141,14 +142,14 @@ async function handleUserStats(interaction) {
       .join("\n");
 
     embed.addFields({
-      name: "🎮 Commandes utilisées",
+      name: t('cmd.ratelimit.commands_used'),
       value: commandsText,
       inline: false
     });
   } else {
     embed.addFields({
-      name: "🎮 Commandes",
-      value: "Aucune commande utilisée récemment",
+      name: t('cmd.ratelimit.commands'),
+      value: t('cmd.ratelimit.no_commands'),
       inline: false
     });
   }
@@ -162,8 +163,8 @@ async function handleReset(interaction) {
   rateLimiter.resetUser(user.id);
 
   const embed = new EmbedBuilder()
-    .setTitle("✅ Rate Limits Réinitialisés")
-    .setDescription(`Les limites de ${user.username} ont été réinitialisées.`)
+    .setTitle(t('cmd.ratelimit.reset_title'))
+    .setDescription(t('cmd.ratelimit.reset_desc', { name: user.username }))
     .setColor(0x00FF00)
     .setTimestamp();
 
@@ -173,17 +174,17 @@ async function handleReset(interaction) {
 async function handleBan(interaction) {
   const user = interaction.options.getUser("utilisateur");
   const duration = interaction.options.getInteger("duree");
-  const reason = interaction.options.getString("raison") || "ban manuel administrateur";
+  const reason = interaction.options.getString("raison") || t('cmd.ratelimit.default_ban_reason');
 
   rateLimiter.banUser(user.id, duration * 60 * 1000, reason);
 
   const embed = new EmbedBuilder()
-    .setTitle("🚫 Utilisateur Banni")
-    .setDescription(`${user.username} a été banni pour ${duration} minute(s).`)
+    .setTitle(t('cmd.ratelimit.ban_title'))
+    .setDescription(t('cmd.ratelimit.ban_desc', { name: user.username, duration }))
     .addFields(
-      { name: "Raison", value: reason, inline: false },
-      { name: "Durée", value: `${duration} minute(s)`, inline: true },
-      { name: "Admin", value: interaction.user.username, inline: true }
+      { name: t('cmd.ratelimit.reason'), value: reason, inline: false },
+      { name: t('cmd.ratelimit.duration'), value: t('cmd.ratelimit.minutes', { n: duration }), inline: true },
+      { name: t('cmd.ratelimit.admin'), value: interaction.user.username, inline: true }
     )
     .setColor(0xFF0000)
     .setTimestamp();
@@ -197,8 +198,8 @@ async function handleUnban(interaction) {
   rateLimiter.unbanUser(user.id);
 
   const embed = new EmbedBuilder()
-    .setTitle("✅ Utilisateur Débanni")
-    .setDescription(`${user.username} a été débanni.`)
+    .setTitle(t('cmd.ratelimit.unban_title'))
+    .setDescription(t('cmd.ratelimit.unban_desc', { name: user.username }))
     .setColor(0x00FF00)
     .setTimestamp();
 

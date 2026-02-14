@@ -6,6 +6,7 @@
  */
 
 const { interaction: logger } = require('./logger');
+const { t } = require('./i18n');
 
 class RateLimiter {
   constructor() {
@@ -69,7 +70,7 @@ class RateLimiter {
       logger.warn('User is banned', { userId, commandName, retryAfter, reason: ban.reason });
       return {
         allowed: false,
-        reason: `Vous êtes temporairement banni pour ${ban.reason}. Réessayez dans ${retryAfter}s.`,
+        reason: t('error.rate_ban_message', { reason: ban.reason, seconds: retryAfter }),
         retryAfter
       };
     }
@@ -116,7 +117,7 @@ class RateLimiter {
       logger.debug('Cooldown active', { userId, commandName, retryAfter });
       return {
         allowed: false,
-        reason: `Cooldown actif. Attendez ${retryAfter}s avant de réutiliser cette commande.`,
+        reason: t('error.rate_cooldown', { seconds: retryAfter }),
         retryAfter
       };
     }
@@ -142,7 +143,7 @@ class RateLimiter {
 
       return {
         allowed: false,
-        reason: `Rate limit dépassé. Attendez ${retryAfter}s avant de réessayer.`,
+        reason: t('error.rate_exceeded', { seconds: retryAfter }),
         retryAfter
       };
     }
@@ -171,15 +172,15 @@ class RateLimiter {
     if (violations >= 20) {
       // Ban permanent (24h)
       banDuration = 24 * 60 * 60 * 1000;
-      reason = 'abus sévère et répété';
+      reason = t('error.rate_reason_severe');
     } else if (violations >= 10) {
       // Ban long (1h)
       banDuration = 60 * 60 * 1000;
-      reason = 'spam continu';
+      reason = t('error.rate_reason_spam');
     } else if (violations >= 5) {
       // Ban court (5 minutes)
       banDuration = 5 * 60 * 1000;
-      reason = 'rate limit dépassé à répétition';
+      reason = t('error.rate_reason_repeated');
     } else {
       return; // Pas de pénalité encore
     }

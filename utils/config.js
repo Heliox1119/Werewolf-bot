@@ -1,5 +1,6 @@
 const logger = require('./logger').app;
 const path = require('path');
+const { t } = require('./i18n');
 
 /**
  * Gestionnaire de configuration centralisée
@@ -292,7 +293,7 @@ class ConfigManager {
    */
   getMissingSetupKeys() {
     const required = {
-      'discord.category_id': 'ID de la catégorie Discord'
+      'discord.category_id': t('cmd.setup.config_category_desc')
     };
 
     const missing = [];
@@ -316,7 +317,7 @@ class ConfigManager {
         emojis: Object.keys(this.getEmojis()).length
       },
       monitoring: {
-        webhookUrl: this.getMonitoringWebhookUrl() ? '✓ Configuré' : '✗ Non configuré',
+        webhookUrl: this.getMonitoringWebhookUrl() ? t('cmd.setup.configured') : t('cmd.setup.not_configured'),
         alertsEnabled: this.isMonitoringAlertsEnabled(),
         metricsInterval: `${this.getMetricsInterval() / 1000}s`
       },
