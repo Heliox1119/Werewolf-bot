@@ -54,6 +54,10 @@ class GameDatabase {
         this.db.exec('ALTER TABLE games ADD COLUMN witch_save BOOLEAN DEFAULT 0');
         logger.info('Migration: added witch_save column');
       }
+      if (!columns.includes('guild_id')) {
+        this.db.exec('ALTER TABLE games ADD COLUMN guild_id TEXT');
+        logger.info('Migration: added guild_id column (multi-guild support)');
+      }
     } catch (err) {
       logger.error('Schema migration error', { error: err.message });
     }
@@ -84,13 +88,14 @@ class GameDatabase {
     try {
       const stmt = this.db.prepare(`
         INSERT INTO games (
-          channel_id, lobby_host_id, min_players, max_players,
+          channel_id, guild_id, lobby_host_id, min_players, max_players,
           phase, day_count, disable_voice_mute
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `);
       
       const result = stmt.run(
         channelId,
+        options.guildId || null,
         options.lobbyHostId || null,
         options.minPlayers || 5,
         options.maxPlayers || 10,

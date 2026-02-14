@@ -23,6 +23,7 @@ function createMockInteraction(options = {}) {
 
   const interaction = new Interaction(commandName, channelId, userId);
   interaction.guild.id = guildId;
+  interaction.guildId = guildId;
   
   // Configure options if provided
   if (options.integerOptions) {

@@ -28,6 +28,7 @@ class MockGameDatabase {
     this.games.set(channelId, {
       id: gameId,
       channel_id: channelId,
+      guild_id: options.guildId || null,
       lobby_host_id: options.lobbyHostId,
       min_players: options.minPlayers || 5,
       max_players: options.maxPlayers || 10,

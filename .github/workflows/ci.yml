@@ -111,4 +111,3 @@ jobs:
         env:
           TOKEN: test-token
           CLIENT_ID: "123456789"
-          GUILD_ID: "987654321"

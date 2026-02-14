@@ -137,6 +137,7 @@ class MockInteraction {
     this.channelId = channelId;
     this.user = new MockUser(userId);
     this.guild = new MockGuild();
+    this.guildId = this.guild.id;
     this.client = new MockClient();
     this.replied = false;
     this.deferred = false;

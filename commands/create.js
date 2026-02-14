@@ -83,7 +83,7 @@ module.exports = {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-    const ok = gameManager.create(interaction.channelId);
+    const ok = gameManager.create(interaction.channelId, { guildId: interaction.guildId });
     if (!ok) {
       logger.warn('Failed to create game - already exists', { channelId: interaction.channelId });
       const errorMsg = t('error.game_already_exists');

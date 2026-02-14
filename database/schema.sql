@@ -5,6 +5,7 @@
 CREATE TABLE IF NOT EXISTS games (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   channel_id TEXT UNIQUE NOT NULL,
+  guild_id TEXT,
   lobby_host_id TEXT,
   lobby_message_id TEXT,
   

@@ -107,7 +107,8 @@ describe('Commande /create', () => {
 
     expect(mockInteraction.deferred).toBe(true);
     expect(gameManager.create).toHaveBeenCalledWith(
-      'channel-123'
+      'channel-123',
+      { guildId: 'guild-test' }
     );
   });
 

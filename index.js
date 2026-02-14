@@ -9,10 +9,9 @@ const { safeEditReply } = require("./utils/interaction");
 const { t } = require('./utils/i18n');
 
 // Validation des variables d'environnement requises
-// NOTE: Ce bot est conçu pour un seul serveur (mono-guild).
-// GUILD_ID permet l'enregistrement instantané des commandes (guild commands).
-// Pour du multi-guild, utiliser Routes.applicationCommands() et retirer GUILD_ID.
-const REQUIRED_ENV = ['TOKEN', 'CLIENT_ID', 'GUILD_ID'];
+// NOTE: Ce bot supporte le multi-serveur. Les commandes sont enregistrées globalement.
+// GUILD_ID est optionnel — s'il est défini, les commandes sont aussi enregistrées en guild (instant).
+const REQUIRED_ENV = ['TOKEN', 'CLIENT_ID'];
 for (const key of REQUIRED_ENV) {
   if (!process.env[key]) {
     console.error(`❌ Variable d'environnement manquante: ${key}. Vérifiez votre fichier .env`);
@@ -121,45 +120,72 @@ client.once("clientReady", async () => {
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
   try {
+    // Enregistrement global (disponible sur tous les serveurs, ~1h de propagation)
     await rest.put(
-      Routes.applicationGuildCommands(
-        process.env.CLIENT_ID,
-        process.env.GUILD_ID
-      ),
-      {
-        body: client.commands.map(cmd => cmd.data.toJSON())
-      }
+      Routes.applicationCommands(process.env.CLIENT_ID),
+      { body: client.commands.map(cmd => cmd.data.toJSON()) }
     );
+    logger.success("✅ Slash commands registered (global)", { count: client.commands.size });
 
-    logger.success("✅ Slash commands registered (guild)", { count: client.commands.size });
+    // Si GUILD_ID est défini, enregistrer aussi en guild pour accès instantané
+    if (process.env.GUILD_ID) {
+      await rest.put(
+        Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+        { body: client.commands.map(cmd => cmd.data.toJSON()) }
+      );
+      logger.success("✅ Slash commands registered (guild instant)", { guildId: process.env.GUILD_ID });
+    }
 
-      // ─── Permission check ─────────────────────────────────────────
+      // ─── Permission check (all guilds) ────────────────────────────
+      const REQUIRED_PERMS = [
+        'ManageChannels', 'ManageRoles', 'MuteMembers',
+        'SendMessages', 'EmbedLinks', 'Connect', 'Speak',
+        'ViewChannel', 'ReadMessageHistory'
+      ];
+
+      for (const [guildId, guild] of client.guilds.cache) {
+        try {
+          const botMember = guild.members.me || await guild.members.fetchMe();
+          const missing = REQUIRED_PERMS.filter(p => !botMember.permissions.has(p));
+          if (missing.length > 0) {
+            logger.warn(`⚠️ Missing permissions in ${guild.name}`, { guildId, missing });
+          } else {
+            logger.success(`✅ All permissions OK in ${guild.name}`, { guildId });
+          }
+        } catch (err) {
+          logger.error(`Could not verify permissions in ${guild.name}`, err);
+        }
+      }
+      // ──────────────────────────────────────────────────────────────
+
+      // ─── Orphan channel cleanup ───────────────────────────────────
       try {
-        const guild = client.guilds.cache.get(process.env.GUILD_ID) 
-          || await client.guilds.fetch(process.env.GUILD_ID);
-        const botMember = guild.members.me;
-        
-        const REQUIRED_PERMS = [
-          'ManageChannels',
-          'ManageRoles', 
-          'MuteMembers',
-          'SendMessages',
-          'EmbedLinks',
-          'Connect',
-          'Speak',
-          'ViewChannel',
-          'ReadMessageHistory'
-        ];
-        
-        const missing = REQUIRED_PERMS.filter(p => !botMember.permissions.has(p));
-        
-        if (missing.length > 0) {
-          logger.warn('⚠️ Bot is missing permissions — some features may fail', { missing });
-        } else {
-          logger.success('✅ All required permissions granted');
+        logger.info('Checking for orphan game channels...');
+        for (const [guildId, guild] of client.guilds.cache) {
+          const channels = guild.channels.cache.filter(ch => 
+            ch.name && (
+              ch.name.startsWith('🐺') || ch.name.startsWith('🏠') ||
+              ch.name.startsWith('👀') || ch.name.startsWith('🧙') ||
+              ch.name.startsWith('💘')
+            )
+          );
+          for (const [chId, ch] of channels) {
+            // Si ce channel n'appartient à aucune partie connue, le supprimer
+            const isOwned = Array.from(gameManager.games.values()).some(g =>
+              g.voiceChannelId === chId || g.villageChannelId === chId ||
+              g.wolvesChannelId === chId || g.seerChannelId === chId ||
+              g.witchChannelId === chId || g.cupidChannelId === chId
+            );
+            if (!isOwned) {
+              try {
+                await ch.delete('Orphan game channel cleanup');
+                logger.info('Deleted orphan channel', { name: ch.name, id: chId, guild: guild.name });
+              } catch (e) { logger.error('Failed to delete orphan channel', e); }
+            }
+          }
         }
       } catch (err) {
-        logger.error('Could not verify permissions', err);
+        logger.error('Orphan cleanup failed', err);
       }
       // ──────────────────────────────────────────────────────────────
 
@@ -167,37 +193,48 @@ client.once("clientReady", async () => {
       try {
         logger.info('Loading saved game state...');
         gameManager.loadState();
-        const guild = client.guilds.cache.get(process.env.GUILD_ID);
-        if (guild) {
-          logger.info('Restoring games...', { count: gameManager.games.size });
-          for (const [channelId, game] of gameManager.games.entries()) {
-            // Validate main channel still exists
-            const mainChannel = await guild.channels.fetch(game.mainChannelId).catch(() => null);
-            if (!mainChannel) {
-              logger.warn('Restored game has missing main channel, removing', { channelId, mainChannelId: game.mainChannelId });
-              try { gameManager.db.deleteGame(channelId); } catch (e) { /* ignore */ }
-              gameManager.games.delete(channelId);
-              gameManager.saveState();
-              continue;
-            }
 
-            // Reconnect voice only if voice channel exists
-            if (game.voiceChannelId) {
-              const voiceChannel = await guild.channels.fetch(game.voiceChannelId).catch(() => null);
-              if (voiceChannel) {
-                gameManager.joinVoiceChannel(guild, game.voiceChannelId)
-                  .then(() => logger.debug('Voice reconnected', { channelId, voiceChannelId: game.voiceChannelId }))
-                  .catch(e => logger.error('Restore voice error', e));
-              } else {
-                logger.warn('Restored game has missing voice channel, clearing', { channelId, voiceChannelId: game.voiceChannelId });
-                game.voiceChannelId = null;
-                gameManager.saveState();
-              }
-            }
+        logger.info('Restoring games...', { count: gameManager.games.size });
+        for (const [channelId, game] of gameManager.games.entries()) {
+          // Résoudre le guild de cette partie
+          const guild = game.guildId 
+            ? (client.guilds.cache.get(game.guildId) || await client.guilds.fetch(game.guildId).catch(() => null))
+            : null;
 
-            // Rafraîchir le lobby embed si présent
-            try { await updateLobbyEmbed(guild, channelId); } catch (e) { /* ignore */ }
+          if (!guild) {
+            logger.warn('Restored game has unknown guild, removing', { channelId, guildId: game.guildId });
+            try { gameManager.db.deleteGame(channelId); } catch (e) { /* ignore */ }
+            gameManager.games.delete(channelId);
+            gameManager.saveState();
+            continue;
           }
+
+          // Validate main channel still exists
+          const mainChannel = await guild.channels.fetch(game.mainChannelId).catch(() => null);
+          if (!mainChannel) {
+            logger.warn('Restored game has missing main channel, removing', { channelId, mainChannelId: game.mainChannelId });
+            try { gameManager.db.deleteGame(channelId); } catch (e) { /* ignore */ }
+            gameManager.games.delete(channelId);
+            gameManager.saveState();
+            continue;
+          }
+
+          // Reconnect voice only if voice channel exists
+          if (game.voiceChannelId) {
+            const voiceChannel = await guild.channels.fetch(game.voiceChannelId).catch(() => null);
+            if (voiceChannel) {
+              gameManager.joinVoiceChannel(guild, game.voiceChannelId)
+                .then(() => logger.debug('Voice reconnected', { channelId, voiceChannelId: game.voiceChannelId }))
+                .catch(e => logger.error('Restore voice error', e));
+            } else {
+              logger.warn('Restored game has missing voice channel, clearing', { channelId, voiceChannelId: game.voiceChannelId });
+              game.voiceChannelId = null;
+              gameManager.saveState();
+            }
+          }
+
+          // Rafraîchir le lobby embed si présent
+          try { await updateLobbyEmbed(guild, channelId); } catch (e) { /* ignore */ }
         }
       } catch (err) {
         logger.error('❌ Game state restoration failed', err);

@@ -69,7 +69,7 @@ class GameManager {
       try {
         // On suppose que le bot principal est accessible via require.main.exports.client
         const bot = require.main && require.main.exports && require.main.exports.client ? require.main.exports.client : null;
-        const guild = bot ? bot.guilds.cache.get(process.env.GUILD_ID) : null;
+        const guild = bot ? bot.guilds.cache.get(game.guildId) : null;
         if (guild) {
           await this.cleanupChannels(guild, game);
           this.clearGameTimers(game);
@@ -141,6 +141,7 @@ class GameManager {
 
     // Créer dans la base de données
     const gameId = this.db.createGame(channelId, {
+      guildId: options.guildId || null,
       lobbyHostId: options.lobbyHostId || null,
       minPlayers,
       maxPlayers,
@@ -158,6 +159,7 @@ class GameManager {
     // Créer dans le cache mémoire
     this.games.set(channelId, {
       mainChannelId: channelId,
+      guildId: options.guildId || null,
       lobbyMessageId: null,
       lobbyHostId: options.lobbyHostId || null,
       voiceChannelId: null,
@@ -1768,6 +1770,7 @@ class GameManager {
         // Créer l'objet game en mémoire
         const game = {
           mainChannelId: channelId,
+          guildId: dbGame.guild_id || null,
           lobbyMessageId: dbGame.lobby_message_id,
           lobbyHostId: dbGame.lobby_host_id,
           voiceChannelId: dbGame.voice_channel_id,

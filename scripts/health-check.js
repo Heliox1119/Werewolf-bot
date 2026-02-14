@@ -10,7 +10,7 @@ let issuesFound = 0;
 
 // Check 1: Environment variables
 console.log('✓ Checking environment...');
-const requiredVars = ['TOKEN', 'CLIENT_ID', 'GUILD_ID'];
+const requiredVars = ['TOKEN', 'CLIENT_ID'];
 if (fs.existsSync('.env')) {
   const envContent = fs.readFileSync('.env', 'utf-8');
   requiredVars.forEach(varName => {
