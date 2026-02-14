@@ -1454,6 +1454,8 @@ class GameManager {
       });
       
       for (const channel of channels.values()) {
+        // Never delete categories (type 4)
+        if (channel.type === 4) continue;
         // Check if it's a game channel by exact name match
         const isGameChannel = gameChannelNames.includes(channel.name);
         
@@ -1470,6 +1472,8 @@ class GameManager {
               game.witchChannelId,
               game.villageChannelId,
               game.cupidChannelId,
+              game.salvateurChannelId,
+              game.spectatorChannelId,
               game.voiceChannelId
             ];
             
@@ -1521,7 +1525,7 @@ class GameManager {
     let deleted = 0;
     try {
       const allChannels = await guild.channels.fetch(undefined, { force: true, cache: false });
-      const channels = allChannels.filter(ch => ch.parentId === categoryId && gameChannelNames.includes(ch.name));
+      const channels = allChannels.filter(ch => ch.parentId === categoryId && ch.type !== 4 && gameChannelNames.includes(ch.name));
 
       for (const channel of channels.values()) {
         try {

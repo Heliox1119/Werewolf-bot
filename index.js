@@ -162,19 +162,18 @@ client.once("clientReady", async () => {
       try {
         logger.info('Checking for orphan game channels...');
         for (const [guildId, guild] of client.guilds.cache) {
+          const gameChannelPrefixes = ['🐺', '🏘️', '🏘', '🔮', '🧪', '💘', '❤️', '❤', '🛡️', '🛡', '👻', '🎤'];
           const channels = guild.channels.cache.filter(ch => 
-            ch.name && (
-              ch.name.startsWith('🐺') || ch.name.startsWith('🏠') ||
-              ch.name.startsWith('👀') || ch.name.startsWith('🧙') ||
-              ch.name.startsWith('💘')
-            )
+            ch.name && ch.type !== 4 && // Never delete categories (type 4)
+            gameChannelPrefixes.some(prefix => ch.name.startsWith(prefix))
           );
           for (const [chId, ch] of channels) {
             // Si ce channel n'appartient à aucune partie connue, le supprimer
             const isOwned = Array.from(gameManager.games.values()).some(g =>
               g.voiceChannelId === chId || g.villageChannelId === chId ||
               g.wolvesChannelId === chId || g.seerChannelId === chId ||
-              g.witchChannelId === chId || g.cupidChannelId === chId
+              g.witchChannelId === chId || g.cupidChannelId === chId ||
+              g.salvateurChannelId === chId || g.spectatorChannelId === chId
             );
             if (!isOwned) {
               try {
