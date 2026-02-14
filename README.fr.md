@@ -6,6 +6,7 @@
 Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion vocale automatique, audio d'ambiance et lobby interactif.
 
 ![Version](https://img.shields.io/badge/version-2.4.0-blue)
+![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
 ![Tests](https://img.shields.io/badge/tests-191%20passed-brightgreen)

@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Tests (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run tests with coverage
+        if: matrix.node-version == 20
+        run: npm run test:coverage
+
+      - name: Upload coverage artifact
+        if: matrix.node-version == 20
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
+
+  lint:
+    name: Syntax check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check syntax (all JS files)
+        run: node -e "
+          const fs = require('fs');
+          const path = require('path');
+          function check(dir) {
+            for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+              const p = path.join(dir, f.name);
+              if (f.isDirectory() && !['node_modules','coverage','.git'].includes(f.name)) check(p);
+              else if (f.name.endsWith('.js') && !f.name.endsWith('.test.js')) {
+                try { require(p); }
+                catch(e) { if (e instanceof SyntaxError) { console.error('SYNTAX ERROR:', p, e.message); process.exitCode=1; } }
+              }
+            }
+          }
+          check('.');
+        "
+
+  health:
+    name: Health check
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run health check
+        run: npm run health
+        env:
+          TOKEN: test-token
+          CLIENT_ID: "123456789"
+          GUILD_ID: "987654321"

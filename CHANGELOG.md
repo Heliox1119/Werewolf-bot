@@ -469,7 +469,7 @@ const voiceChannel = guild.channels.cache.get(voiceChannelId) ||
 - [x] Documentation bilingue (README FR/EN avec badges)
 
 ### v2.5.0 (Planifié)
-- [ ] CI/CD Pipeline (GitHub Actions)
+- [x] CI/CD Pipeline (GitHub Actions)
 - [ ] Docker containerization
 - [ ] Backup automatique horaire
 - [ ] Multi-guild support (langue par serveur)
