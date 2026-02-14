@@ -36,6 +36,12 @@ module.exports = {
       return;
     }
 
+    // Vérifier perte de pouvoirs (Ancien tué par le village)
+    if (game.villageRolesPowerless) {
+      await safeReply(interaction, { content: t('error.powers_lost'), flags: MessageFlags.Ephemeral });
+      return;
+    }
+
     // Vérifier que le chasseur DOIT tirer (il est mort et n'a pas encore tiré)
     if (game._hunterMustShoot !== interaction.user.id) {
       await safeReply(interaction, { content: t('error.hunter_can_only_shoot_on_death'), flags: MessageFlags.Ephemeral });

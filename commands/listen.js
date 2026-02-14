@@ -43,6 +43,12 @@ module.exports = {
       return;
     }
 
+    // Vérifier perte de pouvoirs (Ancien tué par le village)
+    if (game.villageRolesPowerless) {
+      await safeReply(interaction, { content: t('error.powers_lost'), flags: MessageFlags.Ephemeral });
+      return;
+    }
+
     // La Petite Fille ne peut espionner que pendant la sous-phase des loups
     const PHASES = require('../game/phases');
     if (game.phase !== PHASES.NIGHT) {

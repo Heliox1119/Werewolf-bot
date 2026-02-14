@@ -138,6 +138,17 @@ module.exports = {
     rate_reason_severe: "severe and repeated abuse",
     rate_reason_spam: "continuous spam",
     rate_reason_repeated: "repeated rate limit violations",
+    // Salvateur
+    only_salvateur_channel: "❌ This command can only be used in the Salvateur channel",
+    not_salvateur: "❌ You are not the Salvateur",
+    salvateur_night_only: "❌ The Salvateur can only protect during the night!",
+    not_salvateur_turn: "❌ It's not the Salvateur's turn",
+    salvateur_dead: "❌ You are dead and can no longer protect anyone",
+    cannot_protect_same: "❌ You cannot protect the same person two nights in a row!",
+    cannot_protect_self: "❌ You cannot protect yourself!",
+    powers_lost: "❌ Special powers have been lost due to the Elder's death.",
+    // Idiot
+    idiot_cannot_vote: "❌ You are the revealed Village Idiot. You can no longer vote.",
   },
 
   // ==================== GAME ====================
@@ -158,6 +169,7 @@ module.exports = {
     afk_wolves: "⏰ The wolves did not choose a victim in time. The night passes without an attack.",
     afk_witch: "⏰ The witch does not wake up... The night continues.",
     afk_seer: "⏰ The seer does not wake up... The night continues.",
+    afk_salvateur: "⏰ The Salvateur does not wake up... The night continues.",
     afk_deliberation: "⏰ Deliberation time is over! Moving to vote...",
     afk_vote: "⏰ Voting time is over. Moving to night...",
     victory: "\n🏆 **{{victor}}** won the game!",
@@ -186,6 +198,16 @@ module.exports = {
     cancelled: "Start cancelled.",
     started_debug: "🌙 Game launched in debug!",
     someone: "someone",
+    // Salvateur
+    salvateur_protected: "🛡️ **{{name}}** was protected by the Salvateur tonight! The wolves' attack fails.",
+    // Ancien
+    ancien_survives: "✨ **{{name}}** survives the wolves' attack thanks to the Elder's resilience!",
+    ancien_power_drain: "⚠️ **{{name}}** was the Village Elder! By killing them, the village has lost its special powers...",
+    ancien_final_death: "💀 **{{name}}**, the Elder, succumbs to a second wolf attack!",
+    // Idiot du Village
+    idiot_revealed: "🤡 **{{name}}** is the Village Idiot! They are revealed but stay alive. They lose their voting rights however.",
+    // Spectators
+    spectator_joined: "has joined the spectators.",
   },
 
   // ==================== LOBBY ====================
@@ -231,6 +253,9 @@ module.exports = {
     hunter: "Hunter",
     petite_fille: "Little Girl",
     cupid: "Cupid",
+    salvateur: "Salvateur",
+    ancien: "Elder",
+    idiot: "Village Idiot",
     unknown: "Unknown role",
     desc: {
       werewolf: "Channel: 🐺-wolves. Command: /kill @player (choose victim at night).",
@@ -240,6 +265,9 @@ module.exports = {
       hunter: "Channel: 🏘️-village. Command: /shoot @player (if you are eliminated).",
       petite_fille: "Channel: 🏘️-village. Command: /listen (spy on wolves at night).",
       cupid: "Channel: 💘-cupid. Command: /love @a @b (at the start of the game).",
+      salvateur: "Channel: 🛡️-salvateur. Command: /protect @player (protect someone each night).",
+      ancien: "You have 2 lives against wolves. If the village votes you out, special roles lose their powers.",
+      idiot: "If the village votes you out, you are revealed but stay alive (without voting rights).",
     },
     instruction: {
       werewolf: "Channel: 🐺-wolves. Command: /kill @player (choose victim at night).",
@@ -249,6 +277,9 @@ module.exports = {
       hunter: "Channel: 🏘️-village. Command: /shoot @player (if you are eliminated).",
       petite_fille: "Channel: 🏘️-village. Command: /listen (spy on wolves at night).",
       cupid: "Channel: ❤️-cupid. Command: /love @a @b (at the start of the game).",
+      salvateur: "Channel: 🛡️-salvateur. Command: /protect @player (protect a player each night, not the same two nights in a row).",
+      ancien: "You have an extra life against wolf attacks. If the village votes you out, all special roles lose their powers!",
+      idiot: "If the village votes against you, you are revealed as the Village Idiot but stay alive. You lose your voting rights however.",
       unknown: "Unknown role",
     },
     dm_title: "Your role: {{role}}",
@@ -292,6 +323,16 @@ module.exports = {
     },
     shoot: {
       success: "✅ You shot **{{name}}**!",
+    },
+    protect: {
+      success: "🛡️ You chose to protect **{{name}}** tonight.",
+    },
+    theme: {
+      desc: "Choose the embed theme",
+      option_name: "Theme name",
+      invalid: "❌ Invalid theme.",
+      title: "🎨 Theme Changed",
+      applied: "Theme **{{theme}}** has been applied!",
     },
     skip: {
       success: "⏭️ You skipped your {{label}} action.",
@@ -532,6 +573,7 @@ module.exports = {
     day: "Day",
     ended: "Ended",
     cupidon: "Cupid",
+    salvateur: "Salvateur",
     loups: "Wolves",
     sorciere: "Witch",
     voyante: "Seer",
@@ -542,6 +584,7 @@ module.exports = {
     wolves_wake: "The wolves wake up...",
     witch_wakes: "The witch wakes up...",
     seer_wakes: "The seer wakes up...",
+    salvateur_wakes: "The Salvateur wakes up...",
     village_wakes: "The village wakes up...",
     captain_vote_announce: "Captain vote! Use /captainvote then /declarecaptain",
     deliberation_announce: "Village deliberation... (3 min)",
@@ -557,6 +600,8 @@ module.exports = {
     seer: "🔮-seer",
     witch: "🧪-witch",
     cupid: "💘-cupid",
+    salvateur: "🛡️-salvateur",
+    spectator: "👻-spectators",
     voice: "🎤-game",
   },
 
@@ -566,6 +611,8 @@ module.exports = {
     seer: "🔮 **Welcome, Seer!**\nUse `/see @player` to discover a player's role.",
     witch: "🧪 **Welcome, Witch!**\nYou have 2 potions: one **life** and one **death**.\nUse `/potion type:Life` or `/potion type:Death target:@player`\nEach night, you will see here who was attacked by the wolves.",
     cupid: "💘 **Welcome, Cupid!**\nUse `/love @a @b` to link two players. They will live and die together.",
+    salvateur: "🛡️ **Welcome, Salvateur!**\nEach night, use `/protect @player` to protect a player from the wolves' attack.\n⚠️ You cannot protect the same person two nights in a row.",
+    spectator: "👻 **Welcome to the spectator channel!**\nYou have been eliminated, but you can follow the game here and chat with other spectators.\n⚠️ Do not reveal any information to living players!",
   },
 
   // ==================== UI ====================

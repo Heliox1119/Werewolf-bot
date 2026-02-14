@@ -7,17 +7,12 @@ const {
   ComponentType
 } = require("discord.js");
 const { t } = require('../utils/i18n');
+const { getColor } = require('../utils/theme');
 
-const COLORS = {
-  PRIMARY: 0xFF6B6B,
-  INFO: 0x4ECDC4,
-  WARN: 0xFFD166
-};
-
-const buildOverviewEmbed = () =>
+const buildOverviewEmbed = (guildId) =>
   new EmbedBuilder()
     .setTitle(t('help.title'))
-    .setColor(COLORS.PRIMARY)
+    .setColor(getColor(guildId, 'primary'))
     .setDescription(t('help.description'))
     .addFields(
       { name: t('help.quick_start_title'), value: t('help.quick_start_value'), inline: false },
@@ -25,10 +20,10 @@ const buildOverviewEmbed = () =>
     )
     .setFooter({ text: t('help.footer') });
 
-const buildSetupEmbed = () =>
+const buildSetupEmbed = (guildId) =>
   new EmbedBuilder()
     .setTitle(t('help.setup_title'))
-    .setColor(COLORS.PRIMARY)
+    .setColor(getColor(guildId, 'primary'))
     .setDescription(t('help.setup_desc'))
     .addFields(
       { name: t('help.setup_create_title'), value: t('help.setup_create_value'), inline: false },
@@ -37,10 +32,10 @@ const buildSetupEmbed = () =>
     )
     .setFooter({ text: t('help.setup_footer') });
 
-const buildNightEmbed = () =>
+const buildNightEmbed = (guildId) =>
   new EmbedBuilder()
     .setTitle(t('help.night_title'))
-    .setColor(COLORS.INFO)
+    .setColor(getColor(guildId, 'accent'))
     .addFields(
       { name: t('help.night_wolves_title'), value: t('help.night_wolves_value'), inline: false },
       { name: t('help.night_seer_title'), value: t('help.night_seer_value'), inline: false },
@@ -50,10 +45,10 @@ const buildNightEmbed = () =>
     )
     .setFooter({ text: t('help.night_footer') });
 
-const buildDayEmbed = () =>
+const buildDayEmbed = (guildId) =>
   new EmbedBuilder()
     .setTitle(t('help.day_title'))
-    .setColor(COLORS.INFO)
+    .setColor(getColor(guildId, 'accent'))
     .addFields(
       { name: t('help.day_vote_title'), value: t('help.day_vote_value'), inline: false },
       { name: t('help.day_captain_title'), value: t('help.day_captain_value'), inline: false },
@@ -61,10 +56,10 @@ const buildDayEmbed = () =>
     )
     .setFooter({ text: t('help.day_footer') });
 
-const buildAdminEmbed = () =>
+const buildAdminEmbed = (guildId) =>
   new EmbedBuilder()
     .setTitle(t('help.admin_title'))
-    .setColor(COLORS.WARN)
+    .setColor(getColor(guildId, 'special'))
     .addFields(
       { name: t('help.admin_end_title'), value: t('help.admin_end_value'), inline: false },
       { name: t('help.admin_clear_title'), value: t('help.admin_clear_value'), inline: false },
@@ -99,7 +94,8 @@ module.exports = {
       );
 
     const row = new ActionRowBuilder().addComponents(select);
-    const embed = buildOverviewEmbed();
+    const guildId = interaction.guildId;
+    const embed = buildOverviewEmbed(guildId);
 
     await interaction.reply({
       embeds: [embed],
@@ -121,7 +117,7 @@ module.exports = {
 
       const key = selectInteraction.values[0];
       const builder = HELP_SECTIONS[key] || buildOverviewEmbed;
-      await selectInteraction.update({ embeds: [builder()], components: [row] });
+      await selectInteraction.update({ embeds: [builder(guildId)], components: [row] });
     });
 
     collector.on("end", async () => {

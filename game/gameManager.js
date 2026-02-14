@@ -5,6 +5,7 @@ const path = require('path');
 const { game: logger } = require('../utils/logger');
 const GameDatabase = require('../database/db');
 const { t, translateRole, translateRoleDesc, tips } = require('../utils/i18n');
+const { getColor } = require('../utils/theme');
 
 // Timeouts configurables (en ms)
 const TIMEOUTS = {
@@ -170,13 +171,15 @@ class GameManager {
       wolvesChannelId: null,
       seerChannelId: null,
       witchChannelId: null,
+      cupidChannelId: null,
+      salvateurChannelId: null,
+      spectatorChannelId: null,
       phase: PHASES.NIGHT,
       subPhase: PHASES.LOUPS, // commence par les loups
       dayCount: 0,
       captainId: null,
       captainVotes: new Map(),
       captainVoters: new Map(),
-      cupidChannelId: null,
       lovers: [],
       players: [],
       dead: [],
@@ -186,6 +189,9 @@ class GameManager {
       nightVictim: null,
       witchKillTarget: null,
       witchSave: false,
+      protectedPlayerId: null,
+      lastProtectedPlayerId: null,
+      villageRolesPowerless: false,
       rules: { minPlayers, maxPlayers },
       actionLog: [],
       startedAt: null,
@@ -217,6 +223,8 @@ class GameManager {
         game.seerChannelId,
         game.witchChannelId,
         game.cupidChannelId,
+        game.salvateurChannelId,
+        game.spectatorChannelId,
         game.voiceChannelId
       ].filter(Boolean);
 
@@ -302,25 +310,46 @@ class GameManager {
         if (game.witchSave) {
           await this.sendLogged(mainChannel, t('game.witch_saved'), { type: 'witchSave' });
           this.logAction(game, 'Sorciere sauve la victime des loups');
+        } else if (game.protectedPlayerId && game.protectedPlayerId === game.nightVictim) {
+          // Salvateur a protégé la victime des loups
+          const protectedPlayer = game.players.find(p => p.id === game.nightVictim);
+          if (protectedPlayer) {
+            await this.sendLogged(mainChannel, t('game.salvateur_protected', { name: protectedPlayer.username }), { type: 'salvateurSave' });
+            this.logAction(game, `Salvateur protège ${protectedPlayer.username} de l'attaque des loups`);
+          }
         } else {
           const victimPlayer = game.players.find(p => p.id === game.nightVictim);
           if (victimPlayer && victimPlayer.alive) {
-            if (game.voiceChannelId) {
-              this.playAmbience(game.voiceChannelId, 'death.mp3');
-            }
-            await this.sendLogged(mainChannel, t('game.night_victim', { name: victimPlayer.username }), { type: 'nightVictim' });
-            const collateral = this.kill(game.mainChannelId, game.nightVictim);
-            nightDeaths.push(victimPlayer);
-            this.logAction(game, `Mort la nuit: ${victimPlayer.username}`);
-            for (const dead of collateral) {
-              await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
-              nightDeaths.push(dead);
-              this.logAction(game, `Mort d'amour: ${dead.username}`);
+            // Vérifier si c'est l'Ancien avec une vie supplémentaire
+            if (victimPlayer.role === ROLES.ANCIEN && victimPlayer.ancienExtraLife) {
+              victimPlayer.ancienExtraLife = false;
+              await this.sendLogged(mainChannel, t('game.ancien_survives', { name: victimPlayer.username }), { type: 'ancienSurvives' });
+              this.logAction(game, `Ancien ${victimPlayer.username} survit à l'attaque (vie supplémentaire)`);
+            } else {
+              if (victimPlayer.role === ROLES.ANCIEN && !victimPlayer.ancienExtraLife) {
+                await this.sendLogged(mainChannel, t('game.ancien_final_death', { name: victimPlayer.username }), { type: 'ancienFinalDeath' });
+              }
+              if (game.voiceChannelId) {
+                this.playAmbience(game.voiceChannelId, 'death.mp3');
+              }
+              await this.sendLogged(mainChannel, t('game.night_victim', { name: victimPlayer.username }), { type: 'nightVictim' });
+              const collateral = this.kill(game.mainChannelId, game.nightVictim);
+              nightDeaths.push(victimPlayer);
+              this.logAction(game, `Mort la nuit: ${victimPlayer.username}`);
+              for (const dead of collateral) {
+                await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
+                nightDeaths.push(dead);
+                this.logAction(game, `Mort d'amour: ${dead.username}`);
+              }
             }
           }
         }
         game.nightVictim = null;
       }
+
+      // Mettre à jour la protection du Salvateur pour la nuit suivante
+      game.lastProtectedPlayerId = game.protectedPlayerId;
+      game.protectedPlayerId = null;
 
       // Résoudre la potion de mort de la sorcière (à l'aube)
       if (game.witchKillTarget) {
@@ -345,9 +374,9 @@ class GameManager {
       // Appliquer les lockouts de channels pour les joueurs morts
       await this.applyDeadPlayerLockouts(guild);
 
-      // Vérifier si un chasseur est mort cette nuit — il doit tirer
+      // Vérifier si un chasseur est mort cette nuit — il doit tirer (sauf si pouvoirs perdus)
       for (const dead of nightDeaths) {
-        if (dead.role === ROLES.HUNTER) {
+        if (dead.role === ROLES.HUNTER && !game.villageRolesPowerless) {
           game._hunterMustShoot = dead.id;
           await this.sendLogged(mainChannel, t('game.hunter_death', { name: dead.username }), { type: 'hunterDeath' });
           this.startHunterTimeout(guild, game, dead.id);
@@ -408,23 +437,37 @@ class GameManager {
         } else {
           const votedPlayer = game.players.find(p => p.id === votedId);
           if (votedPlayer && votedPlayer.alive) {
-            if (game.voiceChannelId) {
-              this.playAmbience(game.voiceChannelId, 'death.mp3');
-            }
-            await this.sendLogged(mainChannel, t('game.vote_result', { name: votedPlayer.username, count: voteCount }), { type: 'dayVoteResult' });
-            const collateral = this.kill(game.mainChannelId, votedId);
-            this.logAction(game, `Vote du village: ${votedPlayer.username} elimine`);
+            // Idiot du Village : révélé mais pas tué, perd le droit de vote
+            if (votedPlayer.role === ROLES.IDIOT && !votedPlayer.idiotRevealed) {
+              votedPlayer.idiotRevealed = true;
+              await this.sendLogged(mainChannel, t('game.idiot_revealed', { name: votedPlayer.username }), { type: 'idiotRevealed' });
+              this.logAction(game, `Idiot du Village ${votedPlayer.username} révélé mais survit`);
+            } else {
+              // Ancien tué par le village : perte des pouvoirs spéciaux
+              if (votedPlayer.role === ROLES.ANCIEN) {
+                game.villageRolesPowerless = true;
+                await this.sendLogged(mainChannel, t('game.ancien_power_drain', { name: votedPlayer.username }), { type: 'ancienPowerDrain' });
+                this.logAction(game, `Ancien ${votedPlayer.username} tué par le village — pouvoirs perdus`);
+              }
 
-            for (const dead of collateral) {
-              await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
-              this.logAction(game, `Mort d'amour: ${dead.username}`);
-            }
+              if (game.voiceChannelId) {
+                this.playAmbience(game.voiceChannelId, 'death.mp3');
+              }
+              await this.sendLogged(mainChannel, t('game.vote_result', { name: votedPlayer.username, count: voteCount }), { type: 'dayVoteResult' });
+              const collateral = this.kill(game.mainChannelId, votedId);
+              this.logAction(game, `Vote du village: ${votedPlayer.username} elimine`);
 
-            // Vérifier chasseur
-            if (votedPlayer.role === ROLES.HUNTER) {
-              game._hunterMustShoot = votedPlayer.id;
-              await this.sendLogged(mainChannel, t('game.hunter_death', { name: votedPlayer.username }), { type: 'hunterDeath' });
-              this.startHunterTimeout(guild, game, votedPlayer.id);
+              for (const dead of collateral) {
+                await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
+                this.logAction(game, `Mort d'amour: ${dead.username}`);
+              }
+
+              // Vérifier chasseur (sauf si pouvoirs perdus)
+              if (votedPlayer.role === ROLES.HUNTER && !game.villageRolesPowerless) {
+                game._hunterMustShoot = votedPlayer.id;
+                await this.sendLogged(mainChannel, t('game.hunter_death', { name: votedPlayer.username }), { type: 'hunterDeath' });
+                this.startHunterTimeout(guild, game, votedPlayer.id);
+              }
             }
           }
         }
@@ -549,7 +592,7 @@ class GameManager {
 
       const embed = new EmbedBuilder()
         .setTitle(t('summary.title'))
-        .setColor(0xFFD166)
+        .setColor(getColor(game.guildId, 'special'))
         .addFields(
           { name: t('summary.winner'), value: victor, inline: true },
           { name: t('summary.duration'), value: duration, inline: true },
@@ -607,6 +650,16 @@ class GameManager {
     }
     switch (game.subPhase) {
       case PHASES.CUPIDON:
+        // Après Cupidon, vérifier si Salvateur est en jeu
+        if (this.hasAliveRealRole(game, ROLES.SALVATEUR) && !game.villageRolesPowerless) {
+          game.subPhase = PHASES.SALVATEUR;
+          await this.announcePhase(guild, game, t('phase.salvateur_wakes'));
+        } else {
+          game.subPhase = PHASES.LOUPS;
+          await this.announcePhase(guild, game, t('phase.wolves_wake'));
+        }
+        break;
+      case PHASES.SALVATEUR:
         game.subPhase = PHASES.LOUPS;
         await this.announcePhase(guild, game, t('phase.wolves_wake'));
         break;
@@ -689,6 +742,9 @@ class GameManager {
         } else if (currentSub === PHASES.VOYANTE) {
           await this.sendLogged(mainChannel, t('game.afk_seer'), { type: 'afkTimeout' });
           this.logAction(game, 'AFK timeout: voyante');
+        } else if (currentSub === PHASES.SALVATEUR) {
+          await this.sendLogged(mainChannel, t('game.afk_salvateur'), { type: 'afkTimeout' });
+          this.logAction(game, 'AFK timeout: salvateur');
         } else {
           return; // Pas de timeout pour les autres sous-phases
         }
@@ -696,7 +752,7 @@ class GameManager {
         await this.advanceSubPhase(guild, game);
 
         // Si on est encore en nuit avec une sous-phase qui attend une action, relancer le timer
-        if (game.phase === PHASES.NIGHT && [PHASES.LOUPS, PHASES.SORCIERE, PHASES.VOYANTE].includes(game.subPhase)) {
+        if (game.phase === PHASES.NIGHT && [PHASES.LOUPS, PHASES.SORCIERE, PHASES.VOYANTE, PHASES.SALVATEUR].includes(game.subPhase)) {
           this.startNightAfkTimeout(guild, game);
         } else if (game.subPhase === PHASES.REVEIL) {
           // Transition vers le jour
@@ -838,6 +894,18 @@ class GameManager {
       if (game.players.length >= 7) {
         rolesPool.push(ROLES.CUPID);
       }
+      // Si au moins 8 joueurs, ajouter le Salvateur
+      if (game.players.length >= 8) {
+        rolesPool.push(ROLES.SALVATEUR);
+      }
+      // Si au moins 9 joueurs, ajouter l'Ancien
+      if (game.players.length >= 9) {
+        rolesPool.push(ROLES.ANCIEN);
+      }
+      // Si au moins 10 joueurs, ajouter l'Idiot du Village
+      if (game.players.length >= 10) {
+        rolesPool.push(ROLES.IDIOT);
+      }
     }
 
     // Compléter avec des villageois si nécessaire
@@ -862,6 +930,18 @@ class GameManager {
     const hasCupid = game.players.some(p => p.role === ROLES.CUPID && p.alive);
     if (hasCupid) {
       game.subPhase = PHASES.CUPIDON;
+    } else {
+      // Si Salvateur en jeu mais pas de Cupidon, commencer par SALVATEUR
+      const hasSalvateur = game.players.some(p => p.role === ROLES.SALVATEUR && p.alive);
+      if (hasSalvateur) {
+        game.subPhase = PHASES.SALVATEUR;
+      }
+    }
+
+    // Initialiser les vies de l'Ancien (1 vie supplémentaire)
+    const ancienPlayer = game.players.find(p => p.role === ROLES.ANCIEN);
+    if (ancienPlayer) {
+      ancienPlayer.ancienExtraLife = true;
     }
 
     // Mettre à jour startedAt dans la DB
@@ -907,7 +987,7 @@ class GameManager {
         const embed = new EmbedBuilder()
           .setTitle(t('role.dm_title', { role: translateRole(player.role) }))
           .setDescription(translateRoleDesc(player.role))
-          .setColor(0xFF6B6B);
+          .setColor(getColor(game.guildId, 'primary'));
 
         const imageName = getRoleImageName(player.role);
         const files = [];
@@ -955,6 +1035,13 @@ class GameManager {
       } catch (e) { logger.warn('Failed to send cupid welcome', { error: e.message }); }
     }
 
+    if (game.salvateurChannelId) {
+      try {
+        const salvateurChannel = await guild.channels.fetch(game.salvateurChannelId);
+        await this.sendLogged(salvateurChannel, t('welcome.salvateur'), { type: 'salvateurWelcome' });
+      } catch (e) { logger.warn('Failed to send salvateur welcome', { error: e.message }); }
+    }
+
     // 5. Message dans le channel village
     await updateProgress(t('progress.done'));
     try {
@@ -969,8 +1056,8 @@ class GameManager {
       await this.sendLogged(villageChannel, nightMsg, { type: 'nightStart' });
     } catch (e) { logger.warn('Failed to send village night message', { error: e.message }); }
 
-    // 6. Lancer le timeout AFK si on est en sous-phase loups
-    if (game.subPhase === PHASES.LOUPS) {
+    // 6. Lancer le timeout AFK si on est en sous-phase loups ou salvateur
+    if (game.subPhase === PHASES.LOUPS || game.subPhase === PHASES.SALVATEUR) {
       this.startNightAfkTimeout(guild, game);
     }
 
@@ -1056,6 +1143,38 @@ class GameManager {
       game.cupidChannelId = cupidChannel.id;
       logger.success("✅ Cupid channel created", { id: cupidChannel.id });
 
+      // Créer le channel du Salvateur
+      logger.debug("Creating salvateur channel...");
+      const salvateurChannel = await guild.channels.create({
+        name: t('channel.salvateur'),
+        type: 0, // GUILD_TEXT
+        parent: categoryId || undefined,
+        permissionOverwrites: [
+          {
+            id: guild.id,
+            deny: ["ViewChannel"]
+          }
+        ]
+      });
+      game.salvateurChannelId = salvateurChannel.id;
+      logger.success("✅ Salvateur channel created", { id: salvateurChannel.id });
+
+      // Créer le channel spectateurs (pour les morts)
+      logger.debug("Creating spectator channel...");
+      const spectatorChannel = await guild.channels.create({
+        name: t('channel.spectator'),
+        type: 0, // GUILD_TEXT
+        parent: categoryId || undefined,
+        permissionOverwrites: [
+          {
+            id: guild.id,
+            deny: ["ViewChannel"]
+          }
+        ]
+      });
+      game.spectatorChannelId = spectatorChannel.id;
+      logger.success("✅ Spectator channel created", { id: spectatorChannel.id });
+
       // Créer le channel vocal
       logger.debug("Creating voice channel...");
       const voiceChannel = await guild.channels.create({
@@ -1073,12 +1192,14 @@ class GameManager {
         seerChannelId: game.seerChannelId,
         witchChannelId: game.witchChannelId,
         cupidChannelId: game.cupidChannelId,
+        salvateurChannelId: game.salvateurChannelId,
+        spectatorChannelId: game.spectatorChannelId,
         voiceChannelId: game.voiceChannelId
       });
 
       timer.end();
       logger.success("✅ All initial channels created successfully", { 
-        channelCount: 6,
+        channelCount: 8,
         mainChannelId 
       });
       return true;
@@ -1178,6 +1299,26 @@ class GameManager {
         logger.success("✅ Cupid channel permissions updated");
       }
 
+      // Mettre à jour le channel du Salvateur
+      if (game.salvateurChannelId) {
+        const salvateurChannel = await guild.channels.fetch(game.salvateurChannelId);
+        const salvateurPlayer = game.players.find(p => p.role === ROLES.SALVATEUR && p.alive);
+        const salvateurPerms = [ { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] } ];
+        if (salvateurPlayer) {
+          try {
+            await guild.members.fetch(salvateurPlayer.id);
+            salvateurPerms.push({
+              id: salvateurPlayer.id,
+              allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
+            });
+          } catch (err) {
+            logger.warn(`Ignored non-guild member for salvateur permissions`, { playerId: salvateurPlayer.id });
+          }
+        }
+        await salvateurChannel.permissionOverwrites.set(salvateurPerms);
+        logger.success("✅ Salvateur channel permissions updated");
+      }
+
       timer.end();
       return true;
     } catch (error) {
@@ -1199,6 +1340,8 @@ class GameManager {
       { id: game.witchChannelId, name: 'witch' },
       { id: game.villageChannelId, name: 'village' },
       { id: game.cupidChannelId, name: 'cupid' },
+      { id: game.salvateurChannelId, name: 'salvateur' },
+      { id: game.spectatorChannelId, name: 'spectator' },
       { id: game.voiceChannelId, name: 'voice' }
     ];
 
@@ -1258,6 +1401,8 @@ class GameManager {
       'voyante', 'seer', '🔮-voyante', '🔮-seer',
       'sorciere', 'witch', '🧪-sorciere', '🧪-witch',
       'cupidon', 'cupid', '❤️-cupidon', '❤️-cupid', '❤-cupidon', '❤-cupid',
+      'salvateur', '🛡️-salvateur', '🛡-salvateur',
+      'spectateurs', 'spectators', '👻-spectateurs', '👻-spectators',
       'partie', 'voice', '🎤-partie', '🎤-voice'
     ];
     let deleted = 0;
@@ -1467,7 +1612,13 @@ class GameManager {
       if (isFirstNight && cupidAlive && cupidNotUsed) {
         game.subPhase = PHASES.CUPIDON;
       } else {
-        game.subPhase = PHASES.LOUPS;
+        // Si Salvateur en jeu et pas de perte de pouvoirs, sous-phase SALVATEUR
+        const salvateurAlive = this.hasAliveRealRole(game, ROLES.SALVATEUR);
+        if (salvateurAlive && !game.villageRolesPowerless) {
+          game.subPhase = PHASES.SALVATEUR;
+        } else {
+          game.subPhase = PHASES.LOUPS;
+        }
       }
     } else {
       game.subPhase = PHASES.REVEIL;
@@ -1601,6 +1752,7 @@ class GameManager {
         game.seerChannelId,
         game.witchChannelId,
         game.cupidChannelId,
+        game.salvateurChannelId,
         game.villageChannelId
       ].filter(Boolean);
 
@@ -1617,7 +1769,29 @@ class GameManager {
           logger.warn('Failed to set dead player read-only', { playerId, roleChannelId, error: e.message });
         }
       }
-      logger.debug('Dead player set to read-only on all channels', { playerId });
+
+      // Ajouter le joueur mort au channel spectateurs avec droit d'écriture
+      if (game.spectatorChannelId) {
+        try {
+          const spectatorChannel = await guild.channels.fetch(game.spectatorChannelId);
+          if (spectatorChannel) {
+            await spectatorChannel.permissionOverwrites.edit(playerId, {
+              ViewChannel: true,
+              SendMessages: true
+            });
+            // Envoyer un message de bienvenue si c'est le premier mort
+            const deadCount = game.players.filter(p => !p.alive).length;
+            if (deadCount === 1) {
+              await spectatorChannel.send(t('welcome.spectator'));
+            }
+            await spectatorChannel.send(`👻 <@${playerId}> ${t('game.spectator_joined')}`);
+          }
+        } catch (e) {
+          logger.warn('Failed to add dead player to spectator channel', { playerId, error: e.message });
+        }
+      }
+
+      logger.debug('Dead player set to read-only on all channels + spectator access', { playerId });
     }
   }
 
@@ -1738,6 +1912,8 @@ class GameManager {
         seerChannelId: game.seerChannelId,
         witchChannelId: game.witchChannelId,
         cupidChannelId: game.cupidChannelId,
+        salvateurChannelId: game.salvateurChannelId,
+        spectatorChannelId: game.spectatorChannelId,
         phase: game.phase,
         subPhase: game.subPhase,
         dayCount: game.dayCount,
@@ -1831,6 +2007,8 @@ class GameManager {
           seerChannelId: dbGame.seer_channel_id,
           witchChannelId: dbGame.witch_channel_id,
           cupidChannelId: dbGame.cupid_channel_id,
+          salvateurChannelId: dbGame.salvateur_channel_id || null,
+          spectatorChannelId: dbGame.spectator_channel_id || null,
           phase: dbGame.phase,
           subPhase: dbGame.sub_phase,
           dayCount: dbGame.day_count,
@@ -1846,6 +2024,9 @@ class GameManager {
           nightVictim: dbGame.night_victim_id || null,
           witchKillTarget: dbGame.witch_kill_target_id || null,
           witchSave: dbGame.witch_save === 1,
+          protectedPlayerId: null,
+          lastProtectedPlayerId: null,
+          villageRolesPowerless: false,
           rules: { 
             minPlayers: dbGame.min_players, 
             maxPlayers: dbGame.max_players 

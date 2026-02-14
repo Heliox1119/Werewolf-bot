@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS games (
   seer_channel_id TEXT,
   witch_channel_id TEXT,
   cupid_channel_id TEXT,
+  salvateur_channel_id TEXT,
+  spectator_channel_id TEXT,
   
   -- État de la partie
   phase TEXT NOT NULL DEFAULT 'Nuit',

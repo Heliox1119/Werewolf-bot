@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { app: logger } = require('../utils/logger');
 const { t } = require('../utils/i18n');
+const { getColor, getHealthColor } = require('../utils/theme');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -101,13 +102,6 @@ module.exports = {
     const currentMetrics = metrics.getMetrics();
     const healthStatus = metrics.getHealthStatus();
     
-    // Couleur selon le statut
-    const colors = {
-      HEALTHY: 0x2ECC71,    // Vert
-      DEGRADED: 0xF39C12,   // Orange
-      UNHEALTHY: 0xE74C3C   // Rouge
-    };
-    
     // Icônes de statut
     const statusIcons = {
       HEALTHY: '🟢',
@@ -118,7 +112,7 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setTitle(t('cmd.monitoring.dashboard.title'))
       .setDescription(t('cmd.monitoring.dashboard.global_status', { icon: statusIcons[healthStatus.status], status: healthStatus.status }))
-      .setColor(colors[healthStatus.status])
+      .setColor(getHealthColor(interaction.guildId, healthStatus.status))
       .setTimestamp()
       .setFooter({ text: 'Werewolf Bot Monitoring' });
     
@@ -197,12 +191,6 @@ module.exports = {
   async showHealth(interaction, metrics) {
     const healthStatus = metrics.getHealthStatus();
     
-    const colors = {
-      HEALTHY: 0x2ECC71,
-      DEGRADED: 0xF39C12,
-      UNHEALTHY: 0xE74C3C
-    };
-    
     const statusIcons = {
       HEALTHY: '🟢',
       DEGRADED: '🟡',
@@ -218,7 +206,7 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setTitle(t('cmd.monitoring.health.title', { icon: statusIcons[healthStatus.status] }))
       .setDescription(statusDescriptions[healthStatus.status])
-      .setColor(colors[healthStatus.status])
+      .setColor(getHealthColor(interaction.guildId, healthStatus.status))
       .setTimestamp();
     
     if (healthStatus.issues.length > 0) {
@@ -283,7 +271,7 @@ module.exports = {
         
         const embed = new EmbedBuilder()
           .setTitle(t('cmd.monitoring.alerts.stats_title'))
-          .setColor(0x3498DB)
+          .setColor(getColor(interaction.guildId, 'info'))
           .setTimestamp();
         
         embed.addFields({
@@ -358,7 +346,7 @@ module.exports = {
     
     const embed = new EmbedBuilder()
       .setTitle(t('cmd.monitoring.history.title'))
-      .setColor(0x9B59B6)
+      .setColor(getColor(interaction.guildId, 'purple'))
       .setTimestamp()
       .setFooter({ text: t('cmd.monitoring.history.data_points', { count }) });
     

@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const { t } = require('../utils/i18n');
+const { getColor } = require('../utils/theme');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -22,7 +23,7 @@ module.exports = {
 
     const embed = new EmbedBuilder()
       .setTitle(t('cmd.debug_info.title'))
-      .setColor(0x00FF00)
+      .setColor(getColor(interaction.guildId, 'success'))
       .addFields(
         {
           name: t('cmd.debug_info.phase'),

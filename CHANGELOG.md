@@ -1,5 +1,47 @@
 # 📝 Changelog - Werewolf Bot
 
+## [2.5.0] - 2025-02-14 - Nice-to-Have : Rôles, Spectateurs, Thèmes
+
+### 🎭 Nouveaux rôles (3)
+- **Salvateur** (`/protect @joueur`) : Protège un joueur de l'attaque des loups chaque nuit. Ne peut pas protéger la même personne deux nuits de suite.
+- **Ancien** : Survit à la première attaque des loups (extra-life). S'il est tué par le village, tous les villageois spéciaux perdent leurs pouvoirs.
+- **Idiot du Village** : Quand voté par le village, il est révélé mais reste en vie. Il perd cependant son droit de vote.
+
+### 👻 Mode spectateur
+- Channel `👻-spectateurs` créé automatiquement avec chaque partie
+- Les joueurs éliminés rejoignent le salon spectateur avec droit d'écriture
+- Accès en lecture seule sur tous les channels de rôle (loups, voyante, sorcière…)
+- Message de bienvenue et notification pour chaque spectateur
+
+### 🎨 Système de thèmes d'embeds
+- **4 thèmes prédéfinis** : 🐺 Classic, 🌙 Midnight, 🌿 Nature, 🩸 Blood Moon
+- **Commande `/theme`** : Sélection par guild, persistée en mémoire
+- **12 couleurs sémantiques** : primary, success, error, warning, info, accent, muted, special, blurple, purple, critical, roleSelect
+- **Centralisation complète** : Tous les 11 fichiers à embeds utilisent `getColor()` au lieu de hex hardcodés
+- Fonctions utilitaires : `getHealthColor()`, `getSeverityColor()`, `getLobbyColor()`
+
+### 📁 Nouveaux fichiers
+```
+utils/theme.js        # Système de thèmes centralisé (4 palettes, 12 couleurs sémantiques)
+commands/theme.js     # Commande /theme pour changer le thème par guild
+commands/protect.js   # Commande /protect pour le Salvateur
+```
+
+### 🔧 Fichiers modifiés (20+ fichiers)
+- **game/gameManager.js** : Rôles (Salvateur/Ancien/Idiot), spectateur, thèmes, doubles-vies, power drain
+- **game/roles.js** : +3 constantes SALVATEUR, ANCIEN, IDIOT
+- **game/phases.js** : +sous-phase SALVATEUR (entre CUPIDON et LOUPS)
+- **commands/{see,potion,shoot,listen}.js** : Check `villageRolesPowerless`
+- **commands/vote.js** : Check Idiot révélé (pas de vote)
+- **commands/skip.js** : +SALVATEUR dans allowedSkips
+- **commands/{help,ratelimit,setup,monitoring,debug-*,stats,start}.js** : Utilisation de `getColor()`
+- **utils/lobbyBuilder.js** : +3 rôles dans ROLE_LIST, thème centralisé
+- **utils/roleHelpers.js** : +descriptions/images pour 3 rôles
+- **utils/i18n.js** : +ROLE_KEY_MAP et PHASE_KEY_MAP pour nouveaux rôles
+- **locales/{fr,en}.js** : +50 clés i18n (rôles, spectateur, thème, protections, erreurs)
+- **database/{db,schema}.js** : +colonnes salvateur_channel_id, spectator_channel_id + migrations
+- **monitoring/alerts.js** : Utilisation de `getSeverityColor()`
+
 ## [2.4.0] - 2026-02-14 - Système i18n centralisé (FR + EN)
 
 ### 🌍 Internationalisation complète

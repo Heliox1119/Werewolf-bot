@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, MessageFlags, PermissionFlagsBits } =
 const gameManager = require("../game/gameManager");
 const { commands: logger } = require("../utils/logger");
 const { t } = require('../utils/i18n');
+const { getColor } = require('../utils/theme');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -30,7 +31,7 @@ module.exports = {
 
     const embed = new EmbedBuilder()
       .setTitle(t('cmd.debug_games.title'))
-      .setColor(0x00FF00)
+      .setColor(getColor(interaction.guildId, 'success'))
       .setDescription(t('cmd.debug_games.description', { count: gamesCount }));
 
     for (const [channelId, game] of gameManager.games.entries()) {

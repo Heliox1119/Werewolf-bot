@@ -126,6 +126,9 @@ const ROLE_KEY_MAP = {
   'Chasseur': 'hunter',
   'Petite Fille': 'petite_fille',
   'Cupidon': 'cupid',
+  'Salvateur': 'salvateur',
+  'Ancien': 'ancien',
+  'Idiot du Village': 'idiot',
 };
 
 // Mapping des constantes internes (phases.js) vers les clés i18n
@@ -134,6 +137,7 @@ const PHASE_KEY_MAP = {
   'Jour': 'day',
   'Terminé': 'ended',
   'Cupidon': 'cupidon',
+  'Salvateur': 'salvateur',
   'Loups': 'loups',
   'Sorcière': 'sorciere',
   'Voyante': 'voyante',

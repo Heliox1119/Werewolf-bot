@@ -138,6 +138,17 @@ module.exports = {
     rate_reason_severe: "abus sévère et répété",
     rate_reason_spam: "spam continu",
     rate_reason_repeated: "rate limit dépassé à répétition",
+    // Salvateur
+    only_salvateur_channel: "❌ Cette commande ne peut être utilisée que dans le channel du Salvateur",
+    not_salvateur: "❌ Tu n'es pas le Salvateur",
+    salvateur_night_only: "❌ Le Salvateur ne peut protéger que pendant la nuit !",
+    not_salvateur_turn: "❌ Ce n'est pas le tour du Salvateur",
+    salvateur_dead: "❌ Tu es mort, tu ne peux plus protéger personne",
+    cannot_protect_same: "❌ Tu ne peux pas protéger la même personne deux nuits de suite !",
+    cannot_protect_self: "❌ Tu ne peux pas te protéger toi-même !",
+    powers_lost: "❌ Les pouvoirs spéciaux ont été perdus à cause de la mort de l'Ancien.",
+    // Idiot
+    idiot_cannot_vote: "❌ Tu es l'Idiot du Village révélé. Tu n'as plus le droit de voter.",
   },
 
   // ==================== JEU ====================
@@ -158,6 +169,7 @@ module.exports = {
     afk_wolves: "⏰ Les loups n'ont pas choisi de victime à temps. La nuit passe sans attaque.",
     afk_witch: "⏰ La sorcière ne se réveille pas... La nuit continue.",
     afk_seer: "⏰ La voyante ne se réveille pas... La nuit continue.",
+    afk_salvateur: "⏰ Le Salvateur ne se réveille pas... La nuit continue.",
     afk_deliberation: "⏰ Fin de la délibération ! Passage au vote...",
     afk_vote: "⏰ Le temps de vote est écoulé. Passage à la nuit...",
     victory: "\n🏆 **{{victor}}** a gagné la partie !",
@@ -186,6 +198,16 @@ module.exports = {
     cancelled: "Démarrage annulé.",
     started_debug: "🌙 Jeu lancé en debug !",
     someone: "quelqu'un",
+    // Salvateur
+    salvateur_protected: "🛡️ **{{name}}** était protégé par le Salvateur cette nuit ! L'attaque des loups échoue.",
+    // Ancien
+    ancien_survives: "✨ **{{name}}** survit à l'attaque des loups grâce à sa résistance d'Ancien !",
+    ancien_power_drain: "⚠️ **{{name}}** était l'Ancien du village ! En le tuant, le village a perdu ses pouvoirs spéciaux...",
+    ancien_final_death: "💀 **{{name}}**, l'Ancien, succombe à une seconde attaque des loups !",
+    // Idiot du Village
+    idiot_revealed: "🤡 **{{name}}** est l'Idiot du Village ! Il est révélé mais reste en vie. Il perd cependant son droit de vote.",
+    // Spectateurs
+    spectator_joined: "a rejoint les spectateurs.",
   },
 
   // ==================== LOBBY ====================
@@ -231,6 +253,9 @@ module.exports = {
     hunter: "Chasseur",
     petite_fille: "Petite Fille",
     cupid: "Cupidon",
+    salvateur: "Salvateur",
+    ancien: "Ancien",
+    idiot: "Idiot du Village",
     unknown: "Rôle inconnu",
     desc: {
       werewolf: "Salon: 🐺-loups. Commande: /kill @joueur (choisir la victime la nuit).",
@@ -240,6 +265,9 @@ module.exports = {
       hunter: "Salon: 🏘️-village. Commande: /shoot @joueur (si tu es éliminé).",
       petite_fille: "Salon: 🏘️-village. Commande: /listen (espionner les loups la nuit).",
       cupid: "Salon: 💘-cupidon. Commande: /love @a @b (au début de la partie).",
+      salvateur: "Salon: 🛡️-salvateur. Commande: /protect @joueur (protéger quelqu'un chaque nuit).",
+      ancien: "Tu as 2 vies contre les loups. Si le village te vote, les rôles spéciaux perdent leurs pouvoirs.",
+      idiot: "Si le village te vote, tu es révélé mais tu restes en vie (sans droit de vote).",
     },
     instruction: {
       werewolf: "Salon: 🐺-loups. Commande: /kill @joueur (choisir la victime la nuit).",
@@ -249,6 +277,9 @@ module.exports = {
       hunter: "Salon: 🏘️-village. Commande: /shoot @joueur (si tu es elimine).",
       petite_fille: "Salon: 🏘️-village. Commande: /listen (espionner les loups la nuit).",
       cupid: "Salon: ❤️-cupidon. Commande: /love @a @b (au debut de la partie).",
+      salvateur: "Salon: 🛡️-salvateur. Commande: /protect @joueur (protéger un joueur chaque nuit, pas le même deux nuits de suite).",
+      ancien: "Tu as une vie supplémentaire contre les attaques des loups. Si le village te vote, tous les rôles spéciaux perdent leurs pouvoirs !",
+      idiot: "Si le village vote contre toi, tu es révélé comme Idiot du Village mais tu restes en vie. Tu perds cependant ton droit de vote.",
       unknown: "Rôle inconnu",
     },
     dm_title: "Ton rôle : {{role}}",
@@ -292,6 +323,16 @@ module.exports = {
     },
     shoot: {
       success: "✅ Tu as tiré sur **{{name}}** !",
+    },
+    protect: {
+      success: "🛡️ Tu as choisi de protéger **{{name}}** cette nuit.",
+    },
+    theme: {
+      desc: "Choisir le thème des embeds",
+      option_name: "Nom du thème",
+      invalid: "❌ Thème invalide.",
+      title: "🎨 Thème modifié",
+      applied: "Le thème **{{theme}}** a été appliqué !",
     },
     skip: {
       success: "⏭️ Vous avez passé votre action de {{label}}.",
@@ -532,6 +573,7 @@ module.exports = {
     day: "Jour",
     ended: "Terminé",
     cupidon: "Cupidon",
+    salvateur: "Salvateur",
     loups: "Loups",
     sorciere: "Sorcière",
     voyante: "Voyante",
@@ -542,6 +584,7 @@ module.exports = {
     wolves_wake: "Les loups se réveillent...",
     witch_wakes: "La sorcière se réveille...",
     seer_wakes: "La voyante se réveille...",
+    salvateur_wakes: "Le Salvateur se réveille...",
     village_wakes: "Le village se réveille...",
     captain_vote_announce: "Vote du capitaine ! Utilisez /captainvote puis /declarecaptain",
     deliberation_announce: "Délibération du village... (3 min)",
@@ -557,6 +600,8 @@ module.exports = {
     seer: "🔮-voyante",
     witch: "🧪-sorciere",
     cupid: "💘-cupidon",
+    salvateur: "🛡️-salvateur",
+    spectator: "👻-spectateurs",
     voice: "🎤-partie",
   },
 
@@ -566,6 +611,8 @@ module.exports = {
     seer: "🔮 **Bienvenue, Voyante !**\nUtilisez `/see @joueur` pour découvrir le rôle d'un joueur.",
     witch: "🧪 **Bienvenue, Sorcière !**\nTu possèdes 2 potions : une de **vie** et une de **mort**.\nUtilise `/potion type:Vie` ou `/potion type:Mort target:@joueur`\nChaque nuit, tu verras ici qui a été attaqué par les loups.",
     cupid: "💘 **Bienvenue, Cupidon !**\nUtilise `/love @a @b` pour lier deux joueurs. Ils vivront et mourront ensemble.",
+    salvateur: "🛡️ **Bienvenue, Salvateur !**\nChaque nuit, utilise `/protect @joueur` pour protéger un joueur de l'attaque des loups.\n⚠️ Tu ne peux pas protéger la même personne deux nuits de suite.",
+    spectator: "👻 **Bienvenue dans le salon des spectateurs !**\nVous êtes éliminé(e), mais vous pouvez suivre la partie ici et discuter avec les autres spectateurs.\n⚠️ Ne révélez aucune information aux joueurs vivants !",
   },
 
   // ==================== UI ====================

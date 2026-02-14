@@ -1,6 +1,7 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = require('discord.js');
 const path = require('path');
 const { t, translateRole, tips: getTips } = require('./i18n');
+const { getLobbyColor: themeLobbyColor } = require('./theme');
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const LOBBY_IMAGE = path.join(__dirname, '..', 'img', 'LG.jpg');
@@ -13,6 +14,9 @@ const ROLE_LIST = [
   { emoji: '🏹', nameKey: 'hunter',        count: 1, minPlayers: 5, team: 'village'  },
   { emoji: '👁️', nameKey: 'petite_fille',  count: 1, minPlayers: 6, team: 'village'  },
   { emoji: '💘', nameKey: 'cupid',         count: 1, minPlayers: 7, team: 'neutral' },
+  { emoji: '🛡️', nameKey: 'salvateur',     count: 1, minPlayers: 8, team: 'village'  },
+  { emoji: '🧓', nameKey: 'ancien',        count: 1, minPlayers: 9, team: 'village'  },
+  { emoji: '🤡', nameKey: 'idiot',         count: 1, minPlayers: 10, team: 'village' },
   { emoji: '🧑‍🌾', nameKey: 'villager',     count: null, minPlayers: 5, team: 'village' }
 ];
 
@@ -116,16 +120,6 @@ function buildRolesPreview(playerCount) {
 }
 
 /**
- * Get embed color based on fill percentage
- */
-function getLobbyColor(current, min, max) {
-  if (current >= max) return 0x2ECC71;    // Green — full
-  if (current >= min) return 0x3498DB;    // Blue — ready
-  if (current >= Math.ceil(min / 2)) return 0xF39C12; // Orange — halfway
-  return 0x95A5A6;                        // Grey — waiting
-}
-
-/**
  * Get a rotating tip based on time
  */
 function getRandomTip() {
@@ -188,7 +182,7 @@ function buildLobbyEmbed(game, hostId) {
         inline: false
       }
     )
-    .setColor(getLobbyColor(playerCount, min, max))
+    .setColor(themeLobbyColor(game.guildId || null, playerCount / max))
     .setImage('attachment://LG.jpg')
     .setFooter({ text: getRandomTip() })
     .setTimestamp();
@@ -238,6 +232,6 @@ module.exports = {
   buildProgressBar,
   buildPlayerList,
   buildRolesPreview,
-  getLobbyColor,
+  getLobbyColor: themeLobbyColor,
   LOBBY_IMAGE
 };

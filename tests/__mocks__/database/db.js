@@ -70,6 +70,8 @@ class MockGameDatabase {
       seerChannelId: 'seer_channel_id',
       witchChannelId: 'witch_channel_id',
       cupidChannelId: 'cupid_channel_id',
+      salvateurChannelId: 'salvateur_channel_id',
+      spectatorChannelId: 'spectator_channel_id',
       phase: 'phase',
       subPhase: 'sub_phase',
       dayCount: 'day_count',

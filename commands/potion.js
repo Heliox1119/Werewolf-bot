@@ -66,6 +66,12 @@ module.exports = {
       return;
     }
 
+    // Vérifier perte de pouvoirs (Ancien tué par le village)
+    if (game.villageRolesPowerless) {
+      await safeReply(interaction, { content: t('error.powers_lost'), flags: MessageFlags.Ephemeral });
+      return;
+    }
+
     gameManager.clearNightAfkTimeout(game);
     const type = interaction.options.getString("type");
 

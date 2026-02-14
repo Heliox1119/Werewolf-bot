@@ -1,5 +1,6 @@
 const { app: logger } = require('../utils/logger');
 const { t } = require('../utils/i18n');
+const { getSeverityColor } = require('../utils/theme');
 const { EmbedBuilder, WebhookClient } = require('discord.js');
 
 /**
@@ -88,17 +89,10 @@ class AlertSystem {
     }
     
     try {
-      const colors = {
-        info: 0x3498DB,      // Bleu
-        warning: 0xF39C12,   // Orange
-        error: 0xE74C3C,     // Rouge
-        critical: 0x992D22   // Rouge foncé
-      };
-      
       const embed = new EmbedBuilder()
         .setTitle(`🚨 ${title}`)
         .setDescription(description)
-        .setColor(colors[severity] || colors.warning)
+        .setColor(getSeverityColor(null, severity))
         .setTimestamp()
         .setFooter({ text: `Werewolf Bot Alert • ${severity.toUpperCase()}` });
       

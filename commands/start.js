@@ -4,6 +4,7 @@ const { commands: logger } = require("../utils/logger");
 const { t, translateRole } = require('../utils/i18n');
 const ROLES = require("../game/roles");
 const { isInGameCategory } = require("../utils/validators");
+const { getColor } = require('../utils/theme');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -46,7 +47,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setTitle(t('ui.role_select_title'))
         .setDescription(t('ui.role_select_desc', { n: candidateRoles.length, m: game.players.length }))
-        .setColor(0x00AE86);
+        .setColor(getColor(interaction.guildId, 'roleSelect'));
 
       const rows = [];
       // create buttons (max 5 per row)

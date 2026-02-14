@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js"
 const GameDatabase = require("../database/db");
 const { safeReply } = require("../utils/interaction");
 const { t } = require('../utils/i18n');
+const { getColor } = require('../utils/theme');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -33,7 +34,7 @@ module.exports = {
 
     const embed = new EmbedBuilder()
       .setTitle(t('game.stats_title', { name: target.username }))
-      .setColor(0x5865F2)
+      .setColor(getColor(interaction.guildId, 'blurple'))
       .setThumbnail(target.displayAvatarURL({ size: 64 }))
       .addFields(
         { name: t('game.stats_games_played'), value: `${stats.games_played}`, inline: true },

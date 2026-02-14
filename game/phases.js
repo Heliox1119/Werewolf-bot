@@ -5,6 +5,7 @@ module.exports = {
   ENDED: "Terminé",
   // Sous-phases détaillées
   CUPIDON: "Cupidon",
+  SALVATEUR: "Salvateur",
   LOUPS: "Loups",
   SORCIERE: "Sorcière",
   VOYANTE: "Voyante",

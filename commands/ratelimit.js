@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
 const rateLimiter = require("../utils/rateLimiter");
 const { t } = require('../utils/i18n');
+const { getColor } = require('../utils/theme');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -99,7 +100,7 @@ async function handleStats(interaction) {
 
   const embed = new EmbedBuilder()
     .setTitle(t('cmd.ratelimit.stats_title'))
-    .setColor(0x5865F2)
+    .setColor(getColor(interaction.guildId, 'blurple'))
     .addFields(
       { name: t('cmd.ratelimit.tracked_users'), value: stats.totalUsers.toString(), inline: true },
       { name: t('cmd.ratelimit.banned_users'), value: stats.bannedUsers.toString(), inline: true },
@@ -116,7 +117,7 @@ async function handleUserStats(interaction) {
 
   const embed = new EmbedBuilder()
     .setTitle(t('cmd.ratelimit.user_title', { name: user.username }))
-    .setColor(stats.banned ? 0xFF0000 : 0x00FF00)
+    .setColor(stats.banned ? getColor(interaction.guildId, 'error') : getColor(interaction.guildId, 'success'))
     .setDescription(stats.banned ? t('cmd.ratelimit.user_banned', { reason: stats.banInfo.reason }) : t('cmd.ratelimit.user_active'));
 
   if (stats.banned) {
@@ -165,7 +166,7 @@ async function handleReset(interaction) {
   const embed = new EmbedBuilder()
     .setTitle(t('cmd.ratelimit.reset_title'))
     .setDescription(t('cmd.ratelimit.reset_desc', { name: user.username }))
-    .setColor(0x00FF00)
+    .setColor(getColor(interaction.guildId, 'success'))
     .setTimestamp();
 
   await interaction.reply({ embeds: [embed], flags: 64 });
@@ -186,7 +187,7 @@ async function handleBan(interaction) {
       { name: t('cmd.ratelimit.duration'), value: t('cmd.ratelimit.minutes', { n: duration }), inline: true },
       { name: t('cmd.ratelimit.admin'), value: interaction.user.username, inline: true }
     )
-    .setColor(0xFF0000)
+    .setColor(getColor(interaction.guildId, 'error'))
     .setTimestamp();
 
   await interaction.reply({ embeds: [embed], flags: 64 });
@@ -200,7 +201,7 @@ async function handleUnban(interaction) {
   const embed = new EmbedBuilder()
     .setTitle(t('cmd.ratelimit.unban_title'))
     .setDescription(t('cmd.ratelimit.unban_desc', { name: user.username }))
-    .setColor(0x00FF00)
+    .setColor(getColor(interaction.guildId, 'success'))
     .setTimestamp();
 
   await interaction.reply({ embeds: [embed], flags: 64 });

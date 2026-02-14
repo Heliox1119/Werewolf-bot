@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
 const logger = require('../utils/logger').app;
 const { t } = require('../utils/i18n');
+const { getColor } = require('../utils/theme');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -162,7 +163,7 @@ module.exports = {
           { name: t('cmd.setup.field_id'), value: category.id, inline: true },
           { name: t('cmd.setup.field_position'), value: t('cmd.setup.position_value', { position: category.position }), inline: true }
         )
-        .setColor(0x2ECC71)
+        .setColor(getColor(interaction.guildId, 'success'))
         .setTimestamp();
 
       await interaction.reply({ embeds: [embed], ephemeral: true });
@@ -217,7 +218,7 @@ module.exports = {
           { name: t('cmd.setup.field_url'), value: url.substring(0, 50) + '...', inline: false },
           { name: t('cmd.setup.field_status'), value: t('cmd.setup.webhook_status_value'), inline: false }
         )
-        .setColor(0x2ECC71)
+        .setColor(getColor(interaction.guildId, 'success'))
         .setTimestamp();
 
       await interaction.reply({ embeds: [embed], ephemeral: true });
@@ -284,7 +285,7 @@ module.exports = {
           { name: t('cmd.setup.field_min'), value: newRules.minPlayers.toString(), inline: true },
           { name: t('cmd.setup.field_max'), value: newRules.maxPlayers.toString(), inline: true }
         )
-        .setColor(0x2ECC71)
+        .setColor(getColor(interaction.guildId, 'success'))
         .setTimestamp();
 
       await interaction.reply({ embeds: [embed], ephemeral: true });
@@ -350,7 +351,7 @@ module.exports = {
         value: changes.join('\n'),
         inline: false
       })
-      .setColor(0x2ECC71)
+      .setColor(getColor(interaction.guildId, 'success'))
       .setTimestamp();
 
     await interaction.reply({ embeds: [embed], ephemeral: true });
@@ -370,7 +371,7 @@ module.exports = {
           ? t('cmd.setup.status_complete')
           : t('cmd.setup.status_incomplete')
       )
-      .setColor(setupComplete ? 0x2ECC71 : 0xF39C12)
+      .setColor(setupComplete ? getColor(interaction.guildId, 'success') : getColor(interaction.guildId, 'warning'))
       .setTimestamp();
 
     // Discord
@@ -449,7 +450,7 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setTitle(t('cmd.setup.wizard_title'))
       .setDescription(t('cmd.setup.wizard_desc'))
-      .setColor(0x3498DB)
+      .setColor(getColor(interaction.guildId, 'info'))
       .setTimestamp();
 
     // Étapes de configuration

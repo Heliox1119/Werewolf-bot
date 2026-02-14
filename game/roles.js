@@ -5,5 +5,8 @@ module.exports = {
   WITCH: "Sorcière",
   HUNTER: "Chasseur",
   PETITE_FILLE: "Petite Fille",
-  CUPID: "Cupidon"
+  CUPID: "Cupidon",
+  SALVATEUR: "Salvateur",
+  ANCIEN: "Ancien",
+  IDIOT: "Idiot du Village"
 };

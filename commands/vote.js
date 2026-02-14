@@ -52,6 +52,12 @@ module.exports = {
       return;
     }
 
+    // Idiot du Village révélé ne peut plus voter
+    if (player.role === ROLES.IDIOT && player.idiotRevealed) {
+      await safeReply(interaction, { content: t('error.idiot_cannot_vote'), flags: MessageFlags.Ephemeral });
+      return;
+    }
+
     const target = interaction.options.getUser("target");
     const targetPlayer = game.players.find(p => p.id === target.id);
 

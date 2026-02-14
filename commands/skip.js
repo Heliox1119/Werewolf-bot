@@ -39,6 +39,7 @@ module.exports = {
       [PHASES.VOYANTE]: { role: ROLES.SEER, label: "Voyante" },
       [PHASES.SORCIERE]: { role: ROLES.WITCH, label: "Sorcière" },
       [PHASES.CUPIDON]: { role: ROLES.CUPID, label: "Cupidon" },
+      [PHASES.SALVATEUR]: { role: ROLES.SALVATEUR, label: "Salvateur" },
     };
 
     const allowed = allowedSkips[game.subPhase];

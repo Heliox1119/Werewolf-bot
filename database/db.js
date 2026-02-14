@@ -58,6 +58,14 @@ class GameDatabase {
         this.db.exec('ALTER TABLE games ADD COLUMN guild_id TEXT');
         logger.info('Migration: added guild_id column (multi-guild support)');
       }
+      if (!columns.includes('salvateur_channel_id')) {
+        this.db.exec('ALTER TABLE games ADD COLUMN salvateur_channel_id TEXT');
+        logger.info('Migration: added salvateur_channel_id column');
+      }
+      if (!columns.includes('spectator_channel_id')) {
+        this.db.exec('ALTER TABLE games ADD COLUMN spectator_channel_id TEXT');
+        logger.info('Migration: added spectator_channel_id column');
+      }
 
       // Migration: create game_history table if it doesn't exist
       const tables = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='game_history'").get();
@@ -161,6 +169,8 @@ class GameDatabase {
       seerChannelId: 'seer_channel_id',
       witchChannelId: 'witch_channel_id',
       cupidChannelId: 'cupid_channel_id',
+      salvateurChannelId: 'salvateur_channel_id',
+      spectatorChannelId: 'spectator_channel_id',
       phase: 'phase',
       subPhase: 'sub_phase',
       dayCount: 'day_count',
