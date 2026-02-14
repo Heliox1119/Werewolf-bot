@@ -1,6 +1,8 @@
 # 🐺 Werewolf Discord Bot
 
-Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion vocale automatique, audio d'ambiance et lobby interactif.
+> 🇬🇧 English | **🇫🇷 [Français](README.fr.md)**
+
+A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice management, ambient audio and interactive lobby.
 
 ![Version](https://img.shields.io/badge/version-2.4.0-blue)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
@@ -9,156 +11,156 @@ Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion
 
 ---
 
-## ✨ Fonctionnalités
+## ✨ Features
 
 ### 🎮 Gameplay
-- **Lobby interactif** — Boutons Rejoindre / Quitter / Démarrer avec aperçu des rôles en temps réel
-- **7 rôles** — Loup-Garou, Villageois, Voyante, Sorcière, Chasseur, Petite Fille, Cupidon
-- **Phases automatiques** — Alternance Nuit / Jour avec mute/unmute vocal automatique
-- **Système de votes** — Vote du village, élection du capitaine (vote ×2), égalité départagée
-- **Détection de victoire** — Village, Loups, Amoureux, Égalité
-- **Audio d'ambiance** — Sons de nuit, jour, mort et victoire dans le vocal
-- **Mode spectateur** — Les joueurs morts voient tous les salons en lecture seule
+- **Interactive lobby** — Join / Leave / Start buttons with real-time role preview
+- **7 roles** — Werewolf, Villager, Seer, Witch, Hunter, Little Girl, Cupid
+- **Automatic phases** — Night / Day cycle with automatic voice mute/unmute
+- **Voting system** — Village vote, captain election (×2 vote), tie-breaking
+- **Victory detection** — Village, Wolves, Lovers, Draw
+- **Ambient audio** — Night, day, death and victory sounds in voice channel
+- **Spectator mode** — Dead players can see all channels in read-only
 
 ### ⚙️ Administration
-- **Configuration par commandes** — `/setup wizard` pour tout configurer
-- **Règles personnalisables** — Min/max joueurs ajustables
-- **Commandes debug** — Joueurs fictifs, forcer un démarrage, inspecter l'état
-- **Nettoyage automatique** — Channels de jeu et lobbys inactifs (1h)
-- **Rate limiting** — Protection anti-spam avec ban automatique
-- **Monitoring** — Dashboard temps réel, alertes webhook, historique 24h
+- **Setup via commands** — `/setup wizard` for guided configuration
+- **Customizable rules** — Adjustable min/max players
+- **Debug commands** — Fake players, force start, inspect game state
+- **Auto cleanup** — Inactive game channels and lobbies (1h)
+- **Rate limiting** — Anti-spam protection with automatic bans
+- **Monitoring** — Real-time dashboard, webhook alerts, 24h history
 
-### 🌍 Internationalisation
-- **Multilingue FR / EN** — Commande `/lang` pour basculer la langue du bot
-- **500+ clés de traduction** — Tous les messages, embeds, boutons et alertes traduits
-- **Persistance** — La langue choisie est sauvegardée en base de données
-- **Extensible** — Ajouter une langue = créer un fichier `locales/xx.js`
+### 🌍 Internationalization
+- **Multilingual FR / EN** — `/lang` command to switch bot language
+- **500+ translation keys** — All messages, embeds, buttons and alerts translated
+- **Persistence** — Chosen language is saved in database
+- **Extensible** — Adding a language = creating a `locales/xx.js` file
 
-### 🗄️ Technique
-- **Persistance SQLite** — État des parties, stats joueurs, actions de nuit, métriques
-- **i18n centralisé** — Singleton `I18n`, interpolation `{{variable}}`, fallback automatique
-- **Gestion d'erreurs robuste** — safeReply, graceful shutdown, zero crash en production
-- **191 tests automatisés** — 15 suites, 0 failures
+### 🗄️ Technical
+- **SQLite persistence** — Game state, player stats, night actions, metrics
+- **Centralized i18n** — `I18n` singleton, `{{variable}}` interpolation, automatic fallback
+- **Robust error handling** — safeReply, graceful shutdown, zero crash in production
+- **191 automated tests** — 15 suites, 0 failures
 
 ---
 
 ## 🚀 Installation
 
-### Prérequis
+### Prerequisites
 - **Node.js** ≥ 16.9.0
-- Un **bot Discord** avec les permissions : Manage Channels, Manage Roles, Connect, Speak, Send Messages, Mute Members
+- A **Discord bot** with permissions: Manage Channels, Manage Roles, Connect, Speak, Send Messages, Mute Members
 
-### Mise en place
+### Setup
 
 ```bash
-# 1. Cloner et installer
+# 1. Clone and install
 git clone https://github.com/Heliox1119/Werewolf-bot.git
 cd Werewolf-bot
 npm install
 
-# 2. Configurer l'environnement
-cp .env.example .env   # ou créer manuellement
+# 2. Configure environment
+cp .env.example .env   # or create manually
 ```
 
-Remplir le fichier `.env` :
+Fill in the `.env` file:
 ```env
-TOKEN=votre_token_bot_discord
-CLIENT_ID=id_application_discord
-GUILD_ID=id_serveur_discord
+TOKEN=your_discord_bot_token
+CLIENT_ID=discord_application_id
+GUILD_ID=discord_server_id
 LOG_LEVEL=INFO    # DEBUG | INFO | WARN | ERROR | NONE
 ```
 
 ```bash
-# 3. Ajouter les fichiers audio (optionnel)
+# 3. Add audio files (optional)
 mkdir audio
-# Placer : night_ambience.mp3, day_ambience.mp3, death.mp3,
-#          victory_villagers.mp3, victory_wolves.mp3
+# Place: night_ambience.mp3, day_ambience.mp3, death.mp3,
+#        victory_villagers.mp3, victory_wolves.mp3
 
-# 4. Lancer le bot
+# 4. Start the bot
 npm start
 ```
 
-### Configuration Discord
+### Discord Configuration
 
-Une fois le bot en ligne, dans Discord :
+Once the bot is online, in Discord:
 ```
-/setup wizard          # Assistant interactif (recommandé)
-# ou manuellement :
-/setup category #ma-catégorie
-/setup status          # Vérifier la config
+/setup wizard          # Interactive wizard (recommended)
+# or manually:
+/setup category #my-category
+/setup status          # Check configuration
 ```
 
-> ⚠️ Le bot refuse de créer des parties sans catégorie configurée.
+> ⚠️ The bot will refuse to create games without a configured category.
 
 ---
 
-## 📋 Commandes
+## 📋 Commands
 
-### Joueurs
+### Players
 
-| Commande | Description |
-|----------|-------------|
-| `/create` | Créer une partie (lobby interactif) |
-| `/join` | Rejoindre la partie |
-| `/help` | Afficher l'aide des commandes |
+| Command | Description |
+|---------|-------------|
+| `/create` | Create a game (interactive lobby) |
+| `/join` | Join the game |
+| `/help` | Display command help |
 
-### En jeu
+### In-game
 
-| Commande | Description | Rôle |
-|----------|-------------|------|
-| `/kill @joueur` | Désigner la victime de la nuit | 🐺 Loups-Garous |
-| `/see @joueur` | Découvrir le rôle d'un joueur | 🔮 Voyante |
-| `/potion type:Vie/Mort` | Utiliser une potion | 🧪 Sorcière |
-| `/love @a @b` | Lier deux amoureux | 💘 Cupidon |
-| `/shoot @joueur` | Tirer en mourant | 🏹 Chasseur |
-| `/listen` | Espionner les loups | 👧 Petite Fille |
-| `/skip` | Passer son action de nuit | Voyante / Sorcière / Cupidon |
-| `/vote @joueur` | Voter pour éliminer quelqu'un | Tous (vivants) |
-| `/captainvote @joueur` | Voter pour le capitaine | Tous (vivants) |
-| `/declarecaptain` | Déclarer le capitaine élu | Village |
-| `/nextphase` | Avancer à la phase suivante | Tous |
-| `/vote-end` | Voter pour arrêter la partie | Tous (vivants) |
-| `/end` | Terminer la partie | Admin / Host |
+| Command | Description | Role |
+|---------|-------------|------|
+| `/kill @player` | Choose the night victim | 🐺 Werewolves |
+| `/see @player` | Reveal a player's role | 🔮 Seer |
+| `/potion type:Life/Death` | Use a potion | 🧪 Witch |
+| `/love @a @b` | Link two lovers | 💘 Cupid |
+| `/shoot @player` | Shoot on death | 🏹 Hunter |
+| `/listen` | Spy on the wolves | 👧 Little Girl |
+| `/skip` | Skip your night action | Seer / Witch / Cupid |
+| `/vote @player` | Vote to eliminate someone | All (alive) |
+| `/captainvote @player` | Vote for captain | All (alive) |
+| `/declarecaptain` | Declare the elected captain | Village |
+| `/nextphase` | Advance to next phase | All |
+| `/vote-end` | Vote to stop the game | All (alive) |
+| `/end` | End the game | Admin / Host |
 
 ### Administration
 
-| Commande | Description |
-|----------|-------------|
-| `/setup wizard` | Assistant de configuration |
-| `/setup category` | Définir la catégorie Discord |
-| `/setup rules min max` | Règles par défaut (joueurs) |
-| `/setup webhook url` | Webhook de monitoring |
-| `/setup status` | Voir la configuration |
-| `/setrules` | Modifier min/max joueurs d'une partie |
-| `/clear` | Nettoyer les channels de jeu |
-| `/force-end` | Terminer une partie (bypass) |
-| `/lang fr\|en` | Changer la langue du bot |
-| `/monitoring dashboard` | Métriques temps réel |
-| `/monitoring health` | Santé du bot |
-| `/ratelimit stats` | Stats anti-spam |
+| Command | Description |
+|---------|-------------|
+| `/setup wizard` | Configuration wizard |
+| `/setup category` | Set Discord category |
+| `/setup rules min max` | Default rules (players) |
+| `/setup webhook url` | Monitoring webhook |
+| `/setup status` | View configuration |
+| `/setrules` | Change min/max players for a game |
+| `/clear` | Clean up game channels |
+| `/force-end` | Force end a game (bypass) |
+| `/lang fr\|en` | Change the bot language |
+| `/monitoring dashboard` | Real-time metrics |
+| `/monitoring health` | Bot health |
+| `/ratelimit stats` | Anti-spam stats |
 
-### Debug (Admin uniquement)
+### Debug (Admin only)
 
-| Commande | Description |
-|----------|-------------|
-| `/debug-fake-join` | Ajouter des joueurs fictifs |
-| `/debug-start-force` | Forcer le démarrage |
-| `/debug-set-role` | Changer le rôle d'un joueur |
-| `/debug-info` | État de la partie |
-| `/debug-games` | Toutes les parties actives |
-| `/debug-reset` | Supprimer la partie |
-| `/debug-voicemute` | Désactiver le mute vocal |
+| Command | Description |
+|---------|-------------|
+| `/debug-fake-join` | Add fake players |
+| `/debug-start-force` | Force start |
+| `/debug-set-role` | Change a player's role |
+| `/debug-info` | Game state |
+| `/debug-games` | All active games |
+| `/debug-reset` | Delete the game |
+| `/debug-voicemute` | Disable voice mute |
 
 ---
 
-## 🎯 Comment jouer
+## 🎯 How to Play
 
-1. **Créer** — Un joueur tape `/create` dans la catégorie configurée
-2. **Rejoindre** — Les joueurs cliquent sur le bouton **Rejoindre** du lobby
-3. **Démarrer** — L'hôte clique sur **Démarrer** quand il y a assez de joueurs
-4. **Nuit** — Chaque rôle agit dans son salon privé (90s max par rôle)
-5. **Jour** — Le village discute et vote pour éliminer un suspect
-6. **Victoire** — Quand un camp a gagné, le récapitulatif s'affiche avec option de relancer
+1. **Create** — A player types `/create` in the configured category
+2. **Join** — Players click the **Join** button on the lobby
+3. **Start** — The host clicks **Start** when there are enough players
+4. **Night** — Each role acts in their private channel (90s max per role)
+5. **Day** — The village discusses and votes to eliminate a suspect
+6. **Victory** — When a side wins, the summary is displayed with a restart option
 
 ---
 
@@ -166,32 +168,32 @@ Une fois le bot en ligne, dans Discord :
 
 ```
 Werewolf-bot/
-├── index.js                # Point d'entrée, handlers Discord
-├── commands/               # Commandes slash (auto-chargées)
+├── index.js                # Entry point, Discord handlers
+├── commands/               # Slash commands (auto-loaded)
 ├── game/
-│   ├── gameManager.js      # Logique de jeu, phases, victoire
-│   ├── voiceManager.js     # Audio & connexions vocales
-│   ├── phases.js           # Constantes de phases
-│   └── roles.js            # Constantes de rôles
+│   ├── gameManager.js      # Game logic, phases, victory
+│   ├── voiceManager.js     # Audio & voice connections
+│   ├── phases.js           # Phase constants
+│   └── roles.js            # Role constants
 ├── locales/
-│   ├── fr.js               # Locale française (~500+ clés)
-│   └── en.js               # Locale anglaise (~500+ clés)
+│   ├── fr.js               # French locale (~500+ keys)
+│   └── en.js               # English locale (~500+ keys)
 ├── utils/
-│   ├── config.js           # Configuration centralisée (SQLite)
-│   ├── i18n.js             # Système i18n (t(), translateRole/Phase)
+│   ├── config.js           # Centralized configuration (SQLite)
+│   ├── i18n.js             # i18n system (t(), translateRole/Phase)
 │   ├── interaction.js      # safeReply, safeDefer
-│   ├── lobbyBuilder.js     # Construction du lobby embed
+│   ├── lobbyBuilder.js     # Lobby embed builder
 │   ├── rateLimiter.js      # Token bucket anti-spam
-│   └── validators.js       # Validations communes
+│   └── validators.js       # Common validations
 ├── database/
-│   ├── db.js               # API SQLite (parties, joueurs, stats)
-│   └── schema.sql          # Schéma des tables
+│   ├── db.js               # SQLite API (games, players, stats)
+│   └── schema.sql          # Table schema
 ├── monitoring/
-│   ├── metrics.js          # Collecteur système/Discord/jeu
-│   └── alerts.js           # Alertes webhook
-├── tests/                  # 191 tests Jest
-├── audio/                  # Sons d'ambiance (.mp3)
-└── img/                    # Images des rôles
+│   ├── metrics.js          # System/Discord/game collector
+│   └── alerts.js           # Webhook alerts
+├── tests/                  # 191 Jest tests
+├── audio/                  # Ambient sounds (.mp3)
+└── img/                    # Role images
 ```
 
 ---
@@ -199,51 +201,51 @@ Werewolf-bot/
 ## 🧪 Tests
 
 ```bash
-npm test                    # Lancer tous les tests
-npm run health              # Vérifier la santé du bot
-npm run clear-commands      # Réinitialiser les commandes Discord
+npm test                    # Run all tests
+npm run health              # Check bot health
+npm run clear-commands      # Reset Discord commands
 ```
 
 ---
 
-## 📊 Historique des versions
+## 📊 Version History
 
 | Version | Highlights |
 |---------|-----------|
-| **v2.4.0** | Système i18n centralisé FR/EN, commande `/lang`, 500+ clés traduites |
-| **v2.3.0** | Audit complet (47 fixes), mode spectateur, `/skip`, stats joueurs en DB |
-| **v2.2.1** | Hardening production (26 fixes), 191 tests, safeReply partout |
-| **v2.2.0** | Commandes debug sécurisées, `/shoot`, `/vote-end`, AFK timeout 90s |
-| **v2.1.0** | SQLite, rate limiting, monitoring, configuration centralisée |
-| **v2.0.0** | Debouncing, cache API, optimisations (-650 lignes) |
+| **v2.4.0** | Centralized i18n system FR/EN, `/lang` command, 500+ translated keys |
+| **v2.3.0** | Full audit (47 fixes), spectator mode, `/skip`, player stats in DB |
+| **v2.2.1** | Production hardening (26 fixes), 191 tests, safeReply everywhere |
+| **v2.2.0** | Secure debug commands, `/shoot`, `/vote-end`, AFK timeout 90s |
+| **v2.1.0** | SQLite, rate limiting, monitoring, centralized configuration |
+| **v2.0.0** | Debouncing, API cache, optimizations (-650 lines) |
 
-Détails complets : [CHANGELOG.md](CHANGELOG.md)
+Full details: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
 ## 📚 Documentation
 
-| Document | Contenu |
+| Document | Content |
 |----------|---------|
-| [CHANGELOG.md](CHANGELOG.md) | Historique détaillé des versions |
-| [CONFIG.md](CONFIG.md) | Système de configuration |
-| [DATABASE.md](DATABASE.md) | Architecture SQLite, schéma, API |
-| [MONITORING.md](MONITORING.md) | Monitoring et alertes |
-| [RATE_LIMITING.md](RATE_LIMITING.md) | Protection anti-spam |
-| [LOGGING.md](LOGGING.md) | Système de logging |
-| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Guide de dépannage |
-| [TESTING.md](TESTING.md) | Guide des tests |
+| [CHANGELOG.md](CHANGELOG.md) | Detailed version history |
+| [CONFIG.md](CONFIG.md) | Configuration system |
+| [DATABASE.md](DATABASE.md) | SQLite architecture, schema, API |
+| [MONITORING.md](MONITORING.md) | Monitoring and alerts |
+| [RATE_LIMITING.md](RATE_LIMITING.md) | Anti-spam protection |
+| [LOGGING.md](LOGGING.md) | Logging system |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Troubleshooting guide |
+| [TESTING.md](TESTING.md) | Testing guide |
 
 ---
 
-## 🤝 Contribution
+## 🤝 Contributing
 
-1. Fork le projet
-2. Créer une branche (`git checkout -b feature/ma-feature`)
+1. Fork the project
+2. Create a branch (`git checkout -b feature/my-feature`)
 3. Commit (`git commit -m 'feat: description'`)
-4. Push (`git push origin feature/ma-feature`)
-5. Ouvrir une Pull Request
+4. Push (`git push origin feature/my-feature`)
+5. Open a Pull Request
 
 ---
 
-**Version** : 2.4.0 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **License** : ISC
+**Version**: 2.4.0 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **License**: ISC
