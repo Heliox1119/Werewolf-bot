@@ -1,4 +1,4 @@
-const logger = require('../utils/logger');
+const { app: logger } = require('../utils/logger');
 const { EmbedBuilder, WebhookClient } = require('discord.js');
 
 /**

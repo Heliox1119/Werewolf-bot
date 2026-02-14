@@ -124,12 +124,11 @@ async function sendTemporaryMessage(interaction, content, deleteAfter = 2000) {
     // Delete this message after delay
     if (deleteAfter > 0) {
       setTimeout(() => {
-        try {
-          reply.delete();
+        reply.delete().then(() => {
           logger.debug('Temporary message deleted');
-        } catch (e) {
+        }).catch(() => {
           // Already deleted or no permissions
-        }
+        });
       }, deleteAfter);
     }
     

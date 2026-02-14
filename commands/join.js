@@ -35,7 +35,7 @@ module.exports = {
         const { buildLobbyMessage } = require('../utils/lobbyBuilder');
         const mainChannel = await interaction.guild.channels.fetch(game.mainChannelId);
         const lobbyMessage = await mainChannel.messages.fetch(game.lobbyMessageId);
-        const lobbyData = buildLobbyMessage(game.players, game);
+        const lobbyData = buildLobbyMessage(game, game.lobbyHostId);
         await lobbyMessage.edit(lobbyData);
       }
     } catch (e) { /* ignore */ }

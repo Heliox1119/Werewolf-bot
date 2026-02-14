@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const PHASES = require("../game/phases");
+const ROLES = require("../game/roles");
 const { safeReply } = require("../utils/interaction");
 const { isInGameCategory } = require("../utils/validators");
 
@@ -84,7 +85,7 @@ module.exports = {
         : await interaction.guild.channels.fetch(game.mainChannelId);
 
       if (game.voiceChannelId) {
-        gameManager.playAmbience(game.voiceChannelId, 'death.mp3');
+        await gameManager.playAmbience(game.voiceChannelId, 'death.mp3');
       }
       await villageChannel.send(`⚖️🔨 Le capitaine a tranché : **${targetPlayer.username}** est éliminé !`);
       const collateral = gameManager.kill(game.mainChannelId, target.id);
@@ -96,7 +97,7 @@ module.exports = {
       }
 
       // Vérifier chasseur
-      if (targetPlayer.role === require('../game/roles').HUNTER) {
+      if (targetPlayer.role === ROLES.HUNTER) {
         game._hunterMustShoot = targetPlayer.id;
         await villageChannel.send(`🏹 **${targetPlayer.username}** était le Chasseur ! Il doit tirer avec \`/shoot @joueur\` !`);
         gameManager.startHunterTimeout(interaction.guild, game, targetPlayer.id);

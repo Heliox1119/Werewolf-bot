@@ -481,17 +481,17 @@ class GameDatabase {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       stmt.run(
-        data.system.memory.used, data.system.memory.total, data.system.memory.percentage,
-        data.system.cpu.usage, data.system.uptime,
-        data.discord.guilds, data.discord.users, data.discord.channels,
-        data.discord.latency, String(data.discord.wsStatus),
-        data.game.activeGames, data.game.totalPlayers,
-        data.game.gamesCreated24h, data.game.gamesCompleted24h,
-        data.commands.total, data.commands.errors,
-        data.commands.rateLimited, data.commands.avgResponseTime,
-        data.errors.total, data.errors.critical,
-        data.errors.warnings, data.errors.last24h,
-        data.health?.status || 'UNKNOWN', JSON.stringify(data.health?.issues || [])
+        data.memory_used, data.memory_total, data.memory_percentage,
+        data.cpu_usage, data.uptime,
+        data.guilds, data.users, data.channels,
+        data.latency, String(data.ws_status || 0),
+        data.active_games, data.total_players,
+        data.games_created_24h, data.games_completed_24h,
+        data.commands_total, data.commands_errors,
+        data.commands_rate_limited, data.commands_avg_response,
+        data.errors_total, data.errors_critical,
+        data.errors_warnings, data.errors_last_24h,
+        data.health_status || 'UNKNOWN', data.health_issues || '[]'
       );
       return true;
     } catch (err) {

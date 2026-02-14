@@ -81,7 +81,7 @@ module.exports = {
       // DM failures are non-critical
     }
 
-    await interaction.reply({ content: `✅ ${a.username} et ${b.username} sont désormais amoureux.`, flags: MessageFlags.Ephemeral });
+    await safeReply(interaction, { content: `✅ ${a.username} et ${b.username} sont désormais amoureux.`, flags: MessageFlags.Ephemeral });
 
     // Avancer la sous-phase après l'action de Cupidon
     await gameManager.advanceSubPhase(interaction.guild, game);

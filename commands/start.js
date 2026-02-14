@@ -17,11 +17,11 @@ module.exports = {
     }
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
-      await interaction.reply("❌ Aucune partie ici");
+      await interaction.reply({ content: "❌ Aucune partie ici", flags: MessageFlags.Ephemeral });
       return;
     }
     if (game.players.length < (game.rules?.minPlayers || 5)) {
-      await interaction.reply(`❌ Impossible de démarrer (minimum ${game.rules?.minPlayers || 5} joueurs)`);
+      await interaction.reply({ content: `❌ Impossible de démarrer (minimum ${game.rules?.minPlayers || 5} joueurs)`, flags: MessageFlags.Ephemeral });
       return;
     }
     const { safeDefer } = require('../utils/interaction');

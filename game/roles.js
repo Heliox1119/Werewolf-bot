@@ -4,7 +4,6 @@ module.exports = {
   SEER: "Voyante",
   WITCH: "Sorcière",
   HUNTER: "Chasseur",
-  PETITE_FILLE: "Petite Fille"
-  ,
+  PETITE_FILLE: "Petite Fille",
   CUPID: "Cupidon"
 };

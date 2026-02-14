@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const logger = require('../utils/logger');
+const { app: logger } = require('../utils/logger');
 
 module.exports = {
   data: new SlashCommandBuilder()
