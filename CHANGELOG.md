@@ -447,28 +447,39 @@ const voiceChannel = guild.channels.cache.get(voiceChannelId) ||
 ### v2.1.0 (✅ Terminé)
 - [x] Rate limiting intelligent per-user
 - [x] Metrics dashboard (parties/jour, joueurs actifs)
-- [ ] Backup automatique horaire
-- [ ] Multi-guild support
+- [x] Configuration centralisée SQLite
 
 ### v2.2.0 (✅ Terminé)
-- [x] Tests automatisés (Jest) — 77 tests
+- [x] Tests automatisés (Jest) — 191 tests
 - [x] Audit sécurité complet
 - [x] Chasseur (/shoot) + AFK timeout
 - [x] Verrou de transition & clearGameTimers
-- [ ] CI/CD Pipeline
-- [ ] Docker containerization
 
-### v2.3.0 (Planifié)
-- [ ] CI/CD Pipeline
+### v2.3.0 (✅ Terminé)
+- [x] Audit complet (47 corrections)
+- [x] Mode spectateur (morts en lecture seule)
+- [x] Commande `/skip` (passer action de nuit)
+- [x] Stats joueurs & actions de nuit en DB
+- [x] Lobby v2 redesigné
+
+### v2.4.0 (✅ Terminé)
+- [x] Système i18n centralisé (FR + EN)
+- [x] Commande `/lang` pour basculer la langue
+- [x] 500+ clés de traduction
+- [x] Documentation bilingue (README FR/EN avec badges)
+
+### v2.5.0 (Planifié)
+- [ ] CI/CD Pipeline (GitHub Actions)
 - [ ] Docker containerization
-- [ ] WebSocket dashboard temps réel
 - [ ] Backup automatique horaire
+- [ ] Multi-guild support (langue par serveur)
 
 ### v3.0.0 (Long terme)
 - [ ] Web interface d'administration
-- [ ] Système de statistiques joueurs
+- [ ] WebSocket dashboard temps réel
 - [ ] Achievements & leaderboard
 - [ ] Rôles personnalisés configurables
+- [ ] Support de langues communautaires
 
 ---
 
