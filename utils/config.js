@@ -173,6 +173,18 @@ class ConfigManager {
   }
 
   /**
+   * Condition de victoire des loups (server-wide)
+   * @returns {'majority'|'elimination'}
+   */
+  getWolfWinCondition() {
+    return this.get('game.wolf_win_condition', 'majority');
+  }
+
+  setWolfWinCondition(condition) {
+    return this.set('game.wolf_win_condition', condition);
+  }
+
+  /**
    * URL du webhook Discord pour les alertes monitoring
    */
   getMonitoringWebhookUrl() {

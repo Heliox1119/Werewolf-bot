@@ -2007,8 +2007,10 @@ class GameManager {
       return 'village';
     }
 
-    // Condition de victoire des loups configurable
-    const wolfWinCondition = game.rules?.wolfWinCondition || 'majority';
+    // Condition de victoire des loups (server-wide config)
+    const ConfigManager = require('../utils/config');
+    const config = ConfigManager.getInstance();
+    const wolfWinCondition = config.getWolfWinCondition();
     if (wolfWinCondition === 'majority') {
       // Victoire des loups : autant ou plus de loups que de non-loups
       if (aliveWolves.length >= aliveVillagers.length) {

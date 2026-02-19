@@ -44,6 +44,8 @@ jest.mock('../../utils/config', () => {
     get: jest.fn((key, defaultValue) => defaultValue),
     getCategoryId: jest.fn(() => '1469976287790633146'),
     getDefaultGameRules: jest.fn(() => ({ minPlayers: 5, maxPlayers: 10 })),
+    getWolfWinCondition: jest.fn(() => 'majority'),
+    setWolfWinCondition: jest.fn(),
     getInstance: jest.fn()
   };
   mockConfig.getInstance = jest.fn(() => mockConfig);

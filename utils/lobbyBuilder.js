@@ -2,6 +2,7 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBu
 const path = require('path');
 const { t, translateRole, tips: getTips } = require('./i18n');
 const { getLobbyColor: themeLobbyColor } = require('./theme');
+const ConfigManager = require('./config');
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const LOBBY_IMAGE = path.join(__dirname, '..', 'img', 'LG.jpg');
@@ -157,6 +158,11 @@ function buildLobbyEmbed(game, hostId) {
     description = t('lobby.desc_recruiting', { n: min - playerCount });
   }
 
+  // Wolf win condition (server-wide)
+  const config = ConfigManager.getInstance();
+  const wolfWin = config.getWolfWinCondition();
+  const wolfWinLabel = wolfWin === 'elimination' ? t('lobby.wolfwin_elimination') : t('lobby.wolfwin_majority');
+
   const embed = new EmbedBuilder()
     .setTitle(title)
     .setDescription(
@@ -182,6 +188,7 @@ function buildLobbyEmbed(game, hostId) {
           `> ${t('lobby.info_host')} · <@${hostId}>`,
           game.voiceChannelId ? `> ${t('lobby.info_voice')} · <#${game.voiceChannelId}>` : `> ${t('lobby.info_voice')} · ${t('lobby.info_voice_waiting')}`,
           `> ${t('lobby.info_players', { min, max })}`,
+          `> ${t('lobby.info_wolfwin')} · ${wolfWinLabel}`,
           `> ${t('lobby.info_created')} · <t:${Math.floor((game._lobbyCreatedAt || Date.now()) / 1000)}:R>`
         ].join('\n'),
         inline: false
@@ -212,9 +219,18 @@ function buildLobbyEmbed(game, hostId) {
       .setDisabled(!canStart)
   );
 
+  // ─── Buttons Row 2: Settings ───
+  const settingsButtons = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`lobby_wolfwin:${game.mainChannelId}`)
+      .setLabel(wolfWin === 'elimination' ? t('ui.btn.wolfwin_elimination') : t('ui.btn.wolfwin_majority'))
+      .setEmoji('⚙️')
+      .setStyle(wolfWin === 'elimination' ? ButtonStyle.Danger : ButtonStyle.Secondary)
+  );
+
   return {
     embed,
-    buttons: mainButtons,
+    buttons: [mainButtons, settingsButtons],
     files: [new AttachmentBuilder(LOBBY_IMAGE, { name: 'LG.jpg' })]
   };
 }
@@ -226,7 +242,7 @@ function buildLobbyMessage(game, hostId) {
   const { embed, buttons, files } = buildLobbyEmbed(game, hostId);
   return {
     embeds: [embed],
-    components: [buttons],
+    components: Array.isArray(buttons) ? buttons : [buttons],
     files
   };
 }

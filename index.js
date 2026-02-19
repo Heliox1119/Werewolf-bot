@@ -460,7 +460,7 @@ client.on("interactionCreate", async interaction => {
 
     const [buttonType, arg1, arg2] = interaction.customId.split(":");
     let channelId = null;
-    if (buttonType === "lobby_join" || buttonType === "lobby_leave" || buttonType === "lobby_start") {
+    if (buttonType === "lobby_join" || buttonType === "lobby_leave" || buttonType === "lobby_start" || buttonType === "lobby_wolfwin") {
       channelId = arg1;
     }
 
@@ -658,6 +658,33 @@ client.on("interactionCreate", async interaction => {
 
       // Joueur normal qui quitte
       await safeEditReply(interaction, { content: t('lobby.leave_success', { name: interaction.user.username }) });
+      await updateLobbyEmbed(interaction.guild, channelId);
+      return;
+    }
+
+    if (buttonType === "lobby_wolfwin") {
+      const game = gameManager.games.get(channelId);
+      if (!game) {
+        await safeEditReply(interaction, { content: t('error.no_game_found_button') });
+        return;
+      }
+
+      // Seul le host ou un admin peut changer la condition de victoire
+      const isAdmin = interaction.member.permissions.has('Administrator');
+      const isHost = game.lobbyHostId === interaction.user.id;
+      if (!isAdmin && !isHost) {
+        await safeEditReply(interaction, { content: t('error.admin_or_host_required'), flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      const ConfigManager = require('./utils/config');
+      const config = ConfigManager.getInstance();
+      const current = config.getWolfWinCondition();
+      const newCondition = current === 'majority' ? 'elimination' : 'majority';
+      config.setWolfWinCondition(newCondition);
+
+      const label = newCondition === 'elimination' ? t('lobby.wolfwin_elimination') : t('lobby.wolfwin_majority');
+      await safeEditReply(interaction, { content: t('lobby.wolfwin_changed', { condition: label }) });
       await updateLobbyEmbed(interaction.guild, channelId);
       return;
     }

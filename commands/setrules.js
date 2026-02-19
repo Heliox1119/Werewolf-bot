@@ -48,7 +48,9 @@ module.exports = {
 
     if (min === null && max === null && wolfWin === null) {
       // Afficher les règles actuelles
-      const currentWolfWin = game.rules?.wolfWinCondition || 'majority';
+      const ConfigManager = require('../utils/config');
+      const config = ConfigManager.getInstance();
+      const currentWolfWin = config.getWolfWinCondition();
       const wolfWinLabel = currentWolfWin === 'elimination' ? 'Élimination totale' : 'Majorité';
       await interaction.editReply({
         content: t('cmd.setrules.current', {
@@ -76,11 +78,15 @@ module.exports = {
     }
 
     if (wolfWin) {
-      game.rules = { ...game.rules, wolfWinCondition: wolfWin };
+      const ConfigManager = require('../utils/config');
+      const config = ConfigManager.getInstance();
+      config.setWolfWinCondition(wolfWin);
     }
 
     gameManager.scheduleSave();
-    const wolfWinLabel = (game.rules?.wolfWinCondition || 'majority') === 'elimination' ? 'Élimination totale' : 'Majorité';
+    const ConfigManager2 = require('../utils/config');
+    const config2 = ConfigManager2.getInstance();
+    const wolfWinLabel = config2.getWolfWinCondition() === 'elimination' ? 'Élimination totale' : 'Majorité';
     await interaction.editReply({
       content: t('cmd.setrules.success_full', {
         min: game.rules.minPlayers,
