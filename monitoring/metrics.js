@@ -80,7 +80,48 @@ class MetricsCollector {
       errors: []
     };
     
+    // Charger les compteurs persistants depuis la DB
+    this._loadPersistentCounters();
+    
     logger.info('MetricsCollector initialized');
+  }
+
+  /**
+   * Charge les compteurs sauvegardés depuis la DB (survie au restart)
+   */
+  _loadPersistentCounters() {
+    try {
+      const gameManager = require('../game/gameManager');
+      if (!gameManager || !gameManager.db) return;
+      const db = gameManager.db;
+      
+      this.metrics.commands.total = db.getCounter('metrics.commands.total');
+      this.metrics.commands.errors = db.getCounter('metrics.commands.errors');
+      this.metrics.commands.rateLimited = db.getCounter('metrics.commands.rateLimited');
+      this.metrics.errors.total = db.getCounter('metrics.errors.total');
+      this.metrics.errors.critical = db.getCounter('metrics.errors.critical');
+      this.metrics.errors.warnings = db.getCounter('metrics.errors.warnings');
+      
+      logger.info('Persistent counters loaded from DB', {
+        commandsTotal: this.metrics.commands.total,
+        errorsTotal: this.metrics.errors.total
+      });
+    } catch (e) {
+      logger.debug('Could not load persistent counters (DB not ready yet)', { error: e.message });
+    }
+  }
+
+  /**
+   * Sauvegarde un compteur dans la DB
+   */
+  _persistCounter(key, value) {
+    try {
+      const gameManager = require('../game/gameManager');
+      if (!gameManager || !gameManager.db) return;
+      gameManager.db.setConfig(key, String(value));
+    } catch (e) {
+      // Silencieux — la DB peut ne pas être prête
+    }
   }
 
   /**
@@ -257,6 +298,7 @@ class MetricsCollector {
 
   /**
    * Collecte les métriques du jeu (parties actives, joueurs)
+   * Les stats 24h sont calculées depuis game_history en DB (persistent)
    */
   collectGameMetrics() {
     try {
@@ -268,12 +310,24 @@ class MetricsCollector {
         totalPlayers += game.players.length;
       });
       
+      // Stats 24h depuis la DB (persistent, survit aux restarts)
+      let gamesCreated24h = 0;
+      let gamesCompleted24h = 0;
+      let errorsLast24h = 0;
+      if (gameManager.db) {
+        gamesCreated24h = gameManager.db.getGamesCreatedSince(24);
+        gamesCompleted24h = gameManager.db.getGamesCompletedSince(24);
+        errorsLast24h = gameManager.db.getErrorsSince(24);
+      }
+      
       this.metrics.game = {
         activeGames: games.length,
         totalPlayers,
-        gamesCreated24h: this.metrics.game.gamesCreated24h || 0,
-        gamesCompleted24h: this.metrics.game.gamesCompleted24h || 0
+        gamesCreated24h,
+        gamesCompleted24h
       };
+      
+      this.metrics.errors.last24h = errorsLast24h;
     } catch (error) {
       // gameManager peut ne pas être disponible au démarrage
       logger.debug('Could not collect game metrics', { error: error.message });
@@ -288,7 +342,10 @@ class MetricsCollector {
     
     if (!success) {
       this.metrics.commands.errors++;
+      this._persistCounter('metrics.commands.errors', this.metrics.commands.errors);
     }
+    
+    this._persistCounter('metrics.commands.total', this.metrics.commands.total);
     
     // Moyenne glissante sur les 100 dernières commandes
     this.commandResponseTimes.push(responseTime);
@@ -307,6 +364,7 @@ class MetricsCollector {
    */
   recordRateLimited(userId, commandName) {
     this.metrics.commands.rateLimited++;
+    this._persistCounter('metrics.commands.rateLimited', this.metrics.commands.rateLimited);
     logger.debug('Rate limit recorded', { userId, commandName });
   }
 
@@ -316,33 +374,34 @@ class MetricsCollector {
   recordError(level = 'error') {
     this.errorCounts.total++;
     this.metrics.errors.total++;
-    this.metrics.errors.last24h++;
     
     if (level === 'error' || level === 'critical') {
       this.errorCounts.critical++;
       this.metrics.errors.critical++;
+      this._persistCounter('metrics.errors.critical', this.metrics.errors.critical);
     } else if (level === 'warn') {
       this.errorCounts.warnings++;
       this.metrics.errors.warnings++;
+      this._persistCounter('metrics.errors.warnings', this.metrics.errors.warnings);
     }
+    
+    this._persistCounter('metrics.errors.total', this.metrics.errors.total);
     
     logger.debug('Error recorded', { level, total: this.metrics.errors.total });
   }
 
   /**
-   * Enregistre la création d'une partie
+   * Enregistre la création d'une partie (legacy - stats 24h viennent de game_history)
    */
   recordGameCreated() {
-    this.metrics.game.gamesCreated24h++;
-    logger.debug('Game creation recorded');
+    logger.debug('Game creation recorded (computed from DB)');
   }
 
   /**
-   * Enregistre la fin d'une partie
+   * Enregistre la fin d'une partie (legacy - stats 24h viennent de game_history)
    */
   recordGameCompleted() {
-    this.metrics.game.gamesCompleted24h++;
-    logger.debug('Game completion recorded');
+    logger.debug('Game completion recorded (computed from DB)');
   }
 
   /**
@@ -384,10 +443,8 @@ class MetricsCollector {
       this.history.errors.shift();
     }
     
-    // Reset compteur 24h
-    this.metrics.errors.last24h = 0;
-    this.metrics.game.gamesCreated24h = 0;
-    this.metrics.game.gamesCompleted24h = 0;
+    // Note: les stats 24h (games, erreurs) sont calculées depuis la DB,
+    // pas besoin de reset ici
     
     logger.debug('History cleaned up');
   }

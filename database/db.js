@@ -573,6 +573,89 @@ class GameDatabase {
 
   // ===== METRICS SNAPSHOTS =====
 
+  /**
+   * Incrémente un compteur persistant (upsert)
+   */
+  incrementCounter(key, amount = 1) {
+    try {
+      this.db.prepare(`
+        INSERT INTO config (key, value, updated_at)
+        VALUES (?, ?, strftime('%s', 'now'))
+        ON CONFLICT(key) DO UPDATE SET
+          value = CAST(CAST(value AS INTEGER) + ? AS TEXT),
+          updated_at = strftime('%s', 'now')
+      `).run(key, String(amount), amount);
+      return true;
+    } catch (err) {
+      logger.error('Failed to increment counter', { key, error: err.message });
+      return false;
+    }
+  }
+
+  /**
+   * Récupère un compteur persistant
+   */
+  getCounter(key) {
+    const val = this.getConfig(key);
+    return val ? parseInt(val, 10) || 0 : 0;
+  }
+
+  /**
+   * Nombre de parties créées dans les dernières N heures (depuis game_history + games actives)
+   */
+  getGamesCreatedSince(hours = 24) {
+    try {
+      const cutoff = Math.floor(Date.now() / 1000) - (hours * 3600);
+      // Parties terminées
+      const finished = this.db.prepare(
+        'SELECT COUNT(*) as cnt FROM game_history WHERE started_at >= ?'
+      ).get(cutoff);
+      // Parties encore actives
+      const active = this.db.prepare(
+        'SELECT COUNT(*) as cnt FROM games WHERE created_at >= ? AND ended_at IS NULL'
+      ).get(cutoff);
+      return (finished?.cnt || 0) + (active?.cnt || 0);
+    } catch (err) {
+      return 0;
+    }
+  }
+
+  /**
+   * Nombre de parties terminées dans les dernières N heures
+   */
+  getGamesCompletedSince(hours = 24) {
+    try {
+      const cutoff = Math.floor(Date.now() / 1000) - (hours * 3600);
+      const row = this.db.prepare(
+        'SELECT COUNT(*) as cnt FROM game_history WHERE ended_at >= ?'
+      ).get(cutoff);
+      return row?.cnt || 0;
+    } catch (err) {
+      return 0;
+    }
+  }
+
+  /**
+   * Différence d'erreurs entre maintenant et il y a N heures (depuis metrics snapshots)
+   */
+  getErrorsSince(hours = 24) {
+    try {
+      const cutoff = Math.floor(Date.now() / 1000) - (hours * 3600);
+      // Snapshot le plus ancien dans la fenêtre
+      const oldest = this.db.prepare(
+        'SELECT errors_total FROM metrics WHERE collected_at >= ? ORDER BY collected_at ASC LIMIT 1'
+      ).get(cutoff);
+      // Snapshot le plus récent
+      const newest = this.db.prepare(
+        'SELECT errors_total FROM metrics ORDER BY collected_at DESC LIMIT 1'
+      ).get();
+      if (!oldest || !newest) return 0;
+      return Math.max(0, (newest.errors_total || 0) - (oldest.errors_total || 0));
+    } catch (err) {
+      return 0;
+    }
+  }
+
   insertMetricsSnapshot(data) {
     try {
       const stmt = this.db.prepare(`
