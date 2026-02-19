@@ -10,25 +10,35 @@ const { t } = require('../utils/i18n');
 const DETECTION_CHANCE = 0.3;
 
 /**
+ * Normalise un texte : minuscules, supprime les accents, ne garde que les lettres Unicode.
+ * Ex: "Éloïse_42" → "eloise"
+ */
+function normalizeForHint(str) {
+  return str.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // strip accents (é→e, ï→i, ñ→n…)
+    .replace(/[^\p{L}]/gu, ''); // ne garder que les lettres Unicode
+}
+
+/**
  * Choisit une lettre du pseudo de la Petite Fille qui est la plus ambiguë :
  * celle qui apparaît dans le plus grand nombre d'autres pseudos vivants.
+ * Les accents sont normalisés (é=e, ï=i) pour maximiser l'ambiguïté.
  * Exclut les lettres déjà données comme indices.
- * Évite les lettres trop rares (présentes chez < 2 joueurs si possible).
  */
 function pickSmartHint(username, game) {
   const ROLES = require("../game/roles");
-  // Lettres uniques du pseudo (minuscules, alpha uniquement)
-  const targetLetters = [...new Set(username.toLowerCase().replace(/[^a-zà-ÿ]/g, '').split(''))];
+  // Lettres uniques du pseudo normalisé
+  const targetLetters = [...new Set(normalizeForHint(username).split(''))];
 
   // Exclure les indices déjà donnés
   const alreadyGiven = new Set((game.listenHintsGiven || []).map(l => l.toLowerCase()));
   const available = targetLetters.filter(l => !alreadyGiven.has(l));
   if (available.length === 0) return null;
 
-  // Pseudos des autres joueurs vivants (hors PF elle-même)
+  // Pseudos normalisés des autres joueurs vivants (hors PF elle-même)
   const otherNames = game.players
     .filter(p => p.alive && p.role !== ROLES.PETITE_FILLE)
-    .map(p => p.username.toLowerCase());
+    .map(p => normalizeForHint(p.username));
 
   // Pour chaque lettre dispo, compter combien d'autres pseudos la contiennent
   const scored = available.map(letter => {
