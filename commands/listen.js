@@ -15,7 +15,7 @@ const DETECTION_CHANCE = 0.3;
  */
 function normalizeForHint(str) {
   return str.toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // strip accents (é→e, ï→i, ñ→n…)
+    .normalize('NFD').replace(/\p{M}/gu, '') // strip ALL combining marks (accents, zalgo, etc.)
     .replace(/[^\p{L}]/gu, ''); // ne garder que les lettres Unicode
 }
 
