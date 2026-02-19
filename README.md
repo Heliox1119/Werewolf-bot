@@ -5,7 +5,7 @@
 
 A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice management, ambient audio and interactive lobby.
 
-![Version](https://img.shields.io/badge/version-2.5.1-blue)
+![Version](https://img.shields.io/badge/version-2.7.0-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
@@ -19,8 +19,8 @@ A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice ma
 - **Interactive lobby** — Join / Leave / Start buttons with real-time role preview
 - **10 roles** — Werewolf, Villager, Seer, Witch, Hunter, Little Girl, Cupid, Salvateur, Ancien, Idiot du Village
 - **Automatic phases** — Night / Day cycle with automatic voice mute/unmute
-- **Voting system** — Village vote, captain election (×2 vote), tie-breaking
-- **Victory detection** — Village, Wolves, Lovers, Draw
+- **Voting system** — Village vote, automatic captain election (×2 vote), tie-breaking
+- **Victory detection** — Village, Wolves (majority or elimination, configurable), Lovers, Draw
 - **Ambient audio** — Night, day, death and victory sounds in voice channel
 - **Spectator mode** — Dead players can see all channels in read-only, dedicated spectator channel
 
@@ -116,11 +116,10 @@ Once the bot is online, in Discord:
 | `/potion type:Life/Death` | Use a potion | 🧪 Witch |
 | `/love @a @b` | Link two lovers | 💘 Cupid |
 | `/shoot @player` | Shoot on death | 🏹 Hunter |
-| `/listen` | Spy on the wolves | 👧 Little Girl |
+| `/listen` | Real-time anonymized spy on wolves (DM relay, 30% detection with smart hint) | 👧 Little Girl |
 | `/skip` | Skip your night action | Seer / Witch / Cupid |
 | `/vote @player` | Vote to eliminate someone | All (alive) |
-| `/captainvote @player` | Vote for captain | All (alive) |
-| `/declarecaptain` | Declare the elected captain | Village |
+| `/captainvote @player` | Vote for captain (auto-resolve) | All (alive) |
 | `/nextphase` | Advance to next phase | All |
 | `/vote-end` | Vote to stop the game | All (alive) |
 | `/end` | End the game | Admin / Host |
@@ -134,7 +133,7 @@ Once the bot is online, in Discord:
 | `/setup rules min max` | Default rules (players) |
 | `/setup webhook url` | Monitoring webhook |
 | `/setup status` | View configuration |
-| `/setrules` | Change min/max players for a game |
+| `/setrules` | Change min/max players, wolf win condition (`majority`/`elimination`) |
 | `/clear` | Clean up game channels |
 | `/force-end` | Force end a game (bypass) |
 | `/lang fr\|en` | Change the bot language |
@@ -214,8 +213,8 @@ npm run clear-commands      # Reset Discord commands
 ## 📊 Version History
 
 | Version | Highlights |
-|---------|-----------|
-| **v2.5.1** | New roles (Salvateur, Ancien, Idiot), spectator mode, embed themes, bugfixes |
+|---------|-----------|| **v2.7.0** | Little Girl real-time DM relay, smart ambiguous hints, Unicode/zalgo-proof, wolf win server-wide config, guild-only commands |
+| **v2.6.0** | Phase balancing, automatic captain vote, witch potion fix, configurable wolf victory, wolf ping || **v2.5.1** | New roles (Salvateur, Ancien, Idiot), spectator mode, embed themes, bugfixes |
 | **v2.4.0** | Centralized i18n system FR/EN, `/lang` command, 500+ translated keys |
 | **v2.3.0** | Full audit (47 fixes), spectator mode, `/skip`, player stats in DB |
 | **v2.2.1** | Production hardening (26 fixes), 191 tests, safeReply everywhere |
@@ -252,4 +251,4 @@ Full details: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-**Version**: 2.5.1 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **License**: ISC
+**Version**: 2.7.0 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **License**: ISC

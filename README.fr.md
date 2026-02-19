@@ -5,7 +5,7 @@
 
 Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion vocale automatique, audio d'ambiance et lobby interactif.
 
-![Version](https://img.shields.io/badge/version-2.6.0-blue)
+![Version](https://img.shields.io/badge/version-2.7.0-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
@@ -116,7 +116,7 @@ Une fois le bot en ligne, dans Discord :
 | `/potion type:Vie/Mort` | Utiliser une potion | 🧪 Sorcière |
 | `/love @a @b` | Lier deux amoureux | 💘 Cupidon |
 | `/shoot @joueur` | Tirer en mourant | 🏹 Chasseur |
-| `/listen` | Espionner les loups | 👧 Petite Fille |
+| `/listen` | Espionner les loups en temps réel (relay DM anonymisé, 30% détection avec indice intelligent) | 👧 Petite Fille |
 | `/skip` | Passer son action de nuit | Voyante / Sorcière / Cupidon |
 | `/vote @joueur` | Voter pour éliminer quelqu'un | Tous (vivants) |
 | `/captainvote @joueur` | Voter pour le capitaine (auto-résolution) | Tous (vivants) |
@@ -213,8 +213,7 @@ npm run clear-commands      # Réinitialiser les commandes Discord
 ## 📊 Historique des versions
 
 | Version | Highlights |
-|---------|-----------|
-| **v2.6.0** | Équilibrage phases, vote capitaine auto, fix potion sorcière, victoire loups configurable, ping loups |
+|---------|-----------|| **v2.7.0** | Petite Fille relay temps réel en DM, indices ambigus intelligents, normalisation Unicode/zalgo, wolfwin serveur-wide, commandes guild-only || **v2.6.0** | Équilibrage phases, vote capitaine auto, fix potion sorcière, victoire loups configurable, ping loups |
 | **v2.5.1** | Nouveaux rôles (Salvateur, Ancien, Idiot), mode spectateur, thèmes d'embed, correctifs |
 | **v2.4.0** | Système i18n centralisé FR/EN, commande `/lang`, 500+ clés traduites |
 | **v2.3.0** | Audit complet (47 fixes), mode spectateur, `/skip`, stats joueurs en DB |
@@ -252,4 +251,4 @@ Détails complets : [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-**Version** : 2.6.0 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **License** : ISC
+**Version** : 2.7.0 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **License** : ISC

@@ -1,5 +1,44 @@
 # 📝 Changelog - Werewolf Bot
 
+## [2.7.0] - 2026-02-19 - Petite Fille : Espionnage Temps Réel & Indices Intelligents
+
+### 👧 Système d'espionnage temps réel (Petite Fille)
+- **Relay en DM** : `/listen` active un relais en temps réel — chaque message des loups est transmis anonymement en DM à la Petite Fille
+- **Anonymisation** : Les noms des loups sont remplacés par `🐺 Loup ???` dans les messages relayés
+- **Fin automatique** : Le relais se coupe automatiquement à la transition Loups → Sorcière, avec notification DM
+- **Intents ajoutés** : `GuildMessages` + `MessageContent` pour capter les messages du salon loups
+
+### 🔍 Système d'indices intelligents
+- **Détection 30%** : À chaque écoute, 30% de chance que les loups reçoivent un indice sur l'espion
+- **Algorithme `pickSmartHint()`** : Choisit la lettre du pseudo la plus ambiguë — celle partagée par le plus d'autres joueurs vivants
+- **Indices non-répétitifs** : Chaque détection donne une lettre différente (tracking via `game.listenHintsGiven`)
+- **Normalisation Unicode** : `normalize('NFD')` + `\p{M}` supprime accents et zalgo (`Éloïse` → `eloise`, `f̴̈̍u̶̒̋c̵̊̆k̸̯̋` → `fuck`)
+- **Fallback** : Si toutes les lettres ont été données, alerte générique sans indice
+
+### ⚙️ Condition de victoire des loups (serveur-wide)
+- **Configuration persistante** : `/setrules wolfwin:majority|elimination` sauvegardé en SQLite via ConfigManager (pas lié à une partie)
+- **Bouton lobby** : Toggle ⚙️ dans le lobby pour basculer entre majorité et élimination
+- **Sans partie active** : `/setrules wolfwin:...` fonctionne même sans partie en cours
+
+### 🔧 Enregistrement des commandes
+- **Guild-only** : Les commandes slash sont enregistrées uniquement sur le serveur (quand `GUILD_ID` est défini)
+- **Nettoyage global** : Les commandes globales dupliquées sont supprimées automatiquement au démarrage
+
+### 🔧 Fichiers modifiés
+- **commands/listen.js** : Réécriture complète — relais temps réel, `pickSmartHint()`, `normalizeForHint()`
+- **game/gameManager.js** : `listenRelayUserId`, `listenHintsGiven`, `stopListenRelay()`, arrêt relay sur transition LOUPS→SORCIERE
+- **index.js** : Handler `messageCreate` pour relay anonymisé, intents GuildMessages/MessageContent, enregistrement guild-only, handler bouton `lobby_wolfwin`
+- **utils/config.js** : `getWolfWinCondition()` / `setWolfWinCondition()`
+- **utils/lobbyBuilder.js** : Affichage wolfwin + bouton toggle (2e ActionRow)
+- **commands/setrules.js** : wolfwin serveur-wide, fonctionne sans partie active
+- **locales/fr.js** : Clés relay (relay_started, relay_message, relay_ended, wolves_alert, wolves_alert_no_hint), clés wolfwin, boutons
+- **locales/en.js** : Traductions anglaises correspondantes
+
+### ✅ Tests
+- 191/191 tests passent (15 suites, 0 failures)
+
+---
+
 ## [2.6.0] - 2026-02-19 - Équilibrage, Vote Capitaine Auto, Correctifs
 
 ### ⏱️ Équilibrage des phases
