@@ -166,6 +166,24 @@ class GameManager {
     }
   }
 
+  /**
+   * Arrête le relais d'écoute de la Petite Fille et la notifie
+   */
+  async stopListenRelay(game) {
+    if (!game.listenRelayUserId) return;
+    try {
+      // Tenter de notifier la petite fille que l'écoute est terminée
+      const client = require.main?.exports?.client;
+      if (client) {
+        const user = await client.users.fetch(game.listenRelayUserId);
+        await user.send(t('cmd.listen.relay_ended'));
+      }
+    } catch (e) {
+      // ignore DM errors
+    }
+    game.listenRelayUserId = null;
+  }
+
   // Nettoyage global (pour shutdown propre)
   destroy() {
     // Clear recentCommands interval
@@ -254,6 +272,7 @@ class GameManager {
       protectedPlayerId: null,
       lastProtectedPlayerId: null,
       villageRolesPowerless: false,
+      listenRelayUserId: null,
       rules: { minPlayers, maxPlayers },
       actionLog: [],
       startedAt: null,
@@ -735,6 +754,7 @@ class GameManager {
         await this.announcePhase(guild, game, t('phase.wolves_wake'));
         break;
       case PHASES.LOUPS:
+        this.stopListenRelay(game);
         game.subPhase = PHASES.SORCIERE;
         await this.announcePhase(guild, game, t('phase.witch_wakes'));
         break;

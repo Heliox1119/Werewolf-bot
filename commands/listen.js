@@ -6,10 +6,13 @@ const { safeReply } = require("../utils/interaction");
 const { commands: logger } = require("../utils/logger");
 const { t } = require('../utils/i18n');
 
+// Chance que les loups soient alertés (30%)
+const DETECTION_CHANCE = 0.3;
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("listen")
-    .setDescription("Petite Fille : écouter les chuchotements des loups (DM)")
+    .setDescription("Petite Fille : espionner les loups en temps réel (DM anonymisé)")
     ,
 
   async execute(interaction) {
@@ -65,28 +68,40 @@ module.exports = {
       return;
     }
 
+    // Déjà en écoute ?
+    if (game.listenRelayUserId === interaction.user.id) {
+      await safeReply(interaction, { content: t('error.already_listening'), flags: MessageFlags.Ephemeral });
+      return;
+    }
+
     try {
-      const wolvesChannel = await interaction.guild.channels.fetch(game.wolvesChannelId);
-      if (!wolvesChannel) {
-        await safeReply(interaction, { content: t('error.wolves_channel_fetch_failed'), flags: MessageFlags.Ephemeral });
-        return;
+      // Activer le relais temps réel
+      game.listenRelayUserId = interaction.user.id;
+
+      // Envoyer un DM de confirmation à la Petite Fille
+      await interaction.user.send(t('cmd.listen.relay_started'));
+      await safeReply(interaction, { content: t('cmd.listen.relay_active'), flags: MessageFlags.Ephemeral });
+
+      // Chance de détection par les loups
+      if (Math.random() < DETECTION_CHANCE) {
+        const wolvesChannel = await interaction.guild.channels.fetch(game.wolvesChannelId);
+        if (wolvesChannel) {
+          // Indice : première lettre du pseudo
+          const firstLetter = player.username.charAt(0).toUpperCase();
+          await wolvesChannel.send(t('cmd.listen.wolves_alert', { letter: firstLetter }));
+        }
       }
 
-      const messages = await wolvesChannel.messages.fetch({ limit: 20 });
-      const recent = Array.from(messages.values()).reverse().slice(-10);
+      // Log l'action
+      gameManager.logAction(game.mainChannelId, {
+        type: 'listen',
+        playerId: interaction.user.id,
+        detected: false
+      });
 
-      if (recent.length === 0) {
-        await interaction.user.send(t('cmd.listen.empty'));
-        await safeReply(interaction, { content: t('cmd.listen.dm_sent_empty'), flags: MessageFlags.Ephemeral });
-        return;
-      }
-
-      const summary = recent.map(m => `• ${m.author.username}: ${m.content}`).join("\n");
-
-      await interaction.user.send(t('cmd.listen.summary', { summary }));
-      await safeReply(interaction, { content: t('cmd.listen.dm_sent'), flags: MessageFlags.Ephemeral });
     } catch (err) {
       logger.error("Erreur /listen:", { error: err.message });
+      game.listenRelayUserId = null;
       await safeReply(interaction, { content: t('error.listen_fetch_error'), flags: MessageFlags.Ephemeral });
     }
   }
