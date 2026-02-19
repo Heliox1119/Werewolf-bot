@@ -91,6 +91,7 @@ module.exports = {
 
       game.witchPotions.life = false;
       game.witchSave = true;
+      game.witchKillTarget = null; // Sécurité: empêcher la potion de mort si potion de vie utilisée
       try { gameManager.db.useWitchPotion(game.mainChannelId, 'life'); } catch (e) { /* ignore */ }
       gameManager.logAction(game, `Sorciere utilise potion de vie pour sauver ${victimName}`);
       try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'save', interaction.user.id, game.nightVictim); } catch (e) { /* ignore */ }

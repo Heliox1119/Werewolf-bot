@@ -7,16 +7,25 @@ const { t } = require('../utils/i18n');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("setrules")
-    .setDescription("Définir le nombre min/max de joueurs (admin)")
+    .setDescription("Définir le nombre min/max de joueurs et les conditions de victoire (admin)")
     .addIntegerOption(opt =>
       opt.setName("min")
         .setDescription("Nombre minimum de joueurs (3-6)")
-        .setRequired(true)
+        .setRequired(false)
     )
     .addIntegerOption(opt =>
       opt.setName("max")
         .setDescription("Nombre maximum de joueurs (min-20)")
-        .setRequired(true)
+        .setRequired(false)
+    )
+    .addStringOption(opt =>
+      opt.setName("wolfwin")
+        .setDescription("Condition de victoire des loups")
+        .setRequired(false)
+        .addChoices(
+          { name: "Majorité (loups ≥ villageois)", value: "majority" },
+          { name: "Élimination totale (tous les villageois morts)", value: "elimination" }
+        )
     ),
 
   async execute(interaction) {
@@ -35,16 +44,50 @@ module.exports = {
     }
     const min = interaction.options.getInteger("min");
     const max = interaction.options.getInteger("max");
-    if (min < 3 || min > 6) {
-      await interaction.editReply({ content: t('error.min_out_of_range'), flags: MessageFlags.Ephemeral });
+    const wolfWin = interaction.options.getString("wolfwin");
+
+    if (min === null && max === null && wolfWin === null) {
+      // Afficher les règles actuelles
+      const currentWolfWin = game.rules?.wolfWinCondition || 'majority';
+      const wolfWinLabel = currentWolfWin === 'elimination' ? 'Élimination totale' : 'Majorité';
+      await interaction.editReply({
+        content: t('cmd.setrules.current', {
+          min: game.rules?.minPlayers ?? 5,
+          max: game.rules?.maxPlayers ?? 10,
+          wolfwin: wolfWinLabel
+        }),
+        flags: MessageFlags.Ephemeral
+      });
       return;
     }
-    if (max < min || max > 20) {
-      await interaction.editReply({ content: t('error.max_out_of_range'), flags: MessageFlags.Ephemeral });
-      return;
+
+    if (min !== null || max !== null) {
+      const newMin = min ?? game.rules?.minPlayers ?? 5;
+      const newMax = max ?? game.rules?.maxPlayers ?? 10;
+      if (newMin < 3 || newMin > 6) {
+        await interaction.editReply({ content: t('error.min_out_of_range'), flags: MessageFlags.Ephemeral });
+        return;
+      }
+      if (newMax < newMin || newMax > 20) {
+        await interaction.editReply({ content: t('error.max_out_of_range'), flags: MessageFlags.Ephemeral });
+        return;
+      }
+      game.rules = { ...game.rules, minPlayers: newMin, maxPlayers: newMax };
     }
-    game.rules = { minPlayers: min, maxPlayers: max };
+
+    if (wolfWin) {
+      game.rules = { ...game.rules, wolfWinCondition: wolfWin };
+    }
+
     gameManager.scheduleSave();
-    await interaction.editReply({ content: t('cmd.setrules.success', { min, max }), flags: MessageFlags.Ephemeral });
+    const wolfWinLabel = (game.rules?.wolfWinCondition || 'majority') === 'elimination' ? 'Élimination totale' : 'Majorité';
+    await interaction.editReply({
+      content: t('cmd.setrules.success_full', {
+        min: game.rules.minPlayers,
+        max: game.rules.maxPlayers,
+        wolfwin: wolfWinLabel
+      }),
+      flags: MessageFlags.Ephemeral
+    });
   }
 };

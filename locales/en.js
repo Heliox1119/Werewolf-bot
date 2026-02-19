@@ -163,6 +163,9 @@ module.exports = {
     vote_tie_captain: "⚖️ **Tie!** {{names}} are tied with {{count}} vote(s).\nCaptain <@{{captainId}}> must break the tie: `/vote @player` among tied players.",
     vote_tie_no_captain: "⚖️ **Tie!** {{names}} are tied with {{count}} vote(s). Nobody is eliminated.",
     captain_tiebreak: "⚖️🔨 The captain has decided: **{{name}}** is eliminated!",
+    captain_auto_elected: "⏰👑 Time's up! **{{name}}** is automatically elected captain!",
+    captain_random_elected: "🎲👑 Tie vote — **{{name}}** is randomly elected captain!",
+    captain_random_no_votes: "⏰👑 No captain votes! **{{name}}** is randomly designated as captain.",
     hunter_death: "🏹 **{{name}}** was the Hunter! They must shoot someone with `/shoot @player`!",
     hunter_shoot: "🏹 **{{name}}** the Hunter shot **{{target}}** while dying!",
     hunter_timeout: "⏰ The Hunter did not shoot in time. The shot is lost.",
@@ -289,9 +292,10 @@ module.exports = {
   cmd: {
     captainvote: {
       success: "✅ Vote registered for **{{name}}**",
+      public: "🗳️ **{{voter}}** voted for **{{target}}** as captain ({{voted}}/{{total}})",
     },
     captain: {
-      tie: "⚠️ Tie between: {{names}}. No election.",
+      tie: "⚠️ Tie between: {{names}}. Random draw!",
       elected: "🏅 **{{name}}** is elected captain!",
       dm_title: "You are elected Captain",
       dm_desc: "Your vote counts double. You can start the vote when the village is ready.",
@@ -350,6 +354,8 @@ module.exports = {
     },
     setrules: {
       success: "✅ Rules updated: min {{min}}, max {{max}} players.",
+      success_full: "✅ Rules updated: min **{{min}}**, max **{{max}}** players. Wolf win: **{{wolfwin}}**.",
+      current: "📋 **Current rules:**\n• Players: {{min}} — {{max}}\n• Wolf win condition: **{{wolfwin}}**",
     },
     roles_confirmed: "✅ Roles confirmed, starting the game...",
     debug_set_role: {
@@ -586,7 +592,7 @@ module.exports = {
     seer_wakes: "The seer wakes up...",
     salvateur_wakes: "The Salvateur wakes up...",
     village_wakes: "The village wakes up...",
-    captain_vote_announce: "Captain vote! Use /captainvote then /declarecaptain",
+    captain_vote_announce: "🗳️ Captain vote! Use `/captainvote @player` — when everyone has voted, the captain is elected automatically.",
     deliberation_announce: "Village deliberation... (3 min)",
     captain_can_vote: "The captain can start the vote with the 'Vote' button!",
     vote_announce: "🗳️ It's time to vote! Use `/vote @player` (2 min)",
@@ -608,6 +614,7 @@ module.exports = {
   // ==================== WELCOME MESSAGES ====================
   welcome: {
     wolves: "🐺 **Welcome, Werewolves!**\nThere are {{n}} of you tonight.\nUse `/kill @player` to choose your victim.",
+    wolves_members: "**Pack members:",
     seer: "🔮 **Welcome, Seer!**\nUse `/see @player` to discover a player's role.",
     witch: "🧪 **Welcome, Witch!**\nYou have 2 potions: one **life** and one **death**.\nUse `/potion type:Life` or `/potion type:Death target:@player`\nEach night, you will see here who was attacked by the wolves.",
     cupid: "💘 **Welcome, Cupid!**\nUse `/love @a @b` to link two players. They will live and die together.",
@@ -739,7 +746,7 @@ module.exports = {
     day_vote_title: "🗳️ Vote",
     day_vote_value: "Main or 🏘️-village channel — `/vote @player` to eliminate someone. Day turns to night when all real players have voted.",
     day_captain_title: "🏅 Captain",
-    day_captain_value: "`/captainvote @player` to vote. Then `/declarecaptain` to announce the elected. The captain has double vote.",
+    day_captain_value: "`/captainvote @player` to vote. When all have voted, the captain is elected automatically. The captain has double vote.",
     day_hunter_title: "🏹 Hunter",
     day_hunter_value: "`/shoot @player` only when eliminated. You can fire one last time.",
     day_footer: "Day turns to night when all real players have voted",

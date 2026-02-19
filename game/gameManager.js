@@ -10,10 +10,11 @@ const { getColor } = require('../utils/theme');
 // Timeouts configurables (en ms)
 const TIMEOUTS = {
   LOBBY_AUTO_CLEANUP: 60 * 60 * 1000, // 1h
-  NIGHT_AFK: 90_000,                   // 90s
-  HUNTER_SHOOT: 60_000,                // 60s
-  DAY_DELIBERATION: 180_000,           // 3 min de discussion
-  DAY_VOTE: 120_000,                   // 2 min pour voter
+  NIGHT_AFK: 120_000,                  // 120s (augmenté)
+  HUNTER_SHOOT: 90_000,                // 90s (augmenté)
+  DAY_DELIBERATION: 300_000,           // 5 min de discussion (augmenté)
+  DAY_VOTE: 180_000,                   // 3 min pour voter (augmenté)
+  CAPTAIN_VOTE: 120_000,               // 2 min pour le vote capitaine
   RECENT_COMMAND_WINDOW: 5_000,        // 5s
   RECENT_COMMAND_CLEANUP: 30_000,      // 30s
   RECENT_COMMAND_INTERVAL: 60_000      // 60s interval de nettoyage
@@ -94,13 +95,74 @@ class GameManager {
     }
   }
 
-  // Nettoyer tous les timers d'une partie (AFK nuit, chasseur)
+  // Nettoyer tous les timers d'une partie (AFK nuit, chasseur, capitaine)
   clearGameTimers(game) {
     this.clearNightAfkTimeout(game);
     this.clearDayTimeout(game);
+    this.clearCaptainVoteTimeout(game);
     if (game._hunterTimer) {
       clearTimeout(game._hunterTimer);
       game._hunterTimer = null;
+    }
+  }
+
+  // --- Captain vote timeout ---
+  startCaptainVoteTimeout(guild, game) {
+    this.clearCaptainVoteTimeout(game);
+    game._captainVoteTimer = setTimeout(async () => {
+      try {
+        if (game.subPhase !== PHASES.VOTE_CAPITAINE) return;
+        if (game.captainId) return; // Déjà élu
+
+        const mainChannel = game.villageChannelId
+          ? await guild.channels.fetch(game.villageChannelId)
+          : await guild.channels.fetch(game.mainChannelId);
+
+        // Tenter de résoudre les votes existants\n        const res = this.resolveCaptainVote(game.mainChannelId);
+        if (res.ok) {
+          const msgKey = res.wasTie ? 'game.captain_random_elected' : 'game.captain_auto_elected';
+          await this.sendLogged(mainChannel, t(msgKey, { name: res.username }), { type: 'captainAutoElected' });
+          this.logAction(game, `Capitaine auto-élu (timeout): ${res.username}${res.wasTie ? ' (égalité)' : ''}`);
+          // Envoyer le DM au capitaine
+          try {
+            const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
+            const pathMod = require('path');
+            const user = await guild.client.users.fetch(res.winnerId);
+            const imageName = 'capitaine.webp';
+            const imagePath = pathMod.join(__dirname, '..', 'img', imageName);
+            const embed = new EmbedBuilder()
+              .setTitle(t('cmd.captain.dm_title'))
+              .setDescription(t('cmd.captain.dm_desc'))
+              .setColor(0xFFD166)
+              .setImage(`attachment://${imageName}`);
+            await user.send({ embeds: [embed], files: [new AttachmentBuilder(imagePath, { name: imageName })] });
+          } catch (e) { /* DM failure ignored */ }
+        } else if (res.reason === 'no_votes') {
+          // Aucun vote : choisir un joueur vivant au hasard
+          const alivePlayers = game.players.filter(p => p.alive);
+          if (alivePlayers.length > 0) {
+            const random = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+            game.captainId = random.id;
+            this.db.updateGame(game.mainChannelId, { captainId: random.id });
+            game.captainVotes.clear();
+            game.captainVoters.clear();
+            await this.sendLogged(mainChannel, t('game.captain_random_no_votes', { name: random.username }), { type: 'captainRandomNoVotes' });
+            this.logAction(game, `Capitaine élu au hasard (aucun vote): ${random.username}`);
+          }
+        }
+
+        // Avancer vers la délibération
+        await this.advanceSubPhase(guild, game);
+      } catch (e) {
+        logger.error('Captain vote timeout error', { error: e.message });
+      }
+    }, TIMEOUTS.CAPTAIN_VOTE);
+  }
+
+  clearCaptainVoteTimeout(game) {
+    if (game._captainVoteTimer) {
+      clearTimeout(game._captainVoteTimer);
+      game._captainVoteTimer = null;
     }
   }
 
@@ -305,11 +367,14 @@ class GameManager {
 
       // Collecter les morts de la nuit pour vérifier le chasseur après
       const nightDeaths = [];
+      let savedVictimId = null;
 
       if (game.nightVictim) {
+        savedVictimId = game.witchSave ? game.nightVictim : null;
         if (game.witchSave) {
           await this.sendLogged(mainChannel, t('game.witch_saved'), { type: 'witchSave' });
           this.logAction(game, 'Sorciere sauve la victime des loups');
+          logger.info('Witch life potion active — nightVictim saved', { nightVictim: game.nightVictim });
         } else if (game.protectedPlayerId && game.protectedPlayerId === game.nightVictim) {
           // Salvateur a protégé la victime des loups
           const protectedPlayer = game.players.find(p => p.id === game.nightVictim);
@@ -353,19 +418,25 @@ class GameManager {
 
       // Résoudre la potion de mort de la sorcière (à l'aube)
       if (game.witchKillTarget) {
-        const witchVictim = game.players.find(p => p.id === game.witchKillTarget);
-        if (witchVictim && witchVictim.alive) {
-          await this.sendLogged(mainChannel, t('game.witch_kill', { name: witchVictim.username }), { type: 'witchKill' });
-          const collateral = this.kill(game.mainChannelId, game.witchKillTarget);
-          nightDeaths.push(witchVictim);
-          this.logAction(game, `Empoisonné: ${witchVictim.username}`);
-          for (const dead of collateral) {
-            await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
-            nightDeaths.push(dead);
-            this.logAction(game, `Mort d'amour: ${dead.username}`);
+        // Sécurité: ne pas tuer le joueur qui vient d'être sauvé par la potion de vie
+        if (savedVictimId && game.witchKillTarget === savedVictimId) {
+          logger.warn('witchKillTarget matches saved victim — skipping death potion', { witchKillTarget: game.witchKillTarget, savedVictimId });
+          game.witchKillTarget = null;
+        } else {
+          const witchVictim = game.players.find(p => p.id === game.witchKillTarget);
+          if (witchVictim && witchVictim.alive) {
+            await this.sendLogged(mainChannel, t('game.witch_kill', { name: witchVictim.username }), { type: 'witchKill' });
+            const collateral = this.kill(game.mainChannelId, game.witchKillTarget);
+            nightDeaths.push(witchVictim);
+            this.logAction(game, `Empoisonné: ${witchVictim.username}`);
+            for (const dead of collateral) {
+              await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
+              nightDeaths.push(dead);
+              this.logAction(game, `Mort d'amour: ${dead.username}`);
+            }
           }
+          game.witchKillTarget = null;
         }
-        game.witchKillTarget = null;
       }
 
       game.witchSave = false;
@@ -684,6 +755,7 @@ class GameManager {
           game.captainId = null; // reset
           game.subPhase = PHASES.VOTE_CAPITAINE;
           await this.announcePhase(guild, game, t('phase.captain_vote_announce'));
+          this.startCaptainVoteTimeout(guild, game);
         } else {
           game.subPhase = PHASES.DELIBERATION;
           await this.announcePhase(guild, game, t('phase.deliberation_announce'));
@@ -878,13 +950,23 @@ class GameManager {
       rolesPool = [...rolesOverride];
     } else {
       // Construire la pool de rôles de base
-      rolesPool = [
-        ROLES.WEREWOLF,
-        ROLES.WEREWOLF,
-        ROLES.SEER,
-        ROLES.WITCH,
-        ROLES.HUNTER
-      ];
+      // 1 loup si 5 joueurs, 2 loups à partir de 6
+      if (game.players.length <= 5) {
+        rolesPool = [
+          ROLES.WEREWOLF,
+          ROLES.SEER,
+          ROLES.WITCH,
+          ROLES.HUNTER
+        ];
+      } else {
+        rolesPool = [
+          ROLES.WEREWOLF,
+          ROLES.WEREWOLF,
+          ROLES.SEER,
+          ROLES.WITCH,
+          ROLES.HUNTER
+        ];
+      }
 
       // Si au moins 6 joueurs, ajouter la Petite Fille
       if (game.players.length >= 6) {
@@ -1010,7 +1092,10 @@ class GameManager {
       try {
         const wolvesChannel = await guild.channels.fetch(game.wolvesChannelId);
         const wolves = game.players.filter(p => p.role === ROLES.WEREWOLF);
-        await this.sendLogged(wolvesChannel, t('welcome.wolves', { n: wolves.length }), { type: 'wolvesWelcome' });
+        // Ping les loups pour les identifier dans le channel
+        const wolfPings = wolves.map(w => `<@${w.id}>`).join(' ');
+        const wolfNames = wolves.map(w => `🐺 **${w.username}**`).join('\n');
+        await this.sendLogged(wolvesChannel, t('welcome.wolves', { n: wolves.length }) + `\n\n${t('welcome.wolves_members')}\n${wolfNames}\n\n${wolfPings}`, { type: 'wolvesWelcome' });
       } catch (e) { logger.warn('Failed to send wolves welcome', { error: e.message }); }
     }
 
@@ -1673,10 +1758,23 @@ class GameManager {
     game.captainVoters.set(voterId, targetId);
     game.captainVotes.set(targetId, (game.captainVotes.get(targetId) || 0) + 1);
 
-    return { ok: true };
+    // Vérifier si tous les joueurs vivants ont voté
+    const alivePlayers = game.players.filter(p => p.alive);
+    const allVoted = alivePlayers.length > 0 && alivePlayers.every(p => game.captainVoters.has(p.id));
+
+    if (allVoted) {
+      // Résoudre automatiquement le vote
+      const resolution = this.resolveCaptainVote(channelId);
+      return { ok: true, allVoted: true, resolution };
+    }
+
+    return { ok: true, allVoted: false, voted: game.captainVoters.size, total: alivePlayers.length };
   }
 
-  declareCaptain(channelId) {
+  /**
+   * Résout le vote du capitaine (utilisé par auto-resolve et timeout)
+   */
+  resolveCaptainVote(channelId) {
     const game = this.games.get(channelId);
     if (!game) return { ok: false, reason: "no_game" };
     if (game.captainId) return { ok: false, reason: "already_set" };
@@ -1690,8 +1788,17 @@ class GameManager {
     const tied = entries.filter(e => e[1] === top).map(e => e[0]);
 
     if (tied.length > 1) {
-      // Tie — no captain
-      return { ok: false, reason: "tie", tied };
+      // Égalité : choisir au hasard parmi les ex-aequo
+      const randomId = tied[Math.floor(Math.random() * tied.length)];
+      const winner = game.players.find(p => p.id === randomId);
+      if (winner) {
+        game.captainId = randomId;
+        this.db.updateGame(channelId, { captainId: randomId });
+        game.captainVotes.clear();
+        game.captainVoters.clear();
+        this.clearCaptainVoteTimeout(game);
+        return { ok: true, winnerId: randomId, username: winner.username, wasTie: true, tied };
+      }
     }
 
     const winnerId = entries[0][0];
@@ -1699,14 +1806,17 @@ class GameManager {
     if (!winner) return { ok: false, reason: "winner_not_found" };
 
     game.captainId = winnerId;
-    // Synchroniser avec la DB
     this.db.updateGame(channelId, { captainId: winnerId });
-    
-    // clear voting state
     game.captainVotes.clear();
     game.captainVoters.clear();
+    this.clearCaptainVoteTimeout(game);
 
-    return { ok: true, winnerId, username: winner.username };
+    return { ok: true, winnerId, username: winner.username, wasTie: false };
+  }
+
+  // Alias pour compatibilité des tests et du timeout
+  declareCaptain(channelId) {
+    return this.resolveCaptainVote(channelId);
   }
 
   getAlive(channelId) {
@@ -1897,10 +2007,15 @@ class GameManager {
       return 'village';
     }
 
-    // Victoire des loups : autant ou plus de loups que de non-loups
-    if (aliveWolves.length >= aliveVillagers.length) {
-      return 'wolves';
+    // Condition de victoire des loups configurable
+    const wolfWinCondition = game.rules?.wolfWinCondition || 'majority';
+    if (wolfWinCondition === 'majority') {
+      // Victoire des loups : autant ou plus de loups que de non-loups
+      if (aliveWolves.length >= aliveVillagers.length) {
+        return 'wolves';
+      }
     }
+    // En mode 'elimination', les loups doivent tuer TOUS les non-loups (géré par le check ci-dessus: aliveVillagers.length === 0)
 
     // Partie continue
     return null;

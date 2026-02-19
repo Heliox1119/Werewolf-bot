@@ -485,7 +485,10 @@ describe('GameManager', () => {
 
       const result = gameManager.voteCaptain('ch-cap', 'v1', 't1');
 
-      expect(result).toEqual({ ok: true });
+      expect(result.ok).toBe(true);
+      expect(result.allVoted).toBe(false);
+      expect(result.voted).toBe(1);
+      expect(result.total).toBe(2);
       expect(game.captainVotes.get('t1')).toBe(1);
       expect(game.captainVoters.get('v1')).toBe('t1');
     });
@@ -543,8 +546,9 @@ describe('GameManager', () => {
       );
 
       gameManager.voteCaptain('ch-cap6', 'v1', 't1');
-      gameManager.voteCaptain('ch-cap6', 'v1', 't2');
+      const result = gameManager.voteCaptain('ch-cap6', 'v1', 't2');
 
+      expect(result.ok).toBe(true);
       expect(game.captainVotes.has('t1')).toBe(false);
       expect(game.captainVotes.get('t2')).toBe(1);
     });
@@ -579,22 +583,22 @@ describe('GameManager', () => {
       expect(gameManager.declareCaptain('ch-dec2').reason).toBe('no_votes');
     });
 
-    test('retourne tie en cas d\'égalité', () => {
+    test('résout une égalité par tirage au sort', () => {
       gameManager.create('ch-dec3');
       const game = gameManager.games.get('ch-dec3');
       game.subPhase = PHASES.VOTE_CAPITAINE;
       game.players.push(
-        createMockPlayer({ id: 'p1', alive: true }),
-        createMockPlayer({ id: 'p2', alive: true })
+        createMockPlayer({ id: 'p1', alive: true, username: 'Alice' }),
+        createMockPlayer({ id: 'p2', alive: true, username: 'Bob' })
       );
       game.captainVotes.set('p1', 2);
       game.captainVotes.set('p2', 2);
 
       const result = gameManager.declareCaptain('ch-dec3');
-      expect(result.ok).toBe(false);
-      expect(result.reason).toBe('tie');
-      expect(result.tied).toContain('p1');
-      expect(result.tied).toContain('p2');
+      expect(result.ok).toBe(true);
+      expect(result.wasTie).toBe(true);
+      expect(['p1', 'p2']).toContain(result.winnerId);
+      expect(game.captainId).toBe(result.winnerId);
     });
 
     test('nettoie l\'état des votes après déclaration', () => {

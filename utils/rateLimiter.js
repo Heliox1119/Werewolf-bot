@@ -43,7 +43,6 @@ class RateLimiter {
     
     // Commandes moderées
     'captainvote': { tokens: 15, window: 60000, cooldown: 1000 },
-    'declarecaptain': { tokens: 5, window: 60000, cooldown: 2000 },
     
     // Commandes administratives
     'clear': { tokens: 10, window: 60000, cooldown: 500 },

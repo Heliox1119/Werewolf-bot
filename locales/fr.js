@@ -163,6 +163,9 @@ module.exports = {
     vote_tie_captain: "⚖️ **Égalité !** {{names}} sont à égalité avec {{count}} vote(s).\nLe capitaine <@{{captainId}}> doit départager : `/vote @joueur` parmi les ex-aequo.",
     vote_tie_no_captain: "⚖️ **Égalité !** {{names}} sont à égalité avec {{count}} vote(s). Personne n'est éliminé.",
     captain_tiebreak: "⚖️🔨 Le capitaine a tranché : **{{name}}** est éliminé !",
+    captain_auto_elected: "⏰👑 Temps écoulé ! **{{name}}** est élu capitaine automatiquement !",
+    captain_random_elected: "🎲👑 Égalité au vote — **{{name}}** est élu capitaine au hasard !",
+    captain_random_no_votes: "⏰👑 Aucun vote pour le capitaine ! **{{name}}** est désigné capitaine au hasard.",
     hunter_death: "🏹 **{{name}}** était le Chasseur ! Il doit tirer sur quelqu'un avec `/shoot @joueur` !",
     hunter_shoot: "🏹 **{{name}}** le Chasseur a tiré sur **{{target}}** en mourant !",
     hunter_timeout: "⏰ Le Chasseur n'a pas tiré à temps. Son tir est perdu.",
@@ -289,9 +292,10 @@ module.exports = {
   cmd: {
     captainvote: {
       success: "✅ Vote enregistré pour **{{name}}**",
+      public: "🗳️ **{{voter}}** a voté pour **{{target}}** comme capitaine ({{voted}}/{{total}})",
     },
     captain: {
-      tie: "⚠️ Égalité entre : {{names}}. Aucune élection.",
+      tie: "⚠️ Égalité entre : {{names}}. Tirage au sort !",
       elected: "🏅 **{{name}}** est élu·e capitaine !",
       dm_title: "Vous êtes élu Capitaine",
       dm_desc: "Votre vote compte double. Vous pouvez lancer le vote quand le village est prêt.",
@@ -350,6 +354,8 @@ module.exports = {
     },
     setrules: {
       success: "✅ Règles mises à jour : min {{min}}, max {{max}} joueurs.",
+      success_full: "✅ Règles mises à jour : min **{{min}}**, max **{{max}}** joueurs. Victoire loups : **{{wolfwin}}**.",
+      current: "📋 **Règles actuelles :**\n• Joueurs : {{min}} — {{max}}\n• Condition de victoire loups : **{{wolfwin}}**",
     },
     roles_confirmed: "✅ Rôles confirmés, démarrage de la partie...",
     debug_set_role: {
@@ -586,7 +592,7 @@ module.exports = {
     seer_wakes: "La voyante se réveille...",
     salvateur_wakes: "Le Salvateur se réveille...",
     village_wakes: "Le village se réveille...",
-    captain_vote_announce: "Vote du capitaine ! Utilisez /captainvote puis /declarecaptain",
+    captain_vote_announce: "🗳️ Vote du capitaine ! Utilisez `/captainvote @joueur` — quand tout le monde a voté, le capitaine est élu automatiquement.",
     deliberation_announce: "Délibération du village... (3 min)",
     captain_can_vote: "Le capitaine peut lancer le vote avec le bouton 'Vote' !",
     vote_announce: "🗳️ C'est l'heure du vote ! Utilisez `/vote @joueur` (2 min)",
@@ -608,6 +614,7 @@ module.exports = {
   // ==================== MESSAGES DE BIENVENUE ====================
   welcome: {
     wolves: "🐺 **Bienvenue aux Loups-Garous !**\nVous êtes {{n}} dans cette nuit.\nUtilisez `/kill @joueur` pour désigner votre victime.",
+    wolves_members: "**Membres de la meute :**",
     seer: "🔮 **Bienvenue, Voyante !**\nUtilisez `/see @joueur` pour découvrir le rôle d'un joueur.",
     witch: "🧪 **Bienvenue, Sorcière !**\nTu possèdes 2 potions : une de **vie** et une de **mort**.\nUtilise `/potion type:Vie` ou `/potion type:Mort target:@joueur`\nChaque nuit, tu verras ici qui a été attaqué par les loups.",
     cupid: "💘 **Bienvenue, Cupidon !**\nUtilise `/love @a @b` pour lier deux joueurs. Ils vivront et mourront ensemble.",
@@ -739,7 +746,7 @@ module.exports = {
     day_vote_title: "🗳️ Vote",
     day_vote_value: "Salon principal ou 🏘️-village — `/vote @joueur` pour éliminer quelqu'un. Le jour passe à la nuit quand tous les joueurs réels ont voté.",
     day_captain_title: "🏅 Capitaine",
-    day_captain_value: "`/captainvote @joueur` pour voter. Ensuite `/declarecaptain` pour annoncer l'élu. Le capitaine a une voix x2.",
+    day_captain_value: "`/captainvote @joueur` pour voter. Quand tous ont voté, le capitaine est élu automatiquement. Le capitaine a une voix x2.",
     day_hunter_title: "🏹 Chasseur",
     day_hunter_value: "`/shoot @joueur` uniquement si tu es éliminé. Tu peux tirer une dernière fois.",
     day_footer: "Le jour passe à la nuit quand tous les joueurs réels ont voté",

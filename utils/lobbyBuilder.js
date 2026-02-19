@@ -8,7 +8,8 @@ const LOBBY_IMAGE = path.join(__dirname, '..', 'img', 'LG.jpg');
 const SEPARATOR = '─────────────────────────────';
 
 const ROLE_LIST = [
-  { emoji: '🐺', nameKey: 'werewolf',     count: 2, minPlayers: 5, team: 'evil'    },
+  { emoji: '🐺', nameKey: 'werewolf',     count: 1, minPlayers: 5, team: 'evil'    },
+  { emoji: '🐺', nameKey: 'werewolf',     count: 2, minPlayers: 6, team: 'evil'    },
   { emoji: '🔮', nameKey: 'seer',         count: 1, minPlayers: 5, team: 'village'  },
   { emoji: '🧪', nameKey: 'witch',         count: 1, minPlayers: 5, team: 'village'  },
   { emoji: '🏹', nameKey: 'hunter',        count: 1, minPlayers: 5, team: 'village'  },
@@ -84,22 +85,25 @@ function buildPlayerList(players, max) {
 function buildRolesPreview(playerCount) {
   const active = ROLE_LIST.filter(r => r.minPlayers <= playerCount || r.count === null);
 
-  // Calculate villager count
-  const specialCount = ROLE_LIST
-    .filter(x => x.count !== null && x.minPlayers <= playerCount)
-    .reduce((sum, x) => sum + x.count, 0);
+  // Calculate wolf count: consolidate wolf entries (highest applicable)
+  const wolfEntries = active.filter(r => r.team === 'evil' && r.nameKey === 'werewolf');
+  const wolfCount = wolfEntries.length > 0 ? wolfEntries[wolfEntries.length - 1].count : 0;
+
+  // Calculate villager count (using consolidated wolf count)
+  const specialCount = active
+    .filter(x => x.count !== null && x.team !== 'evil')
+    .reduce((sum, x) => sum + x.count, 0) + wolfCount;
   const villagerCount = Math.max(0, playerCount - specialCount);
 
   const lines = [];
 
   // Evil team
-  const wolves = active.filter(r => r.team === 'evil');
-  if (wolves.length > 0) {
-    const wolfLine = wolves.map(r => `${r.emoji} ${t(`role.${r.nameKey}`)} ×${r.count}`).join('  ');
+  if (wolfCount > 0) {
+    const wolfLine = `🐺 ${t('role.werewolf')} ×${wolfCount}`;
     lines.push(`${t('lobby.team_evil')} ─ ${wolfLine}`);
   }
 
-  // Village team
+  // Village team (exclude wolf entries)
   const village = active.filter(r => r.team === 'village' && r.count !== null);
   if (village.length > 0) {
     const villageLine = village.map(r => `${r.emoji} ${t(`role.${r.nameKey}`)}`).join('  ');
@@ -114,7 +118,8 @@ function buildRolesPreview(playerCount) {
     lines.push(`${t('lobby.team_neutral')} ─ ${neutralLine}`);
   }
 
-  lines.push(`\n> ${t('lobby.roles_count', { n: active.filter(r => r.count !== null).length + (villagerCount > 0 ? 1 : 0), m: playerCount })}`);
+  const uniqueRoleCount = active.filter(r => r.count !== null && r.team !== 'evil').length + (wolfCount > 0 ? 1 : 0) + (villagerCount > 0 ? 1 : 0);
+  lines.push(`\n> ${t('lobby.roles_count', { n: uniqueRoleCount, m: playerCount })}`);
 
   return lines.join('\n');
 }

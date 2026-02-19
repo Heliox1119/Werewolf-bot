@@ -181,7 +181,8 @@ class MetricsCollector {
    */
   collectSystemMetrics() {
     const used = process.memoryUsage();
-    const total = os.totalmem();
+    // heapTotal = mémoire allouée par Node.js, pas la RAM système
+    const heapTotal = used.heapTotal;
 
     // Calcul CPU en pourcentage via delta entre deux mesures
     const now = Date.now();
@@ -201,8 +202,8 @@ class MetricsCollector {
     this.metrics.system = {
       memory: {
         used: Math.round(used.heapUsed / 1024 / 1024), // MB
-        total: Math.round(total / 1024 / 1024), // MB
-        percentage: Math.round((used.heapUsed / used.heapTotal) * 100)
+        total: Math.round(heapTotal / 1024 / 1024), // MB
+        percentage: heapTotal > 0 ? Math.round((used.heapUsed / heapTotal) * 100) : 0
       },
       cpu: {
         usage: cpuPercent

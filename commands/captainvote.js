@@ -1,4 +1,5 @@
-const { SlashCommandBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags, EmbedBuilder, AttachmentBuilder } = require('discord.js');
+const path = require('path');
 const gameManager = require('../game/gameManager');
 const { isInGameCategory } = require('../utils/validators');
 const { safeReply } = require('../utils/interaction');
@@ -38,6 +39,39 @@ module.exports = {
       return safeReply(interaction, { content: msg, flags: MessageFlags.Ephemeral });
     }
 
-    return safeReply(interaction, { content: t('cmd.captainvote.success', { name: target.username }), flags: MessageFlags.Ephemeral });
+    // Vote enregistré — annoncer dans le village
+    const villageChannel = game.villageChannelId
+      ? await interaction.guild.channels.fetch(game.villageChannelId)
+      : await interaction.guild.channels.fetch(game.mainChannelId);
+
+    if (res.allVoted && res.resolution && res.resolution.ok) {
+      // Tous ont voté — le capitaine est élu automatiquement
+      const resolution = res.resolution;
+      const msgKey = resolution.wasTie ? 'game.captain_random_elected' : 'cmd.captain.elected';
+      await safeReply(interaction, { content: t('cmd.captainvote.success', { name: target.username }), flags: MessageFlags.Ephemeral });
+      await villageChannel.send(t(msgKey, { name: resolution.username }));
+      gameManager.logAction(game, `Capitaine élu: ${resolution.username}${resolution.wasTie ? ' (égalité, tirage au sort)' : ''}`);
+
+      // Envoyer le DM au capitaine
+      try {
+        const user = await interaction.client.users.fetch(resolution.winnerId);
+        const imageName = 'capitaine.webp';
+        const imagePath = path.join(__dirname, '..', 'img', imageName);
+        const embed = new EmbedBuilder()
+          .setTitle(t('cmd.captain.dm_title'))
+          .setDescription(t('cmd.captain.dm_desc'))
+          .setColor(0xFFD166)
+          .setImage(`attachment://${imageName}`);
+        await user.send({ embeds: [embed], files: [new AttachmentBuilder(imagePath, { name: imageName })] });
+      } catch (err) { /* Ignore DM failures */ }
+
+      // Avancer vers la délibération
+      await gameManager.advanceSubPhase(interaction.guild, game);
+    } else {
+      // Vote enregistré, pas encore tout le monde
+      const info = res.voted !== undefined ? ` (${res.voted}/${res.total})` : '';
+      await safeReply(interaction, { content: t('cmd.captainvote.success', { name: target.username }) + info, flags: MessageFlags.Ephemeral });
+      await villageChannel.send(t('cmd.captainvote.public', { voter: interaction.user.username, target: target.username, voted: res.voted || '?', total: res.total || '?' }));
+    }
   }
 };

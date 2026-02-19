@@ -1,5 +1,54 @@
 # 📝 Changelog - Werewolf Bot
 
+## [2.6.0] - 2026-02-19 - Équilibrage, Vote Capitaine Auto, Correctifs
+
+### ⏱️ Équilibrage des phases
+- **AFK nuit** : 90s → 120s (plus de temps pour les rôles de nuit)
+- **Tir du chasseur** : 60s → 90s
+- **Délibération jour** : 180s → 300s (5 minutes de discussion)
+- **Vote jour** : 120s → 180s
+- **Nouveau timeout** : Vote capitaine 120s avec résolution automatique
+
+### 🗳️ Vote capitaine automatique
+- **Auto-résolution** : Le vote se résout automatiquement quand tous les joueurs vivants ont voté
+- **Timeout 120s** : Si le temps expire, le vote est résolu avec les votes déjà enregistrés
+- **Égalité** : Tirage au sort automatique parmi les ex-aequo (plus de blocage)
+- **Suppression de `/declarecaptain`** : La commande n'existe plus, tout est automatique
+- **Message de progression** : Affichage du compteur de votes en temps réel
+
+### 🐛 Corrections de bugs
+- **Potion de vie sorcière** : La potion de vie ne tue plus la sorcière — `witchKillTarget` est correctement réinitialisé quand la potion de vie est utilisée, et la potion de mort est ignorée si la cible a été sauvée
+- **Ping loups** : Les loups-garous sont maintenant mentionnés (`@pseudo`) dans leur channel privé avec la liste des membres au début de la nuit
+
+### ⚙️ Nouvelles options de configuration
+- **Condition de victoire des loups** : Configurable via `/setrules wolfwin:majority|elimination`
+  - `majority` (défaut) : Les loups gagnent quand ils sont en majorité
+  - `elimination` : Les loups gagnent uniquement quand tous les villageois sont morts
+- **Affichage des règles** : `/setrules` sans argument affiche les règles actuelles de la partie
+
+### 🐺 Équilibrage des rôles
+- **1 seul loup pour ≤5 joueurs** : Au lieu de 2 loups, les parties de 5 joueurs n'ont qu'un seul loup-garou pour un meilleur équilibre
+- **2 loups pour 6+ joueurs** : Le deuxième loup apparaît à partir de 6 joueurs
+
+### 🔧 Fichiers modifiés
+- **game/gameManager.js** : Timeouts augmentés, `voteCaptain()` refactorisé avec auto-résolution, `resolveCaptainVote()` ajouté, `startCaptainVoteTimeout()`/`clearCaptainVoteTimeout()`, fix potion sorcière, condition victoire loups configurable, 1 loup pour ≤5 joueurs, ping loups dans channel
+- **commands/captainvote.js** : Réécrit pour gérer l'auto-résolution et afficher la progression
+- **commands/potion.js** : Reset `witchKillTarget` quand potion de vie utilisée
+- **commands/setrules.js** : Ajout option `wolfwin`, affichage des règles courantes, tous les paramètres optionnels
+- **utils/lobbyBuilder.js** : ROLE_LIST mis à jour (1 loup@5 joueurs, 2 loups@6+), `buildRolesPreview()` réécrit
+- **utils/rateLimiter.js** : Entrée `declarecaptain` supprimée
+- **locales/fr.js** : +10 clés (captain auto-résolution, ping loups, progression vote, setrules)
+- **locales/en.js** : Traductions anglaises correspondantes
+- **tests/game/gameManager.test.js** : Tests mis à jour pour le nouveau format de `voteCaptain()`
+
+### 🗑️ Fichiers supprimés
+- **commands/declarecaptain.js** : Remplacé par l'auto-résolution dans `captainvote.js`
+
+### ✅ Tests
+- 191/191 tests passent (15 suites, 0 failures)
+
+---
+
 ## [2.5.1] - 2025-02-15 - Correctifs de stabilité
 
 ### 🐛 Corrections de bugs
