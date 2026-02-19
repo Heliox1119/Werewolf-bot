@@ -15,7 +15,7 @@ class AlertSystem {
     
     // Règles d'alertes
     this.rules = {
-      highMemory: { threshold: 85, cooldown: 300000, lastAlert: 0 }, // 5min cooldown
+      highMemory: { threshold: 200, cooldown: 300000, lastAlert: 0 }, // 200MB RSS, 5min cooldown
       highLatency: { threshold: 500, cooldown: 300000, lastAlert: 0 },
       highErrorRate: { threshold: 15, cooldown: 600000, lastAlert: 0 }, // 10min cooldown
       criticalError: { cooldown: 60000, lastAlert: 0 }, // 1min cooldown
@@ -116,7 +116,7 @@ class AlertSystem {
   /**
    * Alerte : Mémoire élevée
    */
-  async alertHighMemory(memoryPercentage, memoryUsed, memoryTotal) {
+  async alertHighMemory(rssMB, heapUsedMB, systemTotalMB) {
     const alertType = 'highMemory';
     if (!this.canSendAlert(alertType)) return false;
     
@@ -125,9 +125,9 @@ class AlertSystem {
       t('alerts.memory_desc'),
       'warning',
       [
-        { name: '💾 Utilisation', value: `${memoryPercentage}%`, inline: true },
-        { name: t('alerts.details'), value: `${memoryUsed}MB / ${memoryTotal}MB`, inline: true },
-        { name: '⚠️ Seuil', value: `${this.rules.highMemory.threshold}%`, inline: true }
+        { name: '💾 RSS (Process)', value: `${rssMB}MB`, inline: true },
+        { name: t('alerts.details'), value: `Heap: ${heapUsedMB}MB | System: ${systemTotalMB}MB`, inline: true },
+        { name: '⚠️ Seuil', value: `${this.rules.highMemory.threshold}MB`, inline: true }
       ]
     );
     
@@ -305,12 +305,12 @@ class AlertSystem {
   async checkMetrics(metrics) {
     const alerts = [];
     
-    // Vérifier mémoire
-    if (metrics.system.memory.percentage > this.rules.highMemory.threshold) {
+    // Vérifier mémoire (RSS en MB, pas le % du heap)
+    if (metrics.system.memory.rss > this.rules.highMemory.threshold) {
       const sent = await this.alertHighMemory(
-        metrics.system.memory.percentage,
-        metrics.system.memory.used,
-        metrics.system.memory.total
+        metrics.system.memory.rss,
+        metrics.system.memory.heapUsed,
+        metrics.system.memory.systemTotal
       );
       if (sent) alerts.push('highMemory');
     }

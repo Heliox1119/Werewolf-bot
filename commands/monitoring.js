@@ -117,14 +117,18 @@ module.exports = {
       .setFooter({ text: 'Werewolf Bot Monitoring' });
     
     // Métriques système
-    const memoryBar = this.createProgressBar(currentMetrics.system.memory.percentage, 100);
+    const mem = currentMetrics.system.memory;
+    // Barre de progression basée sur RSS vs seuil 512MB (pas le heap)
+    const memoryBarMax = 512; // MB, échelle de la barre
+    const memoryBarPercent = Math.min(100, Math.round((mem.rss / memoryBarMax) * 100));
+    const memoryBar = this.createProgressBar(memoryBarPercent, 100);
     const cpuBar = this.createProgressBar(currentMetrics.system.cpu, 100);
     
     embed.addFields({
       name: t('cmd.monitoring.dashboard.system'),
       value: [
-        `**${t('cmd.monitoring.dashboard.memory')}:** ${memoryBar} ${currentMetrics.system.memory.percentage}%`,
-        `└─ ${currentMetrics.system.memory.used}MB / ${currentMetrics.system.memory.total}MB`,
+        `**${t('cmd.monitoring.dashboard.memory')}:** ${memoryBar} ${mem.rss}MB`,
+        `└─ Heap: ${mem.heapUsed}MB/${mem.heapTotal}MB | System: ${mem.systemFree}MB libre / ${mem.systemTotal}MB`,
         `**${t('cmd.monitoring.dashboard.cpu')}:** ${cpuBar} ${currentMetrics.system.cpu}%`,
         `**${t('cmd.monitoring.dashboard.uptime')}:** ${this.formatUptime(currentMetrics.system.uptime)}`
       ].join('\n'),

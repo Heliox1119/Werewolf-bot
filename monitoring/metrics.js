@@ -9,10 +9,25 @@ class MetricsCollector {
   constructor(client) {
     this.client = client;
     this.startTime = Date.now();
+    
+    // Seuils mémoire en MB (basé sur RSS, pas le heap)
+    this.memoryThresholds = {
+      warn: 200,    // 200MB → DEGRADED
+      critical: 500 // 500MB → UNHEALTHY
+    };
+    
     this.metrics = {
       // Métriques système
       system: {
-        memory: { used: 0, total: 0, percentage: 0 },
+        memory: {
+          rss: 0,           // Mémoire réelle du process (MB)
+          heapUsed: 0,      // Heap V8 utilisé (MB)
+          heapTotal: 0,     // Heap V8 alloué (MB)
+          external: 0,      // Mémoire C++ externe (MB)
+          systemTotal: 0,   // RAM système totale (MB)
+          systemFree: 0,    // RAM système libre (MB)
+          percentage: 0     // RSS / RAM système (%)
+        },
         cpu: { usage: 0 },
         uptime: 0
       },
@@ -124,8 +139,8 @@ class MetricsCollector {
       const m = this.metrics;
       const health = this.getHealthStatus();
       db.insertMetricsSnapshot({
-        memory_used: m.system.memory.used,
-        memory_total: m.system.memory.total,
+        memory_used: m.system.memory.rss,
+        memory_total: m.system.memory.systemTotal,
         memory_percentage: m.system.memory.percentage,
         cpu_usage: m.system.cpu.usage,
         uptime: m.system.uptime,
@@ -178,11 +193,20 @@ class MetricsCollector {
 
   /**
    * Collecte les métriques système (CPU, RAM, uptime)
+   * Utilise RSS (Resident Set Size) = mémoire réelle du process
+   * au lieu de heapUsed/heapTotal qui est trompeur (V8 remplit le heap par design)
    */
   collectSystemMetrics() {
-    const used = process.memoryUsage();
-    // heapTotal = mémoire allouée par Node.js, pas la RAM système
-    const heapTotal = used.heapTotal;
+    const memUsage = process.memoryUsage();
+    const systemTotal = os.totalmem();
+    const systemFree = os.freemem();
+    
+    const rssMB = Math.round(memUsage.rss / 1024 / 1024);
+    const heapUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
+    const heapTotalMB = Math.round(memUsage.heapTotal / 1024 / 1024);
+    const externalMB = Math.round((memUsage.external || 0) / 1024 / 1024);
+    const systemTotalMB = Math.round(systemTotal / 1024 / 1024);
+    const systemFreeMB = Math.round(systemFree / 1024 / 1024);
 
     // Calcul CPU en pourcentage via delta entre deux mesures
     const now = Date.now();
@@ -201,9 +225,13 @@ class MetricsCollector {
     
     this.metrics.system = {
       memory: {
-        used: Math.round(used.heapUsed / 1024 / 1024), // MB
-        total: Math.round(heapTotal / 1024 / 1024), // MB
-        percentage: heapTotal > 0 ? Math.round((used.heapUsed / heapTotal) * 100) : 0
+        rss: rssMB,
+        heapUsed: heapUsedMB,
+        heapTotal: heapTotalMB,
+        external: externalMB,
+        systemTotal: systemTotalMB,
+        systemFree: systemFreeMB,
+        percentage: systemTotalMB > 0 ? Math.round((rssMB / systemTotalMB) * 100) : 0
       },
       cpu: {
         usage: cpuPercent
@@ -406,10 +434,11 @@ class MetricsCollector {
    * Génère un résumé des métriques
    */
   getSummary() {
+    const mem = this.metrics.system.memory;
     return {
       status: this.getHealthStatus(),
       uptime: this.getFormattedUptime(),
-      memory: `${this.metrics.system.memory.used}MB / ${this.metrics.system.memory.total}MB (${this.metrics.system.memory.percentage}%)`,
+      memory: `RSS: ${mem.rss}MB | Heap: ${mem.heapUsed}MB/${mem.heapTotal}MB | System: ${mem.systemFree}MB free / ${mem.systemTotal}MB`,
       latency: `${this.metrics.discord.latency}ms`,
       guilds: this.metrics.discord.guilds,
       activeGames: this.metrics.game.activeGames,
@@ -420,18 +449,22 @@ class MetricsCollector {
 
   /**
    * Détermine le statut de santé général
+   * Utilise des seuils en MB sur le RSS (pas des % du heap)
    */
   getHealthStatus() {
     const issues = [];
+    const mem = this.metrics.system.memory;
     
-    // Vérifier la mémoire
-    if (this.metrics.system.memory.percentage > 90) {
-      issues.push('HIGH_MEMORY');
+    // Vérifier la mémoire (RSS en MB)
+    if (mem.rss > this.memoryThresholds.critical) {
+      issues.push(`CRITICAL_MEMORY (${mem.rss}MB > ${this.memoryThresholds.critical}MB)`);
+    } else if (mem.rss > this.memoryThresholds.warn) {
+      issues.push(`HIGH_MEMORY (${mem.rss}MB > ${this.memoryThresholds.warn}MB)`);
     }
     
     // Vérifier la latence Discord
     if (this.metrics.discord.latency > 500) {
-      issues.push('HIGH_LATENCY');
+      issues.push(`HIGH_LATENCY (${this.metrics.discord.latency}ms)`);
     }
     
     // Vérifier le taux d'erreur
@@ -439,7 +472,7 @@ class MetricsCollector {
       ? (this.metrics.commands.errors / this.metrics.commands.total) * 100 
       : 0;
     if (errorRate > 10) {
-      issues.push('HIGH_ERROR_RATE');
+      issues.push(`HIGH_ERROR_RATE (${errorRate.toFixed(1)}%)`);
     }
     
     // Vérifier le statut WebSocket
@@ -449,6 +482,8 @@ class MetricsCollector {
     
     if (issues.length === 0) {
       return { status: 'HEALTHY', issues: [] };
+    } else if (issues.some(i => i.startsWith('CRITICAL'))) {
+      return { status: 'UNHEALTHY', issues };
     } else if (issues.length <= 2) {
       return { status: 'DEGRADED', issues };
     } else {
