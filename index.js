@@ -120,20 +120,27 @@ client.once("clientReady", async () => {
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
   try {
-    // Enregistrement global (disponible sur tous les serveurs, ~1h de propagation)
-    await rest.put(
-      Routes.applicationCommands(process.env.CLIENT_ID),
-      { body: client.commands.map(cmd => cmd.data.toJSON()) }
-    );
-    logger.success("✅ Slash commands registered (global)", { count: client.commands.size });
-
-    // Si GUILD_ID est défini, enregistrer aussi en guild pour accès instantané
     if (process.env.GUILD_ID) {
+      // Enregistrement guild uniquement (accès instantané, pas de doublons)
       await rest.put(
         Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
         { body: client.commands.map(cmd => cmd.data.toJSON()) }
       );
       logger.success("✅ Slash commands registered (guild instant)", { guildId: process.env.GUILD_ID });
+
+      // Vider les commandes globales pour éviter les doublons
+      await rest.put(
+        Routes.applicationCommands(process.env.CLIENT_ID),
+        { body: [] }
+      );
+      logger.info("🧹 Global commands cleared (guild-only mode)");
+    } else {
+      // Pas de GUILD_ID → enregistrement global (propagation ~1h)
+      await rest.put(
+        Routes.applicationCommands(process.env.CLIENT_ID),
+        { body: client.commands.map(cmd => cmd.data.toJSON()) }
+      );
+      logger.success("✅ Slash commands registered (global)", { count: client.commands.size });
     }
 
       // ─── Permission check (all guilds) ────────────────────────────
