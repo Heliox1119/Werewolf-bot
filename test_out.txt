@@ -1,0 +1,508 @@
+  console.log
+    [2026-02-19T20:53:23.321Z] [INFO] [APP] i18n initialized
+    {
+      "locale": "fr",
+      "available": [
+        "fr",
+        "en"
+      ]
+    }
+
+      at Logger.log [as info] (utils/logger.js:118:15)
+
+  console.log
+    [2026-02-19T20:53:23.354Z] [INFO] [APP] i18n initialized
+    {
+      "locale": "fr",
+      "available": [
+        "fr",
+        "en"
+      ]
+    }
+
+      at Logger.log [as info] (utils/logger.js:118:15)
+
+  console.log
+    [2026-02-19T20:53:23.357Z] [INFO] [APP] i18n initialized
+    {
+      "locale": "fr",
+      "available": [
+        "fr",
+        "en"
+      ]
+    }
+
+      at Logger.log [as info] (utils/logger.js:118:15)
+
+  console.log
+    [2026-02-19T20:53:23.357Z] [INFO] [APP] i18n initialized
+    {
+      "locale": "fr",
+      "available": [
+        "fr",
+        "en"
+      ]
+    }
+
+      at Logger.log [as info] (utils/logger.js:118:15)
+
+  console.log
+    [2026-02-19T20:53:23.363Z] [INFO] [APP] i18n initialized
+    {
+      "locale": "fr",
+      "available": [
+        "fr",
+        "en"
+      ]
+    }
+
+      at Logger.log [as info] (utils/logger.js:118:15)
+
+  console.log
+    [2026-02-19T20:53:23.369Z] [INFO] [APP] i18n initialized
+    {
+      "locale": "fr",
+      "available": [
+        "fr",
+        "en"
+      ]
+    }
+
+      at Logger.log [as info] (utils/logger.js:118:15)
+
+  console.log
+    [2026-02-19T20:53:23.366Z] [INFO] [APP] i18n initialized
+    {
+      "locale": "fr",
+      "available": [
+        "fr",
+        "en"
+      ]
+    }
+
+      at Logger.log [as info] (utils/logger.js:118:15)
+
+  console.log
+    [2026-02-19T20:53:23.369Z] [INFO] [APP] i18n initialized
+    {
+      "locale": "fr",
+      "available": [
+        "fr",
+        "en"
+      ]
+    }
+
+      at Logger.log [as info] (utils/logger.js:118:15)
+
+  console.log
+    [2026-02-19T20:53:23.380Z] [INFO] [APP] i18n initialized
+    {
+      "locale": "fr",
+      "available": [
+        "fr",
+        "en"
+      ]
+    }
+
+      at Logger.log [as info] (utils/logger.js:118:15)
+
+  console.log
+    [2026-02-19T20:53:23.393Z] [INFO] [APP] i18n initialized
+    {
+      "locale": "fr",
+      "available": [
+        "fr",
+        "en"
+      ]
+    }
+
+      at Logger.log [as info] (utils/logger.js:118:15)
+
+  console.log
+    [2026-02-19T20:53:23.395Z] [INFO] [APP] i18n initialized
+    {
+      "locale": "fr",
+      "available": [
+        "fr",
+        "en"
+      ]
+    }
+
+      at Logger.log [as info] (utils/logger.js:118:15)
+
+  console.log
+    [2026-02-19T20:53:23.390Z] [INFO] [APP] i18n initialized
+    {
+      "locale": "fr",
+      "available": [
+        "fr",
+        "en"
+      ]
+    }
+
+      at Logger.log [as info] (utils/logger.js:118:15)
+
+  console.log
+    [2026-02-19T20:53:23.398Z] [INFO] [APP] i18n initialized
+    {
+      "locale": "fr",
+      "available": [
+        "fr",
+        "en"
+      ]
+    }
+
+      at Logger.log [as info] (utils/logger.js:118:15)
+
+  console.log
+    [2026-02-19T20:53:23.400Z] [INFO] [APP] i18n initialized
+    {
+      "locale": "fr",
+      "available": [
+        "fr",
+        "en"
+      ]
+    }
+
+      at Logger.log [as info] (utils/logger.js:118:15)
+
+  console.log
+    [2026-02-19T20:53:23.397Z] [INFO] [APP] i18n initialized
+    {
+      "locale": "fr",
+      "available": [
+        "fr",
+        "en"
+      ]
+    }
+
+      at Logger.log [as info] (utils/logger.js:118:15)
+
+PASS tests/utils/validators.test.js
+  validators
+    isValidSnowflake()
+      ÔêÜ retourne true pour un snowflake valide (17 chiffres) (10 ms)
+      ÔêÜ retourne true pour un snowflake valide (18 chiffres)
+      ÔêÜ retourne true pour un snowflake valide (19 chiffres) (1 ms)
+      ÔêÜ retourne false pour un ID trop court
+      ÔêÜ retourne false pour un ID trop long (3 ms)
+      ÔêÜ retourne false pour un ID non-num├®rique (1 ms)
+      ÔêÜ retourne false pour un non-string
+    isAdmin()
+      ÔêÜ retourne true si l'utilisateur a la permission ADMINISTRATOR (1 ms)
+      ÔêÜ retourne false si pas admin
+      ÔêÜ retourne false si member est null
+      ÔêÜ retourne false si permissions est null
+    isPlayerInGame()
+      ÔêÜ retourne inGame et alive pour un joueur vivant (2 ms)
+      ÔêÜ retourne inGame et !alive pour un joueur mort
+      ÔêÜ retourne !inGame pour un joueur absent (1 ms)
+      ÔêÜ g├¿re un game null
+
+PASS tests/utils/roleHelpers.test.js
+  roleHelpers
+    getRoleDescription()
+      ÔêÜ retourne la description pour chaque r├┤le (16 ms)
+      ÔêÜ retourne un fallback pour un r├┤le inconnu (1 ms)
+    getRoleImageName()
+      ÔêÜ retourne le nom d'image pour chaque r├┤le (2 ms)
+      ÔêÜ retourne null pour un r├┤le inconnu
+
+PASS tests/game/roles.test.js
+  ROLES constants
+    ÔêÜ tous les r├┤les sont d├®finis (12 ms)
+    ÔêÜ pas de r├┤les dupliqu├®s (3 ms)
+    ÔêÜ tous les r├┤les sont des strings (3 ms)
+  Logique des r├┤les
+    ÔêÜ identifie les loups correctement (1 ms)
+    ÔêÜ identifie les r├┤les sp├®ciaux avec actions (1 ms)
+    ÔêÜ le chasseur a une action sp├®ciale ├á la mort (1 ms)
+
+PASS tests/game/phases.test.js
+  PHASES constants
+    ÔêÜ toutes les phases sont d├®finies (11 ms)
+    ÔêÜ pas de phases dupliqu├®es
+    ÔêÜ toutes les phases sont des strings (3 ms)
+  S├®quence des phases
+    ÔêÜ les phases principales sont NIGHT et DAY
+    ÔêÜ les sous-phases nocturnes existent (1 ms)
+    ÔêÜ la phase de fin existe
+  Ordre logique des phases
+    ÔêÜ s├®quence typique nuit -> jour (1 ms)
+    ÔêÜ phases de vote existent (1 ms)
+
+PASS tests/utils/rateLimiter.test.js
+  RateLimiter
+    Token Bucket
+      ÔêÜ autorise les requ├¬tes dans la limite (17 ms)
+      ÔêÜ bloque les requ├¬tes qui d├®passent la limite (3 ms)
+      ÔêÜ recharge les tokens apr├¿s la fen├¬tre (2 ms)
+      ÔêÜ recharge partiellement les tokens (2 ms)
+    Cooldown
+      ÔêÜ applique le cooldown entre les requ├¬tes (1 ms)
+      ÔêÜ cooldown diff├®rent par commande (2 ms)
+    Violations et p├®nalit├®s
+      ÔêÜ incr├®mente les violations (3 ms)
+      ÔêÜ applique un ban apr├¿s 5 violations (5 ms)
+      ÔêÜ ban emp├¬che toutes les commandes (3 ms)
+      ÔêÜ ban expire automatiquement (3 ms)
+    Utilisateurs multiples
+      ÔêÜ isole les limites par utilisateur (1 ms)
+      ÔêÜ isole les limites par commande
+    Gestion administrative
+      ÔêÜ resetUser efface les limites (1 ms)
+      ÔêÜ unbanUser d├®bannit imm├®diatement (2 ms)
+    Statistiques
+      ÔêÜ getGlobalStats retourne les bonnes valeurs (2 ms)
+      ÔêÜ getUserStats retourne les d├®tails
+    Cleanup
+      ÔêÜ nettoie les buckets inactifs (2 ms)
+      ÔêÜ nettoie les bans expir├®s (1 ms)
+    Configuration par d├®faut
+      ÔêÜ utilise config par d├®faut pour commande inconnue (1 ms)
+
+PASS tests/integration/fullGame.test.js
+  Integration: Partie compl├¿te de loup-garou
+    ÔêÜ Workflow complet: cr├®ation -> lobby -> d├®marrage -> premi├¿re nuit (28 ms)
+    ÔêÜ Sc├®nario: Loups gagnent (1 ms)
+    ÔêÜ Sc├®nario: Village gagne
+    ÔêÜ Sc├®nario: Amoureux gagnent (1 ms)
+    ÔêÜ Plusieurs parties simultan├®es sur diff├®rents channels (1 ms)
+
+PASS tests/game/gameManager.test.js
+  GameManager
+    create()
+      ÔêÜ cr├®e une nouvelle partie avec param├¿tres par d├®faut (17 ms)
+      ÔêÜ cr├®e une partie avec param├¿tres personnalis├®s (1 ms)
+      ÔêÜ refuse de cr├®er une partie si elle existe d├®j├á (1 ms)
+      ÔêÜ peut cr├®er plusieurs parties sur diff├®rents channels (1 ms)
+    join()
+      ÔêÜ ajoute un joueur ├á la partie (1 ms)
+      ÔêÜ refuse un joueur d├®j├á dans la partie (1 ms)
+      ÔêÜ ajoute plusieurs joueurs diff├®rents (1 ms)
+      ÔêÜ refuse si la partie n'existe pas (1 ms)
+      ÔêÜ refuse si la partie a d├®j├á d├®marr├® (1 ms)
+    start()
+      ÔêÜ d├®marre une partie avec assez de joueurs (3 ms)
+      ÔêÜ attribue les r├┤les correctement (1 ms)
+      ÔêÜ refuse si pas assez de joueurs (1 ms)
+      ÔêÜ refuse si la partie n'existe pas
+      ÔêÜ accepte et ajuste si trop de r├┤les (tronque automatiquement) (1 ms)
+    checkWinner()
+      ÔêÜ d├®tecte victoire des loups (tous les villageois morts)
+      ÔêÜ d├®tecte victoire du village (tous les loups morts)
+      ÔêÜ d├®tecte victoire des amoureux (1 ms)
+      ÔêÜ retourne null si la partie continue (5 ms)
+    isRecentDuplicate()
+      ÔêÜ d├®tecte une commande dupliqu├®e r├®cente (1 ms)
+      ÔêÜ autorise la m├¬me commande apr├¿s 5 secondes (2 ms)
+      ÔêÜ diff├®rencie les commandes par channel (1 ms)
+      ÔêÜ diff├®rencie les commandes par utilisateur
+    getGameByChannelId()
+      ÔêÜ retourne une partie existante par channel principal
+      ÔêÜ retourne une partie par son village channel (1 ms)
+      ÔêÜ retourne une partie par son wolves channel
+      ÔêÜ retourne null si aucune partie trouv├®e (1 ms)
+    kill()
+      ÔêÜ tue un joueur vivant (1 ms)
+      ÔêÜ ne fait rien si le channel est invalide (1 ms)
+      ÔêÜ ne fait rien si le joueur est d├®j├á mort (1 ms)
+      ÔêÜ tue le partenaire amoureux quand un amoureux meurt
+    getAlive()
+      ÔêÜ retourne les joueurs vivants (1 ms)
+      ÔêÜ retourne vide si pas de partie
+    nextPhase()
+      ÔêÜ passe de NIGHT ├á DAY (2 ms)
+      ÔêÜ passe de DAY ├á NIGHT (1 ms)
+      ÔêÜ incr├®mente dayCount au passage au jour
+      ÔêÜ r├®initialise les votes au changement de phase
+      ÔêÜ met subPhase ├á LOUPS quand nuit commence (1 ms)
+      ÔêÜ met subPhase ├á REVEIL quand jour commence
+    voteCaptain()
+      ÔêÜ enregistre un vote valide (2 ms)
+      ÔêÜ refuse si pas le jour
+      ÔêÜ refuse si mauvaise sous-phase (1 ms)
+      ÔêÜ refuse si capitaine d├®j├á ├®lu
+      ÔêÜ refuse si le votant est mort (1 ms)
+      ÔêÜ permet de changer de vote (1 ms)
+    declareCaptain()
+      ÔêÜ d├®clare le capitaine avec un gagnant clair (1 ms)
+      ÔêÜ retourne no_votes si aucun vote
+      ÔêÜ r├®sout une ├®galit├® par tirage au sort (1 ms)
+      ÔêÜ nettoie l'├®tat des votes apr├¿s d├®claration
+    isRealPlayerId()
+      ÔêÜ retourne true pour un ID num├®rique (3 ms)
+      ÔêÜ retourne false pour un ID non-num├®rique
+      ÔêÜ retourne false pour un non-string (1 ms)
+    hasAliveRealRole()
+      ÔêÜ retourne true si un joueur vivant avec le r├┤le existe
+      ÔêÜ retourne false si le joueur avec le r├┤le est mort (1 ms)
+      ÔêÜ retourne false si aucun joueur avec ce r├┤le
+    getAllGames()
+      ÔêÜ retourne toutes les parties
+      ÔêÜ retourne un tableau vide si aucune partie (1 ms)
+    logAction()
+      ÔêÜ ajoute une action au log de la partie
+    checkWinner() ÔÇö cas draw
+      ÔêÜ retourne draw quand tous les joueurs sont morts
+
+PASS tests/utils/interaction.test.js
+  interaction utilities
+    safeDefer()
+      ÔêÜ defer avec succ├¿s (10 ms)
+      ÔêÜ retourne true si d├®j├á deferred
+      ÔêÜ retourne true si d├®j├á replied (1 ms)
+      ÔêÜ retourne false sur erreur 10062 (interaction expir├®e) (1 ms)
+      ÔêÜ retourne true sur InteractionAlreadyReplied (1 ms)
+      ÔêÜ retourne false sur erreur inconnue (14 ms)
+    safeReply()
+      ÔêÜ envoie une reply avec succ├¿s (1 ms)
+      ÔêÜ tente followUp sur erreur 10062 si deferred (1 ms)
+      ÔêÜ throw sur erreur non-10062 (2 ms)
+    safeEditReply()
+      ÔêÜ retourne false si pas deferred ni replied (1 ms)
+      ÔêÜ ├®dite avec succ├¿s si deferred
+      ÔêÜ retourne false sur erreur 10062 (3 ms)
+      ÔêÜ retourne false sur InteractionNotReplied (1 ms)
+
+PASS tests/commands/love.test.js
+  Commande /love
+    ÔêÜ refuse en dehors de la cat├®gorie (9 ms)
+    ÔêÜ refuse depuis un mauvais channel (4 ms)
+    ÔêÜ refuse si pas Cupidon (1 ms)
+    ÔêÜ refuse si couple d├®j├á d├®fini (4 ms)
+    ÔêÜ refuse si les deux cibles sont la m├¬me personne
+    ÔêÜ refuse si une cible n'est pas dans la partie
+    ÔêÜ cr├®e le couple d'amoureux avec succ├¿s (1 ms)
+    ÔêÜ cha├«ne vers les loups si des loups sont vivants (1 ms)
+
+PASS tests/commands/potion.test.js
+  Commande /potion
+    ÔêÜ refuse en dehors de la cat├®gorie (8 ms)
+    ÔêÜ refuse depuis un mauvais channel (4 ms)
+    ÔêÜ refuse pendant le jour (1 ms)
+    ÔêÜ refuse pendant la mauvaise sous-phase (1 ms)
+    ÔêÜ refuse si pas la sorci├¿re (1 ms)
+    ÔêÜ utilise la potion de vie avec succ├¿s (4 ms)
+    ÔêÜ refuse la potion de vie si d├®j├á utilis├®e (1 ms)
+    ÔêÜ utilise la potion de mort avec succ├¿s (1 ms)
+    ÔêÜ refuse la potion de mort sans cible (2 ms)
+    ÔêÜ refuse la potion de mort si d├®j├á utilis├®e (1 ms)
+    ÔêÜ cha├«ne vers la voyante si elle est vivante (2 ms)
+
+PASS tests/commands/see.test.js
+  Commande /see
+    ÔêÜ refuse en dehors de la cat├®gorie (8 ms)
+    ÔêÜ refuse depuis un mauvais channel (6 ms)
+    ÔêÜ refuse pendant le jour (1 ms)
+    ÔêÜ refuse pendant la mauvaise sous-phase (1 ms)
+    ÔêÜ refuse si pas la voyante (1 ms)
+    ÔêÜ refuse si la voyante est morte (4 ms)
+    ÔêÜ r├®v├¿le le r├┤le du joueur cibl├® (1 ms)
+    ÔêÜ refuse si le joueur cibl├® n'est pas inscrit (1 ms)
+    ÔêÜ avance la sous-phase apr├¿s vision (2 ms)
+
+PASS tests/commands/kill.test.js
+  Commande /kill
+    ÔêÜ refuse en dehors de la cat├®gorie jeu (9 ms)
+    ÔêÜ refuse quand aucune partie
+    ÔêÜ refuse depuis un mauvais channel (6 ms)
+    ÔêÜ refuse pendant le jour (4 ms)
+    ÔêÜ refuse pendant la mauvaise sous-phase (2 ms)
+    ÔêÜ refuse si le joueur n'est pas un loup (1 ms)
+    ÔêÜ refuse si le loup est mort (1 ms)
+    ÔêÜ refuse de cibler un joueur non-inscrit (1 ms)
+    ÔêÜ refuse de cibler un joueur mort (1 ms)
+    ÔêÜ d├®finit nightVictim sur un kill valide (2 ms)
+    ÔêÜ cha├«ne vers la sorci├¿re si elle est vivante (1 ms)
+
+PASS tests/commands/vote.test.js
+  Commande /vote
+    ÔêÜ refuse en dehors de la cat├®gorie jeu (12 ms)
+    ÔêÜ refuse quand aucune partie (1 ms)
+    ÔêÜ refuse depuis un mauvais channel (10 ms)
+    ÔêÜ refuse pendant la nuit (1 ms)
+    ÔêÜ refuse un joueur non-inscrit (1 ms)
+    ÔêÜ refuse un joueur mort
+    ÔêÜ refuse de voter pour un joueur non-inscrit
+    ÔêÜ refuse de voter pour un joueur mort (1 ms)
+    ÔêÜ enregistre un vote valide (1 ms)
+    ÔêÜ le vote du capitaine compte double (1 ms)
+    ÔêÜ permet de changer de vote (1 ms)
+
+PASS tests/commands/start.test.js
+  Commande /start
+    ÔêÜ refuse si pas assez de joueurs (796 ms)
+    ÔêÜ d├®marre la partie avec le bon nombre de joueurs (113 ms)
+    ÔêÜ propose une s├®lection de r├┤les si trop de candidats (16 ms)
+    ÔêÜ envoie les r├┤les en DM aux joueurs (202 ms)
+    ÔêÜ envoie des messages dans les channels priv├®s (204 ms)
+    ÔêÜ refuse si la partie n'existe pas (1 ms)
+    ÔêÜ g├¿re l'├®chec de mise ├á jour des permissions (109 ms)
+
+FAIL tests/commands/create.test.js
+  Commande /create
+    ÔêÜ refuse les commandes dupliqu├®es (823 ms)
+    ├ù cr├®e une partie avec succ├¿s (514 ms)
+    ÔêÜ refuse si une partie existe d├®j├á (505 ms)
+    ├ù ajoute le host automatiquement (512 ms)
+    ÔêÜ g├¿re l'├®chec de cr├®ation des channels (624 ms)
+    ├ù nettoie les anciennes parties avant d'en cr├®er une nouvelle (513 ms)
+
+  ÔùÅ Commande /create ÔÇ║ cr├®e une partie avec succ├¿s
+
+    TypeError: config.getWolfWinCondition is not a function
+
+      161 |   // Wolf win condition (server-wide)
+      162 |   const config = ConfigManager.getInstance();
+    > 163 |   const wolfWin = config.getWolfWinCondition();
+          |                          ^
+      164 |   const wolfWinLabel = wolfWin === 'elimination' ? t('lobby.wolfwin_elimination') : t('lobby.wolfwin_majority');
+      165 |
+      166 |   const embed = new EmbedBuilder()
+
+      at getWolfWinCondition (utils/lobbyBuilder.js:163:26)
+      at buildLobbyEmbed (utils/lobbyBuilder.js:242:37)
+      at Object.buildLobbyMessage [as execute] (commands/create.js:202:26)
+      at Object.<anonymous> (tests/commands/create.test.js:125:5)
+
+  ÔùÅ Commande /create ÔÇ║ ajoute le host automatiquement
+
+    TypeError: config.getWolfWinCondition is not a function
+
+      161 |   // Wolf win condition (server-wide)
+      162 |   const config = ConfigManager.getInstance();
+    > 163 |   const wolfWin = config.getWolfWinCondition();
+          |                          ^
+      164 |   const wolfWinLabel = wolfWin === 'elimination' ? t('lobby.wolfwin_elimination') : t('lobby.wolfwin_majority');
+      165 |
+      166 |   const embed = new EmbedBuilder()
+
+      at getWolfWinCondition (utils/lobbyBuilder.js:163:26)
+      at buildLobbyEmbed (utils/lobbyBuilder.js:242:37)
+      at Object.buildLobbyMessage [as execute] (commands/create.js:202:26)
+      at Object.<anonymous> (tests/commands/create.test.js:144:5)
+
+  ÔùÅ Commande /create ÔÇ║ nettoie les anciennes parties avant d'en cr├®er une nouvelle
+
+    TypeError: config.getWolfWinCondition is not a function
+
+      161 |   // Wolf win condition (server-wide)
+      162 |   const config = ConfigManager.getInstance();
+    > 163 |   const wolfWin = config.getWolfWinCondition();
+          |                          ^
+      164 |   const wolfWinLabel = wolfWin === 'elimination' ? t('lobby.wolfwin_elimination') : t('lobby.wolfwin_majority');
+      165 |
+      166 |   const embed = new EmbedBuilder()
+
+      at getWolfWinCondition (utils/lobbyBuilder.js:163:26)
+      at buildLobbyEmbed (utils/lobbyBuilder.js:242:37)
+      at Object.buildLobbyMessage [as execute] (commands/create.js:202:26)
+      at Object.<anonymous> (tests/commands/create.test.js:169:5)
+
+A worker process has failed to exit gracefully and has been force exited. This is likely caused by tests leaking due to improper teardown. Try running with --detectOpenHandles to find leaks. Active timers can also cause this, ensure that .unref() was called on them.
+Test Suites: 1 failed, 14 passed, 15 total
+Tests:       3 failed, 188 passed, 191 total
+Snapshots:   0 total
+Time:        5.369 s, estimated 6 s
+Ran all test suites.

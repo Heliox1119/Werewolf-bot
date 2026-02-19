@@ -37,25 +37,31 @@ module.exports = {
       await interaction.editReply({ content: t('error.admin_required'), flags: MessageFlags.Ephemeral });
       return;
     }
-    const game = gameManager.getGameByChannelId(interaction.channelId);
-    if (!game) {
-      await interaction.editReply({ content: t('error.no_game_dot'), flags: MessageFlags.Ephemeral });
-      return;
-    }
+
     const min = interaction.options.getInteger("min");
     const max = interaction.options.getInteger("max");
     const wolfWin = interaction.options.getString("wolfwin");
+    const game = gameManager.getGameByChannelId(interaction.channelId);
+
+    // min/max nécessitent une partie en cours
+    if ((min !== null || max !== null) && !game) {
+      await interaction.editReply({ content: t('error.no_game_dot'), flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    const ConfigManager = require('../utils/config');
+    const config = ConfigManager.getInstance();
 
     if (min === null && max === null && wolfWin === null) {
       // Afficher les règles actuelles
-      const ConfigManager = require('../utils/config');
-      const config = ConfigManager.getInstance();
       const currentWolfWin = config.getWolfWinCondition();
       const wolfWinLabel = currentWolfWin === 'elimination' ? 'Élimination totale' : 'Majorité';
+      const currentMin = game?.rules?.minPlayers ?? 5;
+      const currentMax = game?.rules?.maxPlayers ?? 10;
       await interaction.editReply({
         content: t('cmd.setrules.current', {
-          min: game.rules?.minPlayers ?? 5,
-          max: game.rules?.maxPlayers ?? 10,
+          min: currentMin,
+          max: currentMax,
           wolfwin: wolfWinLabel
         }),
         flags: MessageFlags.Ephemeral
@@ -78,19 +84,15 @@ module.exports = {
     }
 
     if (wolfWin) {
-      const ConfigManager = require('../utils/config');
-      const config = ConfigManager.getInstance();
       config.setWolfWinCondition(wolfWin);
     }
 
-    gameManager.scheduleSave();
-    const ConfigManager2 = require('../utils/config');
-    const config2 = ConfigManager2.getInstance();
-    const wolfWinLabel = config2.getWolfWinCondition() === 'elimination' ? 'Élimination totale' : 'Majorité';
+    if (game) gameManager.scheduleSave();
+    const wolfWinLabel = config.getWolfWinCondition() === 'elimination' ? 'Élimination totale' : 'Majorité';
     await interaction.editReply({
       content: t('cmd.setrules.success_full', {
-        min: game.rules.minPlayers,
-        max: game.rules.maxPlayers,
+        min: game?.rules?.minPlayers ?? 5,
+        max: game?.rules?.maxPlayers ?? 10,
         wolfwin: wolfWinLabel
       }),
       flags: MessageFlags.Ephemeral
