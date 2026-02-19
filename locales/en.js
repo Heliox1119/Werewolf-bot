@@ -318,7 +318,8 @@ module.exports = {
       relay_active: "✅ Listening activated! Check your DMs to follow the wolves' conversation.",
       relay_message: "🐺 *A wolf whispers:* {{content}}",
       relay_ended: "🔇 The wolves fall asleep... Listening is over.",
-      wolves_alert: "👁️ **You sense a suspicious presence...** Someone might be spying on you!\n🔎 *Clue: their name starts with **{{letter}}**...*",
+      wolves_alert: "👁️ **You sense a suspicious presence...** Someone might be spying on you!\n🔎 *Clue: their name contains the letter **{{letter}}**...*",
+      wolves_alert_no_hint: "👁️ **You sense a suspicious presence...** Someone might be spying on you!",
     },
     love: {
       dm: "💘 You have been linked by Cupid with **{{name}}**. If one of you dies, the other will die of heartbreak.",

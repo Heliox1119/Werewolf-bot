@@ -318,7 +318,8 @@ module.exports = {
       relay_active: "✅ Écoute activée ! Regarde tes DM pour suivre la conversation des loups.",
       relay_message: "🐺 *Un loup murmure :* {{content}}",
       relay_ended: "🔇 Les loups se rendorment... L'écoute est terminée.",
-      wolves_alert: "👁️ **Vous sentez une présence suspecte...** Quelqu'un vous espionne peut-être !\n🔎 *Indice : son nom commence par **{{letter}}**...*",
+      wolves_alert: "👁️ **Vous sentez une présence suspecte...** Quelqu'un vous espionne peut-être !\n🔎 *Indice : son pseudo contient la lettre **{{letter}}**...*",
+      wolves_alert_no_hint: "👁️ **Vous sentez une présence suspecte...** Quelqu'un vous espionne peut-être !",
     },
     love: {
       dm: "💘 Tu as été lié.e par Cupidon avec **{{name}}**. Si l'un de vous meurt, l'autre mourra de chagrin.",

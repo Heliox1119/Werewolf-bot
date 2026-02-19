@@ -273,6 +273,7 @@ class GameManager {
       lastProtectedPlayerId: null,
       villageRolesPowerless: false,
       listenRelayUserId: null,
+      listenHintsGiven: [],
       rules: { minPlayers, maxPlayers },
       actionLog: [],
       startedAt: null,

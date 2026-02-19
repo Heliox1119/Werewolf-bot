@@ -9,6 +9,44 @@ const { t } = require('../utils/i18n');
 // Chance que les loups soient alertés (30%)
 const DETECTION_CHANCE = 0.3;
 
+/**
+ * Choisit une lettre du pseudo de la Petite Fille qui est la plus ambiguë :
+ * celle qui apparaît dans le plus grand nombre d'autres pseudos vivants.
+ * Exclut les lettres déjà données comme indices.
+ * Évite les lettres trop rares (présentes chez < 2 joueurs si possible).
+ */
+function pickSmartHint(username, game) {
+  const ROLES = require("../game/roles");
+  // Lettres uniques du pseudo (minuscules, alpha uniquement)
+  const targetLetters = [...new Set(username.toLowerCase().replace(/[^a-zà-ÿ]/g, '').split(''))];
+
+  // Exclure les indices déjà donnés
+  const alreadyGiven = new Set((game.listenHintsGiven || []).map(l => l.toLowerCase()));
+  const available = targetLetters.filter(l => !alreadyGiven.has(l));
+  if (available.length === 0) return null;
+
+  // Pseudos des autres joueurs vivants (hors PF elle-même)
+  const otherNames = game.players
+    .filter(p => p.alive && p.role !== ROLES.PETITE_FILLE)
+    .map(p => p.username.toLowerCase());
+
+  // Pour chaque lettre dispo, compter combien d'autres pseudos la contiennent
+  const scored = available.map(letter => {
+    const matchCount = otherNames.filter(name => name.includes(letter)).length;
+    return { letter, matchCount };
+  });
+
+  // Trier : le plus de matchs d'abord (= le plus ambigu)
+  scored.sort((a, b) => b.matchCount - a.matchCount);
+
+  // Prendre la lettre la plus ambiguë
+  const chosen = scored[0].letter;
+  game.listenHintsGiven = game.listenHintsGiven || [];
+  game.listenHintsGiven.push(chosen);
+
+  return chosen;
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("listen")
@@ -86,9 +124,14 @@ module.exports = {
       if (Math.random() < DETECTION_CHANCE) {
         const wolvesChannel = await interaction.guild.channels.fetch(game.wolvesChannelId);
         if (wolvesChannel) {
-          // Indice : première lettre du pseudo
-          const firstLetter = player.username.charAt(0).toUpperCase();
-          await wolvesChannel.send(t('cmd.listen.wolves_alert', { letter: firstLetter }));
+          // Indice intelligent : lettre du pseudo qui apparaît dans le plus d'autres pseudos
+          const hintLetter = pickSmartHint(player.username, game);
+          if (hintLetter) {
+            await wolvesChannel.send(t('cmd.listen.wolves_alert', { letter: hintLetter.toUpperCase() }));
+          } else {
+            // Plus d'indices dispo : alerte sans lettre
+            await wolvesChannel.send(t('cmd.listen.wolves_alert_no_hint'));
+          }
         }
       }
 
