@@ -13,6 +13,37 @@ A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice ma
 
 ---
 
+## 📸 Screenshots
+
+<table>
+  <tr>
+    <td align="center"><b>Interactive Lobby</b></td>
+    <td align="center"><b>Role Distribution (DM)</b></td>
+  </tr>
+  <tr>
+    <td><a href="https://ibb.co/SCybtk7"><img src="https://i.ibb.co/SCybtk7/lobby.png" alt="Interactive Lobby" width="400"/></a></td>
+    <td><a href="https://ibb.co/CKFXhDf2"><img src="https://i.ibb.co/CKFXhDf2/role-dm.png" alt="Role Distribution in DM" width="400"/></a></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Game Channels</b></td>
+    <td align="center"><b>Night Phase — Village Channel</b></td>
+  </tr>
+  <tr>
+    <td><a href="https://ibb.co/5Xd2zRqJ"><img src="https://i.ibb.co/5Xd2zRqJ/channels.png" alt="Game Channels" width="400"/></a></td>
+    <td><a href="https://ibb.co/BHG2cLzZ"><img src="https://i.ibb.co/BHG2cLzZ/night-phase.png" alt="Night Phase" width="400"/></a></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><b>Console Logs</b></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><a href="https://ibb.co/7JZx8X8X"><img src="https://i.ibb.co/7JZx8X8X/console-logs.png" alt="Console Logs" width="700"/></a></td>
+  </tr>
+</table>
+
+> *Click on any screenshot to enlarge it.*
+
+---
+
 ## ✨ Features
 
 ### 🎮 Gameplay
@@ -158,11 +189,12 @@ Once the bot is online, in Discord:
 ## 🎯 How to Play
 
 1. **Create** — A player types `/create` in the configured category
-2. **Join** — Players click the **Join** button on the lobby
+2. **Join** — Players click the **Join** button on the lobby ([see lobby screenshot](https://ibb.co/SCybtk7))
 3. **Start** — The host clicks **Start** when there are enough players
-4. **Night** — Each role acts in their private channel (90s max per role)
-5. **Day** — The village discusses and votes to eliminate a suspect
-6. **Victory** — When a side wins, the summary is displayed with a restart option
+4. **Role Assignment** — Each player receives their role via DM ([see DM screenshot](https://ibb.co/CKFXhDf2))
+5. **Night** — Each role acts in their private channel, 90s max per role ([see channels](https://ibb.co/5Xd2zRqJ) · [night phase](https://ibb.co/BHG2cLzZ))
+6. **Day** — The village discusses and votes to eliminate a suspect
+7. **Victory** — When a side wins, the summary is displayed with a restart option
 
 ---
 

@@ -13,6 +13,37 @@ Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion
 
 ---
 
+## 📸 Captures d'écran
+
+<table>
+  <tr>
+    <td align="center"><b>Lobby interactif</b></td>
+    <td align="center"><b>Distribution des rôles (DM)</b></td>
+  </tr>
+  <tr>
+    <td><a href="https://ibb.co/SCybtk7"><img src="https://i.ibb.co/SCybtk7/lobby.png" alt="Lobby interactif" width="400"/></a></td>
+    <td><a href="https://ibb.co/CKFXhDf2"><img src="https://i.ibb.co/CKFXhDf2/role-dm.png" alt="Distribution des rôles en DM" width="400"/></a></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Channels de jeu</b></td>
+    <td align="center"><b>Phase de nuit — Salon Village</b></td>
+  </tr>
+  <tr>
+    <td><a href="https://ibb.co/5Xd2zRqJ"><img src="https://i.ibb.co/5Xd2zRqJ/channels.png" alt="Channels de jeu" width="400"/></a></td>
+    <td><a href="https://ibb.co/BHG2cLzZ"><img src="https://i.ibb.co/BHG2cLzZ/night-phase.png" alt="Phase de nuit" width="400"/></a></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><b>Logs dans la console</b></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><a href="https://ibb.co/7JZx8X8X"><img src="https://i.ibb.co/7JZx8X8X/console-logs.png" alt="Logs console" width="700"/></a></td>
+  </tr>
+</table>
+
+> *Cliquez sur une capture pour l'agrandir.*
+
+---
+
 ## ✨ Fonctionnalités
 
 ### 🎮 Gameplay
@@ -158,11 +189,12 @@ Une fois le bot en ligne, dans Discord :
 ## 🎯 Comment jouer
 
 1. **Créer** — Un joueur tape `/create` dans la catégorie configurée
-2. **Rejoindre** — Les joueurs cliquent sur le bouton **Rejoindre** du lobby
+2. **Rejoindre** — Les joueurs cliquent sur le bouton **Rejoindre** du lobby ([voir le lobby](https://ibb.co/SCybtk7))
 3. **Démarrer** — L'hôte clique sur **Démarrer** quand il y a assez de joueurs
-4. **Nuit** — Chaque rôle agit dans son salon privé (120s max par rôle)
-5. **Jour** — Le village discute et vote pour éliminer un suspect
-6. **Victoire** — Quand un camp a gagné, le récapitulatif s'affiche avec option de relancer
+4. **Attribution des rôles** — Chaque joueur reçoit son rôle en DM ([voir le DM](https://ibb.co/CKFXhDf2))
+5. **Nuit** — Chaque rôle agit dans son salon privé, 120s max par rôle ([voir les channels](https://ibb.co/5Xd2zRqJ) · [phase de nuit](https://ibb.co/BHG2cLzZ))
+6. **Jour** — Le village discute et vote pour éliminer un suspect
+7. **Victoire** — Quand un camp a gagné, le récapitulatif s'affiche avec option de relancer
 
 ---
 
