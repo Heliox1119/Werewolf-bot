@@ -5,10 +5,11 @@
 
 Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion vocale automatique, audio d'ambiance et lobby interactif.
 
-![Version](https://img.shields.io/badge/version-2.8.0-blue)
+![Version](https://img.shields.io/badge/version-2.9.0-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)
 ![Tests](https://img.shields.io/badge/tests-191%20passed-brightgreen)
 
 ---
@@ -54,6 +55,16 @@ Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion
 - **Détection de victoire** — Village, Loups (majorité ou élimination configurable), Amoureux, Égalité
 - **Audio d'ambiance** — Sons de nuit, jour, mort et victoire dans le vocal
 - **Mode spectateur** — Les joueurs morts voient tous les salons en lecture seule, salon spectateur dédié
+- **Révélation à la mort** — Embed thématique avec rôle, cause de mort (loups/village/sorcière/chasseur/amour), code couleur
+- **Notification DM de tour** — Les joueurs reçoivent un DM quand c'est le tour de leur rôle la nuit
+
+### 🏆 Progression & Classement
+- **18 succès** — 6 catégories (victoire, loup, village, spécial, social, général) avec badges emoji
+- **Système ELO** — Calcul dynamique avec 7 paliers : Fer → Bronze → Argent → Or → Platine → Diamant → Loup Alpha
+- **`/leaderboard`** — Classement par ELO avec palier, taux de victoire et stats globales
+- **`/history`** — Historique des dernières parties avec vainqueur, joueurs, jours, durée
+- **`/stats` enrichi** — ELO, rang, peak, victoires loup/village, séries, stats par rôle, badges
+- **Récapitulatif post-game** — Changements ELO par joueur, timeline, annonces de succès débloqués
 
 ### ⚙️ Administration
 - **Configuration par commandes** — `/setup wizard` pour tout configurer
@@ -70,7 +81,10 @@ Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion
 - **Extensible** — Ajouter une langue = créer un fichier `locales/xx.js`
 
 ### 🗄️ Technique
-- **Persistance SQLite** — État des parties, stats joueurs, actions de nuit, métriques
+- **Persistance SQLite** — État des parties, stats joueurs, actions de nuit, métriques, succès, ELO
+- **Docker ready** — Dockerfile multi-stage, docker-compose avec volumes persistants, health checks
+- **Backup automatique** — Backup SQLite horaire avec rotation 24h, backup au shutdown
+- **Multi-guild** — Langue, config et catégorie par serveur avec fallback global
 - **i18n centralisé** — Singleton `I18n`, interpolation `{{variable}}`, fallback automatique
 - **Gestion d'erreurs robuste** — safeReply, graceful shutdown, zero crash en production
 - **191 tests automatisés** — 15 suites, 0 failures
@@ -80,11 +94,67 @@ Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion
 
 ## 🚀 Installation
 
-### Prérequis
-- **Node.js** ≥ 16.9.0
-- Un **bot Discord** avec les permissions : Manage Channels, Manage Roles, Connect, Speak, Send Messages, Mute Members
+### 🐳 Docker (Recommandé)
 
-### Mise en place
+La manière la plus simple de lancer le bot en production :
+
+```bash
+# 1. Cloner le dépôt
+git clone https://github.com/Heliox1119/Werewolf-bot.git
+cd Werewolf-bot
+
+# 2. Configurer l'environnement
+cp .env.example .env   # ou créer manuellement
+```
+
+Remplir le fichier `.env` :
+```env
+TOKEN=votre_token_bot_discord
+CLIENT_ID=id_application_discord
+GUILD_ID=id_serveur_discord
+LOG_LEVEL=INFO    # DEBUG | INFO | WARN | ERROR | NONE
+```
+
+```bash
+# 3. Ajouter les fichiers audio (optionnel)
+mkdir -p audio
+# Placer : night_ambience.mp3, day_ambience.mp3, death.mp3,
+#          victory_villagers.mp3, victory_wolves.mp3
+
+# 4. Lancer avec Docker Compose
+docker compose up -d
+```
+
+> **Ce que Docker offre :** Auto-restart, volumes persistants pour la base de données et les logs, health checks, rotation des logs, environnement isolé avec FFmpeg inclus.
+
+<details>
+<summary><b>Détails Docker</b></summary>
+
+- **Build multi-stage** — Node 20 Alpine, image minimale
+- **Volumes persistants** — `werewolf-data` (SQLite + backups), `werewolf-logs`
+- **Montage audio** — `./audio` monté en lecture seule dans le conteneur
+- **Health check** — Intégré via `scripts/health-check.js` (intervalle 60s)
+- **Rotation des logs** — Driver JSON file, 10MB max, 3 fichiers
+
+```bash
+# Commandes utiles
+docker compose logs -f          # Suivre les logs
+docker compose restart           # Redémarrer le bot
+docker compose down              # Arrêter le bot
+docker compose up -d --build     # Reconstruire après une mise à jour
+```
+
+</details>
+
+### 📦 Manuel (Node.js)
+
+<details>
+<summary><b>Installation sans Docker</b></summary>
+
+#### Prérequis
+- **Node.js** ≥ 16.9.0
+- **FFmpeg** (optionnel, pour l'audio d'ambiance)
+- Un **bot Discord** avec les permissions : Manage Channels, Manage Roles, Connect, Speak, Send Messages, Mute Members
 
 ```bash
 # 1. Cloner et installer
@@ -113,6 +183,8 @@ mkdir audio
 # 4. Lancer le bot
 npm start
 ```
+
+</details>
 
 ### Configuration Discord
 
@@ -154,6 +226,14 @@ Une fois le bot en ligne, dans Discord :
 | `/nextphase` | Avancer à la phase suivante | Tous |
 | `/vote-end` | Voter pour arrêter la partie | Tous (vivants) |
 | `/end` | Terminer la partie | Admin / Host |
+
+### Progression
+
+| Commande | Description |
+|----------|-------------|
+| `/stats [@joueur]` | Stats du joueur avec ELO, rang, succès |
+| `/leaderboard [top]` | Classement ELO du serveur |
+| `/history [limit]` | Historique des dernières parties |
 
 ### Administration
 
@@ -206,6 +286,7 @@ Werewolf-bot/
 ├── commands/               # Commandes slash (auto-chargées)
 ├── game/
 │   ├── gameManager.js      # Logique de jeu, phases, victoire
+│   ├── achievements.js     # Moteur de succès + système ELO
 │   ├── voiceManager.js     # Audio & connexions vocales
 │   ├── phases.js           # Constantes de phases
 │   └── roles.js            # Constantes de rôles
@@ -225,6 +306,8 @@ Werewolf-bot/
 ├── monitoring/
 │   ├── metrics.js          # Collecteur système/Discord/jeu
 │   └── alerts.js           # Alertes webhook
+├── Dockerfile              # Build Docker multi-stage
+├── docker-compose.yml      # Compose production-ready
 ├── tests/                  # 191 tests Jest
 ├── audio/                  # Sons d'ambiance (.mp3)
 └── img/                    # Images des rôles
@@ -246,8 +329,10 @@ npm run clear-commands      # Réinitialiser les commandes Discord
 
 | Version | Highlights |
 |---------|-----------|
-| **v2.8.0** | Docker, backup SQLite auto (horaire), multi-guild (langue & config par serveur), système de revanche |
-| **v2.7.0** | Petite Fille relay temps réel en DM, indices ambigus intelligents, normalisation Unicode/zalgo, wolfwin serveur-wide, commandes guild-only || **v2.6.0** | Équilibrage phases, vote capitaine auto, fix potion sorcière, victoire loups configurable, ping loups |
+| **v2.9.0** | 🏆 Succès (18), classement ELO (7 paliers), révélation rôle à la mort, notification DM de tour, `/leaderboard`, `/history`, timeline post-game, 4 bug fixes |
+| **v2.8.0** | 🐳 Docker, backup SQLite auto (horaire), multi-guild (langue & config par serveur), système de revanche |
+| **v2.7.0** | Petite Fille relay temps réel en DM, indices ambigus intelligents, normalisation Unicode/zalgo, wolfwin serveur-wide, commandes guild-only |
+| **v2.6.0** | Équilibrage phases, vote capitaine auto, fix potion sorcière, victoire loups configurable, ping loups |
 | **v2.5.1** | Nouveaux rôles (Salvateur, Ancien, Idiot), mode spectateur, thèmes d'embed, correctifs |
 | **v2.4.0** | Système i18n centralisé FR/EN, commande `/lang`, 500+ clés traduites |
 | **v2.3.0** | Audit complet (47 fixes), mode spectateur, `/skip`, stats joueurs en DB |
@@ -285,4 +370,4 @@ Détails complets : [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-**Version** : 2.8.0 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **License** : ISC
+**Version** : 2.9.0 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **Docker** : ready · **License** : ISC

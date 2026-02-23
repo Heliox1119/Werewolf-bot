@@ -5,10 +5,11 @@
 
 A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice management, ambient audio and interactive lobby.
 
-![Version](https://img.shields.io/badge/version-2.8.0-blue)
+![Version](https://img.shields.io/badge/version-2.9.0-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)
 ![Tests](https://img.shields.io/badge/tests-191%20passed-brightgreen)
 
 ---
@@ -54,6 +55,16 @@ A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice ma
 - **Victory detection** — Village, Wolves (majority or elimination, configurable), Lovers, Draw
 - **Ambient audio** — Night, day, death and victory sounds in voice channel
 - **Spectator mode** — Dead players can see all channels in read-only, dedicated spectator channel
+- **Death reveal** — Themed embeds on death with role, cause (wolves/village/witch/hunter/love), and color coding
+- **DM turn notifications** — Players receive a DM when it's their role's turn at night
+
+### 🏆 Progression & Rankings
+- **18 achievements** — 6 categories (victory, wolf, village, special, social, general) with emoji badges
+- **ELO ranking system** — Dynamic calculation with 7 tiers: Iron → Bronze → Silver → Gold → Platinum → Diamond → Alpha Wolf
+- **`/leaderboard`** — Top players by ELO with tier, win rate, and global stats
+- **`/history`** — Recent game history with winner, players, days, duration
+- **`/stats` enhanced** — ELO, rank, peak, wolf/village wins, streaks, role-specific stats, achievement badges
+- **Post-game summary** — ELO changes per player, event timeline, achievement unlock announcements
 
 ### ⚙️ Administration
 - **Setup via commands** — `/setup wizard` for guided configuration
@@ -70,7 +81,10 @@ A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice ma
 - **Extensible** — Adding a language = creating a `locales/xx.js` file
 
 ### 🗄️ Technical
-- **SQLite persistence** — Game state, player stats, night actions, metrics
+- **SQLite persistence** — Game state, player stats, night actions, metrics, achievements, ELO
+- **Docker ready** — Multi-stage Dockerfile, docker-compose with persistent volumes, health checks
+- **Auto backup** — Hourly SQLite backups with 24h rotation, backup on shutdown
+- **Multi-guild** — Per-server language, config, and category with global fallback
 - **Centralized i18n** — `I18n` singleton, `{{variable}}` interpolation, automatic fallback
 - **Robust error handling** — safeReply, graceful shutdown, zero crash in production
 - **191 automated tests** — 15 suites, 0 failures
@@ -80,11 +94,67 @@ A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice ma
 
 ## 🚀 Installation
 
-### Prerequisites
-- **Node.js** ≥ 16.9.0
-- A **Discord bot** with permissions: Manage Channels, Manage Roles, Connect, Speak, Send Messages, Mute Members
+### 🐳 Docker (Recommended)
 
-### Setup
+The simplest way to run the bot in production:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/Heliox1119/Werewolf-bot.git
+cd Werewolf-bot
+
+# 2. Configure environment
+cp .env.example .env   # or create manually
+```
+
+Fill in the `.env` file:
+```env
+TOKEN=your_discord_bot_token
+CLIENT_ID=discord_application_id
+GUILD_ID=discord_server_id
+LOG_LEVEL=INFO    # DEBUG | INFO | WARN | ERROR | NONE
+```
+
+```bash
+# 3. Add audio files (optional)
+mkdir -p audio
+# Place: night_ambience.mp3, day_ambience.mp3, death.mp3,
+#        victory_villagers.mp3, victory_wolves.mp3
+
+# 4. Launch with Docker Compose
+docker compose up -d
+```
+
+> **What Docker provides:** Auto-restart, persistent volumes for database & logs, health checks, log rotation, isolated environment with FFmpeg included.
+
+<details>
+<summary><b>Docker details</b></summary>
+
+- **Multi-stage build** — Node 20 Alpine, minimal image size
+- **Persistent volumes** — `werewolf-data` (SQLite + backups), `werewolf-logs`
+- **Audio mount** — `./audio` mounted read-only into the container
+- **Health check** — Built-in via `scripts/health-check.js` (60s interval)
+- **Log rotation** — JSON file driver, 10MB max, 3 files
+
+```bash
+# Useful commands
+docker compose logs -f          # Follow logs
+docker compose restart           # Restart the bot
+docker compose down              # Stop the bot
+docker compose up -d --build     # Rebuild after updates
+```
+
+</details>
+
+### 📦 Manual (Node.js)
+
+<details>
+<summary><b>Install without Docker</b></summary>
+
+#### Prerequisites
+- **Node.js** ≥ 16.9.0
+- **FFmpeg** (optional, for ambient audio)
+- A **Discord bot** with permissions: Manage Channels, Manage Roles, Connect, Speak, Send Messages, Mute Members
 
 ```bash
 # 1. Clone and install
@@ -113,6 +183,8 @@ mkdir audio
 # 4. Start the bot
 npm start
 ```
+
+</details>
 
 ### Discord Configuration
 
@@ -154,6 +226,14 @@ Once the bot is online, in Discord:
 | `/nextphase` | Advance to next phase | All |
 | `/vote-end` | Vote to stop the game | All (alive) |
 | `/end` | End the game | Admin / Host |
+
+### Progression
+
+| Command | Description |
+|---------|-------------|
+| `/stats [@player]` | Player stats with ELO, rank, achievements |
+| `/leaderboard [top]` | Server ELO leaderboard |
+| `/history [limit]` | Recent game history |
 
 ### Administration
 
@@ -206,6 +286,7 @@ Werewolf-bot/
 ├── commands/               # Slash commands (auto-loaded)
 ├── game/
 │   ├── gameManager.js      # Game logic, phases, victory
+│   ├── achievements.js     # Achievement engine + ELO system
 │   ├── voiceManager.js     # Audio & voice connections
 │   ├── phases.js           # Phase constants
 │   └── roles.js            # Role constants
@@ -225,6 +306,8 @@ Werewolf-bot/
 ├── monitoring/
 │   ├── metrics.js          # System/Discord/game collector
 │   └── alerts.js           # Webhook alerts
+├── Dockerfile              # Multi-stage Docker build
+├── docker-compose.yml      # Production-ready compose
 ├── tests/                  # 191 Jest tests
 ├── audio/                  # Ambient sounds (.mp3)
 └── img/                    # Role images
@@ -246,9 +329,11 @@ npm run clear-commands      # Reset Discord commands
 
 | Version | Highlights |
 |---------|-----------|
-| **v2.8.0** | Docker containerization, auto SQLite backup (hourly), multi-guild support (per-server lang & config), rematch system |
+| **v2.9.0** | 🏆 Achievements (18), ELO ranking (7 tiers), death reveal embeds, DM turn notifications, `/leaderboard`, `/history`, post-game timeline, 4 bug fixes |
+| **v2.8.0** | 🐳 Docker, auto SQLite backup (hourly), multi-guild (per-server lang & config), rematch system |
 | **v2.7.0** | Little Girl real-time DM relay, smart ambiguous hints, Unicode/zalgo-proof, wolf win server-wide config, guild-only commands |
-| **v2.6.0** | Phase balancing, automatic captain vote, witch potion fix, configurable wolf victory, wolf ping || **v2.5.1** | New roles (Salvateur, Ancien, Idiot), spectator mode, embed themes, bugfixes |
+| **v2.6.0** | Phase balancing, automatic captain vote, witch potion fix, configurable wolf victory, wolf ping |
+| **v2.5.1** | New roles (Salvateur, Ancien, Idiot), spectator mode, embed themes, bugfixes |
 | **v2.4.0** | Centralized i18n system FR/EN, `/lang` command, 500+ translated keys |
 | **v2.3.0** | Full audit (47 fixes), spectator mode, `/skip`, player stats in DB |
 | **v2.2.1** | Production hardening (26 fixes), 191 tests, safeReply everywhere |
@@ -285,4 +370,4 @@ Full details: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-**Version**: 2.8.0 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **License**: ISC
+**Version**: 2.9.0 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **Docker**: ready · **License**: ISC
