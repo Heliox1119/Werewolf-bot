@@ -802,7 +802,7 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   opacity: 0; pointer-events: none;
   transition: opacity 0.25s ease;
 }
-.modal-overlay.active { opacity: 1; pointer-events: auto; }
+.modal-overlay.active, .modal-overlay.open { opacity: 1; pointer-events: auto; }
 .modal-card {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
@@ -815,7 +815,7 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   transition: transform 0.25s ease;
   box-shadow: var(--shadow-lg);
 }
-.modal-overlay.active .modal-card { transform: scale(1) translateY(0); }
+.modal-overlay.active .modal-card, .modal-overlay.open .modal-card { transform: scale(1) translateY(0); }
 .modal-card-sm { max-width: 400px; padding: 1.5rem; }
 .modal-close {
   position: absolute; top: 1rem; right: 1rem;
