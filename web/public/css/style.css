@@ -980,6 +980,95 @@ body[data-page="full"] .app-main {
 .history-players { color: var(--text-secondary); font-size: 0.85rem; }
 .history-date { color: var(--text-muted); font-size: 0.8rem; }
 
+/* === Guild Leaderboard Page === */
+.guild-leaderboard-page { max-width: 1000px; }
+.gleader-podium {
+  display: flex; justify-content: center; align-items: flex-end; gap: 1.5rem;
+  margin-bottom: 2.5rem; padding: 1.5rem 0;
+}
+.gleader-podium-card {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 1.5rem 1.25rem; background: var(--bg-card);
+  border: 1px solid var(--border-color); border-radius: var(--border-radius);
+  min-width: 150px; transition: var(--transition-fast);
+}
+.gleader-podium-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+.podium-1 { border-color: #ffd700; order: 2; }
+.podium-1 .gleader-podium-medal { font-size: 2.5rem; }
+.podium-2 { border-color: #c0c0c0; order: 1; padding-top: 2rem; }
+.podium-2 .gleader-podium-medal { font-size: 2rem; }
+.podium-3 { border-color: #cd7f32; order: 3; padding-top: 2.5rem; }
+.podium-3 .gleader-podium-medal { font-size: 1.8rem; }
+.gleader-podium-medal { margin-bottom: 0.5rem; }
+.gleader-podium-rank { font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+.gleader-podium-name { font-size: 1.05rem; font-weight: 700; margin-top: 0.35rem; color: var(--text-primary); }
+.gleader-podium-elo { font-size: 1.2rem; font-weight: 800; color: var(--accent-secondary); margin-top: 0.25rem; }
+.gleader-podium-tier { font-size: 0.8rem; margin-top: 0.2rem; }
+.gleader-podium-stats { font-size: 0.8rem; margin-top: 0.5rem; color: var(--text-secondary); }
+.gleader-section { margin-top: 1rem; }
+.gleader-player-link { color: var(--text-primary); text-decoration: none; font-weight: 600; }
+.gleader-player-link:hover { color: var(--accent); text-decoration: underline; }
+.gleader-winrate { font-weight: 700; font-size: 0.85rem; }
+.gleader-winrate.high { color: #4ade80; }
+.gleader-winrate.mid { color: #facc15; }
+.gleader-winrate.low { color: #f87171; }
+.top-rank.rank-1 td { background: rgba(255, 215, 0, 0.04); }
+.top-rank.rank-2 td { background: rgba(192, 192, 192, 0.04); }
+.top-rank.rank-3 td { background: rgba(205, 127, 50, 0.04); }
+@media (max-width: 640px) {
+  .gleader-podium { flex-direction: column; align-items: center; }
+  .podium-1, .podium-2, .podium-3 { order: unset; padding-top: 1.5rem; }
+}
+
+/* === Guild History Page === */
+.guild-history-page { max-width: 1000px; }
+.ghistory-stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem; margin-bottom: 2rem;
+}
+.ghistory-stat-card {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 1.25rem 0.75rem; background: var(--bg-card);
+  border: 1px solid var(--border-color); border-radius: var(--border-radius);
+  text-align: center; transition: var(--transition-fast);
+}
+.ghistory-stat-card:hover { border-color: var(--border-color-hover); }
+.ghistory-stat-value { font-size: 1.5rem; font-weight: 800; color: var(--accent-secondary); }
+.ghistory-stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; text-transform: uppercase; letter-spacing: 0.5px; }
+.ghistory-section { margin-top: 1rem; }
+.ghistory-table-wrap { overflow-x: auto; border-radius: var(--border-radius); border: 1px solid var(--border-color); }
+.ghistory-table { width: 100%; border-collapse: collapse; }
+.ghistory-table th {
+  text-align: left; padding: 0.875rem 1.25rem;
+  background: var(--bg-secondary); color: var(--text-muted);
+  font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;
+  border-bottom: 1px solid var(--border-color);
+}
+.ghistory-table td { padding: 0.875rem 1.25rem; border-bottom: 1px solid rgba(148, 163, 184, 0.05); font-size: 0.9rem; }
+.ghistory-table tbody tr.ghistory-row { transition: var(--transition-fast); }
+.ghistory-table tbody tr.ghistory-row:hover { background: var(--bg-hover); }
+.ghistory-date { display: flex; flex-direction: column; }
+.ghistory-date-main { font-weight: 600; }
+.ghistory-date-time { font-size: 0.75rem; color: var(--text-muted); }
+.ghistory-winner { font-weight: 700; padding: 0.2rem 0.6rem; border-radius: var(--border-radius-xs); font-size: 0.85rem; }
+.winner-village { background: rgba(74, 222, 128, 0.1); color: #4ade80; }
+.winner-wolves { background: rgba(248, 113, 113, 0.1); color: #f87171; }
+.winner-lovers { background: rgba(244, 114, 182, 0.1); color: #f472b6; }
+.ghistory-detail-row td { padding: 0; }
+.ghistory-detail-content { padding: 1rem 1.25rem; background: var(--bg-secondary); }
+.ghistory-detail-content h4 { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.75rem; }
+.ghistory-player-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem; }
+.ghistory-player {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.5rem 0.75rem; background: var(--bg-card);
+  border-radius: var(--border-radius-xs); border: 1px solid var(--border-color);
+  font-size: 0.85rem;
+}
+.ghistory-player.died { opacity: 0.6; }
+.ghistory-player-status { font-size: 0.9rem; }
+.ghistory-player-name { font-weight: 600; }
+.ghistory-player-role { font-size: 0.75rem; margin-left: auto; }
+
 /* === Player Page === */
 .player-avatar-lg {
   width: 80px; height: 80px;

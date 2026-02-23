@@ -1,0 +1,94 @@
+<%- include('partials/header') %>
+
+<div class="guild-leaderboard-page">
+  <div class="page-header">
+    <% if (guild && guild.icon) { %>
+      <img src="<%= guild.icon %>" alt="" class="guild-icon-lg">
+    <% } %>
+    <div>
+      <h1>&#127942; <span data-i18n="gleader.title">Classement</span> — <%= guild ? guild.name : guildId %></h1>
+      <p class="text-muted" data-i18n="gleader.subtitle">Les meilleurs joueurs de ce serveur</p>
+    </div>
+  </div>
+
+  <% if (leaderboard.length === 0) { %>
+    <div class="empty-state">
+      <span class="empty-icon">&#127942;</span>
+      <p data-i18n="gleader.empty">Aucun joueur classé pour le moment. Jouez des parties pour voir le classement !</p>
+    </div>
+  <% } else { %>
+
+    <!-- Podium (top 3) -->
+    <% if (leaderboard.length >= 3) { %>
+    <div class="gleader-podium">
+      <% var medals = ['&#129351;', '&#129352;', '&#129353;']; %>
+      <% [1, 0, 2].forEach(function(idx) { var p = leaderboard[idx]; if (!p) return; %>
+        <div class="gleader-podium-card podium-<%= idx + 1 %>">
+          <div class="gleader-podium-medal"><%- medals[idx] %></div>
+          <div class="gleader-podium-rank">#<%= p.rank %></div>
+          <div class="gleader-podium-name"><%= p.username || p.player_id %></div>
+          <div class="gleader-podium-elo"><%= p.elo_rating || 1000 %> ELO</div>
+          <div class="gleader-podium-tier"><%= (p.tier || {}).emoji || '' %> <%= (p.tier || {}).name || '' %></div>
+          <div class="gleader-podium-stats">
+            <span><%= p.games_won || 0 %>W</span>
+            <span class="text-muted">/ <%= p.games_played || 0 %>G</span>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+    <% } %>
+
+    <!-- Full Table -->
+    <div class="gleader-section">
+      <h2 class="section-title" data-i18n="gleader.full_ranking">Classement complet</h2>
+      <div class="leaderboard-table">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th data-i18n="gleader.col_player">Joueur</th>
+              <th>ELO</th>
+              <th data-i18n="gleader.col_tier">Rang</th>
+              <th data-i18n="gleader.col_games">Parties</th>
+              <th data-i18n="gleader.col_wins">Victoires</th>
+              <th data-i18n="gleader.col_winrate">Win%</th>
+              <th data-i18n="gleader.col_wolf_wins">&#128058; Loups</th>
+              <th data-i18n="gleader.col_village_wins">&#127969; Village</th>
+              <th data-i18n="gleader.col_streak">Série</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% leaderboard.forEach(function(p) { %>
+              <tr class="<%= p.rank <= 3 ? 'top-rank rank-' + p.rank : '' %>">
+                <td class="rank-col"><%= p.rank %></td>
+                <td>
+                  <a href="/player/<%= p.player_id %>" class="gleader-player-link">
+                    <%= p.username || p.player_id %>
+                  </a>
+                </td>
+                <td><strong><%= p.elo_rating || 1000 %></strong></td>
+                <td>
+                  <span class="tier tier-<%= (p.tier || {}).id || 'bronze' %>">
+                    <%= (p.tier || {}).emoji || '' %> <%= (p.tier || {}).name || 'Bronze' %>
+                  </span>
+                </td>
+                <td><%= p.games_played || 0 %></td>
+                <td><%= p.games_won || 0 %></td>
+                <td>
+                  <% var wr = p.games_played > 0 ? Math.round((p.games_won / p.games_played) * 100) : 0; %>
+                  <span class="gleader-winrate <%= wr >= 60 ? 'high' : wr >= 40 ? 'mid' : 'low' %>"><%= wr %>%</span>
+                </td>
+                <td><%= p.wolf_wins || 0 %></td>
+                <td><%= p.village_wins || 0 %></td>
+                <td><%= p.best_win_streak || 0 %> &#128293;</td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

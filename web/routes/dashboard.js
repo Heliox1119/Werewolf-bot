@@ -173,6 +173,55 @@ module.exports = function(webServer) {
     }
   });
 
+  /** GET /guild/:id/leaderboard — Per-guild leaderboard */
+  router.get('/guild/:id/leaderboard', (req, res) => {
+    try {
+      const client = webServer.client;
+      const guild = client ? client.guilds.cache.get(req.params.id) : null;
+
+      let leaderboard = [];
+      if (gm.achievements) {
+        const { AchievementEngine } = require('../../game/achievements');
+        leaderboard = gm.achievements.getLeaderboard(50, req.params.id).map((p, i) => ({
+          rank: i + 1,
+          ...p,
+          tier: AchievementEngine.getEloTier(p.elo_rating || 1000)
+        }));
+      }
+
+      res.render('guild-leaderboard', {
+        title: guild ? guild.name : `Guild ${req.params.id}`,
+        guild: guild ? { id: guild.id, name: guild.name, icon: guild.iconURL({ size: 128 }), memberCount: guild.memberCount } : null,
+        guildId: req.params.id,
+        guildPage: 'leaderboard',
+        leaderboard
+      });
+    } catch (e) {
+      res.render('error', { title: 'Error', message: e.message });
+    }
+  });
+
+  /** GET /guild/:id/history — Per-guild game history */
+  router.get('/guild/:id/history', (req, res) => {
+    try {
+      const client = webServer.client;
+      const guild = client ? client.guilds.cache.get(req.params.id) : null;
+
+      let history = [];
+      try { history = db.getGuildHistory(req.params.id, 50); } catch {}
+
+      res.render('guild-history', {
+        title: guild ? guild.name : `Guild ${req.params.id}`,
+        guild: guild ? { id: guild.id, name: guild.name, icon: guild.iconURL({ size: 128 }), memberCount: guild.memberCount } : null,
+        guildId: req.params.id,
+        guildPage: 'history',
+        history
+      });
+    } catch (e) {
+      res.render('error', { title: 'Error', message: e.message });
+    }
+  });
+
   /** GET /player/:id — Player profile */
   router.get('/player/:id', (req, res) => {
     try {

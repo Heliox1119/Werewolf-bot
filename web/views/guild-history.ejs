@@ -1,0 +1,142 @@
+<%- include('partials/header') %>
+
+<div class="guild-history-page">
+  <div class="page-header">
+    <% if (guild && guild.icon) { %>
+      <img src="<%= guild.icon %>" alt="" class="guild-icon-lg">
+    <% } %>
+    <div>
+      <h1>&#128218; <span data-i18n="ghistory.title">Historique</span> — <%= guild ? guild.name : guildId %></h1>
+      <p class="text-muted" data-i18n="ghistory.subtitle">Les dernières parties jouées sur ce serveur</p>
+    </div>
+  </div>
+
+  <% if (history.length === 0) { %>
+    <div class="empty-state">
+      <span class="empty-icon">&#128218;</span>
+      <p data-i18n="ghistory.empty">Aucune partie terminée pour le moment.</p>
+    </div>
+  <% } else { %>
+
+    <!-- Stats Summary -->
+    <div class="ghistory-stats">
+      <%
+        var totalGames = history.length;
+        var villageWins = history.filter(function(h){ return h.winner === 'village'; }).length;
+        var wolfWins = history.filter(function(h){ return h.winner === 'wolves'; }).length;
+        var loversWins = history.filter(function(h){ return h.winner === 'lovers'; }).length;
+        var otherWins = totalGames - villageWins - wolfWins - loversWins;
+        var avgPlayers = totalGames > 0 ? Math.round(history.reduce(function(s, h){ return s + (h.player_count || 0); }, 0) / totalGames) : 0;
+        var avgDuration = totalGames > 0 ? Math.round(history.reduce(function(s, h){ return s + (h.duration_seconds || 0); }, 0) / totalGames) : 0;
+        var avgMins = Math.floor(avgDuration / 60);
+        var avgSecs = avgDuration % 60;
+      %>
+      <div class="ghistory-stat-card">
+        <span class="ghistory-stat-value"><%= totalGames %></span>
+        <span class="ghistory-stat-label" data-i18n="ghistory.total_games">Parties jouées</span>
+      </div>
+      <div class="ghistory-stat-card">
+        <span class="ghistory-stat-value"><%= villageWins %></span>
+        <span class="ghistory-stat-label">&#127969; <span data-i18n="ghistory.village_wins">Victoires Village</span></span>
+      </div>
+      <div class="ghistory-stat-card">
+        <span class="ghistory-stat-value"><%= wolfWins %></span>
+        <span class="ghistory-stat-label">&#128058; <span data-i18n="ghistory.wolf_wins">Victoires Loups</span></span>
+      </div>
+      <div class="ghistory-stat-card">
+        <span class="ghistory-stat-value"><%= loversWins %></span>
+        <span class="ghistory-stat-label">&#128149; <span data-i18n="ghistory.lovers_wins">Victoires Amoureux</span></span>
+      </div>
+      <div class="ghistory-stat-card">
+        <span class="ghistory-stat-value"><%= avgPlayers %></span>
+        <span class="ghistory-stat-label" data-i18n="ghistory.avg_players">Joueurs / partie</span>
+      </div>
+      <div class="ghistory-stat-card">
+        <span class="ghistory-stat-value"><%= avgMins %>:<%= avgSecs < 10 ? '0' + avgSecs : avgSecs %></span>
+        <span class="ghistory-stat-label" data-i18n="ghistory.avg_duration">Durée moyenne</span>
+      </div>
+    </div>
+
+    <!-- History Table -->
+    <div class="ghistory-section">
+      <h2 class="section-title" data-i18n="ghistory.recent_games">Parties récentes</h2>
+      <div class="ghistory-table-wrap">
+        <table class="ghistory-table">
+          <thead>
+            <tr>
+              <th data-i18n="ghistory.col_date">Date</th>
+              <th data-i18n="ghistory.col_winner">Vainqueur</th>
+              <th data-i18n="ghistory.col_players">Joueurs</th>
+              <th data-i18n="ghistory.col_days">Jours</th>
+              <th data-i18n="ghistory.col_duration">Durée</th>
+              <th data-i18n="ghistory.col_details">Détails</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% history.forEach(function(h) {
+              var dur = h.duration_seconds || 0;
+              var mins = Math.floor(dur / 60);
+              var secs = dur % 60;
+              var players = [];
+              try { players = JSON.parse(h.players_json || '[]'); } catch(e) {}
+              var winnerLabel = h.winner === 'village' ? '🏡 Village' : h.winner === 'wolves' ? '🐺 Loups-Garous' : h.winner === 'lovers' ? '💕 Amoureux' : (h.winner || '?');
+              var winnerClass = h.winner === 'village' ? 'winner-village' : h.winner === 'wolves' ? 'winner-wolves' : h.winner === 'lovers' ? 'winner-lovers' : '';
+            %>
+              <tr class="ghistory-row">
+                <td class="ghistory-date">
+                  <% if (h.ended_at) { %>
+                    <span class="ghistory-date-main"><%= new Date(h.ended_at).toLocaleDateString() %></span>
+                    <span class="ghistory-date-time"><%= new Date(h.ended_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) %></span>
+                  <% } else { %>
+                    —
+                  <% } %>
+                </td>
+                <td><span class="ghistory-winner <%= winnerClass %>"><%= winnerLabel %></span></td>
+                <td><%= h.player_count || 0 %></td>
+                <td><%= h.day_count || 0 %></td>
+                <td><%= mins %>:<%= secs < 10 ? '0' + secs : secs %></td>
+                <td>
+                  <button class="btn btn-xs btn-ghost ghistory-detail-btn" data-game-idx="<%= history.indexOf(h) %>">
+                    &#128065; <span data-i18n="ghistory.btn_details">Voir</span>
+                  </button>
+                </td>
+              </tr>
+              <tr class="ghistory-detail-row" id="ghistory-detail-<%= history.indexOf(h) %>" style="display:none;">
+                <td colspan="6">
+                  <div class="ghistory-detail-content">
+                    <h4 data-i18n="ghistory.player_list">Liste des joueurs</h4>
+                    <div class="ghistory-player-grid">
+                      <% players.forEach(function(p) { %>
+                        <div class="ghistory-player <%= p.alive ? 'survived' : 'died' %>">
+                          <span class="ghistory-player-status"><%- p.alive ? '&#10084;&#65039;' : '&#9760;&#65039;' %></span>
+                          <span class="ghistory-player-name"><%= p.username || p.id %></span>
+                          <span class="ghistory-player-role role-tag role-<%= (p.role || '').toLowerCase().replace(/[^a-z]/g, '') %>"><%= p.role || '?' %></span>
+                        </div>
+                      <% }); %>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  <% } %>
+</div>
+
+<script>
+// Toggle game detail rows
+document.querySelectorAll('.ghistory-detail-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var idx = this.getAttribute('data-game-idx');
+    var row = document.getElementById('ghistory-detail-' + idx);
+    if (row) {
+      row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+    }
+  });
+});
+</script>
+
+<%- include('partials/footer') %>
