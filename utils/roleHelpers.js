@@ -4,6 +4,7 @@ const { t } = require('./i18n');
 function getRoleDescription(role) {
   const descriptions = {
     [ROLES.WEREWOLF]: t('role.instruction.werewolf'),
+    [ROLES.WHITE_WOLF]: t('role.instruction.white_wolf'),
     [ROLES.VILLAGER]: t('role.instruction.villager'),
     [ROLES.SEER]: t('role.instruction.seer'),
     [ROLES.WITCH]: t('role.instruction.witch'),
@@ -20,6 +21,7 @@ function getRoleDescription(role) {
 function getRoleImageName(role) {
   const images = {
     [ROLES.WEREWOLF]: "loupSimple.webp",
+    [ROLES.WHITE_WOLF]: "loupBlanc.webp",
     [ROLES.VILLAGER]: "villageois.webp",
     [ROLES.SEER]: "voyante.webp",
     [ROLES.WITCH]: "sorciere.png",

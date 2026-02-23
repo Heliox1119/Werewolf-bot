@@ -7,6 +7,7 @@ module.exports = {
   CUPIDON: "Cupidon",
   SALVATEUR: "Salvateur",
   LOUPS: "Loups",
+  LOUP_BLANC: "Loup Blanc",
   SORCIERE: "Sorcière",
   VOYANTE: "Voyante",
   REVEIL: "Réveil",

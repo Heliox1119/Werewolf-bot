@@ -253,6 +253,7 @@ class GameManager extends EventEmitter {
       voiceChannelId: null,
       villageChannelId: null,
       wolvesChannelId: null,
+      whiteWolfChannelId: null,
       seerChannelId: null,
       witchChannelId: null,
       cupidChannelId: null,
@@ -271,6 +272,7 @@ class GameManager extends EventEmitter {
       voteVoters: new Map(),
       witchPotions: { life: true, death: true },
       nightVictim: null,
+      whiteWolfKillTarget: null,
       witchKillTarget: null,
       witchSave: false,
       protectedPlayerId: null,
@@ -307,6 +309,7 @@ class GameManager extends EventEmitter {
         game.mainChannelId,
         game.villageChannelId,
         game.wolvesChannelId,
+        game.whiteWolfChannelId,
         game.seerChannelId,
         game.witchChannelId,
         game.cupidChannelId,
@@ -440,13 +443,14 @@ class GameManager extends EventEmitter {
       const pathMod = require('path');
 
       const roleName = translateRole(player.role) || t('summary.no_role');
-      const isWolf = player.role === ROLES.WEREWOLF;
+      const isWolf = player.role === ROLES.WEREWOLF || player.role === ROLES.WHITE_WOLF;
       
       const causeText = cause === 'wolves' ? t('death.cause_wolves')
         : cause === 'village' ? t('death.cause_village')
         : cause === 'witch' ? t('death.cause_witch')
         : cause === 'hunter' ? t('death.cause_hunter')
         : cause === 'love' ? t('death.cause_love')
+        : cause === 'white_wolf' ? t('death.cause_white_wolf')
         : t('death.cause_generic');
 
       const color = isWolf ? 0xE74C3C : 0x3498DB;
@@ -627,6 +631,25 @@ class GameManager extends EventEmitter {
         }
       }
 
+      // Résoudre le kill du Loup Blanc (à l'aube)
+      if (game.whiteWolfKillTarget) {
+        const wwVictim = game.players.find(p => p.id === game.whiteWolfKillTarget);
+        if (wwVictim && wwVictim.alive) {
+          await this.sendLogged(mainChannel, t('game.white_wolf_kill', { name: wwVictim.username }), { type: 'whiteWolfKill' });
+          const collateral = this.kill(game.mainChannelId, game.whiteWolfKillTarget);
+          nightDeaths.push(wwVictim);
+          this.logAction(game, `Dévoré par le Loup Blanc: ${wwVictim.username}`);
+          await this.announceDeathReveal(mainChannel, wwVictim, 'white_wolf');
+          for (const dead of collateral) {
+            await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
+            nightDeaths.push(dead);
+            this.logAction(game, `Mort d'amour: ${dead.username}`);
+            await this.announceDeathReveal(mainChannel, dead, 'love');
+          }
+        }
+        game.whiteWolfKillTarget = null;
+      }
+
       game.witchSave = false;
       this.scheduleSave();
 
@@ -787,7 +810,7 @@ class GameManager extends EventEmitter {
       : await guild.channels.fetch(game.mainChannelId);
 
     if (game.voiceChannelId) {
-      if (victor === 'wolves') {
+      if (victor === 'wolves' || victor === 'white_wolf') {
         this.playAmbience(game.voiceChannelId, 'victory_wolves.mp3');
       } else {
         this.playAmbience(game.voiceChannelId, 'victory_villagers.mp3');
@@ -805,12 +828,14 @@ class GameManager extends EventEmitter {
 
     // L4: Mettre à jour les stats des joueurs
     try {
-      const winningTeam = victor; // 'wolves', 'village', 'lovers', 'draw'
+      const winningTeam = victor; // 'wolves', 'village', 'white_wolf', 'lovers', 'draw'
       for (const p of game.players) {
+        const isWolfRole = p.role === ROLES.WEREWOLF || p.role === ROLES.WHITE_WOLF;
         const isWinner = winningTeam === 'draw' ? false
           : winningTeam === 'lovers' ? (game.lovers && game.lovers[0] && game.lovers[0].includes(p.id))
-          : winningTeam === 'wolves' ? (p.role === ROLES.WEREWOLF)
-          : p.role !== ROLES.WEREWOLF;
+          : winningTeam === 'white_wolf' ? (p.role === ROLES.WHITE_WOLF)
+          : winningTeam === 'wolves' ? isWolfRole
+          : !isWolfRole; // village wins
         this.db.updatePlayerStats(p.id, p.username, {
           games_played: 1,
           games_won: isWinner ? 1 : 0,
@@ -994,6 +1019,19 @@ class GameManager extends EventEmitter {
         break;
       case PHASES.LOUPS:
         this.stopListenRelay(game);
+        // Après les loups, vérifier si le Loup Blanc se réveille (nuits impaires, dayCount >= 1)
+        const isOddNight = (game.dayCount || 0) % 2 === 1;
+        if (isOddNight && this.hasAliveRealRole(game, ROLES.WHITE_WOLF)) {
+          game.subPhase = PHASES.LOUP_BLANC;
+          await this.announcePhase(guild, game, t('phase.white_wolf_wakes'));
+          this.notifyTurn(guild, game, ROLES.WHITE_WOLF);
+        } else {
+          game.subPhase = PHASES.SORCIERE;
+          await this.announcePhase(guild, game, t('phase.witch_wakes'));
+          this.notifyTurn(guild, game, ROLES.WITCH);
+        }
+        break;
+      case PHASES.LOUP_BLANC:
         game.subPhase = PHASES.SORCIERE;
         await this.announcePhase(guild, game, t('phase.witch_wakes'));
         this.notifyTurn(guild, game, ROLES.WITCH);
@@ -1078,6 +1116,9 @@ class GameManager extends EventEmitter {
         } else if (currentSub === PHASES.SALVATEUR) {
           await this.sendLogged(mainChannel, t('game.afk_salvateur'), { type: 'afkTimeout' });
           this.logAction(game, 'AFK timeout: salvateur');
+        } else if (currentSub === PHASES.LOUP_BLANC) {
+          await this.sendLogged(mainChannel, t('game.afk_white_wolf'), { type: 'afkTimeout' });
+          this.logAction(game, 'AFK timeout: loup blanc');
         } else {
           return; // Pas de timeout pour les autres sous-phases
         }
@@ -1085,7 +1126,7 @@ class GameManager extends EventEmitter {
         await this.advanceSubPhase(guild, game);
 
         // Si on est encore en nuit avec une sous-phase qui attend une action, relancer le timer
-        if (game.phase === PHASES.NIGHT && [PHASES.LOUPS, PHASES.SORCIERE, PHASES.VOYANTE, PHASES.SALVATEUR].includes(game.subPhase)) {
+        if (game.phase === PHASES.NIGHT && [PHASES.LOUPS, PHASES.LOUP_BLANC, PHASES.SORCIERE, PHASES.VOYANTE, PHASES.SALVATEUR].includes(game.subPhase)) {
           this.startNightAfkTimeout(guild, game);
         } else if (game.subPhase === PHASES.REVEIL) {
           // Transition vers le jour
@@ -1246,8 +1287,12 @@ class GameManager extends EventEmitter {
       if (game.players.length >= 9) {
         rolesPool.push(ROLES.ANCIEN);
       }
-      // Si au moins 10 joueurs, ajouter l'Idiot du Village
+      // Si au moins 10 joueurs, ajouter le Loup Blanc (remplace un loup normal dans la meute)
       if (game.players.length >= 10) {
+        rolesPool.push(ROLES.WHITE_WOLF);
+      }
+      // Si au moins 11 joueurs, ajouter l'Idiot du Village
+      if (game.players.length >= 11) {
         rolesPool.push(ROLES.IDIOT);
       }
     }
@@ -1358,12 +1403,19 @@ class GameManager extends EventEmitter {
     if (game.wolvesChannelId) {
       try {
         const wolvesChannel = await guild.channels.fetch(game.wolvesChannelId);
-        const wolves = game.players.filter(p => p.role === ROLES.WEREWOLF);
+        const wolves = game.players.filter(p => p.role === ROLES.WEREWOLF || p.role === ROLES.WHITE_WOLF);
         // Ping les loups pour les identifier dans le channel
         const wolfPings = wolves.map(w => `<@${w.id}>`).join(' ');
         const wolfNames = wolves.map(w => `🐺 **${w.username}**`).join('\n');
         await this.sendLogged(wolvesChannel, t('welcome.wolves', { n: wolves.length }) + `\n\n${t('welcome.wolves_members')}\n${wolfNames}\n\n${wolfPings}`, { type: 'wolvesWelcome' });
       } catch (e) { logger.warn('Failed to send wolves welcome', { error: e.message }); }
+    }
+
+    if (game.whiteWolfChannelId) {
+      try {
+        const whiteWolfChannel = await guild.channels.fetch(game.whiteWolfChannelId);
+        await this.sendLogged(whiteWolfChannel, t('welcome.white_wolf'), { type: 'whiteWolfWelcome' });
+      } catch (e) { logger.warn('Failed to send white wolf welcome', { error: e.message }); }
     }
 
     if (game.seerChannelId) {
@@ -1525,6 +1577,22 @@ class GameManager extends EventEmitter {
       game.salvateurChannelId = salvateurChannel.id;
       logger.success("✅ Salvateur channel created", { id: salvateurChannel.id });
 
+      // Créer le channel du Loup Blanc
+      logger.debug("Creating white wolf channel...");
+      const whiteWolfChannel = await guild.channels.create({
+        name: t('channel.white_wolf'),
+        type: 0, // GUILD_TEXT
+        parent: categoryId || undefined,
+        permissionOverwrites: [
+          {
+            id: guild.id,
+            deny: ["ViewChannel"]
+          }
+        ]
+      });
+      game.whiteWolfChannelId = whiteWolfChannel.id;
+      logger.success("✅ White Wolf channel created", { id: whiteWolfChannel.id });
+
       // Créer le channel spectateurs (pour les morts)
       logger.debug("Creating spectator channel...");
       const spectatorChannel = await guild.channels.create({
@@ -1592,7 +1660,7 @@ class GameManager extends EventEmitter {
       ];
 
       // Ajouter uniquement les joueurs valides (membres du serveur)
-      for (const p of game.players.filter(p => p.role === ROLES.WEREWOLF && p.alive)) {
+      for (const p of game.players.filter(p => (p.role === ROLES.WEREWOLF || p.role === ROLES.WHITE_WOLF) && p.alive)) {
         try {
           await guild.members.fetch(p.id);
           wolvesPerms.push({
@@ -1606,6 +1674,30 @@ class GameManager extends EventEmitter {
 
       await wolvesChannel.permissionOverwrites.set(wolvesPerms);
       logger.success("✅ Wolves channel permissions updated");
+
+      // Mettre à jour le channel du Loup Blanc
+      if (game.whiteWolfChannelId) {
+        try {
+          const whiteWolfChannel = await guild.channels.fetch(game.whiteWolfChannelId);
+          const whiteWolfPlayer = game.players.find(p => p.role === ROLES.WHITE_WOLF && p.alive);
+          const whiteWolfPerms = [
+            { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }
+          ];
+          if (whiteWolfPlayer) {
+            try {
+              await guild.members.fetch(whiteWolfPlayer.id);
+              whiteWolfPerms.push({
+                id: whiteWolfPlayer.id,
+                allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
+              });
+            } catch (err) {
+              logger.warn(`Ignored non-guild member for white wolf permissions`, { playerId: whiteWolfPlayer.id });
+            }
+          }
+          await whiteWolfChannel.permissionOverwrites.set(whiteWolfPerms);
+          logger.success("✅ White Wolf channel permissions updated");
+        } catch (e) { logger.warn('Failed to update white wolf channel permissions', { error: e.message }); }
+      }
 
       // Mettre à jour le channel de la voyante
       const seerChannel = await guild.channels.fetch(game.seerChannelId);
@@ -2152,6 +2244,7 @@ class GameManager extends EventEmitter {
       // Tous les salons privés de la partie
       const allRoleChannels = [
         game.wolvesChannelId,
+        game.whiteWolfChannelId,
         game.seerChannelId,
         game.witchChannelId,
         game.cupidChannelId,
@@ -2250,7 +2343,7 @@ class GameManager extends EventEmitter {
   /**
    * Vérifie s'il y a un gagnant
    * @param {Object} game - L'objet game
-   * @returns {string|null} - 'wolves', 'village', 'lovers' ou null
+   * @returns {string|null} - 'wolves', 'village', 'white_wolf', 'lovers' ou null
    */
   checkWinner(game) {
     const alivePlayers = game.players.filter(p => p.alive);
@@ -2259,9 +2352,18 @@ class GameManager extends EventEmitter {
       return 'draw'; // Tout le monde est mort — égalité
     }
 
-    // Compter les loups vivants
-    const aliveWolves = alivePlayers.filter(p => p.role === ROLES.WEREWOLF);
-    const aliveVillagers = alivePlayers.filter(p => p.role !== ROLES.WEREWOLF);
+    // Helper : est-ce un loup (normal ou blanc) ?
+    const isWolfRole = (role) => role === ROLES.WEREWOLF || role === ROLES.WHITE_WOLF;
+
+    // Compter les loups vivants (tous types confondus)
+    const aliveWolves = alivePlayers.filter(p => isWolfRole(p.role));
+    const aliveVillagers = alivePlayers.filter(p => !isWolfRole(p.role));
+
+    // Victoire du Loup Blanc : il est le dernier survivant
+    const aliveWhiteWolf = alivePlayers.filter(p => p.role === ROLES.WHITE_WOLF);
+    if (aliveWhiteWolf.length === 1 && alivePlayers.length === 1) {
+      return 'white_wolf';
+    }
 
     // Victoire des amoureux : il ne reste que les 2 amoureux
     if (game.lovers && game.lovers.length > 0 && Array.isArray(game.lovers[0])) {

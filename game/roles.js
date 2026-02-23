@@ -1,5 +1,6 @@
 module.exports = {
   WEREWOLF: "Loup-Garou",
+  WHITE_WOLF: "Loup Blanc",
   VILLAGER: "Villageois",
   SEER: "Voyante",
   WITCH: "Sorcière",

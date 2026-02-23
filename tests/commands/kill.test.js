@@ -68,6 +68,7 @@ describe('Commande /kill', () => {
   test('refuse depuis un mauvais channel', async () => {
     const game = setupGame('ch-kill');
     // Use the village channel so the game is found but it's not wolves channel
+    game.players.push(createMockPlayer({ id: 'user-test', role: ROLES.WEREWOLF, alive: true }));
     const interaction = createMockInteraction({ commandName: 'kill', channelId: 'ch-village' });
 
     await killCommand.execute(interaction);
@@ -92,6 +93,7 @@ describe('Commande /kill', () => {
   test('refuse pendant la mauvaise sous-phase', async () => {
     const game = setupGame('ch-kill');
     game.subPhase = PHASES.SORCIERE;
+    game.players.push(createMockPlayer({ id: 'user-test', role: ROLES.WEREWOLF, alive: true }));
     const interaction = createMockInteraction({ commandName: 'kill', channelId: 'ch-wolves' });
 
     await killCommand.execute(interaction);

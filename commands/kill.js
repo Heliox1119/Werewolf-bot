@@ -29,15 +29,26 @@ module.exports = {
       return;
     }
 
-    // Vérifier que c'est le channel des loups
-    if (interaction.channelId !== game.wolvesChannelId) {
-      await safeReply(interaction, { content: t('error.only_wolves_channel'), flags: MessageFlags.Ephemeral });
+    // Vérifier que c'est la nuit
+    if (game.phase !== PHASES.NIGHT) {
+      await safeReply(interaction, { content: t('error.wolves_only_at_night'), flags: MessageFlags.Ephemeral });
       return;
     }
 
-    // Vérifier que c'est la nuit ET la sous-phase des loups
-    if (game.phase !== PHASES.NIGHT) {
-      await safeReply(interaction, { content: t('error.wolves_only_at_night'), flags: MessageFlags.Ephemeral });
+    const player = game.players.find(p => p.id === interaction.user.id);
+    if (!player || !player.alive) {
+      await safeReply(interaction, { content: t('error.you_are_dead'), flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    // === LOUP BLANC solo kill phase ===
+    if (interaction.channelId === game.whiteWolfChannelId && game.subPhase === PHASES.LOUP_BLANC) {
+      return await this.handleWhiteWolfKill(interaction, game, player);
+    }
+
+    // === Regular wolves kill phase ===
+    if (interaction.channelId !== game.wolvesChannelId) {
+      await safeReply(interaction, { content: t('error.only_wolves_channel'), flags: MessageFlags.Ephemeral });
       return;
     }
     if (game.subPhase !== PHASES.LOUPS) {
@@ -45,14 +56,10 @@ module.exports = {
       return;
     }
 
-    // Vérifier que c'est un loup vivant
-    const player = game.players.find(p => p.id === interaction.user.id);
-    if (!player || player.role !== ROLES.WEREWOLF) {
+    // Vérifier que c'est un loup vivant (WEREWOLF ou WHITE_WOLF)
+    const isWolf = player.role === ROLES.WEREWOLF || player.role === ROLES.WHITE_WOLF;
+    if (!isWolf) {
       await safeReply(interaction, { content: t('error.not_werewolf'), flags: MessageFlags.Ephemeral });
-      return;
-    }
-    if (!player.alive) {
-      await safeReply(interaction, { content: t('error.you_are_dead'), flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -69,7 +76,8 @@ module.exports = {
       return;
     }
 
-    if (targetPlayer.role === ROLES.WEREWOLF) {
+    // Les loups ne peuvent pas tuer un autre loup (pendant la phase LOUPS)
+    if (targetPlayer.role === ROLES.WEREWOLF || targetPlayer.role === ROLES.WHITE_WOLF) {
       await safeReply(interaction, { content: t('error.cannot_kill_wolf'), flags: MessageFlags.Ephemeral });
       return;
     }
@@ -78,7 +86,7 @@ module.exports = {
     if (!game.wolfVotes) game.wolfVotes = new Map(); // wolfId -> targetId
     game.wolfVotes.set(interaction.user.id, target.id);
 
-    const aliveWolves = game.players.filter(p => p.role === ROLES.WEREWOLF && p.alive && gameManager.isRealPlayerId(p.id));
+    const aliveWolves = game.players.filter(p => (p.role === ROLES.WEREWOLF || p.role === ROLES.WHITE_WOLF) && p.alive && gameManager.isRealPlayerId(p.id));
     const totalWolves = aliveWolves.length;
     const votesForTarget = [...game.wolfVotes.values()].filter(v => v === target.id).length;
     const majorityNeeded = Math.ceil(totalWolves / 2);
@@ -96,29 +104,8 @@ module.exports = {
       try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'kill', interaction.user.id, target.id); } catch (e) { /* ignore */ }
       await safeReply(interaction, { content: t('cmd.kill.consensus', { name: target.username }), flags: MessageFlags.Ephemeral });
 
-      // Auto-chain to next night role or day
-      if (gameManager.hasAliveRealRole(game, ROLES.WITCH)) {
-        game.subPhase = PHASES.SORCIERE;
-        // Informer la sorcière de la victime dans son channel privé
-        if (game.witchChannelId) {
-          try {
-            const witchChannel = await interaction.guild.channels.fetch(game.witchChannelId);
-            await witchChannel.send(t('cmd.kill.witch_notify', { name: target.username }));
-          } catch (e) { /* ignore */ }
-        }
-        await gameManager.announcePhase(interaction.guild, game, t('phase.witch_wakes'));
-        gameManager.startNightAfkTimeout(interaction.guild, game);
-        return;
-      }
-
-      if (gameManager.hasAliveRealRole(game, ROLES.SEER)) {
-        game.subPhase = PHASES.VOYANTE;
-        await gameManager.announcePhase(interaction.guild, game, t('phase.seer_wakes'));
-        gameManager.startNightAfkTimeout(interaction.guild, game);
-        return;
-      }
-
-      await gameManager.transitionToDay(interaction.guild, game);
+      // Auto-chain to next night role
+      await this.advanceFromWolves(interaction.guild, game, target.username);
     } else {
       // Pas encore consensus
       const allVoted = aliveWolves.every(w => game.wolfVotes.has(w.id));
@@ -140,30 +127,111 @@ module.exports = {
         await wolvesChannel.send(t('cmd.kill.pack_chose', { name: winnerPlayer.username }));
         await safeReply(interaction, { content: t('cmd.kill.all_voted', { name: winnerPlayer.username }), flags: MessageFlags.Ephemeral });
 
-        if (gameManager.hasAliveRealRole(game, ROLES.WITCH)) {
-          game.subPhase = PHASES.SORCIERE;
-          if (game.witchChannelId) {
-            try {
-              const witchChannel2 = await interaction.guild.channels.fetch(game.witchChannelId);
-              await witchChannel2.send(t('cmd.kill.witch_notify', { name: winnerPlayer.username }));
-            } catch (e) { /* ignore */ }
-          }
-          await gameManager.announcePhase(interaction.guild, game, t('phase.witch_wakes'));
-          gameManager.startNightAfkTimeout(interaction.guild, game);
-          return;
-        }
-
-        if (gameManager.hasAliveRealRole(game, ROLES.SEER)) {
-          game.subPhase = PHASES.VOYANTE;
-          await gameManager.announcePhase(interaction.guild, game, t('phase.seer_wakes'));
-          gameManager.startNightAfkTimeout(interaction.guild, game);
-          return;
-        }
-
-        await gameManager.transitionToDay(interaction.guild, game);
+        // Auto-chain to next night role
+        await this.advanceFromWolves(interaction.guild, game, winnerPlayer.username);
       } else {
         await safeReply(interaction, { content: t('cmd.kill.vote_pending', { name: target.username, n: votesForTarget, m: majorityNeeded }), flags: MessageFlags.Ephemeral });
       }
     }
+  },
+
+  /**
+   * Advance from LOUPS phase: LOUP_BLANC (odd nights) → SORCIERE → VOYANTE → REVEIL
+   */
+  async advanceFromWolves(guild, game, victimName) {
+    // Vérifier si le Loup Blanc se réveille (nuits impaires, dayCount >= 1)
+    const isOddNight = (game.dayCount || 0) % 2 === 1;
+    if (isOddNight && gameManager.hasAliveRealRole(game, ROLES.WHITE_WOLF)) {
+      game.subPhase = PHASES.LOUP_BLANC;
+      await gameManager.announcePhase(guild, game, t('phase.white_wolf_wakes'));
+      gameManager.notifyTurn(guild, game, ROLES.WHITE_WOLF);
+      gameManager.startNightAfkTimeout(guild, game);
+      return;
+    }
+
+    if (gameManager.hasAliveRealRole(game, ROLES.WITCH)) {
+      game.subPhase = PHASES.SORCIERE;
+      // Informer la sorcière de la victime dans son channel privé
+      if (game.witchChannelId) {
+        try {
+          const witchChannel = await guild.channels.fetch(game.witchChannelId);
+          await witchChannel.send(t('cmd.kill.witch_notify', { name: victimName }));
+        } catch (e) { /* ignore */ }
+      }
+      await gameManager.announcePhase(guild, game, t('phase.witch_wakes'));
+      gameManager.startNightAfkTimeout(guild, game);
+      return;
+    }
+
+    if (gameManager.hasAliveRealRole(game, ROLES.SEER)) {
+      game.subPhase = PHASES.VOYANTE;
+      await gameManager.announcePhase(guild, game, t('phase.seer_wakes'));
+      gameManager.startNightAfkTimeout(guild, game);
+      return;
+    }
+
+    await gameManager.transitionToDay(guild, game);
+  },
+
+  /**
+   * Handle the White Wolf's solo kill during LOUP_BLANC phase.
+   * The White Wolf can kill ONE other wolf (WEREWOLF only, not itself).
+   */
+  async handleWhiteWolfKill(interaction, game, player) {
+    if (player.role !== ROLES.WHITE_WOLF) {
+      await safeReply(interaction, { content: t('error.action_forbidden'), flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    const target = interaction.options.getUser("target");
+    const targetPlayer = game.players.find(p => p.id === target.id);
+
+    if (!targetPlayer) {
+      await safeReply(interaction, { content: t('error.player_not_found'), flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    if (!targetPlayer.alive) {
+      await safeReply(interaction, { content: t('error.player_already_dead'), flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    // Le Loup Blanc ne peut tuer que des loups normaux (pas lui-même, pas des villageois)
+    if (targetPlayer.role !== ROLES.WEREWOLF) {
+      await safeReply(interaction, { content: t('error.white_wolf_target_must_be_wolf'), flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    // Enregistrer la cible
+    game.whiteWolfKillTarget = target.id;
+    gameManager.clearNightAfkTimeout(game);
+    gameManager.logAction(game, `Loup Blanc choisit de dévorer: ${target.username}`);
+    try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'white_wolf_kill', interaction.user.id, target.id); } catch (e) { /* ignore */ }
+
+    await safeReply(interaction, { content: t('cmd.kill.white_wolf_success', { name: target.username }), flags: MessageFlags.Ephemeral });
+
+    // Avancer vers la sous-phase suivante (SORCIERE ou VOYANTE ou jour)
+    if (gameManager.hasAliveRealRole(game, ROLES.WITCH)) {
+      game.subPhase = PHASES.SORCIERE;
+      if (game.witchChannelId && game.nightVictim) {
+        try {
+          const nightVictimPlayer = game.players.find(p => p.id === game.nightVictim);
+          const witchChannel = await interaction.guild.channels.fetch(game.witchChannelId);
+          await witchChannel.send(t('cmd.kill.witch_notify', { name: nightVictimPlayer ? nightVictimPlayer.username : '???' }));
+        } catch (e) { /* ignore */ }
+      }
+      await gameManager.announcePhase(interaction.guild, game, t('phase.witch_wakes'));
+      gameManager.startNightAfkTimeout(interaction.guild, game);
+      return;
+    }
+
+    if (gameManager.hasAliveRealRole(game, ROLES.SEER)) {
+      game.subPhase = PHASES.VOYANTE;
+      await gameManager.announcePhase(interaction.guild, game, t('phase.seer_wakes'));
+      gameManager.startNightAfkTimeout(interaction.guild, game);
+      return;
+    }
+
+    await gameManager.transitionToDay(interaction.guild, game);
   }
 };
