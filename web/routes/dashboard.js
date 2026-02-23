@@ -120,7 +120,12 @@ module.exports = function(webServer) {
       }
       const userGuilds = (req.user.guilds || []).filter(g => (parseInt(g.permissions) & 0x28) !== 0);
       const guildIds = userGuilds.map(g => g.id);
-      const games = gm.getAllGames()
+
+      const allGames = gm.getAllGames();
+      console.log('[MOD PAGE] All active games:', allGames.map(g => ({ id: g.mainChannelId, guildId: g.guildId, phase: g.phase })));
+      console.log('[MOD PAGE] User admin guildIds:', guildIds);
+
+      const games = allGames
         .filter(g => guildIds.includes(g.guildId))
         .map(g => {
           const snap = gm.getGameSnapshot(g);
@@ -130,6 +135,8 @@ module.exports = function(webServer) {
           }));
           return snap;
         });
+
+      console.log('[MOD PAGE] Filtered games count:', games.length, 'IDs:', games.map(g => g.gameId));
 
       res.render('moderation', {
         title: 'Moderation',

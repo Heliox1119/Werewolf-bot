@@ -230,7 +230,7 @@
       }
 
       // Refresh on major events
-      if (['gameEnded', 'gameStarted'].includes(data.event)) {
+      if (['gameEnded', 'gameStarted', 'gameCreated'].includes(data.event)) {
         setTimeout(() => location.reload(), 1500);
       }
     });
