@@ -174,6 +174,44 @@ module.exports = function(webServer) {
     }
   });
 
+  /** GET /status — Status page (alias for monitoring) */
+  router.get('/status', (req, res) => {
+    try {
+      res.render('monitoring', {
+        title: 'Status'
+      });
+    } catch (e) {
+      res.render('error', { title: 'Error', message: e.message });
+    }
+  });
+
+  /** GET /docs — Documentation wiki page (public) */
+  router.get('/docs', (req, res) => {
+    try {
+      res.render('docs', { title: 'Documentation' });
+    } catch (e) {
+      res.render('error', { title: 'Error', message: e.message });
+    }
+  });
+
+  /** GET /premium — Premium page (public) */
+  router.get('/premium', (req, res) => {
+    try {
+      res.render('premium', { title: 'Premium' });
+    } catch (e) {
+      res.render('error', { title: 'Error', message: e.message });
+    }
+  });
+
+  /** GET /support — Support page (public) */
+  router.get('/support', (req, res) => {
+    try {
+      res.render('support', { title: 'Support' });
+    } catch (e) {
+      res.render('error', { title: 'Error', message: e.message });
+    }
+  });
+
   /** GET /roles — Custom roles editor page (Admin) */
   router.get('/roles', (req, res) => {
     try {

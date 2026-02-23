@@ -1,0 +1,761 @@
+<%- include('partials/header') %>
+
+<div class="docs-layout">
+  <!-- Docs Sidebar Navigation -->
+  <aside class="docs-sidebar">
+    <nav class="docs-sidebar-nav">
+      <div class="docs-nav-section" data-i18n="docs.nav_getting_started">GETTING STARTED</div>
+      <a href="#overview" class="docs-nav-link active"><span class="docs-nav-icon">📖</span> <span data-i18n="docs.overview">Overview</span></a>
+      <a href="#game-flow" class="docs-nav-link"><span class="docs-nav-icon">🔄</span> <span data-i18n="docs.game_flow">Game Flow</span></a>
+      <a href="#setup" class="docs-nav-link"><span class="docs-nav-icon">⚙️</span> <span data-i18n="docs.setup">Setup</span></a>
+
+      <div class="docs-nav-section" data-i18n="docs.nav_roles">ROLES</div>
+      <a href="#roles-village" class="docs-nav-link"><span class="docs-nav-icon">🏘️</span> <span data-i18n="docs.village_roles">Village</span></a>
+      <a href="#roles-wolves" class="docs-nav-link"><span class="docs-nav-icon">🐺</span> <span data-i18n="docs.wolf_roles">Wolves</span></a>
+      <a href="#roles-solo" class="docs-nav-link"><span class="docs-nav-icon">🎭</span> <span data-i18n="docs.solo_roles">Solo</span></a>
+      <a href="#role-distribution" class="docs-nav-link"><span class="docs-nav-icon">🎲</span> <span data-i18n="docs.distribution">Distribution</span></a>
+
+      <div class="docs-nav-section" data-i18n="docs.nav_gameplay">GAMEPLAY</div>
+      <a href="#phases" class="docs-nav-link"><span class="docs-nav-icon">🌙</span> <span data-i18n="docs.phases">Phases</span></a>
+      <a href="#night-actions" class="docs-nav-link"><span class="docs-nav-icon">🔮</span> <span data-i18n="docs.night_actions">Night Actions</span></a>
+      <a href="#day-actions" class="docs-nav-link"><span class="docs-nav-icon">☀️</span> <span data-i18n="docs.day_actions">Day Actions</span></a>
+      <a href="#special-mechanics" class="docs-nav-link"><span class="docs-nav-icon">✨</span> <span data-i18n="docs.special_mechanics">Special Mechanics</span></a>
+      <a href="#victory" class="docs-nav-link"><span class="docs-nav-icon">🏆</span> <span data-i18n="docs.victory">Victory</span></a>
+
+      <div class="docs-nav-section" data-i18n="docs.nav_commands">COMMANDS</div>
+      <a href="#cmd-player" class="docs-nav-link"><span class="docs-nav-icon">🎮</span> <span data-i18n="docs.player_commands">Player</span></a>
+      <a href="#cmd-night" class="docs-nav-link"><span class="docs-nav-icon">🌑</span> <span data-i18n="docs.night_commands">Night</span></a>
+      <a href="#cmd-day" class="docs-nav-link"><span class="docs-nav-icon">🗳️</span> <span data-i18n="docs.day_commands">Day</span></a>
+      <a href="#cmd-admin" class="docs-nav-link"><span class="docs-nav-icon">🔧</span> <span data-i18n="docs.admin_commands">Admin</span></a>
+
+      <div class="docs-nav-section" data-i18n="docs.nav_progression">PROGRESSION</div>
+      <a href="#achievements" class="docs-nav-link"><span class="docs-nav-icon">🏅</span> <span data-i18n="docs.achievements">Achievements</span></a>
+      <a href="#elo" class="docs-nav-link"><span class="docs-nav-icon">📊</span> <span data-i18n="docs.elo">ELO & Tiers</span></a>
+
+      <div class="docs-nav-section" data-i18n="docs.nav_config">CONFIGURATION</div>
+      <a href="#rules" class="docs-nav-link"><span class="docs-nav-icon">📋</span> <span data-i18n="docs.rules">Rules</span></a>
+      <a href="#timeouts" class="docs-nav-link"><span class="docs-nav-icon">⏱️</span> <span data-i18n="docs.timeouts">Timeouts</span></a>
+    </nav>
+  </aside>
+
+  <!-- Docs Content -->
+  <div class="docs-content">
+
+    <!-- Hero -->
+    <div class="docs-hero">
+      <h1 data-i18n="docs.title">📚 Werewolf Bot — Complete Wiki</h1>
+      <p data-i18n="docs.subtitle">Everything you need to know about playing, configuring and mastering Werewolf on Discord.</p>
+    </div>
+
+    <!-- =================== OVERVIEW =================== -->
+    <section class="doc-section" id="overview">
+      <h2 class="doc-section-title"><span class="doc-section-icon">📖</span> <span data-i18n="docs.overview_title">Overview</span></h2>
+      <div class="doc-info-box">
+        <p data-i18n="docs.overview_text">Werewolf Bot is a complete Discord implementation of the classic Werewolf (Mafia) party game. Players are secretly assigned roles — some are villagers trying to survive, others are werewolves hunting at night. By day, the village debates and votes to eliminate suspected wolves. The game alternates between night and day phases until one side achieves victory.</p>
+      </div>
+      <div class="doc-info-box">
+        <h4>⚡ <span data-i18n="docs.key_features">Key Features</span></h4>
+        <ul>
+          <li data-i18n="docs.feature_1">12 unique roles across 3 camps (Village, Wolves, Solo)</li>
+          <li data-i18n="docs.feature_2">Automatic voice channel management (muting/unmuting per phase)</li>
+          <li data-i18n="docs.feature_3">Private channels for wolves, seer, witch, and other special roles</li>
+          <li data-i18n="docs.feature_4">Captain election and special death mechanics</li>
+          <li data-i18n="docs.feature_5">Lover system with Cupid for romantic entanglements</li>
+          <li data-i18n="docs.feature_6">ELO ranking, achievements, and progression system</li>
+          <li data-i18n="docs.feature_7">Fully configurable rules per server</li>
+          <li data-i18n="docs.feature_8">Real-time web dashboard with spectator mode</li>
+          <li data-i18n="docs.feature_9">Multi-language support (FR / EN)</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- =================== GAME FLOW =================== -->
+    <section class="doc-section" id="game-flow">
+      <h2 class="doc-section-title"><span class="doc-section-icon">🔄</span> <span data-i18n="docs.game_flow_title">Game Flow</span></h2>
+      <div class="doc-flow">
+        <div class="doc-flow-step">⚙️ <span data-i18n="docs.flow_setup">Setup</span></div>
+        <span class="doc-flow-arrow">→</span>
+        <div class="doc-flow-step">📝 <span data-i18n="docs.flow_create">Create & Join</span></div>
+        <span class="doc-flow-arrow">→</span>
+        <div class="doc-flow-step">🎭 <span data-i18n="docs.flow_roles">Role Assignment</span></div>
+        <span class="doc-flow-arrow">→</span>
+        <div class="doc-flow-step">📢 <span data-i18n="docs.flow_channels">Channel Creation</span></div>
+        <span class="doc-flow-arrow">→</span>
+        <div class="doc-flow-step">🌙 <span data-i18n="docs.flow_night">Night Phase</span></div>
+        <span class="doc-flow-arrow">⇄</span>
+        <div class="doc-flow-step">☀️ <span data-i18n="docs.flow_day">Day Phase</span></div>
+        <span class="doc-flow-arrow">→</span>
+        <div class="doc-flow-step">🏆 <span data-i18n="docs.flow_victory">Victory</span></div>
+      </div>
+
+      <div class="doc-info-box">
+        <h4>📝 <span data-i18n="docs.flow_details">Detailed Flow</span></h4>
+        <ul>
+          <li data-i18n="docs.flow_d1">An admin runs /setup to configure the bot for the server (category, channels, rules)</li>
+          <li data-i18n="docs.flow_d2">A player uses /create to start a lobby. Others join with /join (minimum 4 players)</li>
+          <li data-i18n="docs.flow_d3">The host uses /start — roles are secretly assigned via DM to each player</li>
+          <li data-i18n="docs.flow_d4">Private channels are created for wolves, seer, witch, etc.</li>
+          <li data-i18n="docs.flow_d5">Night phase: special roles act in order (Thief → Cupid → Guardian → Wolves → White Wolf → Witch → Seer)</li>
+          <li data-i18n="docs.flow_d6">Day phase: deaths are announced, captain vote (if no captain), deliberation, then village vote</li>
+          <li data-i18n="docs.flow_d7">The cycle repeats until a victory condition is met</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- =================== SETUP =================== -->
+    <section class="doc-section" id="setup">
+      <h2 class="doc-section-title"><span class="doc-section-icon">⚙️</span> <span data-i18n="docs.setup_title">Initial Setup</span></h2>
+      <div class="doc-info-box">
+        <h4>🔧 <span data-i18n="docs.setup_steps">Setup Steps</span></h4>
+        <ul>
+          <li data-i18n="docs.setup_1">Invite the bot to your server with admin permissions</li>
+          <li data-i18n="docs.setup_2">Run /setup — this launches an interactive wizard</li>
+          <li data-i18n="docs.setup_3">The wizard creates: a game category, a main text channel, and a voice channel</li>
+          <li data-i18n="docs.setup_4">Optionally configure rules with /setrules (wolf count, roles enabled, etc.)</li>
+          <li data-i18n="docs.setup_5">Choose a language with /lang fr or /lang en</li>
+          <li data-i18n="docs.setup_6">Players can now /create games in the configured channel!</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- =================== ROLES: VILLAGE =================== -->
+    <section class="doc-section" id="roles-village">
+      <h2 class="doc-section-title"><span class="doc-section-icon">🏘️</span> <span data-i18n="docs.village_title">Village Roles</span></h2>
+      <div class="doc-roles-grid">
+
+        <div class="doc-role-card camp-village-card">
+          <img src="/static/img/roles/villageois.webp" alt="Villager" class="doc-role-img">
+          <div class="doc-role-body">
+            <div class="doc-role-name" data-i18n="role.name.VILLAGER">Villager</div>
+            <div class="doc-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
+            <p class="doc-role-desc" data-i18n="docs.role_villager">A simple villager with no special power. Must use deduction, observation and voting to unmask the wolves. The backbone of the village team.</p>
+          </div>
+        </div>
+
+        <div class="doc-role-card camp-village-card">
+          <img src="/static/img/roles/voyante.webp" alt="Seer" class="doc-role-img">
+          <div class="doc-role-body">
+            <div class="doc-role-name" data-i18n="role.name.SEER">Seer</div>
+            <div class="doc-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
+            <p class="doc-role-desc" data-i18n="docs.role_seer">Each night, the seer can use /see to discover one player's true role. Vital information for the village, but must stay hidden from the wolves.</p>
+            <div class="doc-role-ability" data-i18n="docs.ability_seer">🔮 /see @player — Reveals the target's role via DM</div>
+          </div>
+        </div>
+
+        <div class="doc-role-card camp-village-card">
+          <img src="/static/img/roles/sorciere.png" alt="Witch" class="doc-role-img">
+          <div class="doc-role-body">
+            <div class="doc-role-name" data-i18n="role.name.WITCH">Witch</div>
+            <div class="doc-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
+            <p class="doc-role-desc" data-i18n="docs.role_witch">Possesses two potions, each usable once per game: a life potion to save the wolves' victim, and a death potion to kill any player. Learns who the wolves targeted each night.</p>
+            <div class="doc-role-ability" data-i18n="docs.ability_witch">🧪 /potion heal|kill [@player] — Use a potion</div>
+          </div>
+        </div>
+
+        <div class="doc-role-card camp-village-card">
+          <img src="/static/img/roles/chasseur.webp" alt="Hunter" class="doc-role-img">
+          <div class="doc-role-body">
+            <div class="doc-role-name" data-i18n="role.name.HUNTER">Hunter</div>
+            <div class="doc-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
+            <p class="doc-role-desc" data-i18n="docs.role_hunter">When the hunter dies (by any cause), he fires a last shot and can take another player down with him. Has 90 seconds to choose a target.</p>
+            <div class="doc-role-ability" data-i18n="docs.ability_hunter">🔫 /shoot @player — Fires upon death (90s timeout)</div>
+          </div>
+        </div>
+
+        <div class="doc-role-card camp-village-card">
+          <img src="/static/img/roles/cupidon.webp" alt="Cupid" class="doc-role-img">
+          <div class="doc-role-body">
+            <div class="doc-role-name" data-i18n="role.name.CUPID">Cupid</div>
+            <div class="doc-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
+            <p class="doc-role-desc" data-i18n="docs.role_cupid">On the very first night, Cupid designates two lovers with /love. If one lover dies, the other dies of a broken heart. If the lovers are from opposite camps, they win together as a unique pair.</p>
+            <div class="doc-role-ability" data-i18n="docs.ability_cupid">💘 /love @player1 @player2 — Creates a love bond (Night 1 only)</div>
+          </div>
+        </div>
+
+        <div class="doc-role-card camp-village-card">
+          <img src="/static/img/roles/salvateur.webp" alt="Guardian" class="doc-role-img">
+          <div class="doc-role-body">
+            <div class="doc-role-name" data-i18n="role.name.SALVATEUR">Guardian</div>
+            <div class="doc-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
+            <p class="doc-role-desc" data-i18n="docs.role_salvateur">Each night, the Guardian protects one player from the werewolves' attack. Cannot protect the same player two nights in a row.</p>
+            <div class="doc-role-ability" data-i18n="docs.ability_salvateur">🛡️ /protect @player — Shield a player for the night</div>
+          </div>
+        </div>
+
+        <div class="doc-role-card camp-village-card">
+          <img src="/static/img/roles/petiteFille.webp" alt="Little Girl" class="doc-role-img">
+          <div class="doc-role-body">
+            <div class="doc-role-name" data-i18n="role.name.PETITE_FILLE">Little Girl</div>
+            <div class="doc-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
+            <p class="doc-role-desc" data-i18n="docs.role_petite_fille">Can spy on the werewolves at night using /listen, seeing fragments of their conversation. Risky — if the wolves notice her, they can target her.</p>
+            <div class="doc-role-ability" data-i18n="docs.ability_petite_fille">👂 /listen — Eavesdrop on werewolf channel</div>
+          </div>
+        </div>
+
+        <div class="doc-role-card camp-village-card">
+          <img src="/static/img/roles/idiot.webp" alt="Village Idiot" class="doc-role-img">
+          <div class="doc-role-body">
+            <div class="doc-role-name" data-i18n="role.name.IDIOT">Village Idiot</div>
+            <div class="doc-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
+            <p class="doc-role-desc" data-i18n="docs.role_idiot">If voted out by the village during the day, the Idiot is revealed but survives — however, he permanently loses his right to vote. Dies normally to wolf attacks.</p>
+          </div>
+        </div>
+
+        <div class="doc-role-card camp-village-card">
+          <img src="/static/img/roles/ancien.webp" alt="Elder" class="doc-role-img">
+          <div class="doc-role-body">
+            <div class="doc-role-name" data-i18n="role.name.ANCIEN">Elder</div>
+            <div class="doc-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
+            <p class="doc-role-desc" data-i18n="docs.role_ancien">Survives the first werewolf attack thanks to his resilience (has 2 lives against wolves). If killed by the village vote, all special villager powers are drained for the rest of the game.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =================== ROLES: WOLVES =================== -->
+    <section class="doc-section" id="roles-wolves">
+      <h2 class="doc-section-title"><span class="doc-section-icon">🐺</span> <span data-i18n="docs.wolves_title">Wolf Roles</span></h2>
+      <div class="doc-roles-grid">
+
+        <div class="doc-role-card camp-wolves-card">
+          <img src="/static/img/roles/loupSimple.webp" alt="Werewolf" class="doc-role-img">
+          <div class="doc-role-body">
+            <div class="doc-role-name" data-i18n="role.name.WEREWOLF">Werewolf</div>
+            <div class="doc-role-meta"><span class="role-camp camp-wolves" data-i18n="role.camp.wolves">Wolves</span></div>
+            <p class="doc-role-desc" data-i18n="docs.role_werewolf">Each night the werewolves gather in a private channel and vote on a victim to devour using /kill. They must reach consensus. During the day, they pretend to be villagers.</p>
+            <div class="doc-role-ability" data-i18n="docs.ability_werewolf">🐺 /kill @player — Vote to devour a villager (consensus required)</div>
+          </div>
+        </div>
+
+        <div class="doc-role-card camp-wolves-card">
+          <img src="/static/img/roles/loupBlanc.webp" alt="White Wolf" class="doc-role-img">
+          <div class="doc-role-body">
+            <div class="doc-role-name" data-i18n="role.name.WHITE_WOLF">White Wolf</div>
+            <div class="doc-role-meta"><span class="role-camp camp-solo" data-i18n="role.camp.solo">Solo</span></div>
+            <p class="doc-role-desc" data-i18n="docs.role_white_wolf">Appears as a werewolf and hunts with the pack normally. But every other night, can also secretly kill one of the other wolves. Wins only if he's the absolute last player standing — a true solo predator.</p>
+            <div class="doc-role-ability" data-i18n="docs.ability_white_wolf">🐺 /kill @wolf — Devour a fellow wolf (every other night, as a solo action)</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =================== ROLES: SOLO =================== -->
+    <section class="doc-section" id="roles-solo">
+      <h2 class="doc-section-title"><span class="doc-section-icon">🎭</span> <span data-i18n="docs.solo_title">Solo / Special Roles</span></h2>
+      <div class="doc-roles-grid">
+
+        <div class="doc-role-card camp-solo-card">
+          <img src="/static/img/roles/voleur.webp" alt="Thief" class="doc-role-img">
+          <div class="doc-role-body">
+            <div class="doc-role-name" data-i18n="role.name.THIEF">Thief</div>
+            <div class="doc-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
+            <p class="doc-role-desc" data-i18n="docs.role_thief">At the start of the game, the Thief sees 2 extra role cards dealt face-up. He can choose to swap his role for one of them. If both cards are werewolves, he MUST take one. Acts during the very first night before all other roles.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =================== ROLE DISTRIBUTION =================== -->
+    <section class="doc-section" id="role-distribution">
+      <h2 class="doc-section-title"><span class="doc-section-icon">🎲</span> <span data-i18n="docs.distribution_title">Role Distribution</span></h2>
+      <div class="doc-info-box">
+        <h4>📊 <span data-i18n="docs.dist_rules">Distribution Rules</span></h4>
+        <ul>
+          <li data-i18n="docs.dist_1">Minimum 4 players to start a game</li>
+          <li data-i18n="docs.dist_2">Wolf count: ~⅓ of players (1 for 4-5, 2 for 6-8, 3 for 9-11, 4 for 12+)</li>
+          <li data-i18n="docs.dist_3">Special roles are added in priority order: Seer → Witch → Hunter → Cupid → Guardian → Little Girl → Elder → Idiot</li>
+          <li data-i18n="docs.dist_4">Remaining slots are filled with Villagers</li>
+          <li data-i18n="docs.dist_5">White Wolf replaces one regular wolf if enabled and 8+ players</li>
+          <li data-i18n="docs.dist_6">Thief requires 2 extra cards (player count + 2 roles dealt)</li>
+          <li data-i18n="docs.dist_7">Configurable: server admins can enable/disable specific roles via /setrules</li>
+        </ul>
+      </div>
+      <div class="doc-table-wrapper">
+        <table class="doc-table">
+          <thead><tr>
+            <th data-i18n="docs.th_players">Players</th>
+            <th data-i18n="docs.th_wolves">Wolves</th>
+            <th data-i18n="docs.th_specials">Special Roles</th>
+            <th data-i18n="docs.th_villagers">Villagers</th>
+          </tr></thead>
+          <tbody>
+            <tr><td>4</td><td>1</td><td>Seer</td><td>2</td></tr>
+            <tr><td>5</td><td>1</td><td>Seer, Witch</td><td>2</td></tr>
+            <tr><td>6</td><td>2</td><td>Seer, Witch</td><td>2</td></tr>
+            <tr><td>7</td><td>2</td><td>Seer, Witch, Hunter</td><td>2</td></tr>
+            <tr><td>8</td><td>2</td><td>Seer, Witch, Hunter, Cupid</td><td>2</td></tr>
+            <tr><td>9</td><td>3</td><td>Seer, Witch, Hunter, Cupid</td><td>2</td></tr>
+            <tr><td>10</td><td>3</td><td>Seer, Witch, Hunter, Cupid, Guardian</td><td>2</td></tr>
+            <tr><td>12+</td><td>4</td><td>All specials available</td><td>Remaining</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- =================== PHASES =================== -->
+    <section class="doc-section" id="phases">
+      <h2 class="doc-section-title"><span class="doc-section-icon">🌙</span> <span data-i18n="docs.phases_title">Game Phases</span></h2>
+
+      <div class="doc-collapsible open" id="phase-night">
+        <div class="doc-collapsible-header" data-toggle="phase-night">
+          🌙 <span data-i18n="docs.night_phase">Night Phase</span>
+          <span class="doc-collapsible-arrow">▸</span>
+        </div>
+        <div class="doc-collapsible-body">
+          <p data-i18n="docs.night_desc" style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.85rem;">During the night, the village sleeps (all voice-muted). Special roles act in a strict order via their private channels.</p>
+          <div class="doc-flow">
+            <div class="doc-flow-step" style="border-color: var(--accent-primary);">🃏 <span data-i18n="docs.sub_thief">Thief</span></div>
+            <span class="doc-flow-arrow">→</span>
+            <div class="doc-flow-step" style="border-color: #ec4899;">💘 <span data-i18n="docs.sub_cupid">Cupid</span></div>
+            <span class="doc-flow-arrow">→</span>
+            <div class="doc-flow-step" style="border-color: var(--color-success);">🛡️ <span data-i18n="docs.sub_guardian">Guardian</span></div>
+            <span class="doc-flow-arrow">→</span>
+            <div class="doc-flow-step" style="border-color: var(--color-danger);">🐺 <span data-i18n="docs.sub_wolves">Wolves</span></div>
+            <span class="doc-flow-arrow">→</span>
+            <div class="doc-flow-step" style="border-color: #f1f5f9;">🐺 <span data-i18n="docs.sub_white_wolf">White Wolf</span></div>
+            <span class="doc-flow-arrow">→</span>
+            <div class="doc-flow-step" style="border-color: var(--color-warning);">🧪 <span data-i18n="docs.sub_witch">Witch</span></div>
+            <span class="doc-flow-arrow">→</span>
+            <div class="doc-flow-step" style="border-color: var(--color-info);">🔮 <span data-i18n="docs.sub_seer">Seer</span></div>
+            <span class="doc-flow-arrow">→</span>
+            <div class="doc-flow-step" style="border-color: var(--phase-jour);">☀️ <span data-i18n="docs.sub_dawn">Dawn</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="doc-collapsible" id="phase-day">
+        <div class="doc-collapsible-header" data-toggle="phase-day">
+          ☀️ <span data-i18n="docs.day_phase">Day Phase</span>
+          <span class="doc-collapsible-arrow">▸</span>
+        </div>
+        <div class="doc-collapsible-body">
+          <p data-i18n="docs.day_desc" style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.85rem;">At dawn, night deaths are announced. The village then debates and votes. Voice channels are unmuted during the day.</p>
+          <div class="doc-flow">
+            <div class="doc-flow-step">💀 <span data-i18n="docs.sub_deaths">Death Reveals</span></div>
+            <span class="doc-flow-arrow">→</span>
+            <div class="doc-flow-step">👑 <span data-i18n="docs.sub_captain_vote">Captain Vote</span></div>
+            <span class="doc-flow-arrow">→</span>
+            <div class="doc-flow-step">💬 <span data-i18n="docs.sub_debate">Deliberation (5 min)</span></div>
+            <span class="doc-flow-arrow">→</span>
+            <div class="doc-flow-step">🗳️ <span data-i18n="docs.sub_village_vote">Village Vote (3 min)</span></div>
+            <span class="doc-flow-arrow">→</span>
+            <div class="doc-flow-step">⚖️ <span data-i18n="docs.sub_execution">Execution</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="doc-collapsible" id="phase-transitions">
+        <div class="doc-collapsible-header" data-toggle="phase-transitions">
+          🔁 <span data-i18n="docs.transitions">Phase Transitions</span>
+          <span class="doc-collapsible-arrow">▸</span>
+        </div>
+        <div class="doc-collapsible-body">
+          <div class="doc-info-box">
+            <h4 data-i18n="docs.night_to_day">🌅 Night → Day</h4>
+            <ul>
+              <li data-i18n="docs.trans_1">All night actions are resolved (wolf kill, witch potions, guardian protection)</li>
+              <li data-i18n="docs.trans_2">Deaths are announced with role reveals</li>
+              <li data-i18n="docs.trans_3">Lover death chains are resolved</li>
+              <li data-i18n="docs.trans_4">Hunter death shot is triggered if applicable (90s timer)</li>
+              <li data-i18n="docs.trans_5">Victory check occurs</li>
+              <li data-i18n="docs.trans_6">Voice channels unmuted for all surviving players</li>
+            </ul>
+          </div>
+          <div class="doc-info-box">
+            <h4 data-i18n="docs.day_to_night">🌙 Day → Night</h4>
+            <ul>
+              <li data-i18n="docs.trans_7">Vote result is applied (elimination or tie = no kill)</li>
+              <li data-i18n="docs.trans_8">Killed player's role is revealed</li>
+              <li data-i18n="docs.trans_9">Victory check occurs</li>
+              <li data-i18n="docs.trans_10">Voice channels muted for all players</li>
+              <li data-i18n="docs.trans_11">Night sub-phases begin in order</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== NIGHT ACTIONS =================== -->
+    <section class="doc-section" id="night-actions">
+      <h2 class="doc-section-title"><span class="doc-section-icon">🔮</span> <span data-i18n="docs.night_actions_title">Night Actions</span></h2>
+      <div class="doc-table-wrapper">
+        <table class="doc-table">
+          <thead><tr>
+            <th data-i18n="docs.th_role">Role</th>
+            <th data-i18n="docs.th_command">Command</th>
+            <th data-i18n="docs.th_action">Action</th>
+            <th data-i18n="docs.th_timing">When</th>
+          </tr></thead>
+          <tbody>
+            <tr><td>🃏 Thief</td><td class="doc-cmd">/steal</td><td data-i18n="docs.act_thief">Choose one of 2 revealed cards to swap role</td><td data-i18n="docs.when_n1">Night 1 only</td></tr>
+            <tr><td>💘 Cupid</td><td class="doc-cmd">/love</td><td data-i18n="docs.act_cupid">Designate 2 lovers</td><td data-i18n="docs.when_n1">Night 1 only</td></tr>
+            <tr><td>🛡️ Guardian</td><td class="doc-cmd">/protect</td><td data-i18n="docs.act_guardian">Protect one player from wolves</td><td data-i18n="docs.when_every">Every night</td></tr>
+            <tr><td>🐺 Werewolves</td><td class="doc-cmd">/kill</td><td data-i18n="docs.act_wolves">Vote to devour a villager (consensus)</td><td data-i18n="docs.when_every">Every night</td></tr>
+            <tr><td>🐺 White Wolf</td><td class="doc-cmd">/kill</td><td data-i18n="docs.act_white_wolf">Kill a fellow wolf (solo action)</td><td data-i18n="docs.when_odd">Odd nights (3, 5, 7...)</td></tr>
+            <tr><td>🧪 Witch</td><td class="doc-cmd">/potion</td><td data-i18n="docs.act_witch">Use heal or kill potion (once each)</td><td data-i18n="docs.when_every">Every night</td></tr>
+            <tr><td>🔮 Seer</td><td class="doc-cmd">/see</td><td data-i18n="docs.act_seer">Discover a player's role</td><td data-i18n="docs.when_every">Every night</td></tr>
+            <tr><td>👂 Little Girl</td><td class="doc-cmd">/listen</td><td data-i18n="docs.act_listen">Spy on wolf channel</td><td data-i18n="docs.when_every">Every night</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="doc-info-box">
+        <h4>⏱️ <span data-i18n="docs.afk_warning">AFK Warning</span></h4>
+        <p data-i18n="docs.afk_text">Players who don't act within 120 seconds during their night phase will have their action auto-skipped. The game proceeds automatically.</p>
+      </div>
+    </section>
+
+    <!-- =================== DAY ACTIONS =================== -->
+    <section class="doc-section" id="day-actions">
+      <h2 class="doc-section-title"><span class="doc-section-icon">☀️</span> <span data-i18n="docs.day_actions_title">Day Actions</span></h2>
+      <div class="doc-table-wrapper">
+        <table class="doc-table">
+          <thead><tr>
+            <th data-i18n="docs.th_command">Command</th>
+            <th data-i18n="docs.th_action">Action</th>
+            <th data-i18n="docs.th_timing">When</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="doc-cmd">/vote @player</td><td data-i18n="docs.act_vote">Vote to eliminate a player</td><td data-i18n="docs.when_vote">During village vote phase (3 min)</td></tr>
+            <tr><td class="doc-cmd">/captainvote @player</td><td data-i18n="docs.act_captain">Vote for captain</td><td data-i18n="docs.when_captain">During captain election (2 min)</td></tr>
+            <tr><td class="doc-cmd">/shoot @player</td><td data-i18n="docs.act_shoot">Hunter's death shot</td><td data-i18n="docs.when_hunter_die">When Hunter dies (90s)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="doc-info-box">
+        <h4>👑 <span data-i18n="docs.captain_info">Captain Mechanic</span></h4>
+        <ul>
+          <li data-i18n="docs.captain_1">The captain is elected on the first day via /captainvote</li>
+          <li data-i18n="docs.captain_2">The captain's vote counts double during village votes</li>
+          <li data-i18n="docs.captain_3">If the captain dies, they choose a successor</li>
+          <li data-i18n="docs.captain_4">In case of a tie, the captain breaks the tie</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- =================== SPECIAL MECHANICS =================== -->
+    <section class="doc-section" id="special-mechanics">
+      <h2 class="doc-section-title"><span class="doc-section-icon">✨</span> <span data-i18n="docs.mechanics_title">Special Mechanics</span></h2>
+
+      <div class="doc-collapsible" id="mech-lovers">
+        <div class="doc-collapsible-header" data-toggle="mech-lovers">
+          💕 <span data-i18n="docs.mech_lovers">Lovers System</span>
+          <span class="doc-collapsible-arrow">▸</span>
+        </div>
+        <div class="doc-collapsible-body">
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.35rem;">
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.lovers_1">Cupid designates 2 lovers on Night 1 with /love</span></li>
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.lovers_2">Lovers are notified via DM and can see each other's identity</span></li>
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.lovers_3">If one lover dies, the other immediately dies of heartbreak</span></li>
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.lovers_4">If lovers are from different camps (e.g. Wolf + Villager), they can win together as a couple if they're the last 2 standing</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="doc-collapsible" id="mech-wolf-vote">
+        <div class="doc-collapsible-header" data-toggle="mech-wolf-vote">
+          🐺 <span data-i18n="docs.mech_wolf_vote">Wolf Consensus Vote</span>
+          <span class="doc-collapsible-arrow">▸</span>
+        </div>
+        <div class="doc-collapsible-body">
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.35rem;">
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.wolf_v1">Wolves vote individually with /kill @player in their private channel</span></li>
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.wolf_v2">All wolves must agree on the same target (consensus)</span></li>
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.wolf_v3">If wolves can't agree within the timeout (120s), no one is killed</span></li>
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.wolf_v4">Wolves cannot target each other (except White Wolf's solo action)</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="doc-collapsible" id="mech-elder">
+        <div class="doc-collapsible-header" data-toggle="mech-elder">
+          👴 <span data-i18n="docs.mech_elder">Elder Power Drain</span>
+          <span class="doc-collapsible-arrow">▸</span>
+        </div>
+        <div class="doc-collapsible-body">
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.35rem;">
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.elder_1">The Elder has 2 lives against wolf attacks</span></li>
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.elder_2">If the village votes to eliminate the Elder, ALL special villager roles lose their powers</span></li>
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.elder_3">This is permanent for the rest of the game — a devastating penalty</span></li>
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.elder_4">The Witch's death potion kills the Elder outright (bypasses extra life)</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="doc-collapsible" id="mech-voice">
+        <div class="doc-collapsible-header" data-toggle="mech-voice">
+          🔊 <span data-i18n="docs.mech_voice">Voice Channel Management</span>
+          <span class="doc-collapsible-arrow">▸</span>
+        </div>
+        <div class="doc-collapsible-body">
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.35rem;">
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.voice_1">Players are server-muted during Night phase (no cheating!)</span></li>
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.voice_2">Players are unmuted during Day phase for discussion</span></li>
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.voice_3">Dead players become spectators (muted permanently)</span></li>
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.voice_4">All mutes are automatically removed when the game ends</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="doc-collapsible" id="mech-death">
+        <div class="doc-collapsible-header" data-toggle="mech-death">
+          💀 <span data-i18n="docs.mech_death">Death & Role Reveal</span>
+          <span class="doc-collapsible-arrow">▸</span>
+        </div>
+        <div class="doc-collapsible-body">
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.35rem;">
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.death_1">When a player dies, their role is publicly revealed</span></li>
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.death_2">Dead players enter spectator mode (can watch but not communicate)</span></li>
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.death_3">The Hunter's death triggers an immediate /shoot prompt</span></li>
+            <li style="display: flex; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">▸ <span data-i18n="docs.death_4">Lover death chains resolve immediately (can cause cascading deaths)</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== VICTORY =================== -->
+    <section class="doc-section" id="victory">
+      <h2 class="doc-section-title"><span class="doc-section-icon">🏆</span> <span data-i18n="docs.victory_title">Victory Conditions</span></h2>
+      <div class="doc-roles-grid">
+        <div class="doc-info-box">
+          <h4>🏘️ <span data-i18n="docs.win_village">Village Victory</span></h4>
+          <p data-i18n="docs.win_village_desc">All werewolves have been eliminated. The village celebrates!</p>
+        </div>
+        <div class="doc-info-box">
+          <h4>🐺 <span data-i18n="docs.win_wolves">Wolves Victory</span></h4>
+          <p data-i18n="docs.win_wolves_desc">Wolves equal or outnumber the remaining villagers. The pack has taken over!</p>
+        </div>
+        <div class="doc-info-box">
+          <h4>🐺 <span data-i18n="docs.win_white_wolf">White Wolf Victory</span></h4>
+          <p data-i18n="docs.win_white_wolf_desc">The White Wolf is the absolute last player standing — all others eliminated.</p>
+        </div>
+        <div class="doc-info-box">
+          <h4>💕 <span data-i18n="docs.win_lovers">Lovers Victory</span></h4>
+          <p data-i18n="docs.win_lovers_desc">The two lovers (from different camps) are the last players standing. Love conquers all!</p>
+        </div>
+        <div class="doc-info-box">
+          <h4>⚖️ <span data-i18n="docs.win_draw">Draw</span></h4>
+          <p data-i18n="docs.win_draw_desc">No players remain, or the game cannot continue. A rare stalemate.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== COMMANDS: PLAYER =================== -->
+    <section class="doc-section" id="cmd-player">
+      <h2 class="doc-section-title"><span class="doc-section-icon">🎮</span> <span data-i18n="docs.cmd_player_title">Player Commands</span></h2>
+      <div class="doc-table-wrapper">
+        <table class="doc-table">
+          <thead><tr>
+            <th data-i18n="docs.th_command">Command</th>
+            <th data-i18n="docs.th_description">Description</th>
+            <th data-i18n="docs.th_permission">Permission</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="doc-cmd">/create</td><td class="doc-cmd-desc" data-i18n="docs.cmd_create">Create a new game lobby in the current channel</td><td>Everyone</td></tr>
+            <tr><td class="doc-cmd">/join</td><td class="doc-cmd-desc" data-i18n="docs.cmd_join">Join an existing game lobby</td><td>Everyone</td></tr>
+            <tr><td class="doc-cmd">/start</td><td class="doc-cmd-desc" data-i18n="docs.cmd_start">Start the game (lobby host only, min 4 players)</td><td>Host</td></tr>
+            <tr><td class="doc-cmd">/help</td><td class="doc-cmd-desc" data-i18n="docs.cmd_help">Display help information and available commands</td><td>Everyone</td></tr>
+            <tr><td class="doc-cmd">/status</td><td class="doc-cmd-desc" data-i18n="docs.cmd_status">Show current game status, phase and alive players</td><td>Everyone</td></tr>
+            <tr><td class="doc-cmd">/stats [@user]</td><td class="doc-cmd-desc" data-i18n="docs.cmd_stats">View stats, ELO rating and achievements</td><td>Everyone</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- =================== COMMANDS: NIGHT =================== -->
+    <section class="doc-section" id="cmd-night">
+      <h2 class="doc-section-title"><span class="doc-section-icon">🌑</span> <span data-i18n="docs.cmd_night_title">Night Commands</span></h2>
+      <div class="doc-table-wrapper">
+        <table class="doc-table">
+          <thead><tr>
+            <th data-i18n="docs.th_command">Command</th>
+            <th data-i18n="docs.th_role">Role</th>
+            <th data-i18n="docs.th_description">Description</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="doc-cmd">/kill @player</td><td>🐺 Werewolf</td><td class="doc-cmd-desc" data-i18n="docs.cmd_kill">Vote to devour a player (wolf channel)</td></tr>
+            <tr><td class="doc-cmd">/see @player</td><td>🔮 Seer</td><td class="doc-cmd-desc" data-i18n="docs.cmd_see">Discover a player's true role</td></tr>
+            <tr><td class="doc-cmd">/potion heal</td><td>🧪 Witch</td><td class="doc-cmd-desc" data-i18n="docs.cmd_potion_heal">Save the wolves' victim (1 use)</td></tr>
+            <tr><td class="doc-cmd">/potion kill @player</td><td>🧪 Witch</td><td class="doc-cmd-desc" data-i18n="docs.cmd_potion_kill">Kill any player with death potion (1 use)</td></tr>
+            <tr><td class="doc-cmd">/love @p1 @p2</td><td>💘 Cupid</td><td class="doc-cmd-desc" data-i18n="docs.cmd_love">Bind two players as lovers (Night 1)</td></tr>
+            <tr><td class="doc-cmd">/protect @player</td><td>🛡️ Guardian</td><td class="doc-cmd-desc" data-i18n="docs.cmd_protect">Shield a player from wolf attack</td></tr>
+            <tr><td class="doc-cmd">/listen</td><td>👂 Little Girl</td><td class="doc-cmd-desc" data-i18n="docs.cmd_listen">Eavesdrop on wolf channel</td></tr>
+            <tr><td class="doc-cmd">/skip</td><td>Any</td><td class="doc-cmd-desc" data-i18n="docs.cmd_skip">Skip your night action</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- =================== COMMANDS: DAY =================== -->
+    <section class="doc-section" id="cmd-day">
+      <h2 class="doc-section-title"><span class="doc-section-icon">🗳️</span> <span data-i18n="docs.cmd_day_title">Day Commands</span></h2>
+      <div class="doc-table-wrapper">
+        <table class="doc-table">
+          <thead><tr>
+            <th data-i18n="docs.th_command">Command</th>
+            <th data-i18n="docs.th_description">Description</th>
+            <th data-i18n="docs.th_timing">When</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="doc-cmd">/vote @player</td><td class="doc-cmd-desc" data-i18n="docs.cmd_vote">Vote to eliminate a player from the village</td><td data-i18n="docs.when_vote_phase">Village vote sub-phase</td></tr>
+            <tr><td class="doc-cmd">/captainvote @player</td><td class="doc-cmd-desc" data-i18n="docs.cmd_captainvote">Vote for captain (first day or succession)</td><td data-i18n="docs.when_captain_phase">Captain election</td></tr>
+            <tr><td class="doc-cmd">/shoot @player</td><td class="doc-cmd-desc" data-i18n="docs.cmd_shoot">Hunter fires last shot upon death</td><td data-i18n="docs.when_hunter_death">On Hunter's death</td></tr>
+            <tr><td class="doc-cmd">/vote-end</td><td class="doc-cmd-desc" data-i18n="docs.cmd_vote_end">End the current vote early (admin)</td><td data-i18n="docs.when_any_vote">During any vote</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- =================== COMMANDS: ADMIN =================== -->
+    <section class="doc-section" id="cmd-admin">
+      <h2 class="doc-section-title"><span class="doc-section-icon">🔧</span> <span data-i18n="docs.cmd_admin_title">Admin Commands</span></h2>
+      <div class="doc-table-wrapper">
+        <table class="doc-table">
+          <thead><tr>
+            <th data-i18n="docs.th_command">Command</th>
+            <th data-i18n="docs.th_description">Description</th>
+            <th data-i18n="docs.th_permission">Permission</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="doc-cmd">/setup</td><td class="doc-cmd-desc" data-i18n="docs.cmd_setup">Interactive setup wizard — creates category, channels, rules</td><td>Admin</td></tr>
+            <tr><td class="doc-cmd">/setrules</td><td class="doc-cmd-desc" data-i18n="docs.cmd_setrules">Configure game rules (wolf count, enabled roles, timers)</td><td>Admin</td></tr>
+            <tr><td class="doc-cmd">/lang [fr|en]</td><td class="doc-cmd-desc" data-i18n="docs.cmd_lang">Set the bot language for this server</td><td>Admin</td></tr>
+            <tr><td class="doc-cmd">/theme [name]</td><td class="doc-cmd-desc" data-i18n="docs.cmd_theme">Change the bot's visual theme</td><td>Admin</td></tr>
+            <tr><td class="doc-cmd">/clear</td><td class="doc-cmd-desc" data-i18n="docs.cmd_clear">Remove game channels and clean up</td><td>Admin</td></tr>
+            <tr><td class="doc-cmd">/force-end</td><td class="doc-cmd-desc" data-i18n="docs.cmd_force_end">Force-end the current game immediately</td><td>Admin</td></tr>
+            <tr><td class="doc-cmd">/end</td><td class="doc-cmd-desc" data-i18n="docs.cmd_end">End the game gracefully</td><td>Admin</td></tr>
+            <tr><td class="doc-cmd">/nextphase</td><td class="doc-cmd-desc" data-i18n="docs.cmd_nextphase">Force advance to the next phase</td><td>Admin</td></tr>
+            <tr><td class="doc-cmd">/monitoring</td><td class="doc-cmd-desc" data-i18n="docs.cmd_monitoring">Display bot health and metrics</td><td>Admin</td></tr>
+            <tr><td class="doc-cmd">/ratelimit</td><td class="doc-cmd-desc" data-i18n="docs.cmd_ratelimit">View rate limit statistics</td><td>Admin</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- =================== ACHIEVEMENTS =================== -->
+    <section class="doc-section" id="achievements">
+      <h2 class="doc-section-title"><span class="doc-section-icon">🏅</span> <span data-i18n="docs.achievements_title">Achievements</span></h2>
+      <div class="doc-achievements-grid">
+        <div class="doc-achievement"><span class="doc-achievement-emoji">🎮</span><div><span class="doc-achievement-name" data-i18n="docs.ach_first_game">First Game</span><span class="doc-achievement-req" data-i18n="docs.ach_first_game_req">Play your first game</span></div></div>
+        <div class="doc-achievement"><span class="doc-achievement-emoji">🏆</span><div><span class="doc-achievement-name" data-i18n="docs.ach_first_win">First Victory</span><span class="doc-achievement-req" data-i18n="docs.ach_first_win_req">Win your first game</span></div></div>
+        <div class="doc-achievement"><span class="doc-achievement-emoji">🐺</span><div><span class="doc-achievement-name" data-i18n="docs.ach_wolf_master">Wolf Master</span><span class="doc-achievement-req" data-i18n="docs.ach_wolf_master_req">Win 10 games as wolf</span></div></div>
+        <div class="doc-achievement"><span class="doc-achievement-emoji">🏘️</span><div><span class="doc-achievement-name" data-i18n="docs.ach_village_hero">Village Hero</span><span class="doc-achievement-req" data-i18n="docs.ach_village_hero_req">Win 10 games as village</span></div></div>
+        <div class="doc-achievement"><span class="doc-achievement-emoji">🔮</span><div><span class="doc-achievement-name" data-i18n="docs.ach_seer_expert">Seer Expert</span><span class="doc-achievement-req" data-i18n="docs.ach_seer_expert_req">Win 5 games as Seer</span></div></div>
+        <div class="doc-achievement"><span class="doc-achievement-emoji">🧪</span><div><span class="doc-achievement-name" data-i18n="docs.ach_witch_expert">Witch Expert</span><span class="doc-achievement-req" data-i18n="docs.ach_witch_expert_req">Win 5 games as Witch</span></div></div>
+        <div class="doc-achievement"><span class="doc-achievement-emoji">💘</span><div><span class="doc-achievement-name" data-i18n="docs.ach_love_wins">Love Wins</span><span class="doc-achievement-req" data-i18n="docs.ach_love_wins_req">Win as a Lover pair</span></div></div>
+        <div class="doc-achievement"><span class="doc-achievement-emoji">🎯</span><div><span class="doc-achievement-name" data-i18n="docs.ach_sharpshooter">Sharpshooter</span><span class="doc-achievement-req" data-i18n="docs.ach_sharpshooter_req">Kill a wolf as Hunter</span></div></div>
+        <div class="doc-achievement"><span class="doc-achievement-emoji">🛡️</span><div><span class="doc-achievement-name" data-i18n="docs.ach_guardian_angel">Guardian Angel</span><span class="doc-achievement-req" data-i18n="docs.ach_guardian_angel_req">Save a player 3 times as Guardian</span></div></div>
+        <div class="doc-achievement"><span class="doc-achievement-emoji">👻</span><div><span class="doc-achievement-name" data-i18n="docs.ach_sole_survivor">Sole Survivor</span><span class="doc-achievement-req" data-i18n="docs.ach_sole_survivor_req">Win as White Wolf</span></div></div>
+        <div class="doc-achievement"><span class="doc-achievement-emoji">🔥</span><div><span class="doc-achievement-name" data-i18n="docs.ach_win_streak">Win Streak</span><span class="doc-achievement-req" data-i18n="docs.ach_win_streak_req">Win 5 games in a row</span></div></div>
+        <div class="doc-achievement"><span class="doc-achievement-emoji">⭐</span><div><span class="doc-achievement-name" data-i18n="docs.ach_veteran">Veteran</span><span class="doc-achievement-req" data-i18n="docs.ach_veteran_req">Play 50 games</span></div></div>
+        <div class="doc-achievement"><span class="doc-achievement-emoji">💀</span><div><span class="doc-achievement-name" data-i18n="docs.ach_executioner">Executioner</span><span class="doc-achievement-req" data-i18n="docs.ach_executioner_req">Vote to eliminate 20 players</span></div></div>
+        <div class="doc-achievement"><span class="doc-achievement-emoji">🃏</span><div><span class="doc-achievement-name" data-i18n="docs.ach_thief_master">Thief Master</span><span class="doc-achievement-req" data-i18n="docs.ach_thief_master_req">Win 3 games as Thief</span></div></div>
+        <div class="doc-achievement"><span class="doc-achievement-emoji">🌙</span><div><span class="doc-achievement-name" data-i18n="docs.ach_night_owl">Night Owl</span><span class="doc-achievement-req" data-i18n="docs.ach_night_owl_req">Survive 10 nights in a single game</span></div></div>
+        <div class="doc-achievement"><span class="doc-achievement-emoji">👑</span><div><span class="doc-achievement-name" data-i18n="docs.ach_captain">Beloved Captain</span><span class="doc-achievement-req" data-i18n="docs.ach_captain_req">Be elected captain 10 times</span></div></div>
+      </div>
+    </section>
+
+    <!-- =================== ELO =================== -->
+    <section class="doc-section" id="elo">
+      <h2 class="doc-section-title"><span class="doc-section-icon">📊</span> <span data-i18n="docs.elo_title">ELO Rating & Tiers</span></h2>
+      <div class="doc-info-box">
+        <p data-i18n="docs.elo_desc">Every player starts at 1000 ELO. Winning increases your rating, losing decreases it. The amount gained/lost depends on the result and your current tier. Your tier is determined by your ELO range.</p>
+      </div>
+      <div class="doc-tiers">
+        <div class="doc-tier"><span class="doc-tier-emoji">🪨</span> <span style="color: #8B8B8B;">Iron</span> <span style="color: var(--text-muted);">0–799</span></div>
+        <div class="doc-tier"><span class="doc-tier-emoji">🥉</span> <span style="color: #cd7f32;">Bronze</span> <span style="color: var(--text-muted);">800–999</span></div>
+        <div class="doc-tier"><span class="doc-tier-emoji">🥈</span> <span style="color: #c0c0c0;">Silver</span> <span style="color: var(--text-muted);">1000–1199</span></div>
+        <div class="doc-tier"><span class="doc-tier-emoji">🥇</span> <span style="color: #ffd700;">Gold</span> <span style="color: var(--text-muted);">1200–1399</span></div>
+        <div class="doc-tier"><span class="doc-tier-emoji">💎</span> <span style="color: #e5e4e2;">Platinum</span> <span style="color: var(--text-muted);">1400–1599</span></div>
+        <div class="doc-tier"><span class="doc-tier-emoji">💠</span> <span style="color: #b9f2ff;">Diamond</span> <span style="color: var(--text-muted);">1600–1799</span></div>
+        <div class="doc-tier"><span class="doc-tier-emoji">🔥</span> <span style="color: #ff6b6b;">Master</span> <span style="color: var(--text-muted);">1800–1999</span></div>
+        <div class="doc-tier"><span class="doc-tier-emoji">👑</span> <span style="color: #ff4500;">Alpha Wolf</span> <span style="color: var(--text-muted);">2000+</span></div>
+      </div>
+    </section>
+
+    <!-- =================== RULES =================== -->
+    <section class="doc-section" id="rules">
+      <h2 class="doc-section-title"><span class="doc-section-icon">📋</span> <span data-i18n="docs.rules_title">Configurable Rules</span></h2>
+      <div class="doc-table-wrapper">
+        <table class="doc-table">
+          <thead><tr>
+            <th data-i18n="docs.th_rule">Rule</th>
+            <th data-i18n="docs.th_default">Default</th>
+            <th data-i18n="docs.th_description">Description</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="doc-cmd">wolfCount</td><td>auto</td><td class="doc-cmd-desc" data-i18n="docs.rule_wolfcount">Number of wolves (auto = ~⅓ players)</td></tr>
+            <tr><td class="doc-cmd">seerEnabled</td><td>true</td><td class="doc-cmd-desc" data-i18n="docs.rule_seer">Enable/disable the Seer role</td></tr>
+            <tr><td class="doc-cmd">witchEnabled</td><td>true</td><td class="doc-cmd-desc" data-i18n="docs.rule_witch">Enable/disable the Witch role</td></tr>
+            <tr><td class="doc-cmd">hunterEnabled</td><td>true</td><td class="doc-cmd-desc" data-i18n="docs.rule_hunter">Enable/disable the Hunter role</td></tr>
+            <tr><td class="doc-cmd">cupidEnabled</td><td>true</td><td class="doc-cmd-desc" data-i18n="docs.rule_cupid">Enable/disable Cupid (and lovers mechanic)</td></tr>
+            <tr><td class="doc-cmd">guardianEnabled</td><td>true</td><td class="doc-cmd-desc" data-i18n="docs.rule_guardian">Enable/disable the Guardian role</td></tr>
+            <tr><td class="doc-cmd">whiteWolfEnabled</td><td>false</td><td class="doc-cmd-desc" data-i18n="docs.rule_white_wolf">Enable the White Wolf (requires 8+ players)</td></tr>
+            <tr><td class="doc-cmd">thiefEnabled</td><td>false</td><td class="doc-cmd-desc" data-i18n="docs.rule_thief">Enable the Thief role</td></tr>
+            <tr><td class="doc-cmd">revealRolesOnDeath</td><td>true</td><td class="doc-cmd-desc" data-i18n="docs.rule_reveal">Reveal roles when players die</td></tr>
+            <tr><td class="doc-cmd">captainEnabled</td><td>true</td><td class="doc-cmd-desc" data-i18n="docs.rule_captain">Enable captain election mechanic</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- =================== TIMEOUTS =================== -->
+    <section class="doc-section" id="timeouts">
+      <h2 class="doc-section-title"><span class="doc-section-icon">⏱️</span> <span data-i18n="docs.timeouts_title">Timeouts & Timers</span></h2>
+      <div class="doc-table-wrapper">
+        <table class="doc-table">
+          <thead><tr>
+            <th data-i18n="docs.th_event">Event</th>
+            <th data-i18n="docs.th_duration">Duration</th>
+            <th data-i18n="docs.th_description">Description</th>
+          </tr></thead>
+          <tbody>
+            <tr><td>Night AFK</td><td>120s</td><td class="doc-cmd-desc" data-i18n="docs.to_night_afk">Auto-skip if player doesn't act during their night phase</td></tr>
+            <tr><td>Hunter Shot</td><td>90s</td><td class="doc-cmd-desc" data-i18n="docs.to_hunter">Time for Hunter to choose a target after death</td></tr>
+            <tr><td>Deliberation</td><td>5 min</td><td class="doc-cmd-desc" data-i18n="docs.to_deliberation">Village discussion before voting</td></tr>
+            <tr><td>Village Vote</td><td>3 min</td><td class="doc-cmd-desc" data-i18n="docs.to_vote">Time window for village elimination vote</td></tr>
+            <tr><td>Captain Vote</td><td>2 min</td><td class="doc-cmd-desc" data-i18n="docs.to_captain">Time for captain election</td></tr>
+            <tr><td>Lobby Cleanup</td><td>1 hour</td><td class="doc-cmd-desc" data-i18n="docs.to_lobby">Auto-cleanup idle lobbies</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div><!-- .docs-content -->
+</div><!-- .docs-layout -->
+
+<script>
+  // Collapsible toggle via event delegation
+  document.addEventListener('click', function(e) {
+    var header = e.target.closest('.doc-collapsible-header');
+    if (!header) return;
+    var collapsible = header.parentElement;
+    if (collapsible) collapsible.classList.toggle('open');
+  });
+
+  // Sidebar active tracking on scroll
+  (function() {
+    var links = document.querySelectorAll('.docs-nav-link');
+    var sections = [];
+    links.forEach(function(link) {
+      var href = link.getAttribute('href');
+      if (href && href.startsWith('#')) {
+        var sec = document.getElementById(href.substring(1));
+        if (sec) sections.push({ el: sec, link: link });
+      }
+    });
+    window.addEventListener('scroll', function() {
+      var scrollY = window.scrollY + 120;
+      var active = null;
+      sections.forEach(function(s) {
+        if (s.el.offsetTop <= scrollY) active = s;
+      });
+      links.forEach(function(l) { l.classList.remove('active'); });
+      if (active) active.link.classList.add('active');
+    });
+  })();
+</script>
+
+<%- include('partials/footer') %>

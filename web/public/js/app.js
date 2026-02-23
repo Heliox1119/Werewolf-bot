@@ -49,23 +49,34 @@
     }
   }
 
-  // Sidebar mobile toggle
-  const sidebarToggle = document.getElementById('sidebar-toggle');
-  const sidebar = document.getElementById('app-sidebar');
-  if (sidebarToggle && sidebar) {
-    // Create overlay element for mobile
+  // Navbar mobile toggle (hamburger for nav tabs)
+  const navToggle = document.getElementById('nav-toggle');
+  const navTabs = document.getElementById('nav-tabs');
+  if (navToggle && navTabs) {
+    navToggle.addEventListener('click', () => {
+      navTabs.classList.toggle('open');
+    });
+    // Close mobile menu when clicking a link
+    navTabs.addEventListener('click', (e) => {
+      if (e.target.classList.contains('nav-tab')) {
+        navTabs.classList.remove('open');
+      }
+    });
+  }
+
+  // Guild sidebar mobile overlay
+  const guildSidebar = document.getElementById('guild-sidebar');
+  if (guildSidebar) {
+    // Create overlay element for guild sidebar on mobile
     let overlay = document.querySelector('.sidebar-overlay');
     if (!overlay) {
       overlay = document.createElement('div');
       overlay.className = 'sidebar-overlay';
       document.body.appendChild(overlay);
     }
-    sidebarToggle.addEventListener('click', () => {
-      sidebar.classList.toggle('open');
-      overlay.classList.toggle('open');
-    });
+    // Close guild sidebar when clicking overlay
     overlay.addEventListener('click', () => {
-      sidebar.classList.remove('open');
+      guildSidebar.classList.remove('open');
       overlay.classList.remove('open');
     });
   }

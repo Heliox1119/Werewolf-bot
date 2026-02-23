@@ -1,0 +1,121 @@
+<%- include('partials/header') %>
+
+<div class="support-page">
+  <div class="support-hero">
+    <h1 data-i18n="support.title">🆘 Support & Resources</h1>
+    <p data-i18n="support.subtitle">Need help? Find all the resources you need to get started or resolve issues.</p>
+  </div>
+
+  <div class="support-grid">
+    <!-- GitHub -->
+    <a href="https://github.com/Heliox1119/Werewolf-bot" target="_blank" rel="noopener" class="support-card support-card-github" id="github">
+      <span class="support-card-icon">💻</span>
+      <h3>GitHub</h3>
+      <p data-i18n="support.github_desc">View the source code, report bugs, request features, and contribute to the project.</p>
+      <span class="btn btn-sm btn-outline" data-i18n="support.github_btn">View Repository →</span>
+    </a>
+
+    <!-- Discord -->
+    <a href="#" class="support-card support-card-discord" id="discord">
+      <span class="support-card-icon">💬</span>
+      <h3>Discord</h3>
+      <p data-i18n="support.discord_desc">Join our community server for live help, announcements, and discussion with other players.</p>
+      <span class="btn btn-sm btn-discord" data-i18n="support.discord_btn">Join Server →</span>
+    </a>
+
+    <!-- Documentation -->
+    <a href="/docs" class="support-card support-card-docs">
+      <span class="support-card-icon">📚</span>
+      <h3 data-i18n="support.docs_title">Documentation</h3>
+      <p data-i18n="support.docs_desc">Complete wiki with all roles, commands, mechanics and configuration options explained in detail.</p>
+      <span class="btn btn-sm btn-primary" data-i18n="support.docs_btn">Read the Wiki →</span>
+    </a>
+  </div>
+
+  <!-- FAQ -->
+  <div class="support-faq" id="faq">
+    <h2>❓ <span data-i18n="support.faq_title">Frequently Asked Questions</span></h2>
+
+    <div class="doc-collapsible">
+      <div class="doc-collapsible-header" data-toggle="faq-1">
+        <span data-i18n="support.faq_q1">How do I invite the bot to my server?</span>
+        <span class="doc-collapsible-arrow">▸</span>
+      </div>
+      <div class="doc-collapsible-body">
+        <p data-i18n="support.faq_a1">Use the invite link from the GitHub repository or the bot's profile. The bot needs Administrator permissions to manage channels, roles, and voice muting.</p>
+      </div>
+    </div>
+
+    <div class="doc-collapsible">
+      <div class="doc-collapsible-header" data-toggle="faq-2">
+        <span data-i18n="support.faq_q2">What is the minimum number of players?</span>
+        <span class="doc-collapsible-arrow">▸</span>
+      </div>
+      <div class="doc-collapsible-body">
+        <p data-i18n="support.faq_a2">You need at least 4 players to start a game. For the best experience with all roles, 8-12 players is recommended.</p>
+      </div>
+    </div>
+
+    <div class="doc-collapsible">
+      <div class="doc-collapsible-header" data-toggle="faq-3">
+        <span data-i18n="support.faq_q3">How do I change the language?</span>
+        <span class="doc-collapsible-arrow">▸</span>
+      </div>
+      <div class="doc-collapsible-body">
+        <p data-i18n="support.faq_a3">Use the /lang command followed by "fr" for French or "en" for English. This changes the bot's language for the entire server.</p>
+      </div>
+    </div>
+
+    <div class="doc-collapsible">
+      <div class="doc-collapsible-header" data-toggle="faq-4">
+        <span data-i18n="support.faq_q4">Can I customize which roles are in the game?</span>
+        <span class="doc-collapsible-arrow">▸</span>
+      </div>
+      <div class="doc-collapsible-body">
+        <p data-i18n="support.faq_a4">Yes! Use /setrules to enable or disable specific roles, change wolf count, and configure other game options per server.</p>
+      </div>
+    </div>
+
+    <div class="doc-collapsible">
+      <div class="doc-collapsible-header" data-toggle="faq-5">
+        <span data-i18n="support.faq_q5">Why are my players not being muted/unmuted?</span>
+        <span class="doc-collapsible-arrow">▸</span>
+      </div>
+      <div class="doc-collapsible-body">
+        <p data-i18n="support.faq_a5">Make sure the bot has the "Mute Members" permission. Players also need to be connected to the game's voice channel for voice management to work.</p>
+      </div>
+    </div>
+
+    <div class="doc-collapsible">
+      <div class="doc-collapsible-header" data-toggle="faq-6">
+        <span data-i18n="support.faq_q6">The game is stuck, what do I do?</span>
+        <span class="doc-collapsible-arrow">▸</span>
+      </div>
+      <div class="doc-collapsible-body">
+        <p data-i18n="support.faq_a6">An admin can use /nextphase to force advance to the next phase, or /force-end to immediately end the game. Use /clear to clean up channels.</p>
+      </div>
+    </div>
+
+    <div class="doc-collapsible">
+      <div class="doc-collapsible-header" data-toggle="faq-7">
+        <span data-i18n="support.faq_q7">How does the ELO system work?</span>
+        <span class="doc-collapsible-arrow">▸</span>
+      </div>
+      <div class="doc-collapsible-body">
+        <p data-i18n="support.faq_a7">Every player starts at 1000 ELO. Winning increases your rating and losing decreases it. Your tier (Iron → Alpha Wolf) is determined by your ELO range. Use /stats to check your current rating.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // FAQ collapsible toggle via event delegation
+  document.addEventListener('click', function(e) {
+    var header = e.target.closest('.doc-collapsible-header');
+    if (!header) return;
+    var collapsible = header.parentElement;
+    if (collapsible) collapsible.classList.toggle('open');
+  });
+</script>
+
+<%- include('partials/footer') %>
