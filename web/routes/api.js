@@ -7,6 +7,7 @@ module.exports = function(webServer) {
   const router = express.Router();
   const gm = webServer.gameManager;
   const db = webServer.db;
+  const client = webServer.client; // Discord client for guild fetching
 
   // ==================== GAMES ====================
 
@@ -272,44 +273,64 @@ module.exports = function(webServer) {
   // ==================== MODERATION ====================
 
   /** POST /api/mod/force-end/:gameId — Force end a game */
-  router.post('/mod/force-end/:gameId', requireAuth, (req, res) => {
+  router.post('/mod/force-end/:gameId', requireAuth, async (req, res) => {
     try {
       const game = gm.games.get(req.params.gameId);
       if (!game) return res.status(404).json({ success: false, error: 'Game not found' });
       if (!webServer.isGuildAdmin(req.user, game.guildId)) {
         return res.status(403).json({ success: false, error: 'Admin permission required' });
       }
-      // Clean up the game
+      // Clear all timers
+      gm.clearGameTimers(game);
+      game.phase = 'ENDED';
+      game.endedAt = Date.now();
+      gm.logAction(game, '[ADMIN] Partie forcée à terminer via interface web');
+      // Try to clean up Discord channels
+      try {
+        const guild = client && client.guilds.cache.get(game.guildId);
+        if (guild) await gm.cleanupChannels(guild, game);
+      } catch {}
+      // Save history & remove
+      try { db.saveGameHistory(game, 'Force ended (admin)'); } catch {}
       gm.games.delete(req.params.gameId);
       try { db.deleteGame(req.params.gameId); } catch {}
       gm.emit('gameEvent', { event: 'gameEnded', gameId: req.params.gameId, guildId: game.guildId, victor: 'Force ended (admin)' });
-      res.json({ success: true, message: 'Game force ended' });
+      res.json({ success: true, message: 'Partie terminée de force' });
     } catch (e) {
       res.status(500).json({ success: false, error: e.message });
     }
   });
 
   /** POST /api/mod/skip-phase/:gameId — Force skip to next phase */
-  router.post('/mod/skip-phase/:gameId', requireAuth, (req, res) => {
+  router.post('/mod/skip-phase/:gameId', requireAuth, async (req, res) => {
     try {
       const game = gm.games.get(req.params.gameId);
       if (!game) return res.status(404).json({ success: false, error: 'Game not found' });
       if (!webServer.isGuildAdmin(req.user, game.guildId)) {
         return res.status(403).json({ success: false, error: 'Admin permission required' });
       }
-      if (game.subPhase && typeof gm.advanceSubPhase === 'function') {
-        gm.advanceSubPhase(game);
-      } else if (typeof gm.nextPhase === 'function') {
-        gm.nextPhase(game.mainChannelId);
+      if (game.phase === 'ENDED') {
+        return res.status(400).json({ success: false, error: 'Game already ended' });
       }
-      res.json({ success: true, message: 'Phase skipped', phase: game.phase, subPhase: game.subPhase });
+      // Get Discord guild for channel announcements
+      const guild = client && client.guilds.cache.get(game.guildId);
+      if (!guild) {
+        return res.status(500).json({ success: false, error: 'Impossible de récupérer le serveur Discord' });
+      }
+      gm.logAction(game, `[ADMIN] Phase sautée via interface web (${game.phase}/${game.subPhase})`);
+      if (game.subPhase && typeof gm.advanceSubPhase === 'function') {
+        await gm.advanceSubPhase(guild, game);
+      } else if (typeof gm.nextPhase === 'function') {
+        await gm.nextPhase(guild, game);
+      }
+      res.json({ success: true, message: 'Phase sautée', phase: game.phase, subPhase: game.subPhase });
     } catch (e) {
       res.status(500).json({ success: false, error: e.message });
     }
   });
 
   /** POST /api/mod/kill-player/:gameId/:playerId — Force kill a player */
-  router.post('/mod/kill-player/:gameId/:playerId', requireAuth, (req, res) => {
+  router.post('/mod/kill-player/:gameId/:playerId', requireAuth, async (req, res) => {
     try {
       const game = gm.games.get(req.params.gameId);
       if (!game) return res.status(404).json({ success: false, error: 'Game not found' });
@@ -318,14 +339,28 @@ module.exports = function(webServer) {
       }
       const player = game.players.find(p => p.id === req.params.playerId);
       if (!player) return res.status(404).json({ success: false, error: 'Player not found' });
-      if (!player.alive) return res.status(400).json({ success: false, error: 'Player already dead' });
-      
-      player.alive = false;
-      if (!game.dead) game.dead = [];
-      game.dead.push({ ...player });
-      gm.logAction(game, `[ADMIN] ${player.username} killed by moderator`);
-      gm.emit('gameEvent', { event: 'playerKilled', gameId: req.params.gameId, guildId: game.guildId, playerId: player.id, playerName: player.username, role: player.role });
-      res.json({ success: true, message: `${player.username} killed` });
+      if (!player.alive) return res.status(400).json({ success: false, error: 'Joueur déjà éliminé' });
+
+      gm.logAction(game, `[ADMIN] ${player.username} éliminé par le modérateur`);
+      // Use the proper kill method (handles lovers, DB sync, events, lockouts)
+      const collateralDeaths = gm.kill(game.mainChannelId, req.params.playerId);
+      // Apply Discord permission lockouts
+      try {
+        const guild = client && client.guilds.cache.get(game.guildId);
+        if (guild) await gm.applyDeadPlayerLockouts(guild);
+      } catch {}
+
+      const deadNames = [player.username, ...collateralDeaths.map(d => d.username)];
+      // Check victory after kill
+      const victory = gm.checkWinner(game);
+      if (victory) {
+        try {
+          const guild = client && client.guilds.cache.get(game.guildId);
+          if (guild) await gm.announceVictoryIfAny(guild, game);
+        } catch {}
+      }
+
+      res.json({ success: true, message: `${deadNames.join(', ')} éliminé(s)`, collateral: collateralDeaths.map(d => d.username) });
     } catch (e) {
       res.status(500).json({ success: false, error: e.message });
     }
