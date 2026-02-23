@@ -215,20 +215,31 @@ body {
   gap: 0.75rem;
   flex-shrink: 0;
 }
-.btn-lang {
-  background: var(--bg-hover);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
+
+/* User dropdown container */
+.nav-user-dropdown {
+  position: relative;
 }
-.btn-lang:hover { border-color: var(--accent-primary); }
-.nav-user {
+.nav-user-btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--border-radius-sm);
+  transition: var(--transition-fast);
+  font-family: var(--font-body);
+}
+.nav-user-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-color);
+}
+.nav-user-btn.open {
+  background: var(--bg-hover);
+  border-color: var(--border-color);
 }
 .nav-avatar {
   width: 28px; height: 28px;
@@ -243,6 +254,71 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.nav-user-chevron {
+  font-size: 0.55rem;
+  opacity: 0.5;
+  transition: transform 0.2s ease;
+}
+.nav-user-btn.open .nav-user-chevron {
+  transform: rotate(180deg);
+}
+
+/* Dropdown menu */
+.nav-user-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-lg);
+  padding: 0.35rem;
+  z-index: 2000;
+}
+.nav-user-menu.open {
+  display: block;
+  animation: dropdownSlide 0.15s ease;
+}
+@keyframes dropdownSlide {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.nav-user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--border-radius-xs);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: var(--transition-fast);
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 100%;
+  font-family: var(--font-body);
+}
+.nav-user-menu-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.nav-user-menu-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+.nav-user-menu-sep {
+  height: 1px;
+  background: var(--border-color);
+  margin: 0.25rem 0.5rem;
+}
+.nav-user-menu-danger:hover {
+  color: var(--color-danger);
 }
 .nav-toggle {
   display: none;
@@ -372,6 +448,125 @@ body {
   flex-direction: column;
   min-height: calc(100vh - 56px);
   width: calc(100% - 72px);
+  transition: margin-left 0.25s ease, width 0.25s ease;
+}
+/* Full-width layout (no guild sidebar) */
+body[data-page="full"] .app-main {
+  margin-left: 0;
+  width: 100%;
+}
+/* Two-sidebar layout (guild sidebar + guild panel) */
+.app-main.has-guild-panel {
+  margin-left: calc(72px + 240px);
+  width: calc(100% - 72px - 240px);
+}
+
+/* === Secondary Guild Panel (management sidebar) === */
+.guild-panel {
+  width: 240px;
+  height: calc(100vh - 56px);
+  position: fixed;
+  top: 56px;
+  left: 72px;
+  z-index: 1040;
+  background: rgba(12, 16, 28, 0.98);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.guild-panel::-webkit-scrollbar { display: none; }
+
+.guild-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 1rem 0.85rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.guild-panel-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border-color);
+  flex-shrink: 0;
+}
+.guild-panel-initial {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 0.85rem; color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.guild-panel-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.guild-panel-settings {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 0.25rem;
+  border-radius: var(--border-radius-xs);
+  transition: var(--transition-fast);
+  flex-shrink: 0;
+}
+.guild-panel-settings:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.guild-panel-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+  gap: 2px;
+}
+.guild-panel-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--border-radius-xs);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: var(--transition-fast);
+  cursor: pointer;
+}
+.guild-panel-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.guild-panel-item.active {
+  background: var(--bg-hover);
+  color: var(--accent-primary);
+}
+.guild-panel-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+.guild-panel-sep {
+  height: 1px;
+  background: var(--border-color);
+  margin: 0.5rem 0.75rem;
+}
+.guild-panel-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding: 0.35rem 0.75rem;
 }
 /* === Buttons === */
 .btn {
@@ -934,6 +1129,7 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   .nav-toggle { display: block; }
   .nav-username { display: none; }
   .nav-version { display: none; }
+  .nav-user-chevron { display: none; }
   /* Guild sidebar collapses */
   .guild-sidebar {
     transform: translateX(-100%);
@@ -941,7 +1137,14 @@ textarea.form-input { resize: vertical; min-height: 80px; }
     z-index: 1200;
   }
   .guild-sidebar.open { transform: translateX(0); }
-  .app-main { margin-left: 0; width: 100%; }
+  /* Guild panel collapses */
+  .guild-panel {
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1190;
+  }
+  .guild-panel.open { transform: translateX(0); }
+  .app-main { margin-left: 0 !important; width: 100% !important; }
   .sidebar-overlay {
     position: fixed; inset: 0; z-index: 1150;
     background: rgba(0,0,0,0.5);

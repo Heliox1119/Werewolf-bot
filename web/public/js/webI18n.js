@@ -19,6 +19,14 @@
       'nav.faq': 'FAQ',
       'nav.logout': 'Déconnexion',
       'nav.login': 'Connexion',
+      'nav.language': 'Langue',
+
+      // Guild Panel
+      'guild.overview': 'Vue d\'ensemble',
+      'guild.leaderboard': 'Classement',
+      'guild.history': 'Historique',
+      'guild.admin_section': 'Administration',
+      'guild.rules': 'Règles du jeu',
 
       // Dashboard
       'dash.title': 'Werewolf Dashboard',
@@ -373,6 +381,14 @@
       'nav.faq': 'FAQ',
       'nav.logout': 'Logout',
       'nav.login': 'Login',
+      'nav.language': 'Language',
+
+      // Guild Panel
+      'guild.overview': 'Overview',
+      'guild.leaderboard': 'Leaderboard',
+      'guild.history': 'History',
+      'guild.admin_section': 'Administration',
+      'guild.rules': 'Game Rules',
 
       // Dashboard
       'dash.title': 'Werewolf Dashboard',
@@ -754,12 +770,11 @@
   }
 
   function updateLangButton(lang) {
-    const flag = document.getElementById('lang-flag');
+    // Support both old standalone button IDs and new dropdown IDs
+    const flag = document.getElementById('lang-flag') || document.getElementById('user-menu-lang-flag');
     const label = document.getElementById('lang-label');
-    const btn = document.getElementById('lang-toggle');
-    if (flag) flag.textContent = lang === 'fr' ? '🇬🇧' : '🇫🇷';
-    if (label) label.textContent = lang === 'fr' ? 'EN' : 'FR';
-    if (btn) btn.title = lang === 'fr' ? 'Switch to English' : 'Passer en français';
+    if (flag) flag.textContent = lang === 'fr' ? '🇫🇷' : '🇬🇧';
+    if (label) label.textContent = lang === 'fr' ? 'FR' : 'EN';
   }
 
   // Init on DOM ready
@@ -768,7 +783,7 @@
     applyTranslations(lang);
     updateLangButton(lang);
 
-    // Language toggle button
+    // Language toggle button (standalone or dropdown)
     document.addEventListener('click', (e) => {
       if (e.target.id === 'lang-toggle' || e.target.closest('#lang-toggle')) {
         const current = getLang();
@@ -778,7 +793,11 @@
   }
 
   // Export for other scripts
-  window.webI18n = { t, getLang, setLang, applyTranslations };
+  window.getLang = getLang;
+  window.setLang = setLang;
+  window.applyTranslations = applyTranslations;
+  window.updateLangButton = updateLangButton;
+  window.webI18n = { t, getLang, setLang, applyTranslations, updateLangButton };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

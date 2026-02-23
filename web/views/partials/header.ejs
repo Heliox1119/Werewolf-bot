@@ -9,7 +9,20 @@
   <link rel="icon" href="/static/img/roles/LG.jpg" type="image/jpeg">
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
-<body>
+<%
+  // Determine which pages show the guild sidebar
+  var showGuildSidebar = ['Dashboard', 'Moderation'].indexOf(title) !== -1
+    || typeof guildId !== 'undefined'
+    || typeof gameId !== 'undefined'
+    || typeof playerId !== 'undefined';
+  // Determine if we're on a guild-specific page (show secondary sidebar)
+  var activeGuildId = typeof guildId !== 'undefined' ? guildId : null;
+  var activeGuild = null;
+  if (activeGuildId && typeof userGuilds !== 'undefined') {
+    activeGuild = userGuilds.find(function(g) { return g.id === activeGuildId; });
+  }
+%>
+<body data-page="<%= showGuildSidebar ? 'guild' : 'full' %>">
   <!-- Top Header -->
   <nav class="navbar">
     <div class="nav-container">
@@ -48,19 +61,33 @@
         </div>
       </div>
 
-      <!-- Right: Lang + User -->
+      <!-- Right: User dropdown or Login -->
       <div class="nav-right">
-        <button class="btn btn-sm btn-lang" id="lang-toggle" title="Switch language">
-          <span id="lang-flag">🇬🇧</span> <span id="lang-label">EN</span>
-        </button>
         <% if (typeof user !== 'undefined' && user) { %>
-          <div class="nav-user">
-            <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png?size=32" alt="" class="nav-avatar">
-            <span class="nav-username"><%= user.username %></span>
-            <% if (typeof accessLevel !== 'undefined' && accessLevel !== 'public') { %>
-              <span class="access-badge access-<%= accessLevel %>"><%= accessLevel === 'owner' ? '👑' : accessLevel === 'admin' ? '🛡️' : '👤' %></span>
-            <% } %>
-            <a href="/auth/logout" class="btn btn-sm btn-outline" data-i18n="nav.logout">Logout</a>
+          <div class="nav-user-dropdown" id="nav-user-dropdown">
+            <button class="nav-user-btn" id="nav-user-btn" type="button">
+              <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png?size=32" alt="" class="nav-avatar">
+              <span class="nav-username"><%= user.username %></span>
+              <% if (typeof accessLevel !== 'undefined' && accessLevel !== 'public') { %>
+                <span class="access-badge access-<%= accessLevel %>"><%= accessLevel === 'owner' ? '👑' : accessLevel === 'admin' ? '🛡️' : '👤' %></span>
+              <% } %>
+              <span class="nav-user-chevron">&#9660;</span>
+            </button>
+            <div class="nav-user-menu" id="nav-user-menu">
+              <a href="/" class="nav-user-menu-item">
+                <span class="nav-user-menu-icon">&#127968;</span>
+                <span data-i18n="nav.dashboard">Dashboard</span>
+              </a>
+              <button class="nav-user-menu-item" id="user-menu-lang" type="button">
+                <span class="nav-user-menu-icon" id="user-menu-lang-flag">🇬🇧</span>
+                <span data-i18n="nav.language">Language</span>
+              </button>
+              <div class="nav-user-menu-sep"></div>
+              <a href="/auth/logout" class="nav-user-menu-item nav-user-menu-danger">
+                <span class="nav-user-menu-icon">&#128682;</span>
+                <span data-i18n="nav.logout">Logout</span>
+              </a>
+            </div>
           </div>
         <% } else { %>
           <a href="/auth/discord" class="btn btn-sm btn-discord">
@@ -74,12 +101,13 @@
     </div>
   </nav>
 
-  <!-- Left Guild Sidebar (Discord-style) -->
+  <!-- Left Guild Sidebar (Discord-style) — only on guild pages -->
+  <% if (showGuildSidebar) { %>
   <aside class="guild-sidebar" id="guild-sidebar">
     <div class="guild-sidebar-list" id="sidebar-guilds">
       <% if (typeof userGuilds !== 'undefined' && userGuilds.length > 0) { %>
         <% userGuilds.forEach(function(g) { %>
-          <a href="<%= g.botPresent ? '/guild/' + g.id : '/invite/' + g.id %>" class="sidebar-guild<%= !g.botPresent ? ' sidebar-guild-nobot' : '' %>" title="<%= g.name %>" data-guild-id="<%= g.id %>">
+          <a href="<%= g.botPresent ? '/guild/' + g.id : '/invite/' + g.id %>" class="sidebar-guild<%= !g.botPresent ? ' sidebar-guild-nobot' : '' %><%= (activeGuildId && g.id === activeGuildId) ? ' active' : '' %>" title="<%= g.name %>" data-guild-id="<%= g.id %>">
             <% if (g.icon) { %>
               <img src="<%= g.icon %>" alt="<%= g.name %>" class="sidebar-guild-img<%= !g.botPresent ? ' sidebar-guild-img-dim' : '' %>">
             <% } else { %>
@@ -97,7 +125,51 @@
       <% } %>
     </div>
   </aside>
+  <% } %>
+
+  <% if (showGuildSidebar && activeGuildId && activeGuild) { %>
+  <!-- Secondary Guild Sidebar (management menu) -->
+  <aside class="guild-panel" id="guild-panel">
+    <div class="guild-panel-header">
+      <% if (activeGuild.icon) { %>
+        <img src="<%= activeGuild.icon %>" alt="" class="guild-panel-avatar">
+      <% } else { %>
+        <span class="guild-panel-initial"><%= activeGuild.name ? activeGuild.name.charAt(0).toUpperCase() : '?' %></span>
+      <% } %>
+      <span class="guild-panel-name"><%= activeGuild.name || 'Server' %></span>
+      <% if (typeof accessLevel !== 'undefined' && (accessLevel === 'owner' || accessLevel === 'admin')) { %>
+        <a href="/moderation" class="guild-panel-settings" title="Settings">&#9881;</a>
+      <% } %>
+    </div>
+    <nav class="guild-panel-nav">
+      <a href="/guild/<%= activeGuildId %>" class="guild-panel-item active">
+        <span class="guild-panel-icon">&#127918;</span>
+        <span data-i18n="guild.overview">Vue d'ensemble</span>
+      </a>
+      <a href="/guild/<%= activeGuildId %>#leaderboard" class="guild-panel-item">
+        <span class="guild-panel-icon">&#127942;</span>
+        <span data-i18n="guild.leaderboard">Classement</span>
+      </a>
+      <a href="/guild/<%= activeGuildId %>#history" class="guild-panel-item">
+        <span class="guild-panel-icon">&#128218;</span>
+        <span data-i18n="guild.history">Historique</span>
+      </a>
+      <% if (typeof accessLevel !== 'undefined' && (accessLevel === 'owner' || accessLevel === 'admin')) { %>
+      <div class="guild-panel-sep"></div>
+      <span class="guild-panel-label" data-i18n="guild.admin_section">Administration</span>
+      <a href="/moderation" class="guild-panel-item">
+        <span class="guild-panel-icon">&#128737;</span>
+        <span data-i18n="nav.moderation">Modération</span>
+      </a>
+      <a href="/guild/<%= activeGuildId %>#rules" class="guild-panel-item">
+        <span class="guild-panel-icon">&#9881;</span>
+        <span data-i18n="guild.rules">Règles du jeu</span>
+      </a>
+      <% } %>
+    </nav>
+  </aside>
+  <% } %>
 
   <!-- Main content wrapper -->
-  <div class="app-main" id="app-main">
+  <div class="app-main<%= (showGuildSidebar && activeGuildId && activeGuild) ? ' has-guild-panel' : '' %>" id="app-main">
     <main class="main-content">

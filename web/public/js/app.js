@@ -64,6 +64,45 @@
     });
   }
 
+  // User dropdown toggle
+  const userBtn = document.getElementById('nav-user-btn');
+  const userMenu = document.getElementById('nav-user-menu');
+  if (userBtn && userMenu) {
+    userBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = userMenu.classList.toggle('open');
+      userBtn.classList.toggle('open', isOpen);
+    });
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+      if (!userBtn.contains(e.target) && !userMenu.contains(e.target)) {
+        userMenu.classList.remove('open');
+        userBtn.classList.remove('open');
+      }
+    });
+    // Language switch inside dropdown
+    const langBtn = document.getElementById('user-menu-lang');
+    if (langBtn) {
+      langBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Toggle language (uses webI18n functions)
+        if (typeof getLang === 'function' && typeof setLang === 'function') {
+          const current = getLang();
+          const next = current === 'fr' ? 'en' : 'fr';
+          setLang(next);
+          if (typeof applyTranslations === 'function') applyTranslations();
+          if (typeof updateLangButton === 'function') updateLangButton();
+          // Also update the dropdown flag
+          const flag = document.getElementById('user-menu-lang-flag');
+          if (flag) flag.textContent = next === 'fr' ? '🇫🇷' : '🇬🇧';
+        }
+        // Close dropdown after switching
+        userMenu.classList.remove('open');
+        userBtn.classList.remove('open');
+      });
+    }
+  }
+
   // Guild sidebar mobile overlay
   const guildSidebar = document.getElementById('guild-sidebar');
   if (guildSidebar) {
