@@ -71,7 +71,19 @@ module.exports = {
     if (currentVotes >= votesNeeded) {
       logger.info('Vote-end majority reached, ending game', { channelId: game.mainChannelId });
 
-      // Annoncer dans le village si possible
+      // 1) Annuler tous les timers
+      gameManager.clearGameTimers(game);
+      gameManager.clearLobbyTimeout(game.mainChannelId);
+
+      // 2) Émettre gameEnded pour le dashboard web
+      gameManager._emitGameEvent(game, 'gameEnded', {
+        victor: null,
+        reason: 'vote',
+        players: game.players.map(p => ({ id: p.id, username: p.username, role: p.role, alive: p.alive })),
+        dayCount: game.dayCount
+      });
+
+      // 3) Annoncer dans le village si possible
       try {
         const villageChannelId = game.villageChannelId || game.mainChannelId;
         const guild = interaction.guild;
@@ -83,24 +95,25 @@ module.exports = {
         }
       } catch (e) { /* ignore */ }
 
-      // Nettoyer les channels
-      const deleted = await gameManager.cleanupChannels(interaction.guild, game);
-
-      // Déconnecter le bot du channel vocal
+      // 4) Déconnecter le bot du channel vocal
       if (game.voiceChannelId) {
         try { gameManager.disconnectVoice(game.voiceChannelId); } catch (e) { /* ignore */ }
       }
 
-      // Supprimer la partie
+      // 5) Supprimer la partie de la mémoire et DB
       try { gameManager.db.deleteGame(game.mainChannelId); } catch (e) { /* ignore */ }
       gameManager.games.delete(game.mainChannelId);
       gameManager.saveState();
 
-      logger.success('Game ended by vote', { channelId: game.mainChannelId, deletedChannels: deleted });
-
+      // 6) Répondre AVANT de supprimer les channels
       await safeReply(interaction, {
-        content: t('cmd.vote_end.success', { n: currentVotes, total: alivePlayers.length, deleted })
+        content: t('cmd.vote_end.success', { n: currentVotes, total: alivePlayers.length, deleted: game.channels ? game.channels.length : '?' })
       });
+
+      // 7) Nettoyer les channels (suppression Discord — en dernier)
+      const deleted = await gameManager.cleanupChannels(interaction.guild, game);
+
+      logger.success('Game ended by vote', { channelId: game.mainChannelId, deletedChannels: deleted });
     } else {
       await safeReply(interaction, {
         content: t('cmd.vote_end.cast', { name: interaction.user.username, n: currentVotes, m: votesNeeded })

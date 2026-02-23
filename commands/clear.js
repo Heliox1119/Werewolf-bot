@@ -71,8 +71,20 @@ module.exports = {
 
       // Nettoyer toutes les games en mémoire
       const gamesCount = gameManager.games.size;
-      // Démuter et déconnecter les voix liées aux parties connues
-      for (const [_, game] of gameManager.games.entries()) {
+      // Annuler tous les timers et émettre gameEnded pour chaque partie
+      for (const [channelId, game] of gameManager.games.entries()) {
+        // Annuler les timers (AFK nuit, chasseur, capitaine, lobby)
+        gameManager.clearGameTimers(game);
+        gameManager.clearLobbyTimeout(channelId);
+
+        // Émettre gameEnded pour le dashboard web
+        gameManager._emitGameEvent(game, 'gameEnded', {
+          victor: null,
+          reason: 'clear',
+          players: game.players ? game.players.map(p => ({ id: p.id, username: p.username, role: p.role, alive: p.alive })) : []
+        });
+
+        // Démuter et déconnecter les voix
         if (game.voiceChannelId) {
           try {
             const voiceChan = await guild.channels.fetch(game.voiceChannelId);
