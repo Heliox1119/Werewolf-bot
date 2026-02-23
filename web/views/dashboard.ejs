@@ -48,7 +48,7 @@
         </div>
       <% } else { %>
         <% games.forEach(function(g) { %>
-          <a href="/game/<%= g.gameId %>" class="game-card">
+          <a href="/game/<%= g.gameId %>" class="game-card" data-game="<%= g.gameId %>">
             <div class="game-card-header">
               <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>"><%= g.phase || 'Lobby' %></span>
               <span class="game-day"><%= g.dayCount ? 'Day ' + g.dayCount : '' %></span>
