@@ -1,0 +1,88 @@
+<%- include('partials/header') %>
+
+<div class="player-page">
+  <div class="page-header">
+    <div class="player-avatar-lg">
+      <span class="avatar-placeholder">👤</span>
+    </div>
+    <div>
+      <h1><%= player.username || 'Player ' + playerId %></h1>
+      <% if (player.tier) { %>
+        <span class="tier tier-<%= player.tier.id %>"><%= player.tier.emoji %> <%= player.tier.name %></span>
+      <% } %>
+      <% if (player.rank) { %>
+        <span class="player-rank">#<%= player.rank %></span>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Stats Grid -->
+  <section class="hero-stats">
+    <div class="stat-card stat-primary">
+      <div class="stat-icon">🎮</div>
+      <div class="stat-body">
+        <span class="stat-value"><%= player.games_played || 0 %></span>
+        <span class="stat-label">Games</span>
+      </div>
+    </div>
+    <div class="stat-card stat-success">
+      <div class="stat-icon">🏆</div>
+      <div class="stat-body">
+        <span class="stat-value"><%= player.games_won || 0 %></span>
+        <span class="stat-label">Wins</span>
+      </div>
+    </div>
+    <div class="stat-card stat-info">
+      <div class="stat-icon">📈</div>
+      <div class="stat-body">
+        <span class="stat-value"><%= player.elo_rating || 1000 %></span>
+        <span class="stat-label">ELO Rating</span>
+      </div>
+    </div>
+    <div class="stat-card stat-warning">
+      <div class="stat-icon">⚡</div>
+      <div class="stat-body">
+        <span class="stat-value"><%= player.games_played > 0 ? Math.round((player.games_won / player.games_played) * 100) : 0 %>%</span>
+        <span class="stat-label">Win Rate</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="player-grid">
+    <!-- Extended Stats -->
+    <div class="panel">
+      <h3 class="panel-title">📊 Detailed Stats</h3>
+      <div class="info-grid">
+        <div class="info-row"><span class="info-label">ELO Peak</span><span class="info-value"><%= player.elo_peak || player.elo_rating || 1000 %></span></div>
+        <div class="info-row"><span class="info-label">Wolf Games</span><span class="info-value"><%= player.times_werewolf || 0 %></span></div>
+        <div class="info-row"><span class="info-label">Villager Games</span><span class="info-value"><%= player.times_villager || 0 %></span></div>
+        <div class="info-row"><span class="info-label">Seer Games</span><span class="info-value"><%= player.times_seer || 0 %></span></div>
+        <div class="info-row"><span class="info-label">Witch Games</span><span class="info-value"><%= player.times_witch || 0 %></span></div>
+        <div class="info-row"><span class="info-label">Times Killed N1</span><span class="info-value"><%= player.killed_night_one || 0 %></span></div>
+        <div class="info-row"><span class="info-label">Total Kills</span><span class="info-value"><%= player.total_kills || 0 %></span></div>
+        <div class="info-row"><span class="info-label">Win Streak</span><span class="info-value"><%= player.current_streak || 0 %></span></div>
+        <div class="info-row"><span class="info-label">Best Streak</span><span class="info-value"><%= player.best_streak || 0 %></span></div>
+      </div>
+    </div>
+
+    <!-- Achievements -->
+    <div class="panel">
+      <h3 class="panel-title">🏅 Achievements (<%= player.achievements ? player.achievements.length : 0 %>)</h3>
+      <% if (player.achievements && player.achievements.length > 0) { %>
+        <div class="achievements-grid">
+          <% player.achievements.forEach(function(a) { %>
+            <div class="achievement-card" title="<%= a.description || '' %>">
+              <span class="achievement-emoji"><%= a.emoji || '🏅' %></span>
+              <span class="achievement-name"><%= a.name || a.achievement_id %></span>
+              <span class="achievement-date"><%= a.unlocked_at ? new Date(a.unlocked_at).toLocaleDateString() : '' %></span>
+            </div>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <p class="text-muted">No achievements unlocked yet.</p>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

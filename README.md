@@ -5,7 +5,7 @@
 
 A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice management, ambient audio and interactive lobby.
 
-![Version](https://img.shields.io/badge/version-2.9.0-blue)
+![Version](https://img.shields.io/badge/version-3.0.0-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
@@ -80,12 +80,20 @@ A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice ma
 - **Persistence** — Chosen language is saved in database
 - **Extensible** — Adding a language = creating a `locales/xx.js` file
 
+### 🌐 Web Dashboard & API
+- **Web Dashboard** — Express.js + EJS dark theme interface at `http://localhost:3000`
+- **Live Spectator** — Watch games in real-time via Socket.IO WebSocket
+- **REST API** — 15 endpoints for games, leaderboard, stats, roles, config
+- **Discord OAuth2** — Login with Discord, admin features per-guild
+- **Custom Roles** — Create and manage custom roles via web editor
+
 ### 🗄️ Technical
 - **SQLite persistence** — Game state, player stats, night actions, metrics, achievements, ELO
 - **Docker ready** — Multi-stage Dockerfile, docker-compose with persistent volumes, health checks
 - **Auto backup** — Hourly SQLite backups with 24h rotation, backup on shutdown
 - **Multi-guild** — Per-server language, config, and category with global fallback
 - **Centralized i18n** — `I18n` singleton, `{{variable}}` interpolation, automatic fallback
+- **EventEmitter architecture** — GameManager emits real-time events to web layer
 - **Robust error handling** — safeReply, graceful shutdown, zero crash in production
 - **191 automated tests** — 15 suites, 0 failures
 - **Embed themes** — 4 color palettes, `/theme` command, 12 semantic colors
@@ -113,6 +121,11 @@ TOKEN=your_discord_bot_token
 CLIENT_ID=discord_application_id
 GUILD_ID=discord_server_id
 LOG_LEVEL=INFO    # DEBUG | INFO | WARN | ERROR | NONE
+
+# Web Dashboard (optional)
+WEB_PORT=3000
+CLIENT_SECRET=your_discord_oauth2_secret
+SESSION_SECRET=your_session_secret
 ```
 
 ```bash
@@ -126,6 +139,8 @@ docker compose up -d
 ```
 
 > **What Docker provides:** Auto-restart, persistent volumes for database & logs, health checks, log rotation, isolated environment with FFmpeg included.
+> 
+> **Web Dashboard:** Automatically starts on port 3000. Access at `http://localhost:3000`. Set `CLIENT_SECRET` for OAuth2 login.
 
 <details>
 <summary><b>Docker details</b></summary>
@@ -285,11 +300,25 @@ Werewolf-bot/
 ├── index.js                # Entry point, Discord handlers
 ├── commands/               # Slash commands (auto-loaded)
 ├── game/
-│   ├── gameManager.js      # Game logic, phases, victory
+│   ├── gameManager.js      # Game logic, phases, victory (EventEmitter)
 │   ├── achievements.js     # Achievement engine + ELO system
 │   ├── voiceManager.js     # Audio & voice connections
 │   ├── phases.js           # Phase constants
 │   └── roles.js            # Role constants
+├── web/                    # 🌐 Web Dashboard (NEW in v3.0)
+│   ├── server.js           # Express + Socket.IO server
+│   ├── routes/
+│   │   ├── auth.js         # Discord OAuth2 routes
+│   │   ├── api.js          # REST API (15 endpoints)
+│   │   └── dashboard.js    # HTML page routes
+│   ├── views/              # EJS templates
+│   │   ├── partials/       # Header & footer
+│   │   ├── dashboard.ejs   # Main dashboard
+│   │   ├── spectator.ejs   # Live game spectator
+│   │   ├── guild.ejs       # Guild page
+│   │   ├── player.ejs      # Player profile
+│   │   └── roles.ejs       # Custom roles editor
+│   └── public/             # Static assets (CSS, JS)
 ├── locales/
 │   ├── fr.js               # French locale (~500+ keys)
 │   └── en.js               # English locale (~500+ keys)
@@ -328,8 +357,7 @@ npm run clear-commands      # Reset Discord commands
 ## 📊 Version History
 
 | Version | Highlights |
-|---------|-----------|
-| **v2.9.0** | 🏆 Achievements (18), ELO ranking (7 tiers), death reveal embeds, DM turn notifications, `/leaderboard`, `/history`, post-game timeline, 4 bug fixes |
+|---------|-----------|| **v3.0.0** | 🌐 Web Dashboard (Express + EJS), Live Spectator (Socket.IO), REST API (15 endpoints), Discord OAuth2, Custom Roles system, EventEmitter architecture || **v2.9.0** | 🏆 Achievements (18), ELO ranking (7 tiers), death reveal embeds, DM turn notifications, `/leaderboard`, `/history`, post-game timeline, 4 bug fixes |
 | **v2.8.0** | 🐳 Docker, auto SQLite backup (hourly), multi-guild (per-server lang & config), rematch system |
 | **v2.7.0** | Little Girl real-time DM relay, smart ambiguous hints, Unicode/zalgo-proof, wolf win server-wide config, guild-only commands |
 | **v2.6.0** | Phase balancing, automatic captain vote, witch potion fix, configurable wolf victory, wolf ping |
@@ -370,4 +398,4 @@ Full details: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-**Version**: 2.9.0 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **Docker**: ready · **License**: ISC
+**Version**: 3.0.0 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **Docker**: ready · **License**: ISC

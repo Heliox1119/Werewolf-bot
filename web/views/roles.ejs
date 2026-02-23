@@ -1,0 +1,104 @@
+<%- include('partials/header') %>
+
+<div class="roles-page">
+  <div class="page-header">
+    <h1>🎭 Roles</h1>
+    <p class="text-muted">All game roles — built-in and custom</p>
+  </div>
+
+  <!-- Built-in Roles -->
+  <section class="section">
+    <h2 class="section-title">📦 Built-in Roles</h2>
+    <div class="roles-grid">
+      <% builtIn.forEach(function(r) { %>
+        <div class="role-card role-<%= r.id.toLowerCase() %>">
+          <span class="role-emoji"><%= r.id === 'WEREWOLF' ? '🐺' : r.id === 'SEER' ? '🔮' : r.id === 'WITCH' ? '🧪' : r.id === 'HUNTER' ? '🔫' : r.id === 'CUPID' ? '💘' : r.id === 'LITTLE_GIRL' ? '👧' : r.id === 'THIEF' ? '🦹' : r.id === 'VILLAGE_IDIOT' ? '🤡' : r.id === 'CAPTAIN' ? '👑' : '👤' %></span>
+          <span class="role-name"><%= r.name %></span>
+          <span class="role-type builtin-badge">Built-in</span>
+        </div>
+      <% }); %>
+    </div>
+  </section>
+
+  <!-- Custom Roles -->
+  <section class="section">
+    <h2 class="section-title">✨ Custom Roles</h2>
+    <% if (customRoles.length === 0) { %>
+      <div class="empty-state">
+        <span class="empty-icon">🎨</span>
+        <p>No custom roles created yet</p>
+        <% if (isAdmin) { %>
+          <p class="text-muted">Use the form below to create one!</p>
+        <% } else { %>
+          <p class="text-muted">Login as a server admin to create custom roles</p>
+        <% } %>
+      </div>
+    <% } else { %>
+      <div class="roles-grid">
+        <% customRoles.forEach(function(r) { %>
+          <div class="role-card role-custom">
+            <span class="role-emoji"><%= r.emoji || '❓' %></span>
+            <span class="role-name"><%= r.name %></span>
+            <span class="role-camp camp-<%= r.camp %>"><%= r.camp %></span>
+            <% if (r.description) { %><span class="role-desc"><%= r.description %></span><% } %>
+            <% if (isAdmin) { %>
+              <button class="btn btn-sm btn-danger delete-role" data-role-id="<%= r.id %>">Delete</button>
+            <% } %>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <% if (isAdmin) { %>
+      <!-- Create Custom Role Form -->
+      <div class="panel create-role-panel">
+        <h3 class="panel-title">➕ Create Custom Role</h3>
+        <form id="create-role-form" class="role-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Name</label>
+              <input type="text" name="name" required placeholder="e.g. Blacksmith" class="form-input">
+            </div>
+            <div class="form-group">
+              <label>Emoji</label>
+              <input type="text" name="emoji" placeholder="⚒️" maxlength="4" class="form-input form-input-sm">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Camp</label>
+              <select name="camp" class="form-select">
+                <option value="village">🏘️ Village</option>
+                <option value="wolves">🐺 Wolves</option>
+                <option value="solo">🎭 Solo</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Power</label>
+              <select name="power" class="form-select">
+                <option value="none">None (Passive)</option>
+                <option value="see">See (like Seer)</option>
+                <option value="protect">Protect (like Guard)</option>
+                <option value="kill">Kill (like Hunter)</option>
+                <option value="heal">Heal (like Witch)</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <textarea name="description" placeholder="Describe the role's abilities..." class="form-input" rows="2"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Guild ID</label>
+            <input type="text" name="guildId" required placeholder="Server ID" class="form-input">
+          </div>
+          <button type="submit" class="btn btn-primary">Create Role</button>
+        </form>
+      </div>
+    <% } %>
+  </section>
+</div>
+
+<script src="/static/js/roles.js"></script>
+<%- include('partials/footer') %>

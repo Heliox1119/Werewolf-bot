@@ -7,6 +7,10 @@ const gameManager = require("./game/gameManager");
 const { app: logger, discord: discordLogger, interaction: interactionLogger } = require("./utils/logger");
 const { safeEditReply } = require("./utils/interaction");
 const { t } = require('./utils/i18n');
+const WebServer = require('./web/server');
+
+// Web server (initialized on bot ready)
+let webServer = null;
 
 // Validation des variables d'environnement requises
 // NOTE: Ce bot supporte le multi-serveur avec config & langue par guild.
@@ -138,6 +142,21 @@ client.once("clientReady", async () => {
     gameManager.initAchievements();
   } catch (error) {
     logger.error('Failed to initialize achievement system', { error: error.message });
+  }
+
+  // Initialiser le Web Dashboard & API
+  try {
+    const GameDatabase = require('./database/db');
+    const webDb = new GameDatabase();
+    webServer = new WebServer({
+      port: parseInt(process.env.WEB_PORT) || 3000,
+      gameManager,
+      db: webDb,
+      client
+    });
+    await webServer.start();
+  } catch (error) {
+    logger.error('Failed to initialize web dashboard', { error: error.message });
   }
 
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
@@ -908,6 +927,11 @@ async function gracefulShutdown(signal) {
 
     // Clear all game timers and save state
     gameManager.destroy();
+
+    // Stop web dashboard
+    try {
+      if (webServer) await webServer.stop();
+    } catch (e) { /* ignore */ }
 
     // Destroy rate limiter
     try {

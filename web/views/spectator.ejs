@@ -1,0 +1,94 @@
+<%- include('partials/header') %>
+
+<div class="spectator-page" data-game-id="<%= gameId %>">
+  <!-- Game Header -->
+  <div class="spectator-header">
+    <div class="spectator-title">
+      <h1><%= game.guildName || game.guildId %></h1>
+      <div class="spectator-meta">
+        <span class="game-phase phase-<%= (game.phase || 'lobby').toLowerCase() %>" id="game-phase"><%= game.phase || 'Lobby' %></span>
+        <span class="game-subphase" id="game-subphase"><%= game.subPhase || '' %></span>
+        <span class="game-day" id="game-day"><%= game.dayCount ? 'Day ' + game.dayCount : '' %></span>
+        <span class="spectator-count" id="spectator-count">👁 <span>0</span> watching</span>
+      </div>
+    </div>
+    <a href="/" class="btn btn-outline">← Back</a>
+  </div>
+
+  <div class="spectator-grid">
+    <!-- Players Panel -->
+    <div class="spectator-panel">
+      <h3 class="panel-title">🧑‍🤝‍🧑 Players (<span id="alive-count"><%= game.players ? game.players.filter(function(p) { return p.alive; }).length : 0 %></span> alive)</h3>
+      <div class="player-list" id="player-list">
+        <% if (game.players) { game.players.forEach(function(p) { %>
+          <div class="player-row <%= p.alive ? 'alive' : 'dead' %>" data-player-id="<%= p.id %>">
+            <span class="player-status"><%= p.alive ? '❤️' : '💀' %></span>
+            <span class="player-name"><%= p.username %></span>
+            <% if (!p.alive && p.role) { %>
+              <span class="player-role role-<%= p.role.toLowerCase() %>"><%= p.role %></span>
+            <% } %>
+            <% if (p.isCaptain) { %><span class="player-badge">👑</span><% } %>
+            <% if (p.inLove) { %><span class="player-badge">💕</span><% } %>
+          </div>
+        <% }); } %>
+      </div>
+    </div>
+
+    <!-- Event Feed -->
+    <div class="spectator-panel spectator-feed">
+      <h3 class="panel-title">📜 Event Feed</h3>
+      <div class="event-feed" id="event-feed">
+        <div class="event-item event-info">
+          <span class="event-time"><%= new Date().toLocaleTimeString() %></span>
+          <span class="event-text">Connected to live spectator feed</span>
+        </div>
+        <% if (game.actionLog) { game.actionLog.slice(-10).forEach(function(log) { %>
+          <div class="event-item">
+            <span class="event-time"><%= log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : '' %></span>
+            <span class="event-text"><%= log.action %></span>
+          </div>
+        <% }); } %>
+      </div>
+    </div>
+
+    <!-- Game Info Panel -->
+    <div class="spectator-panel">
+      <h3 class="panel-title">📊 Game Info</h3>
+      <div class="info-grid">
+        <div class="info-row">
+          <span class="info-label">Game ID</span>
+          <span class="info-value"><%= gameId %></span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Started</span>
+          <span class="info-value" id="game-started"><%= game.startedAt ? new Date(game.startedAt).toLocaleTimeString() : '—' %></span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Players</span>
+          <span class="info-value"><%= game.players ? game.players.length : 0 %></span>
+        </div>
+        <% if (game.votes && Object.keys(game.votes).length > 0) { %>
+          <div class="info-row">
+            <span class="info-label">Votes</span>
+            <span class="info-value"><%= Object.keys(game.votes).length %> cast</span>
+          </div>
+        <% } %>
+      </div>
+
+      <% if (game.dead && game.dead.length > 0) { %>
+        <h4 class="panel-subtitle">💀 Graveyard</h4>
+        <div class="graveyard">
+          <% game.dead.forEach(function(d) { %>
+            <div class="grave-entry">
+              <span class="grave-name"><%= d.username || d.id %></span>
+              <span class="grave-role"><%= d.role || '?' %></span>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/spectator.js"></script>
+<%- include('partials/footer') %>

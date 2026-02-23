@@ -1,5 +1,95 @@
 # 📝 Changelog - Werewolf Bot
 
+## [3.0.0] - 2026-02-24 - Web Dashboard, Live Spectator, REST API, Custom Roles
+
+### 🌐 Web Dashboard
+- **Express.js** web server with Discord OAuth2 authentication (passport-discord)
+- **Real-time dashboard** showing active games, player counts, server stats
+- **Dark theme UI** with responsive design, Inter font, game-themed CSS
+- **Multiple pages** : Dashboard, Guild view, Player profile, Roles editor, Login, Live Spectator
+- **EJS templates** with header/footer partials, dynamic navigation
+- **Auto-start** on bot ready at port `WEB_PORT` (default 3000)
+- **Graceful shutdown** integrated into bot lifecycle
+
+### 👁 Live Spectator (WebSocket)
+- **Socket.IO** real-time game spectating — watch games unfold live from the browser
+- **EventEmitter bridge** : GameManager now extends EventEmitter, emits standardized events
+- **7 event types** : `gameCreated`, `playerJoined`, `gameStarted`, `phaseChanged`, `playerKilled`, `gameEnded`, `actionLog`
+- **Spectator rooms** : join/leave game feeds, spectator count broadcast, auto-cleanup on game end
+- **Event feed** : live chronological display of game actions with timestamps
+- **Player panel** : real-time alive/dead status, role reveals on death, captain/love badges
+- **Full game snapshot** : sanitized serializable game state (strips Discord objects)
+
+### 🔌 REST API
+- `GET /api/games` — All active games
+- `GET /api/games/:id` — Single game state
+- `GET /api/leaderboard?guild=&limit=` — ELO leaderboard with tier enrichment
+- `GET /api/players/:id` — Player stats + achievements + ELO + rank
+- `GET /api/history?guild=&limit=` — Game history
+- `GET /api/stats` — Global stats + uptime + memory
+- `GET /api/guilds` — All guilds the bot is in
+- `GET /api/roles` — Built-in + custom roles
+- `POST /api/roles` — Create custom role (Auth + Admin required)
+- `DELETE /api/roles/:id` — Delete custom role (Auth + Admin required)
+- `GET /api/config/:guildId` — Guild config (Auth + Admin)
+- `PATCH /api/config/:guildId` — Update guild config (Auth + Admin)
+
+### 🎭 Custom Roles System
+- **Custom roles table** (`custom_roles`) with auto-migration
+- **CRUD API** : create, list, delete custom roles per guild
+- **Role editor page** : visual interface with name, emoji, camp (village/wolves/solo), power type, description
+- **Admin-only** : requires Discord OAuth2 login + guild admin permissions (0x8 or 0x20)
+- **Built-in roles display** : all 10 base roles shown with themed emojis
+
+### 🔐 Security & Auth
+- **Discord OAuth2** via passport-discord (scopes: identify, guilds)
+- **helmet.js** with CSP configured for CDN assets and WebSocket connections
+- **CORS** support for API access
+- **Session management** : 7-day cookies, configurable secret
+- **Admin permission check** : Discord bitfield verification (Admin 0x8 or Manage Server 0x20)
+- **Read-only mode** : dashboard accessible without login, admin features require auth
+
+### 🏗️ Architecture
+- **GameManager** now extends `EventEmitter` — standard Node.js event pattern
+- **`_emitGameEvent()` helper** : standardized event emission with gameId, guildId, timestamp, try/catch wrapped
+- **`getGameSnapshot()` method** : returns sanitized serializable game state for web layer
+- **WebServer class** : constructor pattern with `{port, gameManager, db, client}`
+- **Route factories** : `module.exports = (webServer) => router` pattern for dependency injection
+- **Static assets** served at `/static` (CSS, JS, images)
+- **View engine** : EJS with partials at `web/views/`
+
+### 🔧 Fichiers créés/modifiés
+- **web/server.js** (NEW) : WebServer class — Express + Socket.IO + Auth + Game Bridge
+- **web/routes/auth.js** (NEW) : Discord OAuth2 login/callback/logout
+- **web/routes/api.js** (NEW) : REST API endpoints (games, leaderboard, stats, roles, config)
+- **web/routes/dashboard.js** (NEW) : HTML page routes (dashboard, spectator, guild, player, roles, login)
+- **web/views/** (NEW) : 8 EJS templates (header, footer, dashboard, spectator, guild, player, roles, login, error)
+- **web/public/css/style.css** (NEW) : 650+ lines dark theme CSS with responsive design
+- **web/public/js/app.js** (NEW) : Socket.IO client, navbar toggle, WS status indicator
+- **web/public/js/dashboard.js** (NEW) : Real-time game card updates
+- **web/public/js/spectator.js** (NEW) : Live game feed, player tracking, event timeline
+- **web/public/js/roles.js** (NEW) : Custom role CRUD operations
+- **game/gameManager.js** (MODIFIED) : extends EventEmitter, 7 event emissions, `getGameSnapshot()`
+- **index.js** (MODIFIED) : WebServer initialization on bot ready, graceful shutdown integration
+
+### 📦 Nouvelles dépendances
+- `express` — Web framework
+- `socket.io` — WebSocket real-time communication
+- `passport` + `passport-discord` — Discord OAuth2 authentication
+- `express-session` — Session management
+- `helmet` — Security headers
+- `cors` — Cross-origin support
+- `cookie-parser` — Cookie parsing
+- `ejs` — Template engine
+
+### ⚙️ Variables d'environnement
+- `WEB_PORT` — Port du serveur web (défaut: 3000)
+- `CLIENT_SECRET` — Secret Discord OAuth2 (optionnel — mode lecture seule si absent)
+- `WEB_CALLBACK_URL` — URL de callback OAuth2 (défaut: `http://localhost:3000/auth/discord/callback`)
+- `SESSION_SECRET` — Secret de session (défaut: auto-généré)
+
+---
+
 ## [2.9.0] - 2026-02-23 - Achievements, ELO, Death Reveal, DM Notifications
 
 ### 🏆 Système de succès (Achievements)
@@ -757,11 +847,20 @@ const voiceChannel = guild.channels.cache.get(voiceChannelId) ||
 - [x] 60+ clés de locale FR/EN ajoutées
 - [x] 4 bugs critiques corrigés (multi-guild, victory flow, listen, persistence)
 
-### v3.0.0 (Long terme)
-- [ ] Web interface d'administration
-- [ ] WebSocket dashboard temps réel
-- [ ] Rôles personnalisés configurables
+### v3.0.0 (✅ Terminé)
+- [x] Web Dashboard avec Express.js + EJS (dark theme, responsive)
+- [x] Live Spectator WebSocket (Socket.IO, event feed en temps réel)
+- [x] REST API complète (15 endpoints : games, leaderboard, stats, roles, config)
+- [x] Discord OAuth2 (passport-discord, admin permissions)
+- [x] Custom Roles system (CRUD, éditeur visuel, table SQLite)
+- [x] GameManager EventEmitter (7 types d'événements, snapshot sérialisable)
+- [x] Sécurité : helmet, CORS, CSP, session 7j
+
+### v3.1.0 (Planned)
 - [ ] Support de langues communautaires
+- [ ] Tableau de bord avancé avec graphiques (Chart.js)
+- [ ] Système de tournois
+- [ ] API webhooks pour intégrations tierces
 
 ---
 

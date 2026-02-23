@@ -1,0 +1,80 @@
+/**
+ * 🐺 Werewolf Bot — Main client-side app
+ * Socket.IO connection, navbar toggle, WS status
+ */
+(function() {
+  'use strict';
+
+  // === Socket.IO connection ===
+  let socket = null;
+
+  function connectSocket() {
+    try {
+      socket = io({ transports: ['websocket', 'polling'], reconnection: true, reconnectionDelay: 2000, reconnectionAttempts: 20 });
+
+      socket.on('connect', () => {
+        updateWsStatus(true);
+        console.log('[WS] Connected:', socket.id);
+      });
+
+      socket.on('disconnect', () => {
+        updateWsStatus(false);
+        console.log('[WS] Disconnected');
+      });
+
+      socket.on('connect_error', () => {
+        updateWsStatus(false);
+      });
+
+      // Expose socket globally for page-specific scripts
+      window.werewolfSocket = socket;
+      
+      // Dispatch custom event for page scripts waiting on socket
+      window.dispatchEvent(new CustomEvent('werewolf:socket-ready', { detail: { socket } }));
+    } catch (e) {
+      console.warn('[WS] Socket.IO not available:', e.message);
+    }
+  }
+
+  function updateWsStatus(connected) {
+    const el = document.getElementById('ws-status');
+    if (!el) return;
+    if (connected) {
+      el.className = 'ws-indicator ws-connected';
+      el.textContent = '⬤ Connected';
+    } else {
+      el.className = 'ws-indicator ws-disconnected';
+      el.textContent = '⬤ Disconnected';
+    }
+  }
+
+  // === Navbar mobile toggle ===
+  const navToggle = document.getElementById('nav-toggle');
+  const navLinks = document.getElementById('nav-links');
+  if (navToggle && navLinks) {
+    navToggle.addEventListener('click', () => navLinks.classList.toggle('open'));
+  }
+
+  // === Init ===
+  if (typeof io !== 'undefined') {
+    connectSocket();
+  } else {
+    updateWsStatus(false);
+  }
+
+  // === Utility: Format number ===
+  window.werewolfUtils = {
+    formatNumber(n) {
+      if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+      if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+      return n.toString();
+    },
+    timeAgo(date) {
+      const seconds = Math.floor((Date.now() - new Date(date)) / 1000);
+      if (seconds < 60) return 'just now';
+      if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+      if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+      return Math.floor(seconds / 86400) + 'd ago';
+    }
+  };
+})();

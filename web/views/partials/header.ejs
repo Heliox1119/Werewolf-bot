@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> — 🐺 Werewolf Bot</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐺</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="/" class="nav-brand">
+        <span class="nav-logo">🐺</span>
+        <span class="nav-title"><%= typeof botName !== 'undefined' && botName ? botName : 'Werewolf Bot' %></span>
+        <span class="nav-version">v3.0</span>
+      </a>
+      <div class="nav-links" id="nav-links">
+        <a href="/" class="nav-link<%= title === 'Dashboard' ? ' active' : '' %>">Dashboard</a>
+        <a href="/roles" class="nav-link<%= title === 'Roles Editor' ? ' active' : '' %>">Roles</a>
+        <% if (typeof user !== 'undefined' && user) { %>
+          <div class="nav-user">
+            <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png?size=32" alt="" class="nav-avatar" onerror="this.src='/static/img/default-avatar.svg'">
+            <span><%= user.username %></span>
+            <a href="/auth/logout" class="btn btn-sm btn-outline">Logout</a>
+          </div>
+        <% } else { %>
+          <a href="/auth/discord" class="btn btn-sm btn-discord">Login with Discord</a>
+        <% } %>
+      </div>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Menu">☰</button>
+    </div>
+  </nav>
+  <main class="main-content">

@@ -5,7 +5,7 @@
 
 Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion vocale automatique, audio d'ambiance et lobby interactif.
 
-![Version](https://img.shields.io/badge/version-2.9.0-blue)
+![Version](https://img.shields.io/badge/version-3.0.0-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
@@ -80,12 +80,20 @@ Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion
 - **Persistance** — La langue choisie est sauvegardée en base de données
 - **Extensible** — Ajouter une langue = créer un fichier `locales/xx.js`
 
+### 🌐 Web Dashboard & API
+- **Tableau de bord web** — Express.js + EJS avec thème sombre à `http://localhost:3000`
+- **Spectateur live** — Suivez les parties en temps réel via Socket.IO WebSocket
+- **API REST** — 15 endpoints (parties, classement, stats, rôles, config)
+- **Discord OAuth2** — Connexion Discord, fonctionnalités admin par serveur
+- **Rôles personnalisés** — Créez et gérez des rôles custom via l'éditeur web
+
 ### 🗄️ Technique
 - **Persistance SQLite** — État des parties, stats joueurs, actions de nuit, métriques, succès, ELO
 - **Docker ready** — Dockerfile multi-stage, docker-compose avec volumes persistants, health checks
 - **Backup automatique** — Backup SQLite horaire avec rotation 24h, backup au shutdown
 - **Multi-guild** — Langue, config et catégorie par serveur avec fallback global
 - **i18n centralisé** — Singleton `I18n`, interpolation `{{variable}}`, fallback automatique
+- **Architecture EventEmitter** — GameManager émet des événements temps réel vers le web
 - **Gestion d'erreurs robuste** — safeReply, graceful shutdown, zero crash en production
 - **191 tests automatisés** — 15 suites, 0 failures
 - **Thèmes d'embed** — 4 palettes de couleurs, commande `/theme`, 12 couleurs sémantiques
@@ -113,6 +121,11 @@ TOKEN=votre_token_bot_discord
 CLIENT_ID=id_application_discord
 GUILD_ID=id_serveur_discord
 LOG_LEVEL=INFO    # DEBUG | INFO | WARN | ERROR | NONE
+
+# Web Dashboard (optionnel)
+WEB_PORT=3000
+CLIENT_SECRET=votre_secret_oauth2_discord
+SESSION_SECRET=votre_secret_de_session
 ```
 
 ```bash
@@ -126,6 +139,8 @@ docker compose up -d
 ```
 
 > **Ce que Docker offre :** Auto-restart, volumes persistants pour la base de données et les logs, health checks, rotation des logs, environnement isolé avec FFmpeg inclus.
+>
+> **Tableau de bord web :** Démarre automatiquement sur le port 3000. Accédez-y à `http://localhost:3000`. Définissez `CLIENT_SECRET` pour la connexion OAuth2.
 
 <details>
 <summary><b>Détails Docker</b></summary>
@@ -285,11 +300,25 @@ Werewolf-bot/
 ├── index.js                # Point d'entrée, handlers Discord
 ├── commands/               # Commandes slash (auto-chargées)
 ├── game/
-│   ├── gameManager.js      # Logique de jeu, phases, victoire
+│   ├── gameManager.js      # Logique de jeu, phases, victoire (EventEmitter)
 │   ├── achievements.js     # Moteur de succès + système ELO
 │   ├── voiceManager.js     # Audio & connexions vocales
 │   ├── phases.js           # Constantes de phases
 │   └── roles.js            # Constantes de rôles
+├── web/                    # 🌐 Tableau de bord web (NEW v3.0)
+│   ├── server.js           # Serveur Express + Socket.IO
+│   ├── routes/
+│   │   ├── auth.js         # Routes Discord OAuth2
+│   │   ├── api.js          # API REST (15 endpoints)
+│   │   └── dashboard.js    # Routes pages HTML
+│   ├── views/              # Templates EJS
+│   │   ├── partials/       # Header & footer
+│   │   ├── dashboard.ejs   # Tableau de bord
+│   │   ├── spectator.ejs   # Spectateur live
+│   │   ├── guild.ejs       # Page serveur
+│   │   ├── player.ejs      # Profil joueur
+│   │   └── roles.ejs       # Éditeur de rôles custom
+│   └── public/             # Assets statiques (CSS, JS)
 ├── locales/
 │   ├── fr.js               # Locale française (~500+ clés)
 │   └── en.js               # Locale anglaise (~500+ clés)
@@ -328,8 +357,7 @@ npm run clear-commands      # Réinitialiser les commandes Discord
 ## 📊 Historique des versions
 
 | Version | Highlights |
-|---------|-----------|
-| **v2.9.0** | 🏆 Succès (18), classement ELO (7 paliers), révélation rôle à la mort, notification DM de tour, `/leaderboard`, `/history`, timeline post-game, 4 bug fixes |
+|---------|-----------|| **v3.0.0** | 🌐 Tableau de bord web (Express + EJS), Spectateur live (Socket.IO), API REST (15 endpoints), Discord OAuth2, Rôles personnalisés, Architecture EventEmitter || **v2.9.0** | 🏆 Succès (18), classement ELO (7 paliers), révélation rôle à la mort, notification DM de tour, `/leaderboard`, `/history`, timeline post-game, 4 bug fixes |
 | **v2.8.0** | 🐳 Docker, backup SQLite auto (horaire), multi-guild (langue & config par serveur), système de revanche |
 | **v2.7.0** | Petite Fille relay temps réel en DM, indices ambigus intelligents, normalisation Unicode/zalgo, wolfwin serveur-wide, commandes guild-only |
 | **v2.6.0** | Équilibrage phases, vote capitaine auto, fix potion sorcière, victoire loups configurable, ping loups |
@@ -370,4 +398,4 @@ Détails complets : [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-**Version** : 2.9.0 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **Docker** : ready · **License** : ISC
+**Version** : 3.0.0 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **Docker** : ready · **License** : ISC

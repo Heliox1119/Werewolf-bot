@@ -2,6 +2,7 @@ const ROLES = require("./roles");
 const PHASES = require("./phases");
 const fs = require('fs');
 const path = require('path');
+const EventEmitter = require('events');
 const { game: logger } = require('../utils/logger');
 const GameDatabase = require('../database/db');
 const { t, translateRole, translateRoleDesc, tips } = require('../utils/i18n');
@@ -21,8 +22,9 @@ const TIMEOUTS = {
   RECENT_COMMAND_INTERVAL: 60_000      // 60s interval de nettoyage
 };
 
-class GameManager {
+class GameManager extends EventEmitter {
   constructor() {
+    super();
     this.games = new Map(); // Cache en mémoire pour performance
     this.db = new GameDatabase(); // Base de données SQLite
     this.lobbyTimeouts = new Map(); // channelId -> timeoutId
@@ -292,6 +294,7 @@ class GameManager {
       metrics.recordGameCreated();
     } catch {}
     
+    this._emitGameEvent(this.games.get(channelId), 'gameCreated', { hostId: options.lobbyHostId });
     return true;
   }
 
@@ -326,6 +329,65 @@ class GameManager {
     }
     // Sauvegarder dans la DB
     this.db.addLog(game.mainChannelId, text);
+    // Emit for web dashboard
+    this._emitGameEvent(game, 'actionLog', { text });
+  }
+
+  /**
+   * Emit a game event for the web dashboard / WebSocket bridge.
+   * All events include the game's mainChannelId and guildId for routing.
+   */
+  _emitGameEvent(game, eventName, data = {}) {
+    if (!game) return;
+    try {
+      this.emit('gameEvent', {
+        event: eventName,
+        gameId: game.mainChannelId,
+        guildId: game.guildId,
+        timestamp: Date.now(),
+        ...data
+      });
+    } catch (e) { /* never let event emission crash the bot */ }
+  }
+
+  /**
+   * Returns a sanitized snapshot of the game state for the web layer.
+   * Strips Discord-specific objects, keeps only serializable data.
+   */
+  getGameSnapshot(game) {
+    if (!game) return null;
+    return {
+      gameId: game.mainChannelId,
+      guildId: game.guildId,
+      phase: game.phase,
+      subPhase: game.subPhase,
+      dayCount: game.dayCount || 0,
+      captainId: game.captainId,
+      players: (game.players || []).map(p => ({
+        id: p.id,
+        username: p.username,
+        role: p.role,
+        alive: p.alive,
+        inLove: p.inLove || false,
+        idiotRevealed: p.idiotRevealed || false
+      })),
+      dead: (game.dead || []).map(p => ({
+        id: p.id,
+        username: p.username,
+        role: p.role
+      })),
+      lovers: game.lovers || [],
+      nightVictim: game.nightVictim,
+      witchPotions: game.witchPotions,
+      villageRolesPowerless: game.villageRolesPowerless || false,
+      startedAt: game.startedAt,
+      endedAt: game.endedAt,
+      actionLog: (game.actionLog || []).slice(-30),
+      votes: game.votes ? Object.fromEntries(game.votes) : {},
+      voteVoters: game.voteVoters ? Object.fromEntries(game.voteVoters) : {},
+      lobbyHostId: game.lobbyHostId,
+      rules: game.rules
+    };
   }
 
   formatPayloadSummary(payload) {
@@ -773,6 +835,14 @@ class GameManager {
     }
 
     await this.sendGameSummary(guild, game, victorDisplay, mainChannel, eloChanges, newAchievements);
+
+    this._emitGameEvent(game, 'gameEnded', {
+      victor,
+      victorDisplay,
+      players: game.players.map(p => ({ id: p.id, username: p.username, role: p.role, alive: p.alive })),
+      dayCount: game.dayCount,
+      duration: game.endedAt - game.startedAt
+    });
   }
 
   formatDurationMs(ms) {
@@ -1120,6 +1190,7 @@ class GameManager {
 
     // Reset le timeout à chaque join
     this.setLobbyTimeout(channelId);
+    this._emitGameEvent(game, 'playerJoined', { playerId: user.id, username: user.username, playerCount: game.players.length });
     return true;
   }
 
@@ -1223,6 +1294,11 @@ class GameManager {
     for (const p of game.players) {
       this.logAction(game, `${p.username} => ${p.role}`);
     }
+
+    this._emitGameEvent(game, 'gameStarted', {
+      players: game.players.map(p => ({ id: p.id, username: p.username, role: p.role })),
+      subPhase: game.subPhase
+    });
 
     return game;
   }
@@ -1920,6 +1996,12 @@ class GameManager {
     // Mettre à jour les permissions vocales
     await this.updateVoicePerms(guild, game);
 
+    this._emitGameEvent(game, 'phaseChanged', {
+      phase: game.phase,
+      subPhase: game.subPhase,
+      dayCount: game.dayCount
+    });
+
     return game.phase;
   }
 
@@ -2025,6 +2107,8 @@ class GameManager {
     
     // Synchroniser avec la DB
     this.db.updatePlayer(channelId, playerId, { alive: false });
+    
+    this._emitGameEvent(game, 'playerKilled', { playerId, username: player.username, role: player.role });
     
     // Révoquer l'accès aux channels privés du rôle
     this._pendingLockouts = this._pendingLockouts || [];
