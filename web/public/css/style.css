@@ -1321,6 +1321,45 @@ body[data-page="full"] .app-main {
 .achievement-date { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.25rem; }
 
 /* === Roles Page === */
+.roles-page { max-width: 1100px; }
+
+/* Section Headers */
+.roles-section { margin-bottom: 3rem; }
+.roles-section-header {
+  display: flex; align-items: center; gap: 1rem;
+  margin-bottom: 1.5rem; padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.roles-section-badge {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; flex-shrink: 0;
+}
+.classic-badge { background: rgba(148, 163, 184, 0.12); }
+.premium-badge {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(218, 165, 32, 0.15));
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.1);
+}
+.custom-badge { background: rgba(139, 92, 246, 0.12); }
+.roles-section-title {
+  font-family: var(--font-display); font-size: 1.15rem; font-weight: 700;
+  margin: 0; letter-spacing: 0.3px;
+}
+.premium-title { color: #ffd700; }
+.roles-section-desc {
+  font-size: 0.78rem; color: var(--text-muted); margin: 0.15rem 0 0;
+}
+.roles-section-count {
+  margin-left: auto; font-size: 0.75rem; font-weight: 600;
+  color: var(--text-muted); background: var(--bg-secondary);
+  padding: 0.3rem 0.75rem; border-radius: 999px;
+  white-space: nowrap;
+}
+.premium-count {
+  background: rgba(255, 215, 0, 0.1); color: #ffd700;
+  border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
 .roles-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -1351,6 +1390,35 @@ body[data-page="full"] .app-main {
 .role-card-wolves::before { background: linear-gradient(90deg, var(--color-danger), transparent); }
 .role-card-village::before { background: linear-gradient(90deg, var(--color-success), transparent); }
 .role-card-solo::before { background: linear-gradient(90deg, var(--accent-primary), transparent); }
+
+/* Premium card styling */
+.role-card-premium {
+  border-color: rgba(255, 215, 0, 0.2);
+  background: linear-gradient(180deg, rgba(255, 215, 0, 0.03) 0%, var(--bg-card) 100%);
+}
+.role-card-premium::before {
+  background: linear-gradient(90deg, #ffd700, #daa520, transparent) !important;
+  opacity: 0.6;
+}
+.role-card-premium:hover {
+  border-color: rgba(255, 215, 0, 0.4);
+  box-shadow: 0 8px 32px rgba(255, 215, 0, 0.08), var(--shadow-lg);
+}
+.role-card-premium:hover::before { opacity: 1; }
+.role-card-premium .role-name { color: #ffd700; }
+.role-card-premium .role-img {
+  border-color: rgba(255, 215, 0, 0.3);
+}
+.role-card-premium:hover .role-img {
+  border-color: #ffd700;
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.2);
+}
+.premium-glow {
+  position: absolute; top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.04) 0%, transparent 60%);
+  pointer-events: none;
+}
 
 .role-img {
   width: 80px; height: 80px;
