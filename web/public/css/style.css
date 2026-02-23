@@ -517,9 +517,50 @@ body[data-page="full"] .app-main {
   border-radius: var(--border-radius-xs);
   transition: var(--transition-fast);
   flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
 }
 .guild-panel-settings:hover {
   color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.guild-panel-settings-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.guild-panel-settings-popup {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 0.35rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  z-index: 100;
+  min-width: 140px;
+}
+.guild-panel-settings-popup.open {
+  display: block;
+}
+.guild-panel-settings-lang {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.65rem;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  border-radius: var(--border-radius-xs);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  white-space: nowrap;
+}
+.guild-panel-settings-lang:hover {
   background: var(--bg-hover);
 }
 

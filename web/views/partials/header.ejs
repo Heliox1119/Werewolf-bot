@@ -137,7 +137,15 @@
         <span class="guild-panel-initial"><%= activeGuild.name ? activeGuild.name.charAt(0).toUpperCase() : '?' %></span>
       <% } %>
       <span class="guild-panel-name"><%= activeGuild.name || 'Server' %></span>
-      <button class="guild-panel-settings" id="sidebar-lang-toggle" type="button" title="Language">&#127760;</button>
+      <div class="guild-panel-settings-wrap" id="sidebar-settings-wrap">
+        <button class="guild-panel-settings" id="sidebar-settings-btn" type="button" title="Settings">&#9881;</button>
+        <div class="guild-panel-settings-popup" id="sidebar-settings-popup">
+          <button class="guild-panel-settings-lang" id="sidebar-lang-toggle" type="button">
+            <span id="sidebar-lang-flag">&#127760;</span>
+            <span data-i18n="nav.language">Langue</span>
+          </button>
+        </div>
+      </div>
     </div>
     <nav class="guild-panel-nav">
       <a href="/guild/<%= activeGuildId %>" class="guild-panel-item<%= guildPage === 'overview' ? ' active' : '' %>">

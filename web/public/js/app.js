@@ -90,15 +90,37 @@
           const current = getLang();
           const next = current === 'fr' ? 'en' : 'fr';
           setLang(next);
-          if (typeof applyTranslations === 'function') applyTranslations();
-          if (typeof updateLangButton === 'function') updateLangButton();
-          // Also update the dropdown flag
-          const flag = document.getElementById('user-menu-lang-flag');
-          if (flag) flag.textContent = next === 'fr' ? '🇫🇷' : '🇬🇧';
         }
         // Close dropdown after switching
         userMenu.classList.remove('open');
         userBtn.classList.remove('open');
+      });
+    }
+  }
+
+  // Sidebar settings gear popup
+  const settingsBtn = document.getElementById('sidebar-settings-btn');
+  const settingsPopup = document.getElementById('sidebar-settings-popup');
+  if (settingsBtn && settingsPopup) {
+    settingsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      settingsPopup.classList.toggle('open');
+    });
+    document.addEventListener('click', (e) => {
+      if (!settingsBtn.contains(e.target) && !settingsPopup.contains(e.target)) {
+        settingsPopup.classList.remove('open');
+      }
+    });
+    // Lang button inside the popup
+    const sidebarLangBtn = document.getElementById('sidebar-lang-toggle');
+    if (sidebarLangBtn) {
+      sidebarLangBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (typeof getLang === 'function' && typeof setLang === 'function') {
+          const current = getLang();
+          setLang(current === 'fr' ? 'en' : 'fr');
+        }
+        settingsPopup.classList.remove('open');
       });
     }
   }

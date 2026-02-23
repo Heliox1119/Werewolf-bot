@@ -855,10 +855,10 @@
     // Support both old standalone button IDs and new dropdown IDs
     const flag = document.getElementById('lang-flag') || document.getElementById('user-menu-lang-flag');
     const label = document.getElementById('lang-label');
-    const sidebarLang = document.getElementById('sidebar-lang-toggle');
+    const sidebarFlag = document.getElementById('sidebar-lang-flag');
     if (flag) flag.textContent = lang === 'fr' ? '🇫🇷' : '🇬🇧';
     if (label) label.textContent = lang === 'fr' ? 'FR' : 'EN';
-    if (sidebarLang) sidebarLang.textContent = lang === 'fr' ? '🇫🇷' : '🇬🇧';
+    if (sidebarFlag) sidebarFlag.textContent = lang === 'fr' ? '🇫🇷' : '🇬🇧';
   }
 
   // Init on DOM ready
