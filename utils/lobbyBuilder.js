@@ -16,9 +16,11 @@ const ROLE_LIST = [
   { emoji: '🏹', nameKey: 'hunter',        count: 1, minPlayers: 5, team: 'village'  },
   { emoji: '👁️', nameKey: 'petite_fille',  count: 1, minPlayers: 6, team: 'village'  },
   { emoji: '💘', nameKey: 'cupid',         count: 1, minPlayers: 7, team: 'neutral' },
-  { emoji: '🛡️', nameKey: 'salvateur',     count: 1, minPlayers: 8, team: 'village'  },
-  { emoji: '🧓', nameKey: 'ancien',        count: 1, minPlayers: 9, team: 'village'  },
-  { emoji: '🤡', nameKey: 'idiot',         count: 1, minPlayers: 10, team: 'village' },
+  { emoji: '🎭', nameKey: 'thief',         count: 1, minPlayers: 8, team: 'village'  },
+  { emoji: '🛡️', nameKey: 'salvateur',     count: 1, minPlayers: 9, team: 'village'  },
+  { emoji: '🧓', nameKey: 'ancien',        count: 1, minPlayers: 10, team: 'village'  },
+  { emoji: '🐺', nameKey: 'white_wolf',    count: 1, minPlayers: 11, team: 'evil'    },
+  { emoji: '🤡', nameKey: 'idiot',         count: 1, minPlayers: 12, team: 'village' },
   { emoji: '🧑‍🌾', nameKey: 'villager',     count: null, minPlayers: 5, team: 'village' }
 ];
 
@@ -63,7 +65,7 @@ function buildProgressBar(current, min, max) {
  */
 function buildPlayerList(players, max) {
   if (players.length === 0) {
-    return `> ${t('lobby.no_players')}\n> \n> ${'⬜'.repeat(Math.min(max, 10))} \`0/${max}\``;
+    return `> ${t('lobby.no_players')}\n> \n> ${'⬜'.repeat(max)} \`0/${max}\``;
   }
 
   const lines = players.map((p, i) => {
@@ -74,7 +76,7 @@ function buildPlayerList(players, max) {
 
   // Slot indicator
   const filledSlots = '🟦'.repeat(Math.min(players.length, max));
-  const emptySlots = '⬜'.repeat(Math.max(0, Math.min(max, 10) - players.length));
+  const emptySlots = '⬜'.repeat(Math.max(0, max - players.length));
   lines.push(`> \n> ${filledSlots}${emptySlots}`);
 
   return lines.join('\n');
@@ -86,25 +88,31 @@ function buildPlayerList(players, max) {
 function buildRolesPreview(playerCount) {
   const active = ROLE_LIST.filter(r => r.minPlayers <= playerCount || r.count === null);
 
-  // Calculate wolf count: consolidate wolf entries (highest applicable)
+  // Calculate wolf count: consolidate regular werewolf entries (highest applicable)
   const wolfEntries = active.filter(r => r.team === 'evil' && r.nameKey === 'werewolf');
   const wolfCount = wolfEntries.length > 0 ? wolfEntries[wolfEntries.length - 1].count : 0;
 
-  // Calculate villager count (using consolidated wolf count)
+  // White Wolf is a separate evil role
+  const hasWhiteWolf = active.some(r => r.nameKey === 'white_wolf');
+  const totalEvilCount = wolfCount + (hasWhiteWolf ? 1 : 0);
+
+  // Calculate villager count (using total evil count)
   const specialCount = active
     .filter(x => x.count !== null && x.team !== 'evil')
-    .reduce((sum, x) => sum + x.count, 0) + wolfCount;
+    .reduce((sum, x) => sum + x.count, 0) + totalEvilCount;
   const villagerCount = Math.max(0, playerCount - specialCount);
 
   const lines = [];
 
   // Evil team
-  if (wolfCount > 0) {
-    const wolfLine = `🐺 ${t('role.werewolf')} ×${wolfCount}`;
-    lines.push(`${t('lobby.team_evil')} ─ ${wolfLine}`);
+  if (totalEvilCount > 0) {
+    const evilParts = [];
+    if (wolfCount > 0) evilParts.push(`🐺 ${t('role.werewolf')} ×${wolfCount}`);
+    if (hasWhiteWolf) evilParts.push(`🐺 ${t('role.white_wolf')}`);
+    lines.push(`${t('lobby.team_evil')} ─ ${evilParts.join('  ')}`);
   }
 
-  // Village team (exclude wolf entries)
+  // Village team (exclude evil entries and villager filler)
   const village = active.filter(r => r.team === 'village' && r.count !== null);
   if (village.length > 0) {
     const villageLine = village.map(r => `${r.emoji} ${t(`role.${r.nameKey}`)}`).join('  ');
@@ -119,7 +127,7 @@ function buildRolesPreview(playerCount) {
     lines.push(`${t('lobby.team_neutral')} ─ ${neutralLine}`);
   }
 
-  const uniqueRoleCount = active.filter(r => r.count !== null && r.team !== 'evil').length + (wolfCount > 0 ? 1 : 0) + (villagerCount > 0 ? 1 : 0);
+  const uniqueRoleCount = active.filter(r => r.count !== null && r.team !== 'evil').length + (wolfCount > 0 ? 1 : 0) + (hasWhiteWolf ? 1 : 0) + (villagerCount > 0 ? 1 : 0);
   lines.push(`\n> ${t('lobby.roles_count', { n: uniqueRoleCount, m: playerCount })}`);
 
   return lines.join('\n');

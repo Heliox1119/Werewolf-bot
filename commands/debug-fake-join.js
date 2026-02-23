@@ -13,7 +13,7 @@ module.exports = {
         .setDescription("Nombre de joueurs à ajouter")
         .setRequired(true)
         .setMinValue(1)
-        .setMaxValue(10)
+        .setMaxValue(20)
     ),
 
   async execute(interaction) {
