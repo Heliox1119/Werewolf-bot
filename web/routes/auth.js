@@ -5,11 +5,22 @@ const express = require('express');
 const passport = require('passport');
 const router = express.Router();
 
+// Guard: check if discord strategy is registered
+function ensureStrategy(req, res, next) {
+  if (!passport._strategy('discord')) {
+    return res.status(503).render('error', {
+      title: 'OAuth2 Disabled',
+      message: 'Discord OAuth2 is not configured. Set CLIENT_SECRET in your .env file to enable login.'
+    });
+  }
+  next();
+}
+
 // Discord OAuth2 login
-router.get('/discord', passport.authenticate('discord'));
+router.get('/discord', ensureStrategy, passport.authenticate('discord'));
 
 // OAuth2 callback
-router.get('/discord/callback',
+router.get('/discord/callback', ensureStrategy,
   passport.authenticate('discord', { failureRedirect: '/auth/failed' }),
   (req, res) => {
     res.redirect(req.session.returnTo || '/');
