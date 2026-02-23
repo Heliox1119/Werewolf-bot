@@ -84,6 +84,62 @@
       // Footer
       'footer.connected': 'Connecté',
       'footer.disconnected': 'Déconnecté',
+
+      // Roles Page
+      'roles.title': 'Rôles',
+      'roles.subtitle': 'Tous les rôles du jeu — intégrés et personnalisés',
+      'roles.builtin': 'Rôles intégrés',
+      'roles.custom': 'Rôles personnalisés',
+      'roles.no_custom': 'Aucun rôle personnalisé créé',
+      'roles.create_hint': 'Utilisez le formulaire ci-dessous pour en créer un',
+      'roles.login_hint': 'Connectez-vous en tant qu\'administrateur pour créer des rôles',
+      'roles.create_title': 'Créer un rôle personnalisé',
+      'roles.form_name': 'Nom',
+      'roles.form_name_ph': 'ex. Forgeron',
+      'roles.form_emoji': 'Emoji',
+      'roles.form_camp': 'Camp',
+      'roles.form_power': 'Pouvoir',
+      'roles.form_desc': 'Description',
+      'roles.form_desc_ph': 'Décrivez les capacités du rôle...',
+      'roles.form_guild': 'ID du serveur',
+      'roles.form_guild_ph': 'ID du serveur',
+      'roles.create_btn': 'Créer le rôle',
+      'roles.power_none': 'Aucun (Passif)',
+      'roles.power_see': 'Voir (comme Voyante)',
+      'roles.power_protect': 'Protéger (comme Salvateur)',
+      'roles.power_kill': 'Tuer (comme Chasseur)',
+      'roles.power_heal': 'Soigner (comme Sorcière)',
+      'roles.power_custom': 'Personnalisé',
+      // Role names
+      'role.name.WEREWOLF': 'Loup-Garou',
+      'role.name.SEER': 'Voyante',
+      'role.name.WITCH': 'Sorcière',
+      'role.name.HUNTER': 'Chasseur',
+      'role.name.CUPID': 'Cupidon',
+      'role.name.PETITE_FILLE': 'Petite Fille',
+      'role.name.VILLAGER': 'Villageois',
+      'role.name.IDIOT': 'Idiot du Village',
+      'role.name.SALVATEUR': 'Salvateur',
+      'role.name.ANCIEN': 'Ancien',
+      'role.name.WHITE_WOLF': 'Loup Blanc',
+      'role.name.THIEF': 'Voleur',
+      // Role camps
+      'role.camp.wolves': 'Loups',
+      'role.camp.village': 'Village',
+      'role.camp.solo': 'Solo',
+      // Role descriptions
+      'role.desc.WEREWOLF': 'Chaque nuit, les loups-garous se réunissent pour dévorer un villageois.',
+      'role.desc.SEER': 'Chaque nuit, la voyante peut découvrir le rôle d\'un joueur.',
+      'role.desc.WITCH': 'Possède une potion de vie et une potion de mort, utilisable une fois chacune.',
+      'role.desc.HUNTER': 'En mourant, le chasseur peut emporter un autre joueur avec lui.',
+      'role.desc.CUPID': 'Désigne deux amoureux au début de la partie. Si l\'un meurt, l\'autre aussi.',
+      'role.desc.PETITE_FILLE': 'Peut espionner les loups-garous pendant la nuit, au risque de se faire repérer.',
+      'role.desc.VILLAGER': 'Un simple villageois sans pouvoir spécial. Il doit démasquer les loups.',
+      'role.desc.IDIOT': 'S\'il est voté par le village, il est révélé mais perd son droit de vote.',
+      'role.desc.SALVATEUR': 'Chaque nuit, il protège un joueur de l\'attaque des loups-garous.',
+      'role.desc.ANCIEN': 'Résiste à la première attaque des loups-garous grâce à sa robustesse.',
+      'role.desc.WHITE_WOLF': 'Joue en solitaire. Chasse avec la meute mais peut dévorer un loup une nuit sur deux. Gagne s\'il est le dernier.',
+      'role.desc.THIEF': 'Découvre 2 cartes au début et peut échanger son rôle. Si les deux sont des loups, il doit en prendre une.',
     },
     en: {
       // Nav
@@ -163,6 +219,62 @@
       // Footer
       'footer.connected': 'Connected',
       'footer.disconnected': 'Disconnected',
+
+      // Roles Page
+      'roles.title': 'Roles',
+      'roles.subtitle': 'All game roles — built-in and custom',
+      'roles.builtin': 'Built-in Roles',
+      'roles.custom': 'Custom Roles',
+      'roles.no_custom': 'No custom roles created yet',
+      'roles.create_hint': 'Use the form below to create one',
+      'roles.login_hint': 'Login as a server admin to create custom roles',
+      'roles.create_title': 'Create Custom Role',
+      'roles.form_name': 'Name',
+      'roles.form_name_ph': 'e.g. Blacksmith',
+      'roles.form_emoji': 'Emoji',
+      'roles.form_camp': 'Camp',
+      'roles.form_power': 'Power',
+      'roles.form_desc': 'Description',
+      'roles.form_desc_ph': 'Describe the role\'s abilities...',
+      'roles.form_guild': 'Guild ID',
+      'roles.form_guild_ph': 'Server ID',
+      'roles.create_btn': 'Create Role',
+      'roles.power_none': 'None (Passive)',
+      'roles.power_see': 'See (like Seer)',
+      'roles.power_protect': 'Protect (like Guard)',
+      'roles.power_kill': 'Kill (like Hunter)',
+      'roles.power_heal': 'Heal (like Witch)',
+      'roles.power_custom': 'Custom',
+      // Role names
+      'role.name.WEREWOLF': 'Werewolf',
+      'role.name.SEER': 'Seer',
+      'role.name.WITCH': 'Witch',
+      'role.name.HUNTER': 'Hunter',
+      'role.name.CUPID': 'Cupid',
+      'role.name.PETITE_FILLE': 'Little Girl',
+      'role.name.VILLAGER': 'Villager',
+      'role.name.IDIOT': 'Village Idiot',
+      'role.name.SALVATEUR': 'Guardian',
+      'role.name.ANCIEN': 'Elder',
+      'role.name.WHITE_WOLF': 'White Wolf',
+      'role.name.THIEF': 'Thief',
+      // Role camps
+      'role.camp.wolves': 'Wolves',
+      'role.camp.village': 'Village',
+      'role.camp.solo': 'Solo',
+      // Role descriptions
+      'role.desc.WEREWOLF': 'Each night, the werewolves gather to devour a villager.',
+      'role.desc.SEER': 'Each night, the seer can discover a player\'s role.',
+      'role.desc.WITCH': 'Has a life potion and a death potion, each usable once.',
+      'role.desc.HUNTER': 'When dying, the hunter can take another player down.',
+      'role.desc.CUPID': 'Chooses two lovers at the start. If one dies, so does the other.',
+      'role.desc.PETITE_FILLE': 'Can spy on the werewolves at night, at the risk of being caught.',
+      'role.desc.VILLAGER': 'A simple villager with no special power. Must unmask the wolves.',
+      'role.desc.IDIOT': 'If voted out by the village, he is revealed but loses his voting rights.',
+      'role.desc.SALVATEUR': 'Each night, protects a player from the werewolves\' attack.',
+      'role.desc.ANCIEN': 'Survives the first werewolf attack thanks to his resilience.',
+      'role.desc.WHITE_WOLF': 'Plays solo. Hunts with the pack but can devour a wolf every other night. Wins if last standing.',
+      'role.desc.THIEF': 'Discovers 2 cards at the start and can swap his role. If both are wolves, he must take one.',
     }
   };
 
@@ -204,11 +316,12 @@
   }
 
   function updateLangButton(lang) {
+    const flag = document.getElementById('lang-flag');
+    const label = document.getElementById('lang-label');
     const btn = document.getElementById('lang-toggle');
-    if (btn) {
-      btn.textContent = lang === 'fr' ? '🇬🇧 EN' : '🇫🇷 FR';
-      btn.title = lang === 'fr' ? 'Switch to English' : 'Passer en français';
-    }
+    if (flag) flag.textContent = lang === 'fr' ? '🇬🇧' : '🇫🇷';
+    if (label) label.textContent = lang === 'fr' ? 'EN' : 'FR';
+    if (btn) btn.title = lang === 'fr' ? 'Switch to English' : 'Passer en français';
   }
 
   // Init on DOM ready

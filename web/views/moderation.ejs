@@ -17,10 +17,17 @@
   <% } else { %>
     <!-- Game Selector Tabs -->
     <div class="mod-tabs" id="mod-tabs">
-      <% games.forEach(function(g, i) { %>
+      <% games.forEach(function(g, i) {
+        var guildInfo = (typeof guilds !== 'undefined' ? guilds : []).find(function(gl) { return gl.id === g.guildId; });
+      %>
         <button class="mod-tab<%= i === 0 ? ' active' : '' %>" data-game="<%= g.gameId %>">
           <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>" style="font-size:0.6rem;padding:0.15rem 0.5rem;"><%= g.phase || 'Lobby' %></span>
-          <span class="mod-tab-guild"><%= g.guildId %></span>
+          <span class="mod-tab-guild">
+            <% if (guildInfo && guildInfo.icon) { %>
+              <img src="<%= guildInfo.icon %>" alt="" class="mod-tab-guild-img">
+            <% } %>
+            <span class="mod-tab-guild-name"><%= (guildInfo && guildInfo.name) ? guildInfo.name : g.guildId %></span>
+          </span>
           <span class="mod-tab-info"><%= g.players ? g.players.filter(function(p){ return p.alive; }).length : 0 %>/<%= g.players ? g.players.length : 0 %> alive</span>
         </button>
       <% }); %>

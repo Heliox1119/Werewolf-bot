@@ -8,6 +8,21 @@ module.exports = function(webServer) {
   const gm = webServer.gameManager;
   const db = webServer.db;
 
+  // Middleware: inject userGuilds into all rendered pages
+  router.use((req, res, next) => {
+    if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+      const guilds = (req.user.guilds || []).filter(g => (parseInt(g.permissions) & 0x28) !== 0);
+      res.locals.userGuilds = guilds.map(g => ({
+        id: g.id,
+        name: g.name,
+        icon: g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64` : null
+      }));
+    } else {
+      res.locals.userGuilds = [];
+    }
+    next();
+  });
+
   /** GET / — Main dashboard */
   router.get('/', (req, res) => {
     try {

@@ -69,14 +69,14 @@
 <div class="roles-page">
   <div class="page-header">
     <div>
-      <h1>Roles</h1>
-      <p class="text-muted">All game roles &mdash; built-in and custom</p>
+      <h1 data-i18n="roles.title">Roles</h1>
+      <p class="text-muted" data-i18n="roles.subtitle">All game roles &mdash; built-in and custom</p>
     </div>
   </div>
 
   <!-- Built-in Roles -->
   <section class="section">
-    <h2 class="section-title">Built-in Roles</h2>
+    <h2 class="section-title" data-i18n="roles.builtin">Built-in Roles</h2>
     <div class="roles-grid">
       <% builtIn.forEach(function(r) {
         var imgFile = roleImageMap[r.id];
@@ -90,9 +90,9 @@
           <% } else { %>
             <span class="role-emoji">&#128058;</span>
           <% } %>
-          <span class="role-name"><%= displayName %></span>
-          <span class="role-camp camp-<%= camp %>"><%= camp === 'wolves' ? 'Loups' : camp === 'solo' ? 'Solo' : 'Village' %></span>
-          <% if (desc) { %><span class="role-desc"><%= desc %></span><% } %>
+          <span class="role-name" data-i18n="role.name.<%= r.id %>"><%= displayName %></span>
+          <span class="role-camp camp-<%= camp %>" data-i18n="role.camp.<%= camp %>"><%= camp === 'wolves' ? 'Loups' : camp === 'solo' ? 'Solo' : 'Village' %></span>
+          <% if (desc) { %><span class="role-desc" data-i18n="role.desc.<%= r.id %>"><%= desc %></span><% } %>
         </div>
       <% }); %>
     </div>
@@ -100,15 +100,15 @@
 
   <!-- Custom Roles -->
   <section class="section">
-    <h2 class="section-title">Custom Roles</h2>
+    <h2 class="section-title" data-i18n="roles.custom">Custom Roles</h2>
     <% if (customRoles.length === 0) { %>
       <div class="empty-state">
         <span class="empty-icon">&#127912;</span>
-        <p>No custom roles created yet</p>
+        <p data-i18n="roles.no_custom">No custom roles created yet</p>
         <% if (isAdmin) { %>
-          <p class="text-muted">Use the form below to create one</p>
+          <p class="text-muted" data-i18n="roles.create_hint">Use the form below to create one</p>
         <% } else { %>
-          <p class="text-muted">Login as a server admin to create custom roles</p>
+          <p class="text-muted" data-i18n="roles.login_hint">Login as a server admin to create custom roles</p>
         <% } %>
       </div>
     <% } else { %>
@@ -129,21 +129,21 @@
 
     <% if (isAdmin) { %>
       <div class="panel create-role-panel">
-        <h3 class="panel-title">Create Custom Role</h3>
+        <h3 class="panel-title" data-i18n="roles.create_title">Create Custom Role</h3>
         <form id="create-role-form" class="role-form">
           <div class="form-row">
             <div class="form-group">
-              <label>Name</label>
-              <input type="text" name="name" required placeholder="e.g. Blacksmith" class="form-input">
+              <label data-i18n="roles.form_name">Name</label>
+              <input type="text" name="name" required placeholder="e.g. Blacksmith" class="form-input" data-i18n-placeholder="roles.form_name_ph">
             </div>
             <div class="form-group">
-              <label>Emoji</label>
+              <label data-i18n="roles.form_emoji">Emoji</label>
               <input type="text" name="emoji" placeholder="&#9935;" maxlength="4" class="form-input form-input-sm">
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Camp</label>
+              <label data-i18n="roles.form_camp">Camp</label>
               <select name="camp" class="form-select">
                 <option value="village">Village</option>
                 <option value="wolves">Loups</option>
@@ -151,26 +151,26 @@
               </select>
             </div>
             <div class="form-group">
-              <label>Power</label>
+              <label data-i18n="roles.form_power">Power</label>
               <select name="power" class="form-select">
-                <option value="none">None (Passive)</option>
-                <option value="see">See (like Seer)</option>
-                <option value="protect">Protect (like Guard)</option>
-                <option value="kill">Kill (like Hunter)</option>
-                <option value="heal">Heal (like Witch)</option>
-                <option value="custom">Custom</option>
+                <option value="none" data-i18n="roles.power_none">None (Passive)</option>
+                <option value="see" data-i18n="roles.power_see">See (like Seer)</option>
+                <option value="protect" data-i18n="roles.power_protect">Protect (like Guard)</option>
+                <option value="kill" data-i18n="roles.power_kill">Kill (like Hunter)</option>
+                <option value="heal" data-i18n="roles.power_heal">Heal (like Witch)</option>
+                <option value="custom" data-i18n="roles.power_custom">Custom</option>
               </select>
             </div>
           </div>
           <div class="form-group">
-            <label>Description</label>
-            <textarea name="description" placeholder="Describe the role's abilities..." class="form-input" rows="2"></textarea>
+            <label data-i18n="roles.form_desc">Description</label>
+            <textarea name="description" placeholder="Describe the role's abilities..." class="form-input" rows="2" data-i18n-placeholder="roles.form_desc_ph"></textarea>
           </div>
           <div class="form-group">
-            <label>Guild ID</label>
-            <input type="text" name="guildId" required placeholder="Server ID" class="form-input">
+            <label data-i18n="roles.form_guild">Guild ID</label>
+            <input type="text" name="guildId" required placeholder="Server ID" class="form-input" data-i18n-placeholder="roles.form_guild_ph">
           </div>
-          <button type="submit" class="btn btn-primary">Create Role</button>
+          <button type="submit" class="btn btn-primary" data-i18n="roles.create_btn">Create Role</button>
         </form>
       </div>
     <% } %>
