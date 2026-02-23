@@ -1106,6 +1106,255 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 ::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-primary); }
 
+/* === Guild Moderation Page === */
+.guild-mod-page { max-width: 1000px; }
+.gmod-game-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+.gmod-game-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+.gmod-game-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.gmod-player-count { font-size: 0.85rem; color: var(--text-secondary); }
+.gmod-actions { display: flex; gap: 0.5rem; }
+
+.gmod-players { padding: 1rem 1.25rem; }
+.gmod-player-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.gmod-player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--border-radius-xs);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  transition: var(--transition-fast);
+}
+.gmod-player:hover { border-color: var(--accent-primary); }
+.gmod-player.dead { opacity: 0.5; }
+.gmod-player-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.gmod-player-status { font-size: 0.85rem; }
+.gmod-player-name { font-weight: 600; font-size: 0.85rem; }
+.gmod-player-role { font-size: 0.75rem; }
+.gmod-player-right {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.btn-xs { padding: 0.2rem 0.4rem; font-size: 0.75rem; border-radius: var(--border-radius-xs); }
+
+.gmod-log { padding: 0 1.25rem 1rem; }
+.gmod-log-entries {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-xs);
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+}
+.gmod-log-entry {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.3rem 0;
+  font-size: 0.8rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.05);
+}
+.gmod-log-entry:last-child { border-bottom: none; }
+.gmod-log-time { color: var(--text-muted); flex-shrink: 0; font-family: monospace; font-size: 0.75rem; }
+.gmod-log-text { color: var(--text-secondary); }
+
+.gmod-meta {
+  padding: 0.75rem 1.25rem;
+  background: var(--bg-tertiary);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+/* === Guild Rules Page === */
+.guild-rules-page { max-width: 1000px; }
+.grules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.grules-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+.grules-card-wide {
+  grid-column: 1 / -1;
+}
+.grules-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.85rem 1.25rem;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+.grules-card-header h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: var(--font-display);
+}
+.grules-card-icon { font-size: 1.15rem; }
+.grules-card-body { padding: 1rem 1.25rem; }
+
+.grules-field {
+  margin-bottom: 1rem;
+}
+.grules-field:last-child { margin-bottom: 0; }
+.grules-field label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.4rem;
+}
+.grules-field-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.grules-input {
+  width: 80px;
+  padding: 0.45rem 0.65rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-xs);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+  transition: var(--transition-fast);
+}
+.grules-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+.grules-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.grules-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.grules-status-ok { color: var(--color-success); }
+.grules-status-warn { color: var(--color-warning); }
+
+.grules-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+.grules-radio-inline {
+  flex-direction: row;
+  gap: 1rem;
+}
+.grules-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--border-radius-xs);
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  transition: var(--transition-fast);
+}
+.grules-radio:hover {
+  border-color: var(--accent-primary);
+}
+.grules-radio:has(input:checked) {
+  border-color: var(--accent-primary);
+  background: rgba(139, 92, 246, 0.08);
+}
+.grules-radio input[type="radio"] {
+  margin-top: 0.15rem;
+  accent-color: var(--accent-primary);
+}
+.grules-radio-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.grules-radio-label strong { font-size: 0.85rem; }
+.grules-radio-label small { font-size: 0.75rem; color: var(--text-muted); }
+
+.grules-roles-desc {
+  font-size: 0.8rem;
+  margin-bottom: 0.75rem;
+}
+.grules-roles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.5rem;
+}
+.grules-role-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--border-radius-xs);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  transition: var(--transition-fast);
+}
+.grules-role-item:hover { border-color: var(--accent-primary); }
+.grules-role-item.camp-wolf { border-left: 3px solid var(--color-danger); }
+.grules-role-item.camp-village { border-left: 3px solid var(--color-success); }
+.grules-role-item.camp-neutral { border-left: 3px solid var(--color-warning); }
+.grules-role-emoji { font-size: 1.1rem; flex-shrink: 0; }
+.grules-role-name { font-size: 0.85rem; font-weight: 600; flex: 1; }
+.grules-role-camp { font-size: 0.8rem; flex-shrink: 0; }
+
+.grules-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+.grules-save-status {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.grules-save-status.success { color: var(--color-success); }
+.grules-save-status.error { color: var(--color-danger); }
+.grules-save-status.saving { color: var(--text-muted); }
+
 /* === Responsive === */
 @media (max-width: 1024px) {
   .hero-stats { grid-template-columns: repeat(2, 1fr); }

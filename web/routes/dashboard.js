@@ -89,9 +89,82 @@ module.exports = function(webServer) {
         title: guild ? guild.name : `Guild ${req.params.id}`,
         guild: guild ? { id: guild.id, name: guild.name, icon: guild.iconURL({ size: 128 }), memberCount: guild.memberCount } : null,
         guildId: req.params.id,
+        guildPage: 'overview',
         games,
         leaderboard,
         history
+      });
+    } catch (e) {
+      res.render('error', { title: 'Error', message: e.message });
+    }
+  });
+
+  /** GET /guild/:id/moderation — Per-guild moderation panel */
+  router.get('/guild/:id/moderation', (req, res) => {
+    try {
+      if (!req.isAuthenticated || !req.isAuthenticated()) {
+        return res.redirect('/login');
+      }
+      const level = webServer.getUserAccessLevel(req);
+      if (level !== 'owner' && level !== 'admin') {
+        return res.render('error', { title: 'Forbidden', message: 'Admin permissions required.' });
+      }
+      if (level !== 'owner' && !webServer.isGuildAdmin(req.user, req.params.id)) {
+        return res.render('error', { title: 'Forbidden', message: 'You are not admin of this server.' });
+      }
+
+      const client = webServer.client;
+      const guild = client ? client.guilds.cache.get(req.params.id) : null;
+      const games = gm.getAllGames()
+        .filter(g => g.guildId === req.params.id)
+        .map(g => {
+          const snap = gm.getGameSnapshot(g);
+          snap.players = (g.players || []).map(p => ({
+            id: p.id, username: p.username, role: p.role, alive: p.alive,
+            inLove: p.inLove || false, isCaptain: p.id === g.captainId
+          }));
+          return snap;
+        });
+
+      res.render('guild-moderation', {
+        title: guild ? guild.name : `Guild ${req.params.id}`,
+        guild: guild ? { id: guild.id, name: guild.name, icon: guild.iconURL({ size: 128 }), memberCount: guild.memberCount } : null,
+        guildId: req.params.id,
+        guildPage: 'moderation',
+        games
+      });
+    } catch (e) {
+      res.render('error', { title: 'Error', message: e.message });
+    }
+  });
+
+  /** GET /guild/:id/rules — Per-guild rules configuration */
+  router.get('/guild/:id/rules', (req, res) => {
+    try {
+      const client = webServer.client;
+      const guild = client ? client.guilds.cache.get(req.params.id) : null;
+      const ConfigManager = require('../../utils/config');
+      const configMgr = ConfigManager.getInstance();
+      const ROLES = require('../../game/roles');
+      const i18n = require('../../utils/i18n');
+
+      const config = {
+        defaultRules: configMgr.getDefaultGameRules(req.params.id),
+        wolfWinCondition: configMgr.getWolfWinCondition(req.params.id),
+        locale: i18n.getLocaleForGuild ? i18n.getLocaleForGuild(req.params.id) : 'fr',
+        categoryId: configMgr.getCategoryId(req.params.id),
+        setupComplete: configMgr.isSetupComplete(req.params.id)
+      };
+
+      const allRoles = Object.values(ROLES);
+
+      res.render('guild-rules', {
+        title: guild ? guild.name : `Guild ${req.params.id}`,
+        guild: guild ? { id: guild.id, name: guild.name, icon: guild.iconURL({ size: 128 }), memberCount: guild.memberCount } : null,
+        guildId: req.params.id,
+        guildPage: 'rules',
+        config,
+        allRoles
       });
     } catch (e) {
       res.render('error', { title: 'Error', message: e.message });

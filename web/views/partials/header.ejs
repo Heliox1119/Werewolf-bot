@@ -21,6 +21,8 @@
   if (activeGuildId && typeof userGuilds !== 'undefined') {
     activeGuild = userGuilds.find(function(g) { return g.id === activeGuildId; });
   }
+  // Detect which guild sub-page we're on (for active state in panel)
+  var guildPage = typeof guildPage !== 'undefined' ? guildPage : 'overview';
 %>
 <body data-page="<%= showGuildSidebar ? 'guild' : 'full' %>">
   <!-- Top Header -->
@@ -142,26 +144,26 @@
       <% } %>
     </div>
     <nav class="guild-panel-nav">
-      <a href="/guild/<%= activeGuildId %>" class="guild-panel-item active">
+      <a href="/guild/<%= activeGuildId %>" class="guild-panel-item<%= guildPage === 'overview' ? ' active' : '' %>">
         <span class="guild-panel-icon">&#127918;</span>
         <span data-i18n="guild.overview">Vue d'ensemble</span>
       </a>
-      <a href="/guild/<%= activeGuildId %>#leaderboard" class="guild-panel-item">
+      <a href="/guild/<%= activeGuildId %>#leaderboard" class="guild-panel-item<%= guildPage === 'leaderboard' ? ' active' : '' %>">
         <span class="guild-panel-icon">&#127942;</span>
         <span data-i18n="guild.leaderboard">Classement</span>
       </a>
-      <a href="/guild/<%= activeGuildId %>#history" class="guild-panel-item">
+      <a href="/guild/<%= activeGuildId %>#history" class="guild-panel-item<%= guildPage === 'history' ? ' active' : '' %>">
         <span class="guild-panel-icon">&#128218;</span>
         <span data-i18n="guild.history">Historique</span>
       </a>
       <% if (typeof accessLevel !== 'undefined' && (accessLevel === 'owner' || accessLevel === 'admin')) { %>
       <div class="guild-panel-sep"></div>
       <span class="guild-panel-label" data-i18n="guild.admin_section">Administration</span>
-      <a href="/moderation" class="guild-panel-item">
+      <a href="/guild/<%= activeGuildId %>/moderation" class="guild-panel-item<%= guildPage === 'moderation' ? ' active' : '' %>">
         <span class="guild-panel-icon">&#128737;</span>
         <span data-i18n="nav.moderation">Modération</span>
       </a>
-      <a href="/guild/<%= activeGuildId %>#rules" class="guild-panel-item">
+      <a href="/guild/<%= activeGuildId %>/rules" class="guild-panel-item<%= guildPage === 'rules' ? ' active' : '' %>">
         <span class="guild-panel-icon">&#9881;</span>
         <span data-i18n="guild.rules">Règles du jeu</span>
       </a>
