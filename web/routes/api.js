@@ -320,7 +320,7 @@ module.exports = function(webServer) {
         console.log('[MOD] Game not found. Active games:', [...gm.games.keys()]);
         return res.status(404).json({ success: false, error: 'Partie introuvable' });
       }
-      if (!webServer.isGuildAdmin(req.user, game.guildId)) {
+      if (!webServer.isBotOwner(req.user) && !webServer.isGuildAdmin(req.user, game.guildId)) {
         return res.status(403).json({ success: false, error: 'Permission admin requise' });
       }
       const guild = await fetchGuild(game.guildId);
@@ -354,7 +354,7 @@ module.exports = function(webServer) {
         console.log('[MOD] Game not found. Active games:', [...gm.games.keys()]);
         return res.status(404).json({ success: false, error: 'Partie introuvable' });
       }
-      if (!webServer.isGuildAdmin(req.user, game.guildId)) {
+      if (!webServer.isBotOwner(req.user) && !webServer.isGuildAdmin(req.user, game.guildId)) {
         return res.status(403).json({ success: false, error: 'Permission admin requise' });
       }
       if (game.phase === 'ENDED') {
@@ -393,7 +393,7 @@ module.exports = function(webServer) {
         console.log('[MOD] Game not found. Active games:', [...gm.games.keys()]);
         return res.status(404).json({ success: false, error: 'Partie introuvable' });
       }
-      if (!webServer.isGuildAdmin(req.user, game.guildId)) {
+      if (!webServer.isBotOwner(req.user) && !webServer.isGuildAdmin(req.user, game.guildId)) {
         return res.status(403).json({ success: false, error: 'Permission admin requise' });
       }
       const player = game.players.find(p => p.id === req.params.playerId);
@@ -445,7 +445,7 @@ module.exports = function(webServer) {
     try {
       const game = gm.games.get(req.params.gameId);
       if (!game) return res.status(404).json({ success: false, error: 'Game not found' });
-      if (!webServer.isGuildAdmin(req.user, game.guildId)) {
+      if (!webServer.isBotOwner(req.user) && !webServer.isGuildAdmin(req.user, game.guildId)) {
         return res.status(403).json({ success: false, error: 'Admin permission required' });
       }
       const player = game.players.find(p => p.id === req.params.playerId);
@@ -456,12 +456,23 @@ module.exports = function(webServer) {
     }
   });
 
-  /** GET /api/mod/games — All active games for moderation (requires auth) */
+  /** GET /api/mod/games — Active games for moderation (owner sees all, admin sees own guilds) */
   router.get('/mod/games', requireAuth, (req, res) => {
     try {
-      const userGuilds = (req.user.guilds || []).filter(g => (parseInt(g.permissions) & 0x28) !== 0).map(g => g.id);
+      const level = webServer.getUserAccessLevel(req);
+      if (level !== 'owner' && level !== 'admin') {
+        return res.status(403).json({ success: false, error: 'Admin permission required' });
+      }
+
+      let guildIds;
+      if (level === 'owner') {
+        guildIds = webServer.client ? [...webServer.client.guilds.cache.keys()] : [];
+      } else {
+        guildIds = webServer.getUserAdminGuildIds(req);
+      }
+
       const games = gm.getAllGames()
-        .filter(g => userGuilds.includes(g.guildId))
+        .filter(g => guildIds.includes(g.guildId))
         .map(g => {
           const snap = gm.getGameSnapshot(g);
           // Include roles for moderation
@@ -479,9 +490,11 @@ module.exports = function(webServer) {
 
   // ==================== MONITORING ====================
 
-  /** GET /api/monitoring — Full monitoring metrics (public, read-only) */
+  /** GET /api/monitoring — Monitoring metrics (filtered by access level) */
   router.get('/monitoring', (req, res) => {
     try {
+      const level = webServer.getUserAccessLevel(req);
+
       let metrics, health, history, uptime;
       try {
         const MetricsCollector = require('../../monitoring/metrics');
@@ -520,7 +533,33 @@ module.exports = function(webServer) {
         uptime = h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
       }
 
-      res.json({ success: true, data: { metrics, health, history, uptime } });
+      // Filter data based on access level
+      if (level === 'owner') {
+        // Owner: full access to everything
+        res.json({ success: true, data: { metrics, health, history, uptime, accessLevel: level } });
+      } else if (level === 'admin') {
+        // Admin: health, latency, game stats, uptime, basic discord. No system details, no errors, no commands, no history charts.
+        const filteredMetrics = {
+          system: {
+            memory: { rss: metrics.system.memory.rss, percentage: metrics.system.memory.percentage },
+            cpu: { usage: metrics.system.cpu.usage },
+            uptime: metrics.system.uptime
+          },
+          discord: { guilds: metrics.discord.guilds, latency: metrics.discord.latency, wsStatus: metrics.discord.wsStatus },
+          game: metrics.game,
+          commands: { total: metrics.commands.total, avgResponseTime: metrics.commands.avgResponseTime },
+          errors: { total: metrics.errors.total }
+        };
+        res.json({ success: true, data: { metrics: filteredMetrics, health, history: { memory: [], latency: [], timestamps: [] }, uptime, accessLevel: level } });
+      } else {
+        // Member or public: only health, uptime, latency, active games
+        const minimalMetrics = {
+          system: { memory: { rss: metrics.system.memory.rss }, uptime: metrics.system.uptime },
+          discord: { latency: metrics.discord.latency, wsStatus: metrics.discord.wsStatus },
+          game: { activeGames: metrics.game.activeGames, totalPlayers: metrics.game.totalPlayers }
+        };
+        res.json({ success: true, data: { metrics: minimalMetrics, health, history: { memory: [], latency: [], timestamps: [] }, uptime, accessLevel: level } });
+      }
     } catch (e) {
       res.status(500).json({ success: false, error: e.message });
     }

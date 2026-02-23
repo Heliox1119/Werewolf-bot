@@ -1,11 +1,13 @@
 /**
  * Monitoring page — Fetches metrics from /api/monitoring and updates the UI
+ * Handles partial data based on access level (owner/admin/member/public)
  */
 (function() {
   'use strict';
 
   const REFRESH_INTERVAL = 30000; // 30 seconds
   let refreshTimer = null;
+  const level = window.__accessLevel || 'public';
 
   // WS status names
   const WS_STATUS_MAP = {
@@ -13,6 +15,22 @@
     3: 'IDLE', 4: 'NEARLY', 5: 'DISCONNECTED',
     6: 'WAITING_FOR_GUILDS', 7: 'IDENTIFYING', 8: 'RESUMING'
   };
+
+  // Safe element setter — skips if element doesn't exist (hidden by access level)
+  function setText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+
+  function setStyle(id, prop, val) {
+    const el = document.getElementById(id);
+    if (el) el.style[prop] = val;
+  }
+
+  function setClass(id, cls) {
+    const el = document.getElementById(id);
+    if (el) el.className = cls;
+  }
 
   async function fetchMetrics() {
     try {
@@ -24,7 +42,7 @@
       }
     } catch (e) {
       console.error('[MON] Fetch error:', e);
-      document.getElementById('mon-health-status').textContent = '❌ Error';
+      setText('mon-health-status', '❌ Error');
     }
   }
 
@@ -33,78 +51,105 @@
     const health = d.health;
     const history = d.history;
 
-    // === Health card ===
+    // === Health card (always visible) ===
     const healthEl = document.getElementById('mon-health-status');
     const healthCard = document.getElementById('mon-health-card');
     const healthIcon = document.getElementById('mon-health-icon');
-    if (health.status === 'HEALTHY') {
-      healthEl.textContent = '✅ HEALTHY';
-      healthCard.className = 'stat-card stat-success';
-      healthIcon.textContent = '✅';
-    } else if (health.status === 'DEGRADED') {
-      healthEl.textContent = '⚠️ DEGRADED';
-      healthCard.className = 'stat-card stat-warning';
-      healthIcon.textContent = '⚠️';
+    if (health && health.status === 'HEALTHY') {
+      if (healthEl) healthEl.textContent = '✅ HEALTHY';
+      if (healthCard) healthCard.className = 'stat-card stat-success';
+      if (healthIcon) healthIcon.textContent = '✅';
+    } else if (health && health.status === 'DEGRADED') {
+      if (healthEl) healthEl.textContent = '⚠️ DEGRADED';
+      if (healthCard) healthCard.className = 'stat-card stat-warning';
+      if (healthIcon) healthIcon.textContent = '⚠️';
     } else {
-      healthEl.textContent = '❌ UNHEALTHY';
-      healthCard.className = 'stat-card stat-danger';
-      healthIcon.textContent = '❌';
+      if (healthEl) healthEl.textContent = '❌ UNHEALTHY';
+      if (healthCard) healthCard.className = 'stat-card stat-danger';
+      if (healthIcon) healthIcon.textContent = '❌';
     }
 
     // === Top stats ===
-    document.getElementById('mon-uptime').textContent = d.uptime || '—';
-    document.getElementById('mon-memory').textContent = m.system.memory.rss + ' MB';
-    document.getElementById('mon-latency').textContent = m.discord.latency + ' ms';
+    setText('mon-uptime', d.uptime || '—');
+    if (m.system && m.system.memory) {
+      setText('mon-memory', m.system.memory.rss + ' MB');
+    }
+    if (m.discord && m.discord.latency !== undefined) {
+      setText('mon-latency', m.discord.latency + ' ms');
+    }
 
-    // === System panel ===
-    document.getElementById('mon-sys-rss').textContent = m.system.memory.rss + ' MB';
-    document.getElementById('mon-sys-heap').textContent = m.system.memory.heapUsed + ' / ' + m.system.memory.heapTotal + ' MB';
-    document.getElementById('mon-sys-cpu').textContent = m.system.cpu.usage + '%';
-    document.getElementById('mon-sys-ram-free').textContent = m.system.memory.systemFree + ' MB';
-    document.getElementById('mon-sys-ram-total').textContent = m.system.memory.systemTotal + ' MB';
-    document.getElementById('mon-sys-uptime').textContent = d.uptime || '—';
+    // === System panel (owner only) ===
+    if (m.system && m.system.memory) {
+      setText('mon-sys-rss', m.system.memory.rss + ' MB');
+      if (m.system.memory.heapUsed !== undefined) {
+        setText('mon-sys-heap', m.system.memory.heapUsed + ' / ' + m.system.memory.heapTotal + ' MB');
+      }
+      if (m.system.memory.systemFree !== undefined) {
+        setText('mon-sys-ram-free', m.system.memory.systemFree + ' MB');
+        setText('mon-sys-ram-total', m.system.memory.systemTotal + ' MB');
+      }
+    }
+    if (m.system && m.system.cpu) {
+      setText('mon-sys-cpu', m.system.cpu.usage + '%');
+    }
+    setText('mon-sys-uptime', d.uptime || '—');
 
-    // Memory bar (% of system)
-    const memPct = m.system.memory.percentage || 0;
-    const memBar = document.getElementById('mon-mem-bar');
-    memBar.style.width = Math.min(memPct, 100) + '%';
-    memBar.className = 'mon-bar' + (memPct > 80 ? ' mon-bar-danger' : memPct > 50 ? ' mon-bar-warning' : '');
+    // Memory bar
+    if (m.system && m.system.memory && m.system.memory.percentage !== undefined) {
+      const memPct = m.system.memory.percentage || 0;
+      setStyle('mon-mem-bar', 'width', Math.min(memPct, 100) + '%');
+      setClass('mon-mem-bar', 'mon-bar' + (memPct > 80 ? ' mon-bar-danger' : memPct > 50 ? ' mon-bar-warning' : ''));
+    }
 
-    // === Discord panel ===
-    document.getElementById('mon-dc-guilds').textContent = m.discord.guilds;
-    document.getElementById('mon-dc-users').textContent = m.discord.users;
-    document.getElementById('mon-dc-channels').textContent = m.discord.channels;
-    const wsNum = m.discord.wsStatus;
-    document.getElementById('mon-dc-ws-status').textContent = WS_STATUS_MAP[wsNum] || String(wsNum);
-    document.getElementById('mon-dc-latency').textContent = m.discord.latency + ' ms';
+    // === Discord panel (admin+) ===
+    if (m.discord) {
+      if (m.discord.guilds !== undefined) setText('mon-dc-guilds', m.discord.guilds);
+      if (m.discord.users !== undefined) setText('mon-dc-users', m.discord.users);
+      if (m.discord.channels !== undefined) setText('mon-dc-channels', m.discord.channels);
+      if (m.discord.wsStatus !== undefined) {
+        const wsNum = m.discord.wsStatus;
+        setText('mon-dc-ws-status', WS_STATUS_MAP[wsNum] || String(wsNum));
+      }
+      if (m.discord.latency !== undefined) {
+        setText('mon-dc-latency', m.discord.latency + ' ms');
+        // Latency bar
+        const latPct = Math.min((m.discord.latency / 500) * 100, 100);
+        setStyle('mon-latency-bar', 'width', latPct + '%');
+        setClass('mon-latency-bar', 'mon-bar mon-bar-latency' + (m.discord.latency > 300 ? ' mon-bar-danger' : m.discord.latency > 150 ? ' mon-bar-warning' : ''));
+      }
+    }
 
-    // Latency bar (0-500ms scale)
-    const latPct = Math.min((m.discord.latency / 500) * 100, 100);
-    const latBar = document.getElementById('mon-latency-bar');
-    latBar.style.width = latPct + '%';
-    latBar.className = 'mon-bar mon-bar-latency' + (m.discord.latency > 300 ? ' mon-bar-danger' : m.discord.latency > 150 ? ' mon-bar-warning' : '');
+    // === Game panel (all levels, partial data) ===
+    if (m.game) {
+      setText('mon-gm-active', m.game.activeGames);
+      setText('mon-gm-players', m.game.totalPlayers);
+      if (m.game.gamesCreated24h !== undefined) setText('mon-gm-created24', m.game.gamesCreated24h);
+      if (m.game.gamesCompleted24h !== undefined) setText('mon-gm-completed24', m.game.gamesCompleted24h);
+    }
 
-    // === Game panel ===
-    document.getElementById('mon-gm-active').textContent = m.game.activeGames;
-    document.getElementById('mon-gm-players').textContent = m.game.totalPlayers;
-    document.getElementById('mon-gm-created24').textContent = m.game.gamesCreated24h;
-    document.getElementById('mon-gm-completed24').textContent = m.game.gamesCompleted24h;
+    // === Commands panel (owner only) ===
+    if (m.commands) {
+      if (m.commands.total !== undefined) setText('mon-cmd-total', m.commands.total.toLocaleString());
+      if (m.commands.errors !== undefined) setText('mon-cmd-errors', m.commands.errors);
+      if (m.commands.rateLimited !== undefined) setText('mon-cmd-rl', m.commands.rateLimited);
+      if (m.commands.avgResponseTime !== undefined) setText('mon-cmd-avg', m.commands.avgResponseTime + ' ms');
+    }
 
-    // === Commands panel ===
-    document.getElementById('mon-cmd-total').textContent = m.commands.total.toLocaleString();
-    document.getElementById('mon-cmd-errors').textContent = m.commands.errors;
-    document.getElementById('mon-cmd-rl').textContent = m.commands.rateLimited;
-    document.getElementById('mon-cmd-avg').textContent = m.commands.avgResponseTime + ' ms';
+    // === Errors panel (owner only) ===
+    if (m.errors) {
+      if (m.errors.total !== undefined) setText('mon-err-total', m.errors.total);
+      if (m.errors.critical !== undefined) setText('mon-err-critical', m.errors.critical);
+      if (m.errors.warnings !== undefined) setText('mon-err-warnings', m.errors.warnings);
+      if (m.errors.last24h !== undefined) setText('mon-err-24h', m.errors.last24h);
+    }
 
-    // === Errors panel ===
-    document.getElementById('mon-err-total').textContent = m.errors.total;
-    document.getElementById('mon-err-critical').textContent = m.errors.critical;
-    document.getElementById('mon-err-warnings').textContent = m.errors.warnings;
-    document.getElementById('mon-err-24h').textContent = m.errors.last24h;
-
-    // === History mini charts ===
-    renderMiniChart('mon-chart-mem-bars', history.memory, 100, 'var(--accent-primary)');
-    renderMiniChart('mon-chart-lat-bars', history.latency, 500, 'var(--color-info)');
+    // === History mini charts (owner only) ===
+    if (history && history.memory && history.memory.length > 0) {
+      renderMiniChart('mon-chart-mem-bars', history.memory, 100, 'var(--accent-primary)');
+    }
+    if (history && history.latency && history.latency.length > 0) {
+      renderMiniChart('mon-chart-lat-bars', history.latency, 500, 'var(--color-info)');
+    }
 
     // Apply i18n after dynamic content
     if (window.webI18n) window.webI18n.applyTranslations(window.webI18n.getLang());

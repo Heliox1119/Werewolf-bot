@@ -354,6 +354,11 @@
       'invite.perm_dm': 'Messages directs',
       'invite.perm_dm_desc': 'Envoyer les attributions de rôle en privé',
       'invite.back': 'Retour au Dashboard',
+
+      // Monitoring access
+      'mon.login_required': 'Connectez-vous pour voir plus de détails',
+      'mon.login_desc': 'Les métriques détaillées sont réservées aux membres connectés et administrateurs.',
+      'mon.restricted_notice': 'Certaines métriques avancées sont réservées aux administrateurs du bot.',
     },
     en: {
       // Nav
@@ -703,6 +708,11 @@
       'invite.perm_dm': 'Direct Messages',
       'invite.perm_dm_desc': 'Send private role assignments',
       'invite.back': 'Back to Dashboard',
+
+      // Monitoring access
+      'mon.login_required': 'Log in to see more details',
+      'mon.login_desc': 'Detailed metrics are reserved for logged-in members and administrators.',
+      'mon.restricted_notice': 'Some advanced metrics are reserved for bot administrators.',
     }
   };
 

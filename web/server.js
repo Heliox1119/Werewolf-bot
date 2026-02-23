@@ -273,6 +273,45 @@ class WebServer {
     // Check for Administrator permission (0x8) or Manage Server (0x20)
     return (parseInt(guild.permissions) & 0x28) !== 0;
   }
+
+  /**
+   * Check if a user is the bot owner (OWNER_ID env var).
+   */
+  isBotOwner(user) {
+    if (!user || !user.id) return false;
+    const ownerId = process.env.OWNER_ID;
+    return ownerId && user.id === ownerId;
+  }
+
+  /**
+   * Get the access level for the current request.
+   * Returns: 'owner' | 'admin' | 'member' | 'public'
+   * - owner: OWNER_ID matches user.id
+   * - admin: user has MANAGE_SERVER on at least one guild with bot
+   * - member: logged in user
+   * - public: not logged in
+   */
+  getUserAccessLevel(req) {
+    if (!req.isAuthenticated || !req.isAuthenticated() || !req.user) return 'public';
+    if (this.isBotOwner(req.user)) return 'owner';
+    // Check if user is admin on any guild where bot is present
+    const botGuildIds = this.client ? [...this.client.guilds.cache.keys()] : [];
+    const userGuilds = (req.user.guilds || []).filter(g => botGuildIds.includes(g.id));
+    const isAdmin = userGuilds.some(g => (parseInt(g.permissions) & 0x28) !== 0);
+    if (isAdmin) return 'admin';
+    return 'member';
+  }
+
+  /**
+   * Get list of guild IDs where user is admin AND bot is present.
+   */
+  getUserAdminGuildIds(req) {
+    if (!req.isAuthenticated || !req.isAuthenticated() || !req.user) return [];
+    const botGuildIds = this.client ? [...this.client.guilds.cache.keys()] : [];
+    return (req.user.guilds || [])
+      .filter(g => botGuildIds.includes(g.id) && (parseInt(g.permissions) & 0x28) !== 0)
+      .map(g => g.id);
+  }
 }
 
 module.exports = WebServer;

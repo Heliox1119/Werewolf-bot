@@ -42,7 +42,7 @@
               </a>
             </div>
           </div>
-          <% if (typeof user !== 'undefined' && user) { %>
+          <% if (typeof user !== 'undefined' && user && (typeof accessLevel !== 'undefined' && (accessLevel === 'owner' || accessLevel === 'admin'))) { %>
             <a href="/moderation" class="nav-tab<%= title === 'Moderation' ? ' active' : '' %>" data-i18n="nav.moderation">Moderation</a>
           <% } %>
         </div>
@@ -57,6 +57,9 @@
           <div class="nav-user">
             <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png?size=32" alt="" class="nav-avatar">
             <span class="nav-username"><%= user.username %></span>
+            <% if (typeof accessLevel !== 'undefined' && accessLevel !== 'public') { %>
+              <span class="access-badge access-<%= accessLevel %>"><%= accessLevel === 'owner' ? '👑' : accessLevel === 'admin' ? '🛡️' : '👤' %></span>
+            <% } %>
             <a href="/auth/logout" class="btn btn-sm btn-outline" data-i18n="nav.logout">Logout</a>
           </div>
         <% } else { %>

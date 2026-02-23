@@ -1,5 +1,12 @@
 <%- include('partials/header') %>
 
+<%
+  var level = typeof accessLevel !== 'undefined' ? accessLevel : 'public';
+  var isOwner = level === 'owner';
+  var isAdmin = level === 'owner' || level === 'admin';
+  var isMember = level !== 'public';
+%>
+
 <div class="monitoring-page">
   <div class="page-header">
     <div>
@@ -7,12 +14,15 @@
       <p class="text-muted" data-i18n="mon.subtitle">Surveillance en temps réel du bot — Métriques système, Discord et jeu</p>
     </div>
     <div class="monitoring-controls">
+      <% if (isMember) { %>
+        <span class="access-badge access-<%= level %>"><%= level === 'owner' ? '👑 Owner' : level === 'admin' ? '🛡️ Admin' : '👤 Member' %></span>
+      <% } %>
       <span class="monitoring-auto-refresh text-muted" data-i18n="mon.auto_refresh">Actualisation auto toutes les 30s</span>
       <button class="btn btn-sm btn-outline" id="mon-refresh-btn" data-i18n="mon.refresh">Actualiser</button>
     </div>
   </div>
 
-  <!-- Health Overview -->
+  <!-- Health Overview (visible to ALL) -->
   <section class="hero-stats" id="mon-hero">
     <div class="stat-card stat-health" id="mon-health-card">
       <div class="stat-icon" id="mon-health-icon">&#9889;</div>
@@ -28,6 +38,7 @@
         <span class="stat-label" data-i18n="mon.uptime">Uptime</span>
       </div>
     </div>
+    <% if (isAdmin) { %>
     <div class="stat-card stat-warning">
       <div class="stat-icon">&#128190;</div>
       <div class="stat-body">
@@ -35,6 +46,7 @@
         <span class="stat-label" data-i18n="mon.memory">Mémoire (RSS)</span>
       </div>
     </div>
+    <% } %>
     <div class="stat-card stat-primary">
       <div class="stat-icon">&#128225;</div>
       <div class="stat-body">
@@ -46,7 +58,9 @@
 
   <!-- Detailed Metrics Grid -->
   <div class="monitoring-grid">
-    <!-- System -->
+
+    <% if (isOwner) { %>
+    <!-- System (OWNER ONLY) -->
     <div class="mon-panel">
       <h3 class="panel-title" data-i18n="mon.system">&#128421; Système</h3>
       <div class="mon-metrics">
@@ -62,14 +76,18 @@
         <div class="mon-bar" id="mon-mem-bar" style="width:0%"></div>
       </div>
     </div>
+    <% } %>
 
-    <!-- Discord -->
+    <% if (isAdmin) { %>
+    <!-- Discord (ADMIN+) -->
     <div class="mon-panel">
       <h3 class="panel-title" data-i18n="mon.discord">&#129302; Discord</h3>
       <div class="mon-metrics">
         <div class="mon-row"><span class="mon-label" data-i18n="mon.guilds">Serveurs</span><span class="mon-value" id="mon-dc-guilds">—</span></div>
+        <% if (isOwner) { %>
         <div class="mon-row"><span class="mon-label" data-i18n="mon.users_cached">Utilisateurs (cache)</span><span class="mon-value" id="mon-dc-users">—</span></div>
         <div class="mon-row"><span class="mon-label" data-i18n="mon.channels">Channels</span><span class="mon-value" id="mon-dc-channels">—</span></div>
+        <% } %>
         <div class="mon-row"><span class="mon-label" data-i18n="mon.ws_status">Statut WS</span><span class="mon-value" id="mon-dc-ws-status">—</span></div>
         <div class="mon-row"><span class="mon-label" data-i18n="mon.ws_latency">Latence WS</span><span class="mon-value" id="mon-dc-latency">—</span></div>
       </div>
@@ -78,19 +96,23 @@
         <div class="mon-bar mon-bar-latency" id="mon-latency-bar" style="width:0%"></div>
       </div>
     </div>
+    <% } %>
 
-    <!-- Game -->
+    <!-- Game (visible to ALL) -->
     <div class="mon-panel">
       <h3 class="panel-title" data-i18n="mon.game">&#127918; Jeu</h3>
       <div class="mon-metrics">
         <div class="mon-row"><span class="mon-label" data-i18n="mon.active_games">Parties actives</span><span class="mon-value" id="mon-gm-active">—</span></div>
         <div class="mon-row"><span class="mon-label" data-i18n="mon.total_players">Joueurs en jeu</span><span class="mon-value" id="mon-gm-players">—</span></div>
+        <% if (isAdmin) { %>
         <div class="mon-row"><span class="mon-label" data-i18n="mon.games_24h">Parties (24h)</span><span class="mon-value" id="mon-gm-created24">—</span></div>
         <div class="mon-row"><span class="mon-label" data-i18n="mon.completed_24h">Terminées (24h)</span><span class="mon-value" id="mon-gm-completed24">—</span></div>
+        <% } %>
       </div>
     </div>
 
-    <!-- Commands -->
+    <% if (isOwner) { %>
+    <!-- Commands (OWNER ONLY) -->
     <div class="mon-panel">
       <h3 class="panel-title" data-i18n="mon.commands">&#9889; Commandes</h3>
       <div class="mon-metrics">
@@ -101,7 +123,7 @@
       </div>
     </div>
 
-    <!-- Errors -->
+    <!-- Errors (OWNER ONLY) -->
     <div class="mon-panel">
       <h3 class="panel-title" data-i18n="mon.errors">&#9888; Erreurs</h3>
       <div class="mon-metrics">
@@ -112,7 +134,7 @@
       </div>
     </div>
 
-    <!-- History / mini chart -->
+    <!-- History / mini chart (OWNER ONLY) -->
     <div class="mon-panel mon-panel-wide">
       <h3 class="panel-title" data-i18n="mon.history">&#128200; Historique (24h)</h3>
       <div class="mon-history" id="mon-history">
@@ -126,9 +148,35 @@
         </div>
       </div>
     </div>
+    <% } %>
+
+    <% if (!isMember) { %>
+    <!-- Login prompt for non-logged-in users -->
+    <div class="mon-panel mon-panel-wide mon-panel-restricted">
+      <div class="mon-restricted-msg">
+        <span class="mon-restricted-icon">&#128274;</span>
+        <h3 data-i18n="mon.login_required">Connectez-vous pour voir plus de détails</h3>
+        <p data-i18n="mon.login_desc">Les métriques détaillées sont réservées aux membres connectés et administrateurs.</p>
+        <a href="/auth/discord" class="btn btn-discord">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286z"/></svg>
+          <span data-i18n="nav.login">Login</span>
+        </a>
+      </div>
+    </div>
+    <% } else if (!isOwner && isMember) { %>
+    <!-- Restricted notice for non-owner users -->
+    <div class="mon-panel mon-panel-wide mon-panel-restricted">
+      <div class="mon-restricted-msg">
+        <span class="mon-restricted-icon">&#128274;</span>
+        <p data-i18n="mon.restricted_notice">Certaines métriques avancées sont réservées aux administrateurs du bot.</p>
+      </div>
+    </div>
+    <% } %>
+
   </div>
 </div>
 
+<script>window.__accessLevel = '<%= level %>';</script>
 <script src="/static/js/monitoring.js"></script>
 
 <%- include('partials/footer') %>

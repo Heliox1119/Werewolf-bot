@@ -8,8 +8,12 @@ module.exports = function(webServer) {
   const gm = webServer.gameManager;
   const db = webServer.db;
 
-  // Middleware: inject userGuilds into all rendered pages
+  // Middleware: inject userGuilds + accessLevel into all rendered pages
   router.use((req, res, next) => {
+    // Access level: owner > admin > member > public
+    res.locals.accessLevel = webServer.getUserAccessLevel(req);
+    res.locals.adminGuildIds = webServer.getUserAdminGuildIds(req);
+
     if (req.isAuthenticated && req.isAuthenticated() && req.user) {
       const guilds = (req.user.guilds || []).filter(g => (parseInt(g.permissions) & 0x28) !== 0);
       const botGuildIds = webServer.client ? [...webServer.client.guilds.cache.keys()] : [];
@@ -129,19 +133,37 @@ module.exports = function(webServer) {
     res.render('login', { title: 'Login' });
   });
 
-  /** GET /moderation — Moderation panel (Admin) */
+  /** GET /moderation — Moderation panel (Admin/Owner only, filtered per guild) */
   router.get('/moderation', (req, res) => {
     try {
       if (!req.isAuthenticated || !req.isAuthenticated()) {
         return res.redirect('/login');
       }
-      const userGuilds = (req.user.guilds || []).filter(g => (parseInt(g.permissions) & 0x28) !== 0);
-      const guildIds = userGuilds.map(g => g.id);
+
+      const level = webServer.getUserAccessLevel(req);
+      if (level !== 'owner' && level !== 'admin') {
+        return res.render('error', { title: 'Forbidden', message: 'You need admin permissions to access moderation.' });
+      }
+
+      const isOwner = level === 'owner';
+      const botGuildIds = webServer.client ? [...webServer.client.guilds.cache.keys()] : [];
+
+      // Owner sees ALL guilds with bot; admin sees only their admin guilds
+      let guildIds;
+      let userGuilds;
+      if (isOwner) {
+        guildIds = botGuildIds;
+        userGuilds = botGuildIds.map(id => {
+          const g = webServer.client.guilds.cache.get(id);
+          return { id, name: g ? g.name : id, icon: g ? g.iconURL({ size: 64 }) : null };
+        });
+      } else {
+        userGuilds = (req.user.guilds || []).filter(g => (parseInt(g.permissions) & 0x28) !== 0 && botGuildIds.includes(g.id));
+        guildIds = userGuilds.map(g => g.id);
+        userGuilds = userGuilds.map(g => ({ id: g.id, name: g.name, icon: g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64` : null }));
+      }
 
       const allGames = gm.getAllGames();
-      console.log('[MOD PAGE] All active games:', allGames.map(g => ({ id: g.mainChannelId, guildId: g.guildId, phase: g.phase })));
-      console.log('[MOD PAGE] User admin guildIds:', guildIds);
-
       const games = allGames
         .filter(g => guildIds.includes(g.guildId))
         .map(g => {
@@ -153,19 +175,17 @@ module.exports = function(webServer) {
           return snap;
         });
 
-      console.log('[MOD PAGE] Filtered games count:', games.length, 'IDs:', games.map(g => g.gameId));
-
       res.render('moderation', {
         title: 'Moderation',
         games,
-        guilds: userGuilds.map(g => ({ id: g.id, name: g.name, icon: g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64` : null }))
+        guilds: userGuilds
       });
     } catch (e) {
       res.render('error', { title: 'Error', message: e.message });
     }
   });
 
-  /** GET /monitoring — Monitoring page (public) */
+  /** GET /monitoring — Monitoring page (access-level filtered) */
   router.get('/monitoring', (req, res) => {
     try {
       res.render('monitoring', {
@@ -176,7 +196,7 @@ module.exports = function(webServer) {
     }
   });
 
-  /** GET /status — Status page (alias for monitoring) */
+  /** GET /status — Status page (alias for monitoring, access-level filtered) */
   router.get('/status', (req, res) => {
     try {
       res.render('monitoring', {
