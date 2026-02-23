@@ -22,7 +22,7 @@
       <div class="player-list" id="player-list">
         <% if (game.players) { game.players.forEach(function(p) { %>
           <div class="player-row <%= p.alive ? 'alive' : 'dead' %> clickable-player" data-player-id="<%= p.id %>" onclick="openSpectatorPlayerModal(this)">
-            <span class="player-status"><%= p.alive ? '&#10084;&#65039;' : '&#9760;&#65039;' %></span>
+            <span class="player-status"><%- p.alive ? '&#10084;&#65039;' : '&#9760;&#65039;' %></span>
             <span class="player-name"><%= p.username %></span>
             <% if (!p.alive && p.role) { %>
               <span class="player-role"><%= p.role %></span>
@@ -115,7 +115,7 @@
             <div class="vote-bar-row">
               <span class="vote-target"><%= targetName %></span>
               <div class="vote-bar-track">
-                <div class="vote-bar-fill" style="width: <%= Math.round((vCount / maxV) * 100) %>%;"></div>
+                <div class="vote-bar-fill" style="width: <%= Math.round((vCount / maxV) * 100) %>%"></div>
               </div>
               <span class="vote-count"><%= vCount %></span>
             </div>

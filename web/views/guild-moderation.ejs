@@ -45,7 +45,7 @@
             <% if (g.players) { g.players.forEach(function(p) { %>
               <div class="gmod-player <%= p.alive ? '' : 'dead' %>" data-player-id="<%= p.id %>" data-game-id="<%= g.gameId %>">
                 <div class="gmod-player-left">
-                  <span class="gmod-player-status"><%= p.alive ? '&#10084;&#65039;' : '&#9760;&#65039;' %></span>
+                  <span class="gmod-player-status"><%- p.alive ? '&#10084;&#65039;' : '&#9760;&#65039;' %></span>
                   <div>
                     <span class="gmod-player-name"><%= p.username %></span>
                     <span class="gmod-player-role role-tag role-<%= (p.role || '').toLowerCase().replace(/[^a-z]/g, '') %>"><%= p.role || '—' %></span>

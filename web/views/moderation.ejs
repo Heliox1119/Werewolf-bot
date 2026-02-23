@@ -61,7 +61,7 @@
               <% if (g.players) { g.players.forEach(function(p) { %>
                 <div class="mod-player-card <%= p.alive ? '' : 'dead' %>" data-player-id="<%= p.id %>" data-game-id="<%= g.gameId %>">
                   <div class="mod-player-main">
-                    <span class="mod-player-status"><%= p.alive ? '&#10084;&#65039;' : '&#9760;&#65039;' %></span>
+                    <span class="mod-player-status"><%- p.alive ? '&#10084;&#65039;' : '&#9760;&#65039;' %></span>
                     <div class="mod-player-info">
                       <span class="mod-player-name"><%= p.username %></span>
                       <div class="mod-player-badges">
