@@ -76,11 +76,14 @@
     <div class="guild-sidebar-list" id="sidebar-guilds">
       <% if (typeof userGuilds !== 'undefined' && userGuilds.length > 0) { %>
         <% userGuilds.forEach(function(g) { %>
-          <a href="/guild/<%= g.id %>" class="sidebar-guild" title="<%= g.name %>" data-guild-id="<%= g.id %>">
+          <a href="<%= g.botPresent ? '/guild/' + g.id : '/invite/' + g.id %>" class="sidebar-guild<%= !g.botPresent ? ' sidebar-guild-nobot' : '' %>" title="<%= g.name %>" data-guild-id="<%= g.id %>">
             <% if (g.icon) { %>
-              <img src="<%= g.icon %>" alt="<%= g.name %>" class="sidebar-guild-img">
+              <img src="<%= g.icon %>" alt="<%= g.name %>" class="sidebar-guild-img<%= !g.botPresent ? ' sidebar-guild-img-dim' : '' %>">
             <% } else { %>
               <span class="sidebar-guild-initial"><%= g.name ? g.name.charAt(0).toUpperCase() : '?' %></span>
+            <% } %>
+            <% if (!g.botPresent) { %>
+              <span class="sidebar-guild-badge">+</span>
             <% } %>
           </a>
         <% }); %>

@@ -12,10 +12,12 @@ module.exports = function(webServer) {
   router.use((req, res, next) => {
     if (req.isAuthenticated && req.isAuthenticated() && req.user) {
       const guilds = (req.user.guilds || []).filter(g => (parseInt(g.permissions) & 0x28) !== 0);
+      const botGuildIds = webServer.client ? [...webServer.client.guilds.cache.keys()] : [];
       res.locals.userGuilds = guilds.map(g => ({
         id: g.id,
         name: g.name,
-        icon: g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64` : null
+        icon: g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64` : null,
+        botPresent: botGuildIds.includes(g.id)
       }));
     } else {
       res.locals.userGuilds = [];
@@ -207,6 +209,38 @@ module.exports = function(webServer) {
   router.get('/support', (req, res) => {
     try {
       res.render('support', { title: 'Support' });
+    } catch (e) {
+      res.render('error', { title: 'Error', message: e.message });
+    }
+  });
+
+  /** GET /invite/:id — Invite bot to a guild */
+  router.get('/invite/:id', (req, res) => {
+    try {
+      const guildId = req.params.id;
+      const clientId = process.env.CLIENT_ID || '';
+      // Permissions: ManageChannels, SendMessages, EmbedLinks, MuteMembers, ManageRoles, ReadMessageHistory, UseApplicationCommands
+      const permissions = '278528739328';
+      const inviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=${permissions}&scope=bot%20applications.commands&guild_id=${guildId}`;
+
+      // Try to get guild name from user's guilds
+      let guildName = `Server ${guildId}`;
+      let guildIcon = null;
+      if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+        const userGuild = (req.user.guilds || []).find(g => g.id === guildId);
+        if (userGuild) {
+          guildName = userGuild.name;
+          guildIcon = userGuild.icon ? `https://cdn.discordapp.com/icons/${guildId}/${userGuild.icon}.png?size=128` : null;
+        }
+      }
+
+      res.render('invite', {
+        title: 'Invite',
+        guildId,
+        guildName,
+        guildIcon,
+        inviteUrl
+      });
     } catch (e) {
       res.render('error', { title: 'Error', message: e.message });
     }

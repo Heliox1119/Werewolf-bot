@@ -1878,3 +1878,216 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   align-items: center;
   gap: 0.5rem;
 }
+
+/* ============================================
+   INVITE PAGE
+   ============================================ */
+.invite-page {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 1rem 0;
+}
+.invite-hero {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.invite-guild-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+  overflow: hidden;
+  border: 3px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+}
+.invite-guild-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.invite-guild-initial {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.invite-hero h1 {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  margin-bottom: 0.5rem;
+}
+.invite-subtitle {
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+.invite-subtitle strong {
+  color: var(--accent-primary);
+}
+
+.invite-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 2.5rem;
+  text-align: center;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+.invite-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-primary), var(--color-discord));
+}
+.invite-card-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+.invite-card h2 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  margin-bottom: 0.75rem;
+}
+.invite-card-desc {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.invite-features {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  text-align: left;
+}
+.invite-feature {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  font-size: 0.85rem;
+}
+.invite-feature-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.btn-invite {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background: var(--color-discord);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: var(--transition);
+}
+.btn-invite:hover {
+  background: #4752c4;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(88,101,242,0.3);
+  color: #fff;
+}
+.btn-invite svg {
+  flex-shrink: 0;
+}
+
+.invite-permissions {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1.5rem 2rem;
+  margin-bottom: 2rem;
+}
+.invite-permissions h3 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+.invite-perms-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+.invite-perm {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+.invite-perm-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+.invite-perm strong {
+  display: block;
+  font-size: 0.85rem;
+  margin-bottom: 0.15rem;
+}
+.invite-perm p {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.invite-back {
+  text-align: center;
+  margin-top: 1rem;
+}
+
+/* Sidebar guild: bot not present indicator */
+.sidebar-guild-nobot {
+  opacity: 0.5;
+  position: relative;
+}
+.sidebar-guild-nobot:hover {
+  opacity: 0.85;
+}
+.sidebar-guild-img-dim {
+  filter: grayscale(60%);
+}
+.sidebar-guild-nobot:hover .sidebar-guild-img-dim {
+  filter: grayscale(0%);
+}
+.sidebar-guild-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 18px;
+  height: 18px;
+  background: var(--color-success);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-secondary);
+  line-height: 1;
+}
+
+@media (max-width: 600px) {
+  .invite-features { grid-template-columns: 1fr; }
+  .invite-perms-grid { grid-template-columns: 1fr; }
+  .invite-card { padding: 1.5rem; }
+}

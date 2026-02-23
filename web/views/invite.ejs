@@ -1,0 +1,110 @@
+<%- include('partials/header') %>
+
+<div class="invite-page">
+  <div class="invite-hero">
+    <div class="invite-guild-icon">
+      <% if (guildIcon) { %>
+        <img src="<%= guildIcon %>" alt="<%= guildName %>" class="invite-guild-img">
+      <% } else { %>
+        <span class="invite-guild-initial"><%= guildName ? guildName.charAt(0).toUpperCase() : '?' %></span>
+      <% } %>
+    </div>
+    <h1 data-i18n="invite.title">Add Werewolf Bot</h1>
+    <p class="invite-subtitle">
+      <span data-i18n="invite.subtitle">The bot is not yet on</span>
+      <strong><%= guildName %></strong>
+    </p>
+  </div>
+
+  <div class="invite-card">
+    <div class="invite-card-icon">🐺</div>
+    <h2 data-i18n="invite.card_title">Invite Werewolf Bot</h2>
+    <p class="invite-card-desc" data-i18n="invite.card_desc">
+      Add the bot to your server to start playing Werewolf with your community. The bot includes slash commands, role management, voice mute, and a full game experience.
+    </p>
+    <div class="invite-features">
+      <div class="invite-feature">
+        <span class="invite-feature-icon">🎮</span>
+        <span data-i18n="invite.feature_game">Complete Werewolf game</span>
+      </div>
+      <div class="invite-feature">
+        <span class="invite-feature-icon">🎭</span>
+        <span data-i18n="invite.feature_roles">12+ unique roles</span>
+      </div>
+      <div class="invite-feature">
+        <span class="invite-feature-icon">🔊</span>
+        <span data-i18n="invite.feature_voice">Voice channel management</span>
+      </div>
+      <div class="invite-feature">
+        <span class="invite-feature-icon">📊</span>
+        <span data-i18n="invite.feature_stats">Stats, ELO & achievements</span>
+      </div>
+      <div class="invite-feature">
+        <span class="invite-feature-icon">🌐</span>
+        <span data-i18n="invite.feature_lang">French & English support</span>
+      </div>
+      <div class="invite-feature">
+        <span class="invite-feature-icon">🖥️</span>
+        <span data-i18n="invite.feature_dashboard">Web dashboard included</span>
+      </div>
+    </div>
+    <a href="<%= inviteUrl %>" target="_blank" rel="noopener" class="btn btn-invite">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286z"/></svg>
+      <span data-i18n="invite.btn_invite">Add to Server</span>
+    </a>
+  </div>
+
+  <div class="invite-permissions">
+    <h3 data-i18n="invite.perms_title">Required Permissions</h3>
+    <div class="invite-perms-grid">
+      <div class="invite-perm">
+        <span class="invite-perm-icon">✅</span>
+        <div>
+          <strong data-i18n="invite.perm_commands">Slash Commands</strong>
+          <p data-i18n="invite.perm_commands_desc">Register and respond to / commands</p>
+        </div>
+      </div>
+      <div class="invite-perm">
+        <span class="invite-perm-icon">✅</span>
+        <div>
+          <strong data-i18n="invite.perm_messages">Send Messages</strong>
+          <p data-i18n="invite.perm_messages_desc">Send game announcements and updates</p>
+        </div>
+      </div>
+      <div class="invite-perm">
+        <span class="invite-perm-icon">✅</span>
+        <div>
+          <strong data-i18n="invite.perm_manage_channels">Manage Channels</strong>
+          <p data-i18n="invite.perm_manage_channels_desc">Create and manage game channels</p>
+        </div>
+      </div>
+      <div class="invite-perm">
+        <span class="invite-perm-icon">✅</span>
+        <div>
+          <strong data-i18n="invite.perm_voice">Mute Members</strong>
+          <p data-i18n="invite.perm_voice_desc">Manage voice during night phases</p>
+        </div>
+      </div>
+      <div class="invite-perm">
+        <span class="invite-perm-icon">✅</span>
+        <div>
+          <strong data-i18n="invite.perm_embed">Embed Links</strong>
+          <p data-i18n="invite.perm_embed_desc">Rich embeds for game interface</p>
+        </div>
+      </div>
+      <div class="invite-perm">
+        <span class="invite-perm-icon">✅</span>
+        <div>
+          <strong data-i18n="invite.perm_dm">Direct Messages</strong>
+          <p data-i18n="invite.perm_dm_desc">Send private role assignments</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="invite-back">
+    <a href="/" class="btn btn-outline" data-i18n="invite.back">Back to Dashboard</a>
+  </div>
+</div>
+
+<%- include('partials/footer') %>
