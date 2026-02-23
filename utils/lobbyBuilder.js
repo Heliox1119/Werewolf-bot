@@ -158,9 +158,9 @@ function buildLobbyEmbed(game, hostId) {
     description = t('lobby.desc_recruiting', { n: min - playerCount });
   }
 
-  // Wolf win condition (server-wide)
+  // Wolf win condition (per-guild with global fallback)
   const config = ConfigManager.getInstance();
-  const wolfWin = config.getWolfWinCondition();
+  const wolfWin = config.getWolfWinCondition(game.guildId || null);
   const wolfWinLabel = wolfWin === 'elimination' ? t('lobby.wolfwin_elimination') : t('lobby.wolfwin_majority');
 
   const embed = new EmbedBuilder()

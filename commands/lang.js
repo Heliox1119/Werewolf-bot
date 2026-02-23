@@ -20,6 +20,7 @@ module.exports = {
 
   async execute(interaction) {
     const locale = interaction.options.getString('language');
+    const guildId = interaction.guildId;
 
     try {
       // Get the config DB
@@ -27,7 +28,7 @@ module.exports = {
       const config = ConfigManager.getInstance();
       const configDb = config?.db || null;
 
-      const success = setLocale(locale, configDb);
+      const success = setLocale(locale, configDb, guildId);
 
       if (!success) {
         const available = getAvailableLocales().join(', ');

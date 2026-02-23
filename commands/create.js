@@ -59,7 +59,8 @@ module.exports = {
       // Get category ID from configuration
       const ConfigManager = require('../utils/config');
       const config = ConfigManager.getInstance();
-      let CATEGORY_ID = config.getCategoryId();
+      const guildId = interaction.guildId;
+      let CATEGORY_ID = config.getCategoryId(guildId);
       
       // Validate that the configured category actually exists on Discord
       if (CATEGORY_ID) {

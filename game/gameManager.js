@@ -681,6 +681,9 @@ class GameManager {
         .map(a => `• ${a.text}`)
         .join('\n') || t('summary.no_actions');
 
+      // Store previous players for rematch
+      game._previousPlayers = game.players.map(p => ({ id: p.id, username: p.username }));
+
       const embed = new EmbedBuilder()
         .setTitle(t('summary.title'))
         .setColor(getColor(game.guildId, 'special'))
@@ -693,6 +696,11 @@ class GameManager {
         .setTimestamp(new Date());
 
       const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`game_rematch:${game.mainChannelId}`)
+          .setLabel(t('ui.btn.rematch'))
+          .setEmoji('🔄')
+          .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
           .setCustomId(`game_restart:${game.mainChannelId}`)
           .setLabel(t('ui.btn.restart'))
@@ -2028,10 +2036,10 @@ class GameManager {
       return 'village';
     }
 
-    // Condition de victoire des loups (server-wide config)
+    // Condition de victoire des loups (per-guild config)
     const ConfigManager = require('../utils/config');
     const config = ConfigManager.getInstance();
-    const wolfWinCondition = config.getWolfWinCondition();
+    const wolfWinCondition = config.getWolfWinCondition(game.guildId || null);
     if (wolfWinCondition === 'majority') {
       // Victoire des loups : autant ou plus de loups que de non-loups
       if (aliveWolves.length >= aliveVillagers.length) {

@@ -32,6 +32,10 @@ class I18n {
     }
 
     this.initialized = true;
+    
+    // Load per-guild locales
+    this.loadGuildLocales(configDb);
+    
     logger.info('i18n initialized', { locale: this.locale, available: Object.keys(this.locales) });
   }
 
@@ -50,15 +54,37 @@ class I18n {
   }
 
   /**
-   * Change la langue et persiste en DB
+   * Change la langue (globale ou per-guild) et persiste en DB
+   * @param {string} locale - Locale code ('fr', 'en')
+   * @param {object} [configDb] - SQLite db instance
+   * @param {string} [guildId] - Guild ID for per-guild locale
    */
-  setLocale(locale, configDb = null) {
+  setLocale(locale, configDb = null, guildId = null) {
     if (!this.locales[locale]) {
       return false;
     }
-    this.locale = locale;
 
-    // Persister dans la config
+    // Per-guild locale
+    if (guildId && configDb) {
+      try {
+        const key = `guild.${guildId}.locale`;
+        configDb.prepare(`
+          INSERT INTO config (key, value, updated_at)
+          VALUES (?, ?, strftime('%s', 'now'))
+          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+        `).run(key, locale);
+        // Also update guild locale cache
+        if (!this._guildLocales) this._guildLocales = new Map();
+        this._guildLocales.set(guildId, locale);
+        logger.info('Guild locale changed', { guildId, locale });
+        return true;
+      } catch (e) {
+        logger.error('Failed to persist guild locale', { guildId, error: e.message });
+      }
+    }
+
+    // Global locale
+    this.locale = locale;
     if (configDb) {
       try {
         configDb.prepare(`
@@ -73,6 +99,40 @@ class I18n {
 
     logger.info('Locale changed', { locale });
     return true;
+  }
+
+  /**
+   * Get the locale for a guild (falls back to global)
+   * @param {string} [guildId] - Guild ID
+   * @returns {string} Locale code
+   */
+  getLocaleForGuild(guildId = null) {
+    if (guildId && this._guildLocales && this._guildLocales.has(guildId)) {
+      return this._guildLocales.get(guildId);
+    }
+    return this.locale;
+  }
+
+  /**
+   * Load all per-guild locales from config DB
+   */
+  loadGuildLocales(configDb) {
+    if (!configDb) return;
+    try {
+      this._guildLocales = new Map();
+      const rows = configDb.prepare("SELECT key, value FROM config WHERE key LIKE 'guild.%.locale'").all();
+      for (const row of rows) {
+        const match = row.key.match(/^guild\.(\d+)\.locale$/);
+        if (match && this.locales[row.value]) {
+          this._guildLocales.set(match[1], row.value);
+        }
+      }
+      if (this._guildLocales.size > 0) {
+        logger.info('Guild locales loaded', { count: this._guildLocales.size });
+      }
+    } catch (e) {
+      logger.error('Failed to load guild locales', { error: e.message });
+    }
   }
 
   /**
@@ -205,7 +265,8 @@ module.exports = {
   translateRoleDesc,
   tips,
   initialize: (configDb) => instance.initialize(configDb),
-  setLocale: (locale, configDb) => instance.setLocale(locale, configDb),
+  setLocale: (locale, configDb, guildId) => instance.setLocale(locale, configDb, guildId),
   getLocale: () => instance.getLocale(),
+  getLocaleForGuild: (guildId) => instance.getLocaleForGuild(guildId),
   getAvailableLocales: () => instance.getAvailableLocales()
 };

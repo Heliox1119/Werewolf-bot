@@ -1,5 +1,60 @@
 # 📝 Changelog - Werewolf Bot
 
+## [2.8.0] - 2026-02-23 - Docker, Backup Auto, Multi-Guild, Rematch
+
+### 🐳 Docker containerization
+- **Dockerfile** multi-stage (builder + runtime) avec Node 20 Alpine, FFmpeg, non-root user
+- **docker-compose.yml** avec volumes persistants (`werewolf-data`, `werewolf-logs`), auto-restart
+- **.dockerignore** pour minimiser la taille de l'image (exclut node_modules, tests, coverage, .git)
+- **Health check** intégré via `scripts/health-check.js` (interval 60s)
+
+### 💾 Backup automatique SQLite
+- **BackupManager** (`database/backup.js`) — Singleton avec backup horaire automatique
+- **Rotation** : conserve les 24 derniers backups (1 par heure, 24h d'historique)
+- **API `better-sqlite3` native** : utilise `.backup()` pour des copies atomiques et cohérentes
+- **Backup au shutdown** : un dernier backup est effectué lors du graceful shutdown (SIGTERM/SIGINT)
+- **Premier backup** 5 minutes après le démarrage (laisse la DB se stabiliser)
+- **Script npm** : `npm run backup` pour déclencher un backup manuel
+- **Méthodes exposées** : `performBackup()`, `listBackups()`, `restoreFromBackup(file)`, `rotateBackups()`
+
+### 🌐 Multi-guild support (langue & config par serveur)
+- **ConfigManager guild-scoped** : nouvelles méthodes `getForGuild(guildId, key)`, `setForGuild(guildId, key, value)`, `deleteForGuild()`
+- **Config per-guild** : catégorie, wolfwin condition, règles par défaut, webhook — chaque serveur a sa propre configuration avec fallback global
+- **i18n per-guild** : `setLocale(locale, db, guildId)`, `getLocaleForGuild(guildId)`, `loadGuildLocales(db)` — chaque serveur peut avoir sa propre langue
+- **Commandes mises à jour** : `/lang`, `/setup`, `/setrules`, `/create` passent le `guildId` aux getters/setters
+- **Lobby** : lit `wolfWinCondition` par guild, toggle bouton met à jour la config du serveur courant
+- **Rétro-compatible** : si aucune config guild n'existe, fallback sur la config globale existante
+
+### 🔄 Système de rematch (revanche rapide)
+- **Bouton "🔄 Revanche"** dans le résumé de fin de partie (à côté de Relancer et Nettoyer)
+- **Auto-join** : tous les joueurs de la partie précédente sont automatiquement réinscrits dans le nouveau lobby
+- **Sauvegarde des joueurs** : `game._previousPlayers` stocke la liste lors du `sendGameSummary()`
+- **Fallback gracieux** : si un joueur a quitté le serveur, il est simplement ignoré sans erreur
+- **Log détaillé** : nombre de joueurs rejoints vs total attendu
+
+### 🔧 Fichiers modifiés
+- **index.js** : Backup init/shutdown, handler `game_rematch`, `getCategoryId(guildId)`, `getWolfWinCondition(guildId)`
+- **utils/config.js** : Méthodes `getForGuild/setForGuild/deleteForGuild`, getters guild-aware avec fallback
+- **utils/i18n.js** : `setLocale(locale, db, guildId)`, `getLocaleForGuild()`, `loadGuildLocales()`, `_guildLocales` Map
+- **utils/lobbyBuilder.js** : `getWolfWinCondition(game.guildId)`
+- **game/gameManager.js** : `_previousPlayers` dans summary, bouton rematch, `getWolfWinCondition(game.guildId)`
+- **commands/lang.js** : Passe `guildId` à `setLocale()`
+- **commands/setup.js** : `setCategoryId(id, guildId)`, `getDefaultGameRules(guildId)`, `isSetupComplete(guildId)`
+- **commands/setrules.js** : `getWolfWinCondition(guildId)`, `setWolfWinCondition(condition, guildId)`
+- **commands/create.js** : `getCategoryId(guildId)`
+- **locales/fr.js** : +clés `ui.btn.rematch`, `cleanup.rematch_success`
+- **locales/en.js** : +clés `ui.btn.rematch`, `cleanup.rematch_success`
+
+### 📦 Nouveaux fichiers
+```
+Dockerfile              # Multi-stage build (Node 20 Alpine)
+docker-compose.yml      # Orchestration avec volumes persistants
+.dockerignore           # Exclusions pour l'image Docker
+database/backup.js      # BackupManager (backup horaire, rotation, restore)
+```
+
+---
+
 ## [2.7.0] - 2026-02-19 - Petite Fille : Espionnage Temps Réel & Indices Intelligents
 
 ### 👧 Système d'espionnage temps réel (Petite Fille)
@@ -628,11 +683,11 @@ const voiceChannel = guild.channels.cache.get(voiceChannelId) ||
 - [x] Enregistrement commandes guild-only + nettoyage global
 - [x] Screenshots intégrés dans README FR/EN
 
-### v2.8.0 (Planifié)
-- [ ] Docker containerization
-- [ ] Backup automatique horaire SQLite
-- [ ] Multi-guild support (langue & config par serveur)
-- [ ] Système de rejouer (rematch rapide avec mêmes joueurs)
+### v2.8.0 (✅ Terminé)
+- [x] Docker containerization (Dockerfile multi-stage, docker-compose, .dockerignore)
+- [x] Backup automatique horaire SQLite (rotation 24h, backup au shutdown)
+- [x] Multi-guild support (langue & config par serveur avec fallback global)
+- [x] Système de rematch (revanche rapide avec mêmes joueurs)
 
 ### v3.0.0 (Long terme)
 - [ ] Web interface d'administration

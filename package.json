@@ -1,6 +1,6 @@
 {
   "name": "werewolf-bot",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "Discord Werewolf game bot with voice control and ambient audio",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:verbose": "jest --verbose"
+    "test:verbose": "jest --verbose",
+    "backup": "node -e \"const B=require('./database/backup');const D=require('./database/db');const db=new D();B.initialize(db);B.getInstance().performBackup().then(f=>console.log('Backup:',f))\""
   },
   "keywords": [
     "discord",

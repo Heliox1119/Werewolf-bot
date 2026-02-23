@@ -153,7 +153,7 @@ module.exports = {
       return;
     }
 
-    const success = config.setCategoryId(category.id);
+    const success = config.setCategoryId(category.id, interaction.guildId);
 
     if (success) {
       const embed = new EmbedBuilder()
@@ -259,7 +259,8 @@ module.exports = {
       return;
     }
 
-    const currentRules = config.getDefaultGameRules();
+    const guildId = interaction.guildId;
+    const currentRules = config.getDefaultGameRules(guildId);
     const newRules = {
       minPlayers: minPlayers || currentRules.minPlayers,
       maxPlayers: maxPlayers || currentRules.maxPlayers,
@@ -275,7 +276,7 @@ module.exports = {
       return;
     }
 
-    const success = config.setDefaultGameRules(newRules);
+    const success = config.setDefaultGameRules(newRules, guildId);
 
     if (success) {
       const embed = new EmbedBuilder()
@@ -457,7 +458,7 @@ module.exports = {
     const steps = [];
 
     // Catégorie (requis)
-    if (!config.getCategoryId()) {
+    if (!config.getCategoryId(guildId)) {
       steps.push({
         name: t('cmd.setup.wizard_step1_title'),
         value: [
@@ -470,7 +471,7 @@ module.exports = {
     }
 
     // Webhook (optionnel)
-    if (!config.getMonitoringWebhookUrl()) {
+    if (!config.getMonitoringWebhookUrl(guildId)) {
       steps.push({
         name: t('cmd.setup.wizard_step2_title'),
         value: [
@@ -488,7 +489,7 @@ module.exports = {
       value: [
         t('cmd.setup.wizard_step3_cmd'),
         t('cmd.setup.wizard_step3_info'),
-        t('cmd.setup.wizard_step3_current', { range: `${config.getDefaultGameRules().minPlayers}-${config.getDefaultGameRules().maxPlayers}` })
+        t('cmd.setup.wizard_step3_current', { range: `${config.getDefaultGameRules(guildId).minPlayers}-${config.getDefaultGameRules(guildId).maxPlayers}` })
       ].join('\n'),
       inline: false
     });

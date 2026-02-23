@@ -159,54 +159,111 @@ class ConfigManager {
     this.loadAll();
   }
 
+  // ==================== Guild-scoped configuration ====================
+
+  /**
+   * Get a guild-scoped config value, with fallback to global
+   * @param {string} guildId - Discord guild ID
+   * @param {string} key - Config key
+   * @param {*} defaultValue - Default if not found
+   */
+  getForGuild(guildId, key, defaultValue = null) {
+    if (guildId) {
+      const guildKey = `guild.${guildId}.${key}`;
+      const guildValue = this.get(guildKey);
+      if (guildValue !== null && guildValue !== undefined) {
+        return guildValue;
+      }
+    }
+    // Fallback to global config
+    return this.get(key, defaultValue);
+  }
+
+  /**
+   * Set a guild-scoped config value
+   * @param {string} guildId - Discord guild ID
+   * @param {string} key - Config key
+   * @param {*} value - Value to set
+   */
+  setForGuild(guildId, key, value) {
+    const guildKey = `guild.${guildId}.${key}`;
+    return this.set(guildKey, value);
+  }
+
+  /**
+   * Delete a guild-scoped config value
+   * @param {string} guildId - Discord guild ID
+   * @param {string} key - Config key
+   */
+  deleteForGuild(guildId, key) {
+    const guildKey = `guild.${guildId}.${key}`;
+    return this.delete(guildKey);
+  }
+
   // ==================== Clés de configuration prédéfinies ====================
 
   /**
    * ID de la catégorie Discord où créer les channels
+   * @param {string} [guildId] - Guild ID for per-guild config
    */
-  getCategoryId() {
-    return this.get('discord.category_id', null);
+  getCategoryId(guildId = null) {
+    return this.getForGuild(guildId, 'discord.category_id', null);
   }
 
-  setCategoryId(categoryId) {
+  setCategoryId(categoryId, guildId = null) {
+    if (guildId) {
+      return this.setForGuild(guildId, 'discord.category_id', categoryId);
+    }
     return this.set('discord.category_id', categoryId);
   }
 
   /**
-   * Condition de victoire des loups (server-wide)
+   * Condition de victoire des loups (per-guild with global fallback)
+   * @param {string} [guildId] - Guild ID for per-guild config
    * @returns {'majority'|'elimination'}
    */
-  getWolfWinCondition() {
-    return this.get('game.wolf_win_condition', 'majority');
+  getWolfWinCondition(guildId = null) {
+    return this.getForGuild(guildId, 'game.wolf_win_condition', 'majority');
   }
 
-  setWolfWinCondition(condition) {
+  setWolfWinCondition(condition, guildId = null) {
+    if (guildId) {
+      return this.setForGuild(guildId, 'game.wolf_win_condition', condition);
+    }
     return this.set('game.wolf_win_condition', condition);
   }
 
   /**
    * URL du webhook Discord pour les alertes monitoring
+   * @param {string} [guildId] - Guild ID for per-guild config
    */
-  getMonitoringWebhookUrl() {
-    return this.get('monitoring.webhook_url', process.env.MONITORING_WEBHOOK_URL || null);
+  getMonitoringWebhookUrl(guildId = null) {
+    return this.getForGuild(guildId, 'monitoring.webhook_url', process.env.MONITORING_WEBHOOK_URL || null);
   }
 
-  setMonitoringWebhookUrl(url) {
+  setMonitoringWebhookUrl(url, guildId = null) {
+    if (guildId) {
+      return this.setForGuild(guildId, 'monitoring.webhook_url', url);
+    }
     return this.set('monitoring.webhook_url', url);
   }
 
   /**
    * Règles par défaut des parties
+   * @param {string} [guildId] - Guild ID for per-guild config
    */
-  getDefaultGameRules() {
-    return this.get('game.default_rules', {
+  getDefaultGameRules(guildId = null) {
+    return this.getForGuild(guildId, 'game.default_rules', {
       minPlayers: 5,
       maxPlayers: 10,
       disableVoiceMute: false
     });
   }
 
-  setDefaultGameRules(rules) {
+  setDefaultGameRules(rules, guildId = null) {
+    if (guildId) {
+      return this.setForGuild(guildId, 'game.default_rules', rules);
+    }
     return this.set('game.default_rules', rules);
   }
 
@@ -284,37 +341,24 @@ class ConfigManager {
   // ==================== Validation du setup ====================
 
   /**
-   * Vérifie si le setup initial est complet
+   * Vérifie si le setup initial est complet (global ou per-guild)
+   * @param {string} [guildId] - Guild ID
    */
-  isSetupComplete() {
-    const requiredKeys = [
-      'discord.category_id'
-    ];
-
-    for (const key of requiredKeys) {
-      if (!this.has(key) || !this.get(key)) {
-        return false;
-      }
-    }
-
-    return true;
+  isSetupComplete(guildId = null) {
+    // Check guild-scoped first, then global
+    const categoryId = this.getCategoryId(guildId);
+    return !!categoryId;
   }
 
   /**
    * Récupère les clés manquantes pour le setup
+   * @param {string} [guildId] - Guild ID
    */
-  getMissingSetupKeys() {
-    const required = {
-      'discord.category_id': t('cmd.setup.config_category_desc')
-    };
-
+  getMissingSetupKeys(guildId = null) {
     const missing = [];
-    for (const [key, description] of Object.entries(required)) {
-      if (!this.has(key) || !this.get(key)) {
-        missing.push({ key, description });
-      }
+    if (!this.getCategoryId(guildId)) {
+      missing.push({ key: 'discord.category_id', description: t('cmd.setup.config_category_desc') });
     }
-
     return missing;
   }
 

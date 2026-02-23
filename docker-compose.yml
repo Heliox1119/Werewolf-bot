@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  werewolf-bot:
+    build: .
+    container_name: werewolf-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - werewolf-data:/app/data
+      - werewolf-logs:/app/logs
+      - ./audio:/app/audio:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  werewolf-data:
+    driver: local
+  werewolf-logs:
+    driver: local

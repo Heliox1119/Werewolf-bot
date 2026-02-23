@@ -9,7 +9,8 @@ const { safeEditReply } = require("./utils/interaction");
 const { t } = require('./utils/i18n');
 
 // Validation des variables d'environnement requises
-// NOTE: Ce bot supporte le multi-serveur. Les commandes sont enregistrées globalement.
+// NOTE: Ce bot supporte le multi-serveur avec config & langue par guild.
+// Les commandes sont enregistrées globalement si GUILD_ID est absent.
 // GUILD_ID est optionnel — s'il est défini, les commandes sont aussi enregistrées en guild (instant).
 const REQUIRED_ENV = ['TOKEN', 'CLIENT_ID'];
 for (const key of REQUIRED_ENV) {
@@ -42,6 +43,7 @@ const { applyRateLimit } = require("./utils/rateLimitMiddleware");
 // Charger le système de monitoring
 const MetricsCollector = require("./monitoring/metrics");
 const AlertSystem = require("./monitoring/alerts");
+const BackupManager = require("./database/backup");
 
 // Charger les commandes avec rate limiting automatique
 const commandFiles = fs.readdirSync("./commands").filter(file => file.endsWith(".js"));
@@ -117,6 +119,18 @@ client.once("clientReady", async () => {
     }
   } catch (error) {
     logger.error('Failed to initialize monitoring system', { error: error.message });
+  }
+
+  // Initialiser le système de backup automatique
+  try {
+    const GameDatabase = require('./database/db');
+    const backupDb = new GameDatabase();
+    BackupManager.initialize(backupDb);
+    const backup = BackupManager.getInstance();
+    backup.startAutoBackup();
+    logger.success('Backup system initialized (hourly, keep 24)');
+  } catch (error) {
+    logger.error('Failed to initialize backup system', { error: error.message });
   }
 
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
@@ -503,7 +517,7 @@ client.on("interactionCreate", async interaction => {
       channelId = arg1;
     }
 
-    if (buttonType === "game_restart" || buttonType === "game_cleanup") {
+    if (buttonType === "game_restart" || buttonType === "game_cleanup" || buttonType === "game_rematch") {
       const targetChannelId = arg1;
       const game = gameManager.getGameByChannelId(targetChannelId);
 
@@ -519,10 +533,10 @@ client.on("interactionCreate", async interaction => {
         return;
       }
 
-      // Get category ID from configuration
+      // Get category ID from configuration (guild-scoped)
       const ConfigManager = require('./utils/config');
       const config = ConfigManager.getInstance();
-      const CATEGORY_ID = config.getCategoryId();
+      const CATEGORY_ID = config.getCategoryId(interaction.guildId);
       
       if (!CATEGORY_ID) {
         await safeEditReply(interaction, { content: t('error.bot_not_configured'), flags: MessageFlags.Ephemeral });
@@ -538,7 +552,10 @@ client.on("interactionCreate", async interaction => {
         return;
       }
 
-      // Restart flow
+      // Rematch or Restart flow
+      const isRematch = buttonType === "game_rematch";
+      const previousPlayers = isRematch ? (game._previousPlayers || []) : [];
+      
       const deletedCount = await gameManager.cleanupChannels(interaction.guild, game);
       try { gameManager.db.deleteGame(game.mainChannelId); } catch (e) { /* ignore */ }
       gameManager.games.delete(game.mainChannelId);
@@ -580,16 +597,42 @@ client.on("interactionCreate", async interaction => {
 
       // Create lobby embed
       const { buildLobbyMessage: buildLobbyMsg } = require('./utils/lobbyBuilder');
-      const lobbyPayload = buildLobbyMsg(newGame, interaction.user.id);
 
+      // Auto-join players for rematch
+      if (isRematch && previousPlayers.length > 0) {
+        // Join the host first
+        gameManager.join(game.mainChannelId, interaction.user);
+        
+        // Auto-join all previous players (except the host who's already joined)
+        let joinedCount = 1;
+        for (const prev of previousPlayers) {
+          if (prev.id === interaction.user.id) continue; // Already joined as host
+          try {
+            const member = await interaction.guild.members.fetch(prev.id);
+            if (member) {
+              gameManager.join(game.mainChannelId, member.user);
+              joinedCount++;
+            }
+          } catch (e) {
+            logger.debug('Rematch: could not re-add player', { userId: prev.id, error: e.message });
+          }
+        }
+        logger.info('Rematch: auto-joined players', { count: joinedCount, total: previousPlayers.length });
+      } else {
+        gameManager.join(game.mainChannelId, interaction.user);
+      }
+
+      const lobbyPayload = buildLobbyMsg(newGame, interaction.user.id);
       const lobbyChannel = await interaction.guild.channels.fetch(game.mainChannelId);
       logger.info('Channel send', { channelId: lobbyChannel.id, channelName: lobbyChannel.name, content: '[lobby message]' });
       const lobbyMsg = await lobbyChannel.send(lobbyPayload);
       newGame.lobbyMessageId = lobbyMsg.id;
 
-      gameManager.join(game.mainChannelId, interaction.user);
-
-      await safeEditReply(interaction, { content: t('cleanup.restart_success'), flags: MessageFlags.Ephemeral });
+      if (isRematch) {
+        await safeEditReply(interaction, { content: t('cleanup.rematch_success', { n: newGame.players.length }), flags: MessageFlags.Ephemeral });
+      } else {
+        await safeEditReply(interaction, { content: t('cleanup.restart_success'), flags: MessageFlags.Ephemeral });
+      }
       return;
     }
 
@@ -718,9 +761,9 @@ client.on("interactionCreate", async interaction => {
 
       const ConfigManager = require('./utils/config');
       const config = ConfigManager.getInstance();
-      const current = config.getWolfWinCondition();
+      const current = config.getWolfWinCondition(interaction.guildId);
       const newCondition = current === 'majority' ? 'elimination' : 'majority';
-      config.setWolfWinCondition(newCondition);
+      config.setWolfWinCondition(newCondition, interaction.guildId);
 
       const label = newCondition === 'elimination' ? t('lobby.wolfwin_elimination') : t('lobby.wolfwin_majority');
       await safeEditReply(interaction, { content: t('lobby.wolfwin_changed', { condition: label }) });
@@ -846,6 +889,14 @@ async function gracefulShutdown(signal) {
     try {
       const metrics = MetricsCollector.getInstance();
       metrics.stopCollection();
+    } catch (e) { /* ignore */ }
+
+    // Stop auto backup & run final backup
+    try {
+      const backup = BackupManager.getInstance();
+      backup.stopAutoBackup();
+      await backup.performBackup();
+      logger.info('Final backup completed');
     } catch (e) { /* ignore */ }
 
     // Clear all game timers and save state
