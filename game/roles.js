@@ -9,5 +9,6 @@ module.exports = {
   CUPID: "Cupidon",
   SALVATEUR: "Salvateur",
   ANCIEN: "Ancien",
-  IDIOT: "Idiot du Village"
+  IDIOT: "Idiot du Village",
+  THIEF: "Voleur"
 };

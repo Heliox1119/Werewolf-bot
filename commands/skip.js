@@ -40,6 +40,7 @@ module.exports = {
       [PHASES.SORCIERE]: { role: ROLES.WITCH, label: "Sorcière" },
       [PHASES.CUPIDON]: { role: ROLES.CUPID, label: "Cupidon" },
       [PHASES.SALVATEUR]: { role: ROLES.SALVATEUR, label: "Salvateur" },
+      [PHASES.VOLEUR]: { role: ROLES.THIEF, label: "Voleur" },
     };
 
     const allowed = allowedSkips[game.subPhase];
@@ -51,6 +52,15 @@ module.exports = {
     if (player.role !== allowed.role) {
       await safeReply(interaction, { content: t('error.skip_role_mismatch', { label: allowed.label }), flags: MessageFlags.Ephemeral });
       return;
+    }
+
+    // Règle spéciale pour le Voleur : si les deux cartes sont des loups, il doit en prendre une
+    if (game.subPhase === PHASES.VOLEUR && game.thiefExtraRoles && game.thiefExtraRoles.length === 2) {
+      const isWolf = (r) => r === ROLES.WEREWOLF || r === ROLES.WHITE_WOLF;
+      if (isWolf(game.thiefExtraRoles[0]) && isWolf(game.thiefExtraRoles[1])) {
+        await safeReply(interaction, { content: t('cmd.steal.must_take_wolf'), flags: MessageFlags.Ephemeral });
+        return;
+      }
     }
 
     // Passer l'action

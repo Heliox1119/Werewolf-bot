@@ -254,6 +254,7 @@ class GameManager extends EventEmitter {
       villageChannelId: null,
       wolvesChannelId: null,
       whiteWolfChannelId: null,
+      thiefChannelId: null,
       seerChannelId: null,
       witchChannelId: null,
       cupidChannelId: null,
@@ -273,6 +274,7 @@ class GameManager extends EventEmitter {
       witchPotions: { life: true, death: true },
       nightVictim: null,
       whiteWolfKillTarget: null,
+      thiefExtraRoles: [],
       witchKillTarget: null,
       witchSave: false,
       protectedPlayerId: null,
@@ -310,6 +312,7 @@ class GameManager extends EventEmitter {
         game.villageChannelId,
         game.wolvesChannelId,
         game.whiteWolfChannelId,
+        game.thiefChannelId,
         game.seerChannelId,
         game.witchChannelId,
         game.cupidChannelId,
@@ -1000,6 +1003,22 @@ class GameManager extends EventEmitter {
       return; // Stopper l'enchaînement des phases
     }
     switch (game.subPhase) {
+      case PHASES.VOLEUR:
+        // Après le Voleur, vérifier si Cupidon est en jeu (première nuit uniquement)
+        if (this.hasAliveRealRole(game, ROLES.CUPID)) {
+          game.subPhase = PHASES.CUPIDON;
+          await this.announcePhase(guild, game, t('phase.cupid_wakes') || 'Cupidon se réveille...');
+          this.notifyTurn(guild, game, ROLES.CUPID);
+        } else if (this.hasAliveRealRole(game, ROLES.SALVATEUR) && !game.villageRolesPowerless) {
+          game.subPhase = PHASES.SALVATEUR;
+          await this.announcePhase(guild, game, t('phase.salvateur_wakes'));
+          this.notifyTurn(guild, game, ROLES.SALVATEUR);
+        } else {
+          game.subPhase = PHASES.LOUPS;
+          await this.announcePhase(guild, game, t('phase.wolves_wake'));
+          this.notifyTurn(guild, game, ROLES.WEREWOLF);
+        }
+        break;
       case PHASES.CUPIDON:
         // Après Cupidon, vérifier si Salvateur est en jeu
         if (this.hasAliveRealRole(game, ROLES.SALVATEUR) && !game.villageRolesPowerless) {
@@ -1119,6 +1138,9 @@ class GameManager extends EventEmitter {
         } else if (currentSub === PHASES.LOUP_BLANC) {
           await this.sendLogged(mainChannel, t('game.afk_white_wolf'), { type: 'afkTimeout' });
           this.logAction(game, 'AFK timeout: loup blanc');
+        } else if (currentSub === PHASES.VOLEUR) {
+          await this.sendLogged(mainChannel, t('game.afk_thief'), { type: 'afkTimeout' });
+          this.logAction(game, 'AFK timeout: voleur');
         } else {
           return; // Pas de timeout pour les autres sous-phases
         }
@@ -1126,7 +1148,7 @@ class GameManager extends EventEmitter {
         await this.advanceSubPhase(guild, game);
 
         // Si on est encore en nuit avec une sous-phase qui attend une action, relancer le timer
-        if (game.phase === PHASES.NIGHT && [PHASES.LOUPS, PHASES.LOUP_BLANC, PHASES.SORCIERE, PHASES.VOYANTE, PHASES.SALVATEUR].includes(game.subPhase)) {
+        if (game.phase === PHASES.NIGHT && [PHASES.VOLEUR, PHASES.LOUPS, PHASES.LOUP_BLANC, PHASES.SORCIERE, PHASES.VOYANTE, PHASES.SALVATEUR].includes(game.subPhase)) {
           this.startNightAfkTimeout(guild, game);
         } else if (game.subPhase === PHASES.REVEIL) {
           // Transition vers le jour
@@ -1279,31 +1301,61 @@ class GameManager extends EventEmitter {
       if (game.players.length >= 7) {
         rolesPool.push(ROLES.CUPID);
       }
-      // Si au moins 8 joueurs, ajouter le Salvateur
+      // Si au moins 8 joueurs, ajouter le Voleur
       if (game.players.length >= 8) {
+        rolesPool.push(ROLES.THIEF);
+      }
+      // Si au moins 9 joueurs, ajouter le Salvateur
+      if (game.players.length >= 9) {
         rolesPool.push(ROLES.SALVATEUR);
       }
-      // Si au moins 9 joueurs, ajouter l'Ancien
-      if (game.players.length >= 9) {
+      // Si au moins 10 joueurs, ajouter l'Ancien
+      if (game.players.length >= 10) {
         rolesPool.push(ROLES.ANCIEN);
       }
-      // Si au moins 10 joueurs, ajouter le Loup Blanc (remplace un loup normal dans la meute)
-      if (game.players.length >= 10) {
+      // Si au moins 11 joueurs, ajouter le Loup Blanc
+      if (game.players.length >= 11) {
         rolesPool.push(ROLES.WHITE_WOLF);
       }
-      // Si au moins 11 joueurs, ajouter l'Idiot du Village
-      if (game.players.length >= 11) {
+      // Si au moins 12 joueurs, ajouter l'Idiot du Village
+      if (game.players.length >= 12) {
         rolesPool.push(ROLES.IDIOT);
       }
     }
 
-    // Compléter avec des villageois si nécessaire
-    if (rolesPool.length < game.players.length) {
-      rolesPool.push(...Array(game.players.length - rolesPool.length).fill(ROLES.VILLAGER));
+    // Si le Voleur est dans la pool, ajouter 2 cartes supplémentaires pour le choix
+    const hasThiefInPool = rolesPool.includes(ROLES.THIEF);
+    const extraRolesCount = hasThiefInPool ? 2 : 0;
+
+    // Compléter avec des villageois si nécessaire (+ extra pour le voleur)
+    const totalNeeded = game.players.length + extraRolesCount;
+    if (rolesPool.length < totalNeeded) {
+      rolesPool.push(...Array(totalNeeded - rolesPool.length).fill(ROLES.VILLAGER));
     }
 
-    // If rolesPool is longer than players, caller should have resolved selection
-    rolesPool = rolesPool.slice(0, game.players.length);
+    // If rolesPool is longer than needed, trim
+    rolesPool = rolesPool.slice(0, totalNeeded);
+
+    // Mélanger la pool
+    for (let i = rolesPool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [rolesPool[i], rolesPool[j]] = [rolesPool[j], rolesPool[i]];
+    }
+
+    // Si le Voleur est en jeu, extraire 2 cartes pour le choix du Voleur
+    // (on s'assure que le Voleur lui-même n'est pas dans les cartes extras)
+    game.thiefExtraRoles = [];
+    if (hasThiefInPool) {
+      // D'abord assigner le rôle THIEF au joueur voleur
+      const thiefIndex = rolesPool.indexOf(ROLES.THIEF);
+      rolesPool.splice(thiefIndex, 1);
+      // Prendre 2 cartes aléatoires parmi les rôles restants (hors THIEF)
+      const card1 = rolesPool.splice(Math.floor(Math.random() * rolesPool.length), 1)[0];
+      const card2 = rolesPool.splice(Math.floor(Math.random() * rolesPool.length), 1)[0];
+      game.thiefExtraRoles = [card1, card2];
+      // Remettre THIEF dans la pool pour distribution
+      rolesPool.push(ROLES.THIEF);
+    }
 
     // Distribuer les rôles aléatoirement
     game.players.forEach(p => {
@@ -1315,15 +1367,20 @@ class GameManager extends EventEmitter {
 
     game.startedAt = Date.now();
     
-    // Si Cupidon est en jeu, la première nuit commence par la sous-phase CUPIDON
-    const hasCupid = game.players.some(p => p.role === ROLES.CUPID && p.alive);
-    if (hasCupid) {
-      game.subPhase = PHASES.CUPIDON;
+    // Déterminer la première sous-phase nocturne
+    // Ordre: VOLEUR → CUPIDON → SALVATEUR → LOUPS
+    const hasThief = game.players.some(p => p.role === ROLES.THIEF && p.alive);
+    if (hasThief && game.thiefExtraRoles.length === 2) {
+      game.subPhase = PHASES.VOLEUR;
     } else {
-      // Si Salvateur en jeu mais pas de Cupidon, commencer par SALVATEUR
-      const hasSalvateur = game.players.some(p => p.role === ROLES.SALVATEUR && p.alive);
-      if (hasSalvateur) {
-        game.subPhase = PHASES.SALVATEUR;
+      const hasCupid = game.players.some(p => p.role === ROLES.CUPID && p.alive);
+      if (hasCupid) {
+        game.subPhase = PHASES.CUPIDON;
+      } else {
+        const hasSalvateur = game.players.some(p => p.role === ROLES.SALVATEUR && p.alive);
+        if (hasSalvateur) {
+          game.subPhase = PHASES.SALVATEUR;
+        }
       }
     }
 
@@ -1418,6 +1475,25 @@ class GameManager extends EventEmitter {
       } catch (e) { logger.warn('Failed to send white wolf welcome', { error: e.message }); }
     }
 
+    if (game.thiefChannelId) {
+      try {
+        const thiefChannel = await guild.channels.fetch(game.thiefChannelId);
+        await this.sendLogged(thiefChannel, t('welcome.thief'), { type: 'thiefWelcome' });
+        // Si le voleur a des cartes à choisir, afficher les cartes
+        if (game.thiefExtraRoles && game.thiefExtraRoles.length === 2) {
+          const { translateRole } = require('../utils/i18n');
+          const role1Name = translateRole(game.thiefExtraRoles[0]);
+          const role2Name = translateRole(game.thiefExtraRoles[1]);
+          const bothWolves = (game.thiefExtraRoles[0] === ROLES.WEREWOLF || game.thiefExtraRoles[0] === ROLES.WHITE_WOLF) &&
+                             (game.thiefExtraRoles[1] === ROLES.WEREWOLF || game.thiefExtraRoles[1] === ROLES.WHITE_WOLF);
+          const cardsMsg = bothWolves
+            ? t('cmd.steal.cards_must_take', { role1: role1Name, role2: role2Name })
+            : t('cmd.steal.cards', { role1: role1Name, role2: role2Name });
+          await this.sendLogged(thiefChannel, cardsMsg, { type: 'thiefCards' });
+        }
+      } catch (e) { logger.warn('Failed to send thief welcome', { error: e.message }); }
+    }
+
     if (game.seerChannelId) {
       try {
         const seerChannel = await guild.channels.fetch(game.seerChannelId);
@@ -1453,15 +1529,17 @@ class GameManager extends EventEmitter {
         ? await guild.channels.fetch(game.villageChannelId)
         : await guild.channels.fetch(game.mainChannelId);
 
-      const nightMsg = game.subPhase === PHASES.CUPIDON
-        ? t('game.night_start_cupid')
-        : t('game.night_start_default');
+      const nightMsg = game.subPhase === PHASES.VOLEUR
+        ? t('game.night_start_thief')
+        : game.subPhase === PHASES.CUPIDON
+          ? t('game.night_start_cupid')
+          : t('game.night_start_default');
 
       await this.sendLogged(villageChannel, nightMsg, { type: 'nightStart' });
     } catch (e) { logger.warn('Failed to send village night message', { error: e.message }); }
 
-    // 6. Lancer le timeout AFK si on est en sous-phase loups ou salvateur
-    if (game.subPhase === PHASES.LOUPS || game.subPhase === PHASES.SALVATEUR) {
+    // 6. Lancer le timeout AFK si on est en sous-phase qui attend une action
+    if ([PHASES.VOLEUR, PHASES.LOUPS, PHASES.SALVATEUR].includes(game.subPhase)) {
       this.startNightAfkTimeout(guild, game);
     }
 
@@ -1593,6 +1671,22 @@ class GameManager extends EventEmitter {
       game.whiteWolfChannelId = whiteWolfChannel.id;
       logger.success("✅ White Wolf channel created", { id: whiteWolfChannel.id });
 
+      // Créer le channel du Voleur
+      logger.debug("Creating thief channel...");
+      const thiefChannel = await guild.channels.create({
+        name: t('channel.thief'),
+        type: 0, // GUILD_TEXT
+        parent: categoryId || undefined,
+        permissionOverwrites: [
+          {
+            id: guild.id,
+            deny: ["ViewChannel"]
+          }
+        ]
+      });
+      game.thiefChannelId = thiefChannel.id;
+      logger.success("✅ Thief channel created", { id: thiefChannel.id });
+
       // Créer le channel spectateurs (pour les morts)
       logger.debug("Creating spectator channel...");
       const spectatorChannel = await guild.channels.create({
@@ -1627,13 +1721,14 @@ class GameManager extends EventEmitter {
         witchChannelId: game.witchChannelId,
         cupidChannelId: game.cupidChannelId,
         salvateurChannelId: game.salvateurChannelId,
+        thiefChannelId: game.thiefChannelId,
         spectatorChannelId: game.spectatorChannelId,
         voiceChannelId: game.voiceChannelId
       });
 
       timer.end();
       logger.success("✅ All initial channels created successfully", { 
-        channelCount: 8,
+        channelCount: 10,
         mainChannelId 
       });
       return true;
@@ -1697,6 +1792,30 @@ class GameManager extends EventEmitter {
           await whiteWolfChannel.permissionOverwrites.set(whiteWolfPerms);
           logger.success("✅ White Wolf channel permissions updated");
         } catch (e) { logger.warn('Failed to update white wolf channel permissions', { error: e.message }); }
+      }
+
+      // Mettre à jour le channel du Voleur
+      if (game.thiefChannelId) {
+        try {
+          const thiefChannel = await guild.channels.fetch(game.thiefChannelId);
+          const thiefPlayer = game.players.find(p => p.role === ROLES.THIEF && p.alive);
+          const thiefPerms = [
+            { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }
+          ];
+          if (thiefPlayer) {
+            try {
+              await guild.members.fetch(thiefPlayer.id);
+              thiefPerms.push({
+                id: thiefPlayer.id,
+                allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
+              });
+            } catch (err) {
+              logger.warn(`Ignored non-guild member for thief permissions`, { playerId: thiefPlayer.id });
+            }
+          }
+          await thiefChannel.permissionOverwrites.set(thiefPerms);
+          logger.success("✅ Thief channel permissions updated");
+        } catch (e) { logger.warn('Failed to update thief channel permissions', { error: e.message }); }
       }
 
       // Mettre à jour le channel de la voyante
@@ -1799,6 +1918,8 @@ class GameManager extends EventEmitter {
       { id: game.villageChannelId, name: 'village' },
       { id: game.cupidChannelId, name: 'cupid' },
       { id: game.salvateurChannelId, name: 'salvateur' },
+      { id: game.whiteWolfChannelId, name: 'whiteWolf' },
+      { id: game.thiefChannelId, name: 'thief' },
       { id: game.spectatorChannelId, name: 'spectator' },
       { id: game.voiceChannelId, name: 'voice' }
     ];
@@ -2245,6 +2366,7 @@ class GameManager extends EventEmitter {
       const allRoleChannels = [
         game.wolvesChannelId,
         game.whiteWolfChannelId,
+        game.thiefChannelId,
         game.seerChannelId,
         game.witchChannelId,
         game.cupidChannelId,
@@ -2425,6 +2547,7 @@ class GameManager extends EventEmitter {
         witchChannelId: game.witchChannelId,
         cupidChannelId: game.cupidChannelId,
         salvateurChannelId: game.salvateurChannelId,
+        thiefChannelId: game.thiefChannelId,
         spectatorChannelId: game.spectatorChannelId,
         phase: game.phase,
         subPhase: game.subPhase,

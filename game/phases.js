@@ -4,6 +4,7 @@ module.exports = {
   DAY: "Jour",
   ENDED: "Terminé",
   // Sous-phases détaillées
+  VOLEUR: "Voleur",
   CUPIDON: "Cupidon",
   SALVATEUR: "Salvateur",
   LOUPS: "Loups",

@@ -13,7 +13,8 @@ function getRoleDescription(role) {
     [ROLES.CUPID]: t('role.instruction.cupid'),
     [ROLES.SALVATEUR]: t('role.instruction.salvateur'),
     [ROLES.ANCIEN]: t('role.instruction.ancien'),
-    [ROLES.IDIOT]: t('role.instruction.idiot')
+    [ROLES.IDIOT]: t('role.instruction.idiot'),
+    [ROLES.THIEF]: t('role.instruction.thief')
   };
   return descriptions[role] || t('role.instruction.unknown');
 }
@@ -30,7 +31,8 @@ function getRoleImageName(role) {
     [ROLES.CUPID]: "cupidon.webp",
     [ROLES.SALVATEUR]: "salvateur.webp",
     [ROLES.ANCIEN]: "ancien.webp",
-    [ROLES.IDIOT]: "idiot.webp"
+    [ROLES.IDIOT]: "idiot.webp",
+    [ROLES.THIEF]: "voleur.webp"
   };
   return images[role] || null;
 }
