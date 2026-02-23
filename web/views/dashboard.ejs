@@ -6,7 +6,7 @@
     <img src="/static/img/roles/LG.jpg" alt="Werewolf" class="dashboard-hero-img">
     <div>
       <h1>Werewolf Dashboard</h1>
-      <p>Real-time monitoring of all active games across your servers</p>
+      <p>Surveillance temps réel de toutes les parties sur vos serveurs</p>
     </div>
   </div>
 </div>
@@ -17,67 +17,113 @@
     <div class="stat-icon">&#127918;</div>
     <div class="stat-body">
       <span class="stat-value" id="active-games"><%= activeGames %></span>
-      <span class="stat-label">Active Games</span>
+      <span class="stat-label">Parties actives</span>
     </div>
   </div>
   <div class="stat-card stat-success">
     <div class="stat-icon">&#128101;</div>
     <div class="stat-body">
       <span class="stat-value" id="active-players"><%= activePlayers %></span>
-      <span class="stat-label">Players In Game</span>
+      <span class="stat-label">Joueurs en jeu</span>
     </div>
   </div>
   <div class="stat-card stat-info">
     <div class="stat-icon">&#127984;</div>
     <div class="stat-body">
       <span class="stat-value"><%= guilds %></span>
-      <span class="stat-label">Servers</span>
+      <span class="stat-label">Serveurs</span>
     </div>
   </div>
   <div class="stat-card stat-warning">
     <div class="stat-icon">&#128200;</div>
     <div class="stat-body">
       <span class="stat-value"><%= stats.total_games || 0 %></span>
-      <span class="stat-label">Total Games</span>
+      <span class="stat-label">Total parties</span>
     </div>
   </div>
 </section>
 
-<!-- Live Games -->
-<section class="section">
-  <h2 class="section-title">
-    <span class="pulse-dot"></span>
-    Live Games
-  </h2>
-  <div class="games-grid" id="games-grid">
-    <% if (games.length === 0) { %>
-      <div class="empty-state">
-        <span class="empty-icon">&#127769;</span>
-        <p>No active games right now</p>
-        <p class="text-muted">Games will appear here in real-time when players start playing</p>
-      </div>
-    <% } else { %>
-      <% games.forEach(function(g) { %>
-        <a href="/game/<%= g.gameId %>" class="game-card" data-game="<%= g.gameId %>">
-          <div class="game-card-header">
-            <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>"><%= g.phase || 'Lobby' %></span>
-            <span class="game-day"><%= g.dayCount ? 'Day ' + g.dayCount : '' %></span>
-          </div>
-          <div class="game-card-body">
-            <div class="game-guild"><%= g.guildName || g.guildId %></div>
-            <div class="game-players">
-              <span class="alive-count">&#10084; <%= g.players ? g.players.filter(function(p) { return p.alive; }).length : 0 %> alive</span>
-              <span class="dead-count">&#9760; <%= g.dead ? g.dead.length : 0 %> dead</span>
+<div class="dashboard-grid">
+  <!-- Live Games -->
+  <section class="section dashboard-main">
+    <h2 class="section-title">
+      <span class="pulse-dot"></span>
+      Parties en direct
+    </h2>
+    <div class="games-grid" id="games-grid">
+      <% if (games.length === 0) { %>
+        <div class="empty-state">
+          <span class="empty-icon">&#127769;</span>
+          <p>Aucune partie en cours</p>
+          <p class="text-muted">Les parties apparaîtront ici en temps réel</p>
+        </div>
+      <% } else { %>
+        <% games.forEach(function(g) { %>
+          <a href="/game/<%= g.gameId %>" class="game-card" data-game="<%= g.gameId %>">
+            <div class="game-card-header">
+              <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>"><%= g.phase || 'Lobby' %></span>
+              <span class="game-day"><%= g.dayCount ? 'Jour ' + g.dayCount : '' %></span>
             </div>
-          </div>
-          <div class="game-card-footer">
-            <span class="spectate-btn">&#128065; Spectate Live</span>
+            <div class="game-card-body">
+              <div class="game-guild"><%= g.guildName || g.guildId %></div>
+              <div class="game-players">
+                <span class="alive-count">&#10084; <%= g.players ? g.players.filter(function(p) { return p.alive; }).length : 0 %> vivants</span>
+                <span class="dead-count">&#9760; <%= g.dead ? g.dead.length : 0 %> morts</span>
+              </div>
+              <% if (g.subPhase) { %>
+                <div class="game-subphase-tag"><%= g.subPhase %></div>
+              <% } %>
+            </div>
+            <div class="game-card-footer">
+              <span class="spectate-btn">&#128065; Regarder en direct</span>
+            </div>
+          </a>
+        <% }); %>
+      <% } %>
+    </div>
+  </section>
+
+  <!-- Sidebar: Activity Feed + Quick Links -->
+  <aside class="dashboard-sidebar">
+    <!-- Activity Feed -->
+    <div class="sidebar-panel">
+      <h3 class="panel-title"><span class="pulse-dot"></span> Activité récente</h3>
+      <div class="activity-feed" id="activity-feed">
+        <div class="activity-empty text-muted">En attente d'événements...</div>
+      </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="sidebar-panel">
+      <h3 class="panel-title">&#9889; Accès rapide</h3>
+      <div class="quick-links">
+        <a href="/roles" class="quick-link">
+          <span class="quick-link-icon">&#128058;</span>
+          <div>
+            <span class="quick-link-title">Rôles</span>
+            <span class="quick-link-desc">Voir tous les rôles du jeu</span>
           </div>
         </a>
-      <% }); %>
-    <% } %>
-  </div>
-</section>
+        <% if (typeof user !== 'undefined' && user) { %>
+          <a href="/moderation" class="quick-link">
+            <span class="quick-link-icon">&#128737;</span>
+            <div>
+              <span class="quick-link-title">Modération</span>
+              <span class="quick-link-desc">Gérer les parties actives</span>
+            </div>
+          </a>
+        <% } %>
+        <a href="https://github.com/Heliox1119/Werewolf-bot" target="_blank" class="quick-link">
+          <span class="quick-link-icon">&#128187;</span>
+          <div>
+            <span class="quick-link-title">GitHub</span>
+            <span class="quick-link-desc">Code source du bot</span>
+          </div>
+        </a>
+      </div>
+    </div>
+  </aside>
+</div>
 
 <script src="/static/js/dashboard.js"></script>
 <%- include('partials/footer') %>

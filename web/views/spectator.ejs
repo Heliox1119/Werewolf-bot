@@ -8,20 +8,20 @@
       <div class="spectator-meta">
         <span class="game-phase phase-<%= (game.phase || 'lobby').toLowerCase() %>" id="game-phase"><%= game.phase || 'Lobby' %></span>
         <% if (game.subPhase) { %><span class="game-subphase" id="game-subphase"><%= game.subPhase %></span><% } else { %><span class="game-subphase" id="game-subphase"></span><% } %>
-        <span class="game-day" id="game-day"><%= game.dayCount ? 'Day ' + game.dayCount : '' %></span>
-        <span class="spectator-count" id="spectator-count">&#128065; <span>0</span> watching</span>
+        <span class="game-day" id="game-day"><%= game.dayCount ? 'Jour ' + game.dayCount : '' %></span>
+        <span class="spectator-count" id="spectator-count">&#128065; <span>0</span> spectateurs</span>
       </div>
     </div>
-    <a href="/" class="btn btn-outline">&larr; Back</a>
+    <a href="/" class="btn btn-outline">&larr; Retour</a>
   </div>
 
   <div class="spectator-grid">
     <!-- Players -->
     <div class="spectator-panel">
-      <h3 class="panel-title">Players (<span id="alive-count"><%= game.players ? game.players.filter(function(p) { return p.alive; }).length : 0 %></span> alive)</h3>
+      <h3 class="panel-title">Joueurs (<span id="alive-count"><%= game.players ? game.players.filter(function(p) { return p.alive; }).length : 0 %></span> vivants)</h3>
       <div class="player-list" id="player-list">
         <% if (game.players) { game.players.forEach(function(p) { %>
-          <div class="player-row <%= p.alive ? 'alive' : 'dead' %>" data-player-id="<%= p.id %>">
+          <div class="player-row <%= p.alive ? 'alive' : 'dead' %> clickable-player" data-player-id="<%= p.id %>" onclick="openSpectatorPlayerModal(this)">
             <span class="player-status"><%= p.alive ? '&#10084;&#65039;' : '&#9760;&#65039;' %></span>
             <span class="player-name"><%= p.username %></span>
             <% if (!p.alive && p.role) { %>
@@ -29,18 +29,32 @@
             <% } %>
             <% if (p.isCaptain) { %><span class="player-badge">&#128081;</span><% } %>
             <% if (p.inLove) { %><span class="player-badge">&#128149;</span><% } %>
+            <span class="player-arrow">&#8250;</span>
           </div>
         <% }); } %>
       </div>
+
+      <% if (game.dead && game.dead.length > 0) { %>
+        <h4 class="panel-subtitle">&#9760; Cimetière</h4>
+        <div class="graveyard">
+          <% game.dead.forEach(function(d) { %>
+            <div class="grave-entry clickable-player" data-player-id="<%= d.id %>" onclick="openSpectatorPlayerModal(this)">
+              <span class="grave-name"><%= d.username || d.id %></span>
+              <span class="grave-role"><%= d.role || '?' %></span>
+              <span class="player-arrow">&#8250;</span>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
     </div>
 
     <!-- Event Feed -->
     <div class="spectator-panel spectator-feed">
-      <h3 class="panel-title">Event Feed</h3>
+      <h3 class="panel-title">&#128172; Événements en direct</h3>
       <div class="event-feed" id="event-feed">
         <div class="event-item event-info">
           <span class="event-time"><%= new Date().toLocaleTimeString() %></span>
-          <span class="event-text">Connected to live spectator feed</span>
+          <span class="event-text">Connecté au flux spectateur en temps réel</span>
         </div>
         <% if (game.actionLog) { game.actionLog.slice(-10).forEach(function(log) { %>
           <div class="event-item">
@@ -53,35 +67,57 @@
 
     <!-- Game Info -->
     <div class="spectator-panel">
-      <h3 class="panel-title">Game Info</h3>
+      <h3 class="panel-title">&#9881; Infos</h3>
       <div class="info-grid">
         <div class="info-row">
           <span class="info-label">Game ID</span>
           <span class="info-value" style="font-size:0.75rem; font-family: monospace; opacity:0.7;"><%= gameId %></span>
         </div>
         <div class="info-row">
-          <span class="info-label">Started</span>
+          <span class="info-label">Démarré</span>
           <span class="info-value" id="game-started"><%= game.startedAt ? new Date(game.startedAt).toLocaleTimeString() : '&mdash;' %></span>
         </div>
         <div class="info-row">
-          <span class="info-label">Players</span>
+          <span class="info-label">Joueurs</span>
           <span class="info-value"><%= game.players ? game.players.length : 0 %></span>
         </div>
         <% if (game.votes && Object.keys(game.votes).length > 0) { %>
           <div class="info-row">
             <span class="info-label">Votes</span>
-            <span class="info-value"><%= Object.keys(game.votes).length %> cast</span>
+            <span class="info-value"><%= Object.keys(game.votes).length %> exprimés</span>
+          </div>
+        <% } %>
+        <% if (game.rules) { %>
+          <div class="info-row">
+            <span class="info-label">Règles</span>
+            <span class="info-value"><%= game.rules.minPlayers %>-<%= game.rules.maxPlayers %> joueurs</span>
           </div>
         <% } %>
       </div>
 
-      <% if (game.dead && game.dead.length > 0) { %>
-        <h4 class="panel-subtitle">&#9760; Graveyard</h4>
-        <div class="graveyard">
-          <% game.dead.forEach(function(d) { %>
-            <div class="grave-entry">
-              <span class="grave-name"><%= d.username || d.id %></span>
-              <span class="grave-role"><%= d.role || '?' %></span>
+      <!-- Votes visualization -->
+      <% if (game.votes && Object.keys(game.votes).length > 0) { %>
+        <h4 class="panel-subtitle">&#9997; Votes en cours</h4>
+        <div class="vote-display">
+          <% 
+            var voteCounts = {};
+            Object.values(game.votes).forEach(function(target) {
+              voteCounts[target] = (voteCounts[target] || 0) + 1;
+            });
+            var sortedVotes = Object.entries(voteCounts).sort(function(a, b) { return b[1] - a[1]; });
+            var maxV = sortedVotes.length > 0 ? sortedVotes[0][1] : 1;
+            sortedVotes.forEach(function(entry) {
+              var targetId = entry[0];
+              var vCount = entry[1];
+              var targetPlayer = (game.players || []).find(function(p) { return p.id === targetId; });
+              var targetName = targetPlayer ? targetPlayer.username : targetId;
+          %>
+            <div class="vote-bar-row">
+              <span class="vote-target"><%= targetName %></span>
+              <div class="vote-bar-track">
+                <div class="vote-bar-fill" style="width: <%= Math.round((vCount / maxV) * 100) %>%"></div>
+              </div>
+              <span class="vote-count"><%= vCount %></span>
             </div>
           <% }); %>
         </div>
@@ -89,6 +125,69 @@
     </div>
   </div>
 </div>
+
+<!-- Player Quick Modal (Spectator) -->
+<div class="modal-overlay" id="spectator-player-modal" onclick="if(event.target===this)closeSpectatorPlayerModal()">
+  <div class="modal-card modal-card-sm">
+    <button class="modal-close" onclick="closeSpectatorPlayerModal()">&times;</button>
+    <div class="modal-header" id="sp-modal-header">
+      <div class="modal-player-avatar"><span>&#128100;</span></div>
+      <div>
+        <h2 id="sp-modal-name">Player</h2>
+        <div id="sp-modal-badges"></div>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-info-grid" id="sp-modal-info">
+        <p class="text-muted" style="text-align:center">Chargement...</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <a id="sp-modal-link" href="#" class="btn btn-sm btn-primary">&#128200; Voir le profil complet</a>
+    </div>
+  </div>
+</div>
+
+<script>
+// Spectator player modal
+window.openSpectatorPlayerModal = async function(el) {
+  var playerId = el.dataset.playerId;
+  var nameEl = el.querySelector('.player-name') || el.querySelector('.grave-name');
+  var name = nameEl ? nameEl.textContent : playerId;
+  var modal = document.getElementById('spectator-player-modal');
+  
+  document.getElementById('sp-modal-name').textContent = name;
+  document.getElementById('sp-modal-link').href = '/player/' + playerId;
+  document.getElementById('sp-modal-badges').innerHTML = '';
+  document.getElementById('sp-modal-info').innerHTML = '<p class="text-muted" style="text-align:center">Chargement...</p>';
+  
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  try {
+    var res = await fetch('/api/players/' + playerId);
+    var result = await res.json();
+    if (result.success && result.data) {
+      var d = result.data;
+      document.getElementById('sp-modal-info').innerHTML =
+        '<div class="modal-info-row"><span class="info-label">Parties</span><span class="info-value">' + (d.games_played || 0) + '</span></div>' +
+        '<div class="modal-info-row"><span class="info-label">Victoires</span><span class="info-value">' + (d.games_won || 0) + '</span></div>' +
+        '<div class="modal-info-row"><span class="info-label">Win rate</span><span class="info-value">' + (d.winrate || 0) + '%</span></div>' +
+        (d.elo ? '<div class="modal-info-row"><span class="info-label">ELO</span><span class="info-value">' + d.elo + '</span></div>' : '') +
+        (d.tier ? '<div class="modal-info-row"><span class="info-label">Rang</span><span class="info-value">' + (d.tier.emoji || '') + ' ' + (d.tier.name || '') + '</span></div>' : '');
+    } else {
+      document.getElementById('sp-modal-info').innerHTML = '<p class="text-muted" style="text-align:center">Aucune statistique disponible</p>';
+    }
+  } catch(e) {
+    document.getElementById('sp-modal-info').innerHTML = '<p class="text-muted" style="text-align:center">Impossible de charger les stats</p>';
+  }
+};
+window.closeSpectatorPlayerModal = function() {
+  document.getElementById('spectator-player-modal').classList.remove('open');
+  document.body.style.overflow = '';
+};
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeSpectatorPlayerModal(); });
+</script>
 
 <script src="/static/js/spectator.js"></script>
 <%- include('partials/footer') %>

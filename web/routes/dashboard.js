@@ -112,6 +112,35 @@ module.exports = function(webServer) {
     res.render('login', { title: 'Login' });
   });
 
+  /** GET /moderation — Moderation panel (Admin) */
+  router.get('/moderation', (req, res) => {
+    try {
+      if (!req.isAuthenticated || !req.isAuthenticated()) {
+        return res.redirect('/login');
+      }
+      const userGuilds = (req.user.guilds || []).filter(g => (parseInt(g.permissions) & 0x28) !== 0);
+      const guildIds = userGuilds.map(g => g.id);
+      const games = gm.getAllGames()
+        .filter(g => guildIds.includes(g.guildId))
+        .map(g => {
+          const snap = gm.getGameSnapshot(g);
+          snap.players = (g.players || []).map(p => ({
+            id: p.id, username: p.username, role: p.role, alive: p.alive,
+            inLove: p.inLove || false, isCaptain: p.id === g.captainId
+          }));
+          return snap;
+        });
+
+      res.render('moderation', {
+        title: 'Moderation',
+        games,
+        guilds: userGuilds.map(g => ({ id: g.id, name: g.name, icon: g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64` : null }))
+      });
+    } catch (e) {
+      res.render('error', { title: 'Error', message: e.message });
+    }
+  });
+
   /** GET /roles — Custom roles editor page (Admin) */
   router.get('/roles', (req, res) => {
     try {

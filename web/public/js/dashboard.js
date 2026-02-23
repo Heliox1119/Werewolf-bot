@@ -1,15 +1,15 @@
 /**
- * 🐺 Dashboard — Real-time game updates
+ * Dashboard — Real-time game updates + activity feed
  */
 (function() {
   'use strict';
 
   function init(socket) {
-    // Request all active games
     socket.emit('requestGames');
 
     // Listen for game events
     socket.on('gameEvent', (data) => {
+      addActivity(data);
       switch (data.event) {
         case 'gameCreated':
           addGameCard(data);
@@ -34,20 +34,56 @@
       }
     });
 
-    // Receive full game state
+    // Global events
+    socket.on('globalEvent', (data) => {
+      addActivity(data);
+    });
+
     socket.on('gameState', (snapshot) => {
       updateGameCard(snapshot.gameId, snapshot);
     });
 
-    // Receive all active games
     socket.on('activeGames', (games) => {
       const grid = document.getElementById('games-grid');
       if (!grid || !games.length) return;
-      // Clear "no games" message
       const empty = grid.querySelector('.empty-state');
       if (empty) empty.remove();
       games.forEach(g => addOrUpdateGameCard(g));
     });
+  }
+
+  // === Activity Feed ===
+  function addActivity(data) {
+    const feed = document.getElementById('activity-feed');
+    if (!feed) return;
+    
+    const emptyEl = feed.querySelector('.activity-empty');
+    if (emptyEl) emptyEl.remove();
+
+    let icon, text;
+    switch (data.event) {
+      case 'gameCreated': icon = '🎮'; text = 'Nouvelle partie créée'; break;
+      case 'gameStarted': icon = '🌙'; text = 'Partie démarrée'; break;
+      case 'gameEnded': icon = '🏆'; text = `Fin — ${data.victor || '?'}`; break;
+      case 'phaseChanged': icon = data.phase === 'NIGHT' ? '🌙' : '☀️'; text = `Phase → ${data.phase || '?'}`; break;
+      case 'playerJoined': icon = '👋'; text = `Joueur rejoint`; break;
+      case 'playerKilled': icon = '💀'; text = `${data.playerName || 'Joueur'} éliminé`; break;
+      default: icon = '📝'; text = data.event || 'Événement'; break;
+    }
+
+    const item = document.createElement('div');
+    item.className = 'activity-item';
+    item.innerHTML = `
+      <span class="activity-icon">${icon}</span>
+      <div class="activity-content">
+        <span class="activity-text">${text}</span>
+        <span class="activity-time">${new Date().toLocaleTimeString()}</span>
+      </div>
+    `;
+    feed.insertBefore(item, feed.firstChild);
+
+    // Limit to 20 items
+    while (feed.children.length > 20) feed.removeChild(feed.lastChild);
   }
 
   function addGameCard(data) {
@@ -55,7 +91,6 @@
     if (!grid) return;
     const empty = grid.querySelector('.empty-state');
     if (empty) empty.remove();
-
     if (grid.querySelector(`[data-game="${data.gameId}"]`)) return;
 
     const card = document.createElement('a');
@@ -70,11 +105,11 @@
       <div class="game-card-body">
         <div class="game-guild">${data.guildId || 'Unknown'}</div>
         <div class="game-players">
-          <span class="alive-count">👤 0 alive</span>
-          <span class="dead-count">💀 0 dead</span>
+          <span class="alive-count">❤ 0 vivants</span>
+          <span class="dead-count">💀 0 morts</span>
         </div>
       </div>
-      <div class="game-card-footer"><span class="spectate-btn">👁 Spectate Live</span></div>
+      <div class="game-card-footer"><span class="spectate-btn">👁 Regarder en direct</span></div>
     `;
     card.style.animation = 'fadeIn 0.4s ease';
     grid.appendChild(card);
@@ -102,15 +137,15 @@
     }
     if (data.dayCount) {
       const day = card.querySelector('.game-day');
-      if (day) day.textContent = 'Day ' + data.dayCount;
+      if (day) day.textContent = 'Jour ' + data.dayCount;
     }
     if (data.snapshot && data.snapshot.players) {
       const alive = data.snapshot.players.filter(p => p.alive).length;
       const dead = data.snapshot.dead ? data.snapshot.dead.length : 0;
       const aliveEl = card.querySelector('.alive-count');
       const deadEl = card.querySelector('.dead-count');
-      if (aliveEl) aliveEl.textContent = `👤 ${alive} alive`;
-      if (deadEl) deadEl.textContent = `💀 ${dead} dead`;
+      if (aliveEl) aliveEl.textContent = `❤ ${alive} vivants`;
+      if (deadEl) deadEl.textContent = `💀 ${dead} morts`;
     }
   }
 
@@ -131,7 +166,6 @@
     el.textContent = Math.max(0, current + delta);
   }
 
-  // Wait for socket
   if (window.werewolfSocket) {
     init(window.werewolfSocket);
   } else {

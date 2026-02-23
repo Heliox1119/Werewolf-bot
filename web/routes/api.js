@@ -269,6 +269,105 @@ module.exports = function(webServer) {
     }
   });
 
+  // ==================== MODERATION ====================
+
+  /** POST /api/mod/force-end/:gameId — Force end a game */
+  router.post('/mod/force-end/:gameId', requireAuth, (req, res) => {
+    try {
+      const game = gm.games.get(req.params.gameId);
+      if (!game) return res.status(404).json({ success: false, error: 'Game not found' });
+      if (!webServer.isGuildAdmin(req.user, game.guildId)) {
+        return res.status(403).json({ success: false, error: 'Admin permission required' });
+      }
+      // Clean up the game
+      gm.games.delete(req.params.gameId);
+      try { db.deleteGame(req.params.gameId); } catch {}
+      gm.emit('gameEvent', { event: 'gameEnded', gameId: req.params.gameId, guildId: game.guildId, victor: 'Force ended (admin)' });
+      res.json({ success: true, message: 'Game force ended' });
+    } catch (e) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  /** POST /api/mod/skip-phase/:gameId — Force skip to next phase */
+  router.post('/mod/skip-phase/:gameId', requireAuth, (req, res) => {
+    try {
+      const game = gm.games.get(req.params.gameId);
+      if (!game) return res.status(404).json({ success: false, error: 'Game not found' });
+      if (!webServer.isGuildAdmin(req.user, game.guildId)) {
+        return res.status(403).json({ success: false, error: 'Admin permission required' });
+      }
+      if (game.subPhase && typeof gm.advanceSubPhase === 'function') {
+        gm.advanceSubPhase(game);
+      } else if (typeof gm.nextPhase === 'function') {
+        gm.nextPhase(game.mainChannelId);
+      }
+      res.json({ success: true, message: 'Phase skipped', phase: game.phase, subPhase: game.subPhase });
+    } catch (e) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  /** POST /api/mod/kill-player/:gameId/:playerId — Force kill a player */
+  router.post('/mod/kill-player/:gameId/:playerId', requireAuth, (req, res) => {
+    try {
+      const game = gm.games.get(req.params.gameId);
+      if (!game) return res.status(404).json({ success: false, error: 'Game not found' });
+      if (!webServer.isGuildAdmin(req.user, game.guildId)) {
+        return res.status(403).json({ success: false, error: 'Admin permission required' });
+      }
+      const player = game.players.find(p => p.id === req.params.playerId);
+      if (!player) return res.status(404).json({ success: false, error: 'Player not found' });
+      if (!player.alive) return res.status(400).json({ success: false, error: 'Player already dead' });
+      
+      player.alive = false;
+      if (!game.dead) game.dead = [];
+      game.dead.push({ ...player });
+      gm.logAction(game, `[ADMIN] ${player.username} killed by moderator`);
+      gm.emit('gameEvent', { event: 'playerKilled', gameId: req.params.gameId, guildId: game.guildId, playerId: player.id, playerName: player.username, role: player.role });
+      res.json({ success: true, message: `${player.username} killed` });
+    } catch (e) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  /** POST /api/mod/reveal-role/:gameId/:playerId — Reveal a player's role */
+  router.post('/mod/reveal-role/:gameId/:playerId', requireAuth, (req, res) => {
+    try {
+      const game = gm.games.get(req.params.gameId);
+      if (!game) return res.status(404).json({ success: false, error: 'Game not found' });
+      if (!webServer.isGuildAdmin(req.user, game.guildId)) {
+        return res.status(403).json({ success: false, error: 'Admin permission required' });
+      }
+      const player = game.players.find(p => p.id === req.params.playerId);
+      if (!player) return res.status(404).json({ success: false, error: 'Player not found' });
+      res.json({ success: true, data: { id: player.id, username: player.username, role: player.role, alive: player.alive } });
+    } catch (e) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  /** GET /api/mod/games — All active games for moderation (requires auth) */
+  router.get('/mod/games', requireAuth, (req, res) => {
+    try {
+      const userGuilds = (req.user.guilds || []).filter(g => (parseInt(g.permissions) & 0x28) !== 0).map(g => g.id);
+      const games = gm.getAllGames()
+        .filter(g => userGuilds.includes(g.guildId))
+        .map(g => {
+          const snap = gm.getGameSnapshot(g);
+          // Include roles for moderation
+          snap.players = (g.players || []).map(p => ({
+            id: p.id, username: p.username, role: p.role, alive: p.alive,
+            inLove: p.inLove || false, isCaptain: p.id === g.captainId
+          }));
+          return snap;
+        });
+      res.json({ success: true, data: games });
+    } catch (e) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
   return router;
 };
 

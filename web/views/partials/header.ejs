@@ -19,8 +19,9 @@
       </a>
       <div class="nav-links" id="nav-links">
         <a href="/" class="nav-link<%= title === 'Dashboard' ? ' active' : '' %>">Dashboard</a>
-        <a href="/roles" class="nav-link<%= title === 'Roles' ? ' active' : '' %>">Roles</a>
+        <a href="/roles" class="nav-link<%= title === 'Roles Editor' ? ' active' : '' %>">Roles</a>
         <% if (typeof user !== 'undefined' && user) { %>
+          <a href="/moderation" class="nav-link<%= title === 'Moderation' ? ' active' : '' %>">Moderation</a>
           <div class="nav-user">
             <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png?size=32" alt="" class="nav-avatar" onerror="this.style.display='none'">
             <span><%= user.username %></span>
