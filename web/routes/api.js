@@ -230,7 +230,8 @@ module.exports = function(webServer) {
         categoryId: mgr.getCategoryId(req.params.guildId),
         wolfWinCondition: mgr.getWolfWinCondition(req.params.guildId),
         defaultRules: mgr.getDefaultGameRules(req.params.guildId),
-        locale: require('../../utils/i18n').getLocaleForGuild(req.params.guildId)
+        locale: require('../../utils/i18n').getLocaleForGuild(req.params.guildId),
+        enabledRoles: mgr.getEnabledRoles(req.params.guildId)
       };
       res.json({ success: true, data: summary });
     } catch (e) {
@@ -262,6 +263,12 @@ module.exports = function(webServer) {
           ...(updates.minPlayers ? { minPlayers: updates.minPlayers } : {}),
           ...(updates.maxPlayers ? { maxPlayers: updates.maxPlayers } : {})
         }));
+      }
+      if (Array.isArray(updates.enabledRoles)) {
+        // Ensure Loup-Garou and Villageois are always included
+        const mandatory = ['Loup-Garou', 'Villageois'];
+        const roles = [...new Set([...mandatory, ...updates.enabledRoles])];
+        mgr.setEnabledRoles(roles, req.params.guildId);
       }
 
       res.json({ success: true, message: 'Config updated' });

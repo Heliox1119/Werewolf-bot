@@ -269,9 +269,10 @@ class ConfigManager {
 
   /**
    * Configuration des rôles activés
+   * @param {string} [guildId] - Guild ID for per-guild config
    */
-  getEnabledRoles() {
-    return this.get('game.enabled_roles', [
+  getEnabledRoles(guildId = null) {
+    return this.getForGuild(guildId, 'game.enabled_roles', [
       'Loup-Garou',
       'Voyante',
       'Sorcière',
@@ -282,7 +283,10 @@ class ConfigManager {
     ]);
   }
 
-  setEnabledRoles(roles) {
+  setEnabledRoles(roles, guildId = null) {
+    if (guildId) {
+      return this.setForGuild(guildId, 'game.enabled_roles', roles);
+    }
     return this.set('game.enabled_roles', roles);
   }
 

@@ -65,6 +65,9 @@
       'grules.category': 'Catégorie Discord',
       'grules.setup_status': 'Statut du setup',
       'grules.save': 'Enregistrer les modifications',
+      'grules.role_mandatory': 'Rôle obligatoire',
+      'grules.role_enabled': 'Activé',
+      'grules.role_disabled': 'Désactivé',
 
       // Dashboard
       'dash.title': 'Werewolf Dashboard',
@@ -465,6 +468,9 @@
       'grules.category': 'Discord Category',
       'grules.setup_status': 'Setup status',
       'grules.save': 'Save changes',
+      'grules.role_mandatory': 'Mandatory role',
+      'grules.role_enabled': 'Enabled',
+      'grules.role_disabled': 'Disabled',
 
       // Dashboard
       'dash.title': 'Werewolf Dashboard',

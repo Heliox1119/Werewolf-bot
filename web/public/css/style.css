@@ -1341,6 +1341,68 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 .grules-role-name { font-size: 0.85rem; font-weight: 600; flex: 1; }
 .grules-role-camp { font-size: 0.8rem; flex-shrink: 0; }
 
+/* Role toggle disabled state */
+.grules-role-disabled {
+  opacity: 0.4;
+}
+.grules-role-disabled:hover { opacity: 0.6; }
+.grules-role-status { font-size: 0.85rem; flex-shrink: 0; }
+
+/* Toggle switch */
+.grules-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.grules-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+.grules-toggle-slider {
+  width: 36px;
+  height: 20px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  position: relative;
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+.grules-toggle-slider::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+.grules-toggle input:checked + .grules-toggle-slider {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+.grules-toggle input:checked + .grules-toggle-slider::before {
+  transform: translateX(16px);
+  background: white;
+}
+.grules-toggle input:disabled + .grules-toggle-slider {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.grules-toggle-locked {
+  cursor: not-allowed;
+}
+.grules-toggle-lock {
+  font-size: 0.7rem;
+  opacity: 0.5;
+}
+
 .grules-actions {
   display: flex;
   align-items: center;

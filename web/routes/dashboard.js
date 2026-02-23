@@ -148,12 +148,14 @@ module.exports = function(webServer) {
       const ROLES = require('../../game/roles');
       const i18n = require('../../utils/i18n');
 
+      const enabledRoles = configMgr.getEnabledRoles(req.params.id);
       const config = {
         defaultRules: configMgr.getDefaultGameRules(req.params.id),
         wolfWinCondition: configMgr.getWolfWinCondition(req.params.id),
         locale: i18n.getLocaleForGuild ? i18n.getLocaleForGuild(req.params.id) : 'fr',
         categoryId: configMgr.getCategoryId(req.params.id),
-        setupComplete: configMgr.isSetupComplete(req.params.id)
+        setupComplete: configMgr.isSetupComplete(req.params.id),
+        enabledRoles
       };
 
       const allRoles = Object.values(ROLES);

@@ -125,12 +125,28 @@
             'Sorcière': 'village', 'Chasseur': 'village', 'Petite Fille': 'village', 'Cupidon': 'village',
             'Salvateur': 'village', 'Ancien': 'village', 'Idiot du Village': 'village', 'Voleur': 'neutral'
           };
+          var mandatoryRoles = ['Loup-Garou', 'Villageois'];
+          var enabledRoles = (config && config.enabledRoles) || allRoles;
           %>
-          <% allRoles.forEach(function(role) { %>
-            <div class="grules-role-item camp-<%= roleCamps[role] || 'village' %>">
+          <% allRoles.forEach(function(role) {
+            var isMandatory = mandatoryRoles.indexOf(role) !== -1;
+            var isEnabled = enabledRoles.indexOf(role) !== -1 || isMandatory;
+          %>
+            <div class="grules-role-item camp-<%= roleCamps[role] || 'village' %><%= isEnabled ? '' : ' grules-role-disabled' %>">
               <span class="grules-role-emoji"><%= roleEmojis[role] || '❓' %></span>
               <span class="grules-role-name"><%= role %></span>
               <span class="grules-role-camp"><%= roleCamps[role] === 'wolf' ? '🐺' : roleCamps[role] === 'neutral' ? '⚖️' : '🏠' %></span>
+              <% if (isAdmin) { %>
+                <label class="grules-toggle<%= isMandatory ? ' grules-toggle-locked' : '' %>">
+                  <input type="checkbox" class="grules-role-toggle" data-role="<%= role %>"
+                    <%= isEnabled ? 'checked' : '' %>
+                    <%= isMandatory ? 'disabled' : '' %>>
+                  <span class="grules-toggle-slider"></span>
+                  <% if (isMandatory) { %><span class="grules-toggle-lock" title="Rôle obligatoire">&#128274;</span><% } %>
+                </label>
+              <% } else { %>
+                <span class="grules-role-status"><%= isEnabled ? '✅' : '❌' %></span>
+              <% } %>
             </div>
           <% }); %>
         </div>
@@ -179,6 +195,16 @@
   var statusEl = document.getElementById('grules-save-status');
   if (!saveBtn) return;
 
+  // Live toggle visual feedback
+  document.querySelectorAll('.grules-role-toggle').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      var card = cb.closest('.grules-role-item');
+      if (card) {
+        card.classList.toggle('grules-role-disabled', !cb.checked);
+      }
+    });
+  });
+
   saveBtn.addEventListener('click', async function() {
     var guildId = saveBtn.dataset.guildId;
     var body = {};
@@ -193,6 +219,16 @@
 
     var localeRadio = document.querySelector('input[name="locale"]:checked');
     if (localeRadio) body.locale = localeRadio.value;
+
+    // Collect enabled roles from toggles
+    var roleToggles = document.querySelectorAll('.grules-role-toggle');
+    if (roleToggles.length > 0) {
+      var enabledRoles = [];
+      roleToggles.forEach(function(cb) {
+        if (cb.checked) enabledRoles.push(cb.dataset.role);
+      });
+      body.enabledRoles = enabledRoles;
+    }
 
     // Validation
     if (body.minPlayers && (body.minPlayers < 3 || body.minPlayers > 6)) {
