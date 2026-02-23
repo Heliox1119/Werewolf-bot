@@ -148,6 +148,17 @@ module.exports = function(webServer) {
     }
   });
 
+  /** GET /monitoring — Monitoring page (public) */
+  router.get('/monitoring', (req, res) => {
+    try {
+      res.render('monitoring', {
+        title: 'Monitoring'
+      });
+    } catch (e) {
+      res.render('error', { title: 'Error', message: e.message });
+    }
+  });
+
   /** GET /roles — Custom roles editor page (Admin) */
   router.get('/roles', (req, res) => {
     try {

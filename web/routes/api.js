@@ -477,6 +477,55 @@ module.exports = function(webServer) {
     }
   });
 
+  // ==================== MONITORING ====================
+
+  /** GET /api/monitoring — Full monitoring metrics (public, read-only) */
+  router.get('/monitoring', (req, res) => {
+    try {
+      let metrics, health, history, uptime;
+      try {
+        const MetricsCollector = require('../../monitoring/metrics');
+        const mc = MetricsCollector.getInstance();
+        mc.collect(); // refresh before returning
+        metrics = mc.getMetrics();
+        health = mc.getHealthStatus();
+        history = mc.getHistory();
+        uptime = mc.getFormattedUptime();
+      } catch {
+        // MetricsCollector not initialized — return basic info
+        const mem = process.memoryUsage();
+        metrics = {
+          system: {
+            memory: {
+              rss: Math.round(mem.rss / 1024 / 1024),
+              heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
+              heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
+              external: Math.round((mem.external || 0) / 1024 / 1024),
+              systemTotal: Math.round(require('os').totalmem() / 1024 / 1024),
+              systemFree: Math.round(require('os').freemem() / 1024 / 1024),
+              percentage: 0
+            },
+            cpu: { usage: 0 },
+            uptime: Math.floor(process.uptime())
+          },
+          discord: { guilds: client ? client.guilds.cache.size : 0, users: 0, channels: 0, latency: client ? client.ws.ping : 0, wsStatus: client ? client.ws.status : -1 },
+          game: { activeGames: gm.getAllGames().length, totalPlayers: gm.getAllGames().reduce((s, g) => s + g.players.length, 0), gamesCreated24h: 0, gamesCompleted24h: 0 },
+          commands: { total: 0, errors: 0, rateLimited: 0, avgResponseTime: 0 },
+          errors: { total: 0, critical: 0, warnings: 0, last24h: 0 }
+        };
+        health = { status: 'HEALTHY', issues: [] };
+        history = { timestamps: [], memory: [], cpu: [], latency: [], activeGames: [], errors: [] };
+        const secs = Math.floor(process.uptime());
+        const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60;
+        uptime = h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+      }
+
+      res.json({ success: true, data: { metrics, health, history, uptime } });
+    } catch (e) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
   return router;
 };
 

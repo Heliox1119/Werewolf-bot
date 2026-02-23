@@ -1,0 +1,134 @@
+<%- include('partials/header') %>
+
+<div class="monitoring-page">
+  <div class="page-header">
+    <div>
+      <h1 data-i18n="mon.title">&#128202; Monitoring</h1>
+      <p class="text-muted" data-i18n="mon.subtitle">Surveillance en temps réel du bot — Métriques système, Discord et jeu</p>
+    </div>
+    <div class="monitoring-controls">
+      <span class="monitoring-auto-refresh text-muted" data-i18n="mon.auto_refresh">Actualisation auto toutes les 30s</span>
+      <button class="btn btn-sm btn-outline" id="mon-refresh-btn" data-i18n="mon.refresh">Actualiser</button>
+    </div>
+  </div>
+
+  <!-- Health Overview -->
+  <section class="hero-stats" id="mon-hero">
+    <div class="stat-card stat-health" id="mon-health-card">
+      <div class="stat-icon" id="mon-health-icon">&#9889;</div>
+      <div class="stat-body">
+        <span class="stat-value" id="mon-health-status"><span data-i18n="mon.connecting">Connexion...</span></span>
+        <span class="stat-label" data-i18n="mon.health">Santé</span>
+      </div>
+    </div>
+    <div class="stat-card stat-info">
+      <div class="stat-icon">&#9200;</div>
+      <div class="stat-body">
+        <span class="stat-value" id="mon-uptime">—</span>
+        <span class="stat-label" data-i18n="mon.uptime">Uptime</span>
+      </div>
+    </div>
+    <div class="stat-card stat-warning">
+      <div class="stat-icon">&#128190;</div>
+      <div class="stat-body">
+        <span class="stat-value" id="mon-memory">—</span>
+        <span class="stat-label" data-i18n="mon.memory">Mémoire (RSS)</span>
+      </div>
+    </div>
+    <div class="stat-card stat-primary">
+      <div class="stat-icon">&#128225;</div>
+      <div class="stat-body">
+        <span class="stat-value" id="mon-latency">—</span>
+        <span class="stat-label" data-i18n="mon.latency">Latence Discord</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Detailed Metrics Grid -->
+  <div class="monitoring-grid">
+    <!-- System -->
+    <div class="mon-panel">
+      <h3 class="panel-title" data-i18n="mon.system">&#128421; Système</h3>
+      <div class="mon-metrics">
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.memory">Mémoire (RSS)</span><span class="mon-value" id="mon-sys-rss">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.heap">Heap V8</span><span class="mon-value" id="mon-sys-heap">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.cpu">CPU</span><span class="mon-value" id="mon-sys-cpu">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.ram_free">RAM libre</span><span class="mon-value" id="mon-sys-ram-free">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.ram_total">RAM totale</span><span class="mon-value" id="mon-sys-ram-total">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.process_uptime">Uptime process</span><span class="mon-value" id="mon-sys-uptime">—</span></div>
+      </div>
+      <!-- Memory bar -->
+      <div class="mon-bar-container">
+        <div class="mon-bar" id="mon-mem-bar" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Discord -->
+    <div class="mon-panel">
+      <h3 class="panel-title" data-i18n="mon.discord">&#129302; Discord</h3>
+      <div class="mon-metrics">
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.guilds">Serveurs</span><span class="mon-value" id="mon-dc-guilds">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.users_cached">Utilisateurs (cache)</span><span class="mon-value" id="mon-dc-users">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.channels">Channels</span><span class="mon-value" id="mon-dc-channels">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.ws_status">Statut WS</span><span class="mon-value" id="mon-dc-ws-status">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.ws_latency">Latence WS</span><span class="mon-value" id="mon-dc-latency">—</span></div>
+      </div>
+      <!-- Latency bar -->
+      <div class="mon-bar-container">
+        <div class="mon-bar mon-bar-latency" id="mon-latency-bar" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Game -->
+    <div class="mon-panel">
+      <h3 class="panel-title" data-i18n="mon.game">&#127918; Jeu</h3>
+      <div class="mon-metrics">
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.active_games">Parties actives</span><span class="mon-value" id="mon-gm-active">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.total_players">Joueurs en jeu</span><span class="mon-value" id="mon-gm-players">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.games_24h">Parties (24h)</span><span class="mon-value" id="mon-gm-created24">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.completed_24h">Terminées (24h)</span><span class="mon-value" id="mon-gm-completed24">—</span></div>
+      </div>
+    </div>
+
+    <!-- Commands -->
+    <div class="mon-panel">
+      <h3 class="panel-title" data-i18n="mon.commands">&#9889; Commandes</h3>
+      <div class="mon-metrics">
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.cmd_total">Total exécutées</span><span class="mon-value" id="mon-cmd-total">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.cmd_errors">Erreurs</span><span class="mon-value" id="mon-cmd-errors">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.cmd_ratelimited">Rate limited</span><span class="mon-value" id="mon-cmd-rl">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.cmd_avg">Temps moyen</span><span class="mon-value" id="mon-cmd-avg">—</span></div>
+      </div>
+    </div>
+
+    <!-- Errors -->
+    <div class="mon-panel">
+      <h3 class="panel-title" data-i18n="mon.errors">&#9888; Erreurs</h3>
+      <div class="mon-metrics">
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.err_total">Total</span><span class="mon-value" id="mon-err-total">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.err_critical">Critiques</span><span class="mon-value mon-value-danger" id="mon-err-critical">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.err_warnings">Avertissements</span><span class="mon-value mon-value-warning" id="mon-err-warnings">—</span></div>
+        <div class="mon-row"><span class="mon-label" data-i18n="mon.err_24h">Dernières 24h</span><span class="mon-value" id="mon-err-24h">—</span></div>
+      </div>
+    </div>
+
+    <!-- History / mini chart -->
+    <div class="mon-panel mon-panel-wide">
+      <h3 class="panel-title" data-i18n="mon.history">&#128200; Historique (24h)</h3>
+      <div class="mon-history" id="mon-history">
+        <div class="mon-history-chart" id="mon-chart-memory">
+          <div class="mon-chart-label" data-i18n="mon.memory">Mémoire</div>
+          <div class="mon-chart-bars" id="mon-chart-mem-bars"></div>
+        </div>
+        <div class="mon-history-chart" id="mon-chart-latency">
+          <div class="mon-chart-label" data-i18n="mon.latency">Latence</div>
+          <div class="mon-chart-bars" id="mon-chart-lat-bars"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/monitoring.js"></script>
+
+<%- include('partials/footer') %>

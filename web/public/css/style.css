@@ -1014,6 +1014,7 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   .dashboard-sidebar { position: static; flex-direction: row; flex-wrap: wrap; }
   .dashboard-sidebar > * { flex: 1; min-width: 280px; }
   .mod-content { grid-template-columns: 1fr; }
+  .monitoring-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {
   .mod-header { flex-direction: column; align-items: stretch; }
@@ -1022,4 +1023,140 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   .vote-target { min-width: 70px; font-size: 0.78rem; }
   .modal-card { padding: 1.25rem; width: 95%; }
   .toast { left: 1rem; right: 1rem; max-width: none; }
+  .page-header { flex-direction: column; gap: 0.75rem; }
+  .monitoring-controls { align-self: stretch; justify-content: space-between; }
+}
+
+/* ============================================
+   🖥 Language Toggle Button
+   ============================================ */
+.btn-lang {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--border-radius-xs);
+  transition: var(--transition-fast);
+  white-space: nowrap;
+  margin-left: 0.25rem;
+}
+.btn-lang:hover {
+  background: var(--accent-glow);
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+/* ============================================
+   📊 Monitoring Page
+   ============================================ */
+.monitoring-page { padding: 2rem; max-width: 1400px; margin: 0 auto; }
+.monitoring-page .page-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 2rem; gap: 1rem;
+}
+.monitoring-controls {
+  display: flex; align-items: center; gap: 1rem;
+}
+.monitoring-auto-refresh { font-size: 0.8rem; }
+
+.monitoring-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+/* Monitoring Panel */
+.mon-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1.25rem;
+  backdrop-filter: blur(10px);
+  transition: var(--transition);
+}
+.mon-panel:hover {
+  border-color: var(--border-color-hover);
+  box-shadow: var(--shadow-md);
+}
+.mon-panel .panel-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.mon-panel-wide {
+  grid-column: 1 / -1;
+}
+
+/* Metrics rows */
+.mon-metrics { display: flex; flex-direction: column; gap: 0.5rem; }
+.mon-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.05);
+}
+.mon-row:last-child { border-bottom: none; }
+.mon-label { font-size: 0.85rem; color: var(--text-secondary); }
+.mon-value {
+  font-size: 0.9rem; font-weight: 600; color: var(--text-primary);
+  font-family: 'Inter', monospace;
+}
+.mon-value-danger { color: var(--color-danger); }
+.mon-value-warning { color: var(--color-warning); }
+.mon-value-success { color: var(--color-success); }
+
+/* Progress bars */
+.mon-bar-container {
+  margin-top: 0.75rem;
+  height: 6px;
+  background: var(--bg-input);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.mon-bar {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent-primary);
+  transition: width 0.6s ease, background 0.3s ease;
+}
+.mon-bar-latency { background: var(--color-info); }
+.mon-bar-warning { background: var(--color-warning) !important; }
+.mon-bar-danger { background: var(--color-danger) !important; }
+
+/* Health stat card overrides */
+.stat-card.stat-danger { border-color: rgba(239, 68, 68, 0.3); }
+.stat-card.stat-danger::before { background: var(--color-danger); }
+
+/* History mini charts */
+.mon-history {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+  min-height: 120px;
+}
+.mon-history-chart { display: flex; flex-direction: column; gap: 0.5rem; }
+.mon-chart-label {
+  font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;
+}
+.mon-chart-bars {
+  display: flex; align-items: flex-end; gap: 2px;
+  height: 80px;
+  padding: 0;
+}
+.mon-mini-bar {
+  flex: 1;
+  min-width: 4px;
+  border-radius: 2px 2px 0 0;
+  transition: height 0.4s ease;
+  opacity: 0.85;
+}
+.mon-mini-bar:hover { opacity: 1; }
+
+@media (max-width: 640px) {
+  .monitoring-page { padding: 1rem; }
+  .mon-history { grid-template-columns: 1fr; }
 }
