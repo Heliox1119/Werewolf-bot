@@ -1,74 +1,83 @@
 <%- include('partials/header') %>
 
-<div class="dashboard">
-  <!-- Hero Stats -->
-  <section class="hero-stats">
-    <div class="stat-card stat-primary">
-      <div class="stat-icon">🎮</div>
-      <div class="stat-body">
-        <span class="stat-value" id="active-games"><%= activeGames %></span>
-        <span class="stat-label">Active Games</span>
-      </div>
+<!-- Hero Banner -->
+<div class="dashboard-hero">
+  <div class="dashboard-hero-content">
+    <img src="/static/img/roles/LG.jpg" alt="Werewolf" class="dashboard-hero-img">
+    <div>
+      <h1>Werewolf Dashboard</h1>
+      <p>Real-time monitoring of all active games across your servers</p>
     </div>
-    <div class="stat-card stat-success">
-      <div class="stat-icon">👥</div>
-      <div class="stat-body">
-        <span class="stat-value" id="active-players"><%= activePlayers %></span>
-        <span class="stat-label">Players In Game</span>
-      </div>
-    </div>
-    <div class="stat-card stat-info">
-      <div class="stat-icon">🏰</div>
-      <div class="stat-body">
-        <span class="stat-value"><%= guilds %></span>
-        <span class="stat-label">Servers</span>
-      </div>
-    </div>
-    <div class="stat-card stat-warning">
-      <div class="stat-icon">📊</div>
-      <div class="stat-body">
-        <span class="stat-value"><%= stats.total_games || 0 %></span>
-        <span class="stat-label">Total Games Played</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- Live Games -->
-  <section class="section">
-    <h2 class="section-title">
-      <span class="pulse-dot"></span>
-      Live Games
-    </h2>
-    <div class="games-grid" id="games-grid">
-      <% if (games.length === 0) { %>
-        <div class="empty-state">
-          <span class="empty-icon">🌙</span>
-          <p>No active games right now</p>
-          <p class="text-muted">Games will appear here in real-time when players start playing</p>
-        </div>
-      <% } else { %>
-        <% games.forEach(function(g) { %>
-          <a href="/game/<%= g.gameId %>" class="game-card" data-game="<%= g.gameId %>">
-            <div class="game-card-header">
-              <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>"><%= g.phase || 'Lobby' %></span>
-              <span class="game-day"><%= g.dayCount ? 'Day ' + g.dayCount : '' %></span>
-            </div>
-            <div class="game-card-body">
-              <div class="game-guild"><%= g.guildName || g.guildId %></div>
-              <div class="game-players">
-                <span class="alive-count">👤 <%= g.players ? g.players.filter(function(p) { return p.alive; }).length : 0 %> alive</span>
-                <span class="dead-count">💀 <%= g.dead ? g.dead.length : 0 %> dead</span>
-              </div>
-            </div>
-            <div class="game-card-footer">
-              <span class="spectate-btn">👁 Spectate Live</span>
-            </div>
-          </a>
-        <% }); %>
-      <% } %>
-    </div>
-  </section>
+  </div>
 </div>
+
+<!-- Stats -->
+<section class="hero-stats">
+  <div class="stat-card stat-primary">
+    <div class="stat-icon">&#127918;</div>
+    <div class="stat-body">
+      <span class="stat-value" id="active-games"><%= activeGames %></span>
+      <span class="stat-label">Active Games</span>
+    </div>
+  </div>
+  <div class="stat-card stat-success">
+    <div class="stat-icon">&#128101;</div>
+    <div class="stat-body">
+      <span class="stat-value" id="active-players"><%= activePlayers %></span>
+      <span class="stat-label">Players In Game</span>
+    </div>
+  </div>
+  <div class="stat-card stat-info">
+    <div class="stat-icon">&#127984;</div>
+    <div class="stat-body">
+      <span class="stat-value"><%= guilds %></span>
+      <span class="stat-label">Servers</span>
+    </div>
+  </div>
+  <div class="stat-card stat-warning">
+    <div class="stat-icon">&#128200;</div>
+    <div class="stat-body">
+      <span class="stat-value"><%= stats.total_games || 0 %></span>
+      <span class="stat-label">Total Games</span>
+    </div>
+  </div>
+</section>
+
+<!-- Live Games -->
+<section class="section">
+  <h2 class="section-title">
+    <span class="pulse-dot"></span>
+    Live Games
+  </h2>
+  <div class="games-grid" id="games-grid">
+    <% if (games.length === 0) { %>
+      <div class="empty-state">
+        <span class="empty-icon">&#127769;</span>
+        <p>No active games right now</p>
+        <p class="text-muted">Games will appear here in real-time when players start playing</p>
+      </div>
+    <% } else { %>
+      <% games.forEach(function(g) { %>
+        <a href="/game/<%= g.gameId %>" class="game-card" data-game="<%= g.gameId %>">
+          <div class="game-card-header">
+            <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>"><%= g.phase || 'Lobby' %></span>
+            <span class="game-day"><%= g.dayCount ? 'Day ' + g.dayCount : '' %></span>
+          </div>
+          <div class="game-card-body">
+            <div class="game-guild"><%= g.guildName || g.guildId %></div>
+            <div class="game-players">
+              <span class="alive-count">&#10084; <%= g.players ? g.players.filter(function(p) { return p.alive; }).length : 0 %> alive</span>
+              <span class="dead-count">&#9760; <%= g.dead ? g.dead.length : 0 %> dead</span>
+            </div>
+          </div>
+          <div class="game-card-footer">
+            <span class="spectate-btn">&#128065; Spectate Live</span>
+          </div>
+        </a>
+      <% }); %>
+    <% } %>
+  </div>
+</section>
 
 <script src="/static/js/dashboard.js"></script>
 <%- include('partials/footer') %>

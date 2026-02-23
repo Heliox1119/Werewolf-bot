@@ -1,16 +1,20 @@
 /**
- * 🐺 Werewolf Bot — Main client-side app
+ * Werewolf Bot — Main client-side app
  * Socket.IO connection, navbar toggle, WS status
  */
 (function() {
   'use strict';
 
-  // === Socket.IO connection ===
   let socket = null;
 
   function connectSocket() {
     try {
-      socket = io({ transports: ['websocket', 'polling'], reconnection: true, reconnectionDelay: 2000, reconnectionAttempts: 20 });
+      socket = io({
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionDelay: 2000,
+        reconnectionAttempts: 20
+      });
 
       socket.on('connect', () => {
         updateWsStatus(true);
@@ -26,10 +30,7 @@
         updateWsStatus(false);
       });
 
-      // Expose socket globally for page-specific scripts
       window.werewolfSocket = socket;
-      
-      // Dispatch custom event for page scripts waiting on socket
       window.dispatchEvent(new CustomEvent('werewolf:socket-ready', { detail: { socket } }));
     } catch (e) {
       console.warn('[WS] Socket.IO not available:', e.message);
@@ -41,28 +42,28 @@
     if (!el) return;
     if (connected) {
       el.className = 'ws-indicator ws-connected';
-      el.textContent = '⬤ Connected';
+      el.innerHTML = '<span class="ws-dot"></span> Connected';
     } else {
       el.className = 'ws-indicator ws-disconnected';
-      el.textContent = '⬤ Disconnected';
+      el.innerHTML = '<span class="ws-dot"></span> Disconnected';
     }
   }
 
-  // === Navbar mobile toggle ===
+  // Navbar mobile toggle
   const navToggle = document.getElementById('nav-toggle');
   const navLinks = document.getElementById('nav-links');
   if (navToggle && navLinks) {
     navToggle.addEventListener('click', () => navLinks.classList.toggle('open'));
   }
 
-  // === Init ===
+  // Init
   if (typeof io !== 'undefined') {
     connectSocket();
   } else {
     updateWsStatus(false);
   }
 
-  // === Utility: Format number ===
+  // Utilities
   window.werewolfUtils = {
     formatNumber(n) {
       if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';

@@ -11,25 +11,25 @@
     </div>
   </div>
 
-  <!-- Active Games in this guild -->
+  <!-- Active Games -->
   <section class="section">
     <h2 class="section-title"><span class="pulse-dot"></span> Active Games</h2>
     <div class="games-grid">
       <% if (games.length === 0) { %>
-        <div class="empty-state"><span class="empty-icon">🌙</span><p>No active games</p></div>
+        <div class="empty-state"><span class="empty-icon">&#127769;</span><p>No active games</p></div>
       <% } else { games.forEach(function(g) { %>
-        <a href="/game/<%= g.gameId %>" class="game-card">
+        <a href="/game/<%= g.gameId %>" class="game-card" data-game="<%= g.gameId %>">
           <div class="game-card-header">
             <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>"><%= g.phase || 'Lobby' %></span>
             <span class="game-day"><%= g.dayCount ? 'Day ' + g.dayCount : '' %></span>
           </div>
           <div class="game-card-body">
             <div class="game-players">
-              <span class="alive-count">👤 <%= g.players ? g.players.filter(function(p){ return p.alive; }).length : 0 %> alive</span>
-              <span class="dead-count">💀 <%= g.dead ? g.dead.length : 0 %> dead</span>
+              <span class="alive-count">&#10084; <%= g.players ? g.players.filter(function(p){ return p.alive; }).length : 0 %> alive</span>
+              <span class="dead-count">&#9760; <%= g.dead ? g.dead.length : 0 %> dead</span>
             </div>
           </div>
-          <div class="game-card-footer"><span class="spectate-btn">👁 Spectate</span></div>
+          <div class="game-card-footer"><span class="spectate-btn">&#128065; Spectate</span></div>
         </a>
       <% }); } %>
     </div>
@@ -37,7 +37,7 @@
 
   <!-- Leaderboard -->
   <section class="section">
-    <h2 class="section-title">🏆 Top Players</h2>
+    <h2 class="section-title">Top Players</h2>
     <% if (leaderboard.length === 0) { %>
       <p class="text-muted">No ranked players yet.</p>
     <% } else { %>
@@ -63,9 +63,9 @@
     <% } %>
   </section>
 
-  <!-- Game History -->
+  <!-- History -->
   <section class="section">
-    <h2 class="section-title">📜 Recent Games</h2>
+    <h2 class="section-title">Recent Games</h2>
     <% if (history.length === 0) { %>
       <p class="text-muted">No game history yet.</p>
     <% } else { %>

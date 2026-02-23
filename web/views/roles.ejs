@@ -1,20 +1,110 @@
 <%- include('partials/header') %>
 
+<%
+  // Role image map — maps role IDs to actual image files in /static/img/roles/
+  var roleImageMap = {
+    'WEREWOLF': 'loupSimple.webp',
+    'SEER': 'voyante.webp',
+    'WITCH': 'sorciere.png',
+    'HUNTER': 'chasseur.webp',
+    'CUPID': 'cupidon.webp',
+    'LITTLE_GIRL': 'petiteFille.webp',
+    'VILLAGER': 'villageois.webp',
+    'VILLAGE_IDIOT': 'idiot.webp',
+    'CAPTAIN': 'capitaine.webp',
+    'SAVIOR': 'salvateur.webp',
+    'GUARD': 'salvateur.webp',
+    'WHITE_WOLF': 'loupBlanc.webp',
+    'ELDER': 'ancien.webp',
+    'FOX': 'renard.webp',
+    'THIEF': 'villageois.webp'
+  };
+
+  // Camp classification
+  var campMap = {
+    'WEREWOLF': 'wolves',
+    'WHITE_WOLF': 'solo',
+    'SEER': 'village',
+    'WITCH': 'village',
+    'HUNTER': 'village',
+    'CUPID': 'village',
+    'LITTLE_GIRL': 'village',
+    'VILLAGER': 'village',
+    'VILLAGE_IDIOT': 'village',
+    'CAPTAIN': 'village',
+    'SAVIOR': 'village',
+    'GUARD': 'village',
+    'ELDER': 'village',
+    'FOX': 'village',
+    'THIEF': 'village'
+  };
+
+  // Role display names
+  var roleNameMap = {
+    'WEREWOLF': 'Loup-Garou',
+    'SEER': 'Voyante',
+    'WITCH': 'Sorci\u00e8re',
+    'HUNTER': 'Chasseur',
+    'CUPID': 'Cupidon',
+    'LITTLE_GIRL': 'Petite Fille',
+    'VILLAGER': 'Villageois',
+    'VILLAGE_IDIOT': 'Idiot du Village',
+    'CAPTAIN': 'Capitaine',
+    'SAVIOR': 'Salvateur',
+    'GUARD': 'Salvateur',
+    'WHITE_WOLF': 'Loup Blanc',
+    'ELDER': 'Ancien',
+    'FOX': 'Renard',
+    'THIEF': 'Voleur'
+  };
+
+  // Role descriptions
+  var roleDescMap = {
+    'WEREWOLF': 'Chaque nuit, les loups-garous se r\u00e9unissent pour d\u00e9vorer un villageois.',
+    'SEER': 'Chaque nuit, la voyante peut d\u00e9couvrir le r\u00f4le d\'un joueur.',
+    'WITCH': 'Poss\u00e8de une potion de vie et une potion de mort.',
+    'HUNTER': 'En mourant, le chasseur peut emporter un autre joueur avec lui.',
+    'CUPID': 'D\u00e9signe deux amoureux au d\u00e9but de la partie.',
+    'LITTLE_GIRL': 'Peut espionner les loups-garous pendant la nuit.',
+    'VILLAGER': 'Un simple villageois sans pouvoir sp\u00e9cial.',
+    'VILLAGE_IDIOT': 'S\'il est vot\u00e9 par le village, il est r\u00e9v\u00e9l\u00e9 et perd son vote.',
+    'CAPTAIN': '\u00c9lu par le village, sa voix compte double lors des votes.',
+    'SAVIOR': 'Chaque nuit, prot\u00e8ge un joueur de l\'attaque des loups.',
+    'GUARD': 'Chaque nuit, prot\u00e8ge un joueur de l\'attaque des loups.',
+    'WHITE_WOLF': 'Loup solitaire qui peut aussi tuer un loup une nuit sur deux.',
+    'ELDER': 'R\u00e9siste \u00e0 la premi\u00e8re attaque des loups-garous.',
+    'FOX': 'Peut flairer un groupe de joueurs pour d\u00e9tecter un loup.',
+    'THIEF': 'Peut voler le r\u00f4le d\'un autre joueur au d\u00e9but de la partie.'
+  };
+%>
+
 <div class="roles-page">
   <div class="page-header">
-    <h1>🎭 Roles</h1>
-    <p class="text-muted">All game roles — built-in and custom</p>
+    <div>
+      <h1>Roles</h1>
+      <p class="text-muted">All game roles &mdash; built-in and custom</p>
+    </div>
   </div>
 
   <!-- Built-in Roles -->
   <section class="section">
-    <h2 class="section-title">📦 Built-in Roles</h2>
+    <h2 class="section-title">Built-in Roles</h2>
     <div class="roles-grid">
-      <% builtIn.forEach(function(r) { %>
-        <div class="role-card role-<%= r.id.toLowerCase() %>">
-          <span class="role-emoji"><%= r.id === 'WEREWOLF' ? '🐺' : r.id === 'SEER' ? '🔮' : r.id === 'WITCH' ? '🧪' : r.id === 'HUNTER' ? '🔫' : r.id === 'CUPID' ? '💘' : r.id === 'LITTLE_GIRL' ? '👧' : r.id === 'THIEF' ? '🦹' : r.id === 'VILLAGE_IDIOT' ? '🤡' : r.id === 'CAPTAIN' ? '👑' : '👤' %></span>
-          <span class="role-name"><%= r.name %></span>
-          <span class="role-type builtin-badge">Built-in</span>
+      <% builtIn.forEach(function(r) {
+        var imgFile = roleImageMap[r.id];
+        var camp = campMap[r.id] || 'village';
+        var displayName = roleNameMap[r.id] || r.name;
+        var desc = roleDescMap[r.id] || '';
+      %>
+        <div class="role-card role-card-<%= camp %>">
+          <% if (imgFile) { %>
+            <img src="/static/img/roles/<%= imgFile %>" alt="<%= displayName %>" class="role-img" loading="lazy">
+          <% } else { %>
+            <span class="role-emoji">&#128058;</span>
+          <% } %>
+          <span class="role-name"><%= displayName %></span>
+          <span class="role-camp camp-<%= camp %>"><%= camp === 'wolves' ? 'Loups' : camp === 'solo' ? 'Solo' : 'Village' %></span>
+          <% if (desc) { %><span class="role-desc"><%= desc %></span><% } %>
         </div>
       <% }); %>
     </div>
@@ -22,13 +112,13 @@
 
   <!-- Custom Roles -->
   <section class="section">
-    <h2 class="section-title">✨ Custom Roles</h2>
+    <h2 class="section-title">Custom Roles</h2>
     <% if (customRoles.length === 0) { %>
       <div class="empty-state">
-        <span class="empty-icon">🎨</span>
+        <span class="empty-icon">&#127912;</span>
         <p>No custom roles created yet</p>
         <% if (isAdmin) { %>
-          <p class="text-muted">Use the form below to create one!</p>
+          <p class="text-muted">Use the form below to create one</p>
         <% } else { %>
           <p class="text-muted">Login as a server admin to create custom roles</p>
         <% } %>
@@ -36,13 +126,13 @@
     <% } else { %>
       <div class="roles-grid">
         <% customRoles.forEach(function(r) { %>
-          <div class="role-card role-custom">
-            <span class="role-emoji"><%= r.emoji || '❓' %></span>
+          <div class="role-card role-card-<%= r.camp || 'village' %>">
+            <span class="role-emoji"><%= r.emoji || '&#10067;' %></span>
             <span class="role-name"><%= r.name %></span>
             <span class="role-camp camp-<%= r.camp %>"><%= r.camp %></span>
             <% if (r.description) { %><span class="role-desc"><%= r.description %></span><% } %>
             <% if (isAdmin) { %>
-              <button class="btn btn-sm btn-danger delete-role" data-role-id="<%= r.id %>">Delete</button>
+              <button class="btn btn-sm btn-danger delete-role" data-role-id="<%= r.id %>" style="margin-top: 0.75rem;">Delete</button>
             <% } %>
           </div>
         <% }); %>
@@ -50,9 +140,8 @@
     <% } %>
 
     <% if (isAdmin) { %>
-      <!-- Create Custom Role Form -->
       <div class="panel create-role-panel">
-        <h3 class="panel-title">➕ Create Custom Role</h3>
+        <h3 class="panel-title">Create Custom Role</h3>
         <form id="create-role-form" class="role-form">
           <div class="form-row">
             <div class="form-group">
@@ -61,16 +150,16 @@
             </div>
             <div class="form-group">
               <label>Emoji</label>
-              <input type="text" name="emoji" placeholder="⚒️" maxlength="4" class="form-input form-input-sm">
+              <input type="text" name="emoji" placeholder="&#9935;" maxlength="4" class="form-input form-input-sm">
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Camp</label>
               <select name="camp" class="form-select">
-                <option value="village">🏘️ Village</option>
-                <option value="wolves">🐺 Wolves</option>
-                <option value="solo">🎭 Solo</option>
+                <option value="village">Village</option>
+                <option value="wolves">Loups</option>
+                <option value="solo">Solo</option>
               </select>
             </div>
             <div class="form-group">

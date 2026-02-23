@@ -105,6 +105,8 @@ class WebServer {
 
     // Static files
     this.app.use('/static', express.static(path.join(__dirname, 'public')));
+    // Serve role images from project root img/ folder
+    this.app.use('/static/img/roles', express.static(path.join(__dirname, '..', 'img')));
 
     // View engine
     this.app.set('view engine', 'ejs');
