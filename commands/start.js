@@ -5,6 +5,7 @@ const { t, translateRole } = require('../utils/i18n');
 const ROLES = require("../game/roles");
 const { isInGameCategory } = require("../utils/validators");
 const { getColor } = require('../utils/theme');
+const ConfigManager = require('../utils/config');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -29,8 +30,9 @@ module.exports = {
     const { safeDefer } = require('../utils/interaction');
     await safeDefer(interaction);
 
-    // Construire la liste complète de rôles candidats
-    const candidateRoles = [
+    // Construire la liste complète de rôles candidats en respectant les rôles activés
+    const enabledRoles = ConfigManager.getInstance().getEnabledRoles(interaction.guildId);
+    const allCandidateRoles = [
       ROLES.WEREWOLF,
       ROLES.WEREWOLF,
       ROLES.SEER,
@@ -39,6 +41,11 @@ module.exports = {
       ROLES.PETITE_FILLE,
       ROLES.CUPID
     ];
+    // Filtrer: garder Loup-Garou (mandatory) + seulement les rôles activés
+    const candidateRoles = allCandidateRoles.filter(role => {
+      if (role === ROLES.WEREWOLF) return true;
+      return enabledRoles.includes(role);
+    });
 
     // Si il y a plus de rôles candidats que de joueurs, proposer une sélection
     let rolesToUse = candidateRoles.slice();

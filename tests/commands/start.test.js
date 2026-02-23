@@ -7,6 +7,17 @@ const {
 } = require('../helpers/testHelpers');
 
 jest.mock('../../game/gameManager');
+jest.mock('../../utils/config', () => {
+  const mockInstance = {
+    getEnabledRoles: jest.fn(() => [
+      'Loup-Garou', 'Voyante', 'Sorcière', 'Chasseur', 'Petite Fille', 'Cupidon', 'Villageois'
+    ])
+  };
+  return {
+    getInstance: jest.fn(() => mockInstance),
+    _mockInstance: mockInstance
+  };
+});
 jest.mock('../../utils/validators', () => ({
   isInGameCategory: jest.fn(async () => true),
   isValidSnowflake: jest.fn(() => true),

@@ -1323,6 +1323,16 @@ class GameManager extends EventEmitter {
       }
     }
 
+    // Filtrer les rôles selon la configuration de la guilde (rôles activés)
+    const ConfigManager = require('../utils/config');
+    const configInstance = ConfigManager.getInstance();
+    const enabledRoles = configInstance.getEnabledRoles(game.guildId || null);
+    // Toujours garder Loup-Garou et Villageois (mandatory)
+    rolesPool = rolesPool.filter(role => {
+      if (role === ROLES.WEREWOLF || role === ROLES.VILLAGER) return true;
+      return enabledRoles.includes(role);
+    });
+
     // Si le Voleur est dans la pool, ajouter 2 cartes supplémentaires pour le choix
     const hasThiefInPool = rolesPool.includes(ROLES.THIEF);
     const extraRolesCount = hasThiefInPool ? 2 : 0;
