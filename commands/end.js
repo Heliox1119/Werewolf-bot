@@ -95,6 +95,14 @@ module.exports = {
       }
     }
 
+    // Émettre l'événement gameEnded pour le dashboard web AVANT suppression
+    gameManager._emitGameEvent(game, 'gameEnded', {
+      victor: null,
+      reason: 'manual',
+      players: game.players.map(p => ({ id: p.id, username: p.username, role: p.role, alive: p.alive })),
+      dayCount: game.dayCount
+    });
+
     // Supprimer la partie de la mémoire et de la base de données
     try { gameManager.db.deleteGame(interaction.channelId); } catch (e) { logger.warn('Failed to delete game from DB', { error: e.message }); }
     gameManager.games.delete(interaction.channelId);

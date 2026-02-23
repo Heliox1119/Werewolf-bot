@@ -78,6 +78,7 @@ class GameManager extends EventEmitter {
         const bot = require.main && require.main.exports && require.main.exports.client ? require.main.exports.client : null;
         const guild = bot ? bot.guilds.cache.get(game.guildId) : null;
         if (guild) {
+          this._emitGameEvent(game, 'gameEnded', { victor: null, reason: 'timeout' });
           await this.cleanupChannels(guild, game);
           this.clearGameTimers(game);
           this.games.delete(channelId);
