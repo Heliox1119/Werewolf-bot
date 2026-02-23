@@ -18,7 +18,7 @@
     <!-- Game Selector Tabs -->
     <div class="mod-tabs" id="mod-tabs">
       <% games.forEach(function(g, i) { %>
-        <button class="mod-tab<%= i === 0 ? ' active' : '' %>" data-game="<%= g.gameId %>" onclick="switchModGame('<%= g.gameId %>')">
+        <button class="mod-tab<%= i === 0 ? ' active' : '' %>" data-game="<%= g.gameId %>">
           <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>" style="font-size:0.6rem;padding:0.15rem 0.5rem;"><%= g.phase || 'Lobby' %></span>
           <span class="mod-tab-guild"><%= g.guildId %></span>
           <span class="mod-tab-info"><%= g.players ? g.players.filter(function(p){ return p.alive; }).length : 0 %>/<%= g.players ? g.players.length : 0 %> alive</span>
@@ -37,10 +37,10 @@
             <span class="mod-player-count">&#128101; <%= g.players ? g.players.length : 0 %> joueurs (<%= g.players ? g.players.filter(function(p){ return p.alive; }).length : 0 %> vivants)</span>
           </div>
           <div class="mod-actions">
-            <button class="btn btn-sm btn-outline" onclick="modAction('skip-phase', '<%= g.gameId %>')" title="Passer à la phase suivante">
+            <button class="btn btn-sm btn-outline" data-mod-action="skip-phase" data-game-id="<%= g.gameId %>" title="Passer à la phase suivante">
               &#9193; Skip Phase
             </button>
-            <button class="btn btn-sm btn-danger" onclick="modAction('force-end', '<%= g.gameId %>')" title="Forcer la fin de la partie">
+            <button class="btn btn-sm btn-danger" data-mod-action="force-end" data-game-id="<%= g.gameId %>" title="Forcer la fin de la partie">
               &#9724; Force End
             </button>
           </div>
@@ -52,7 +52,7 @@
             <h3 class="panel-title">&#128101; Joueurs</h3>
             <div class="mod-player-list">
               <% if (g.players) { g.players.forEach(function(p) { %>
-                <div class="mod-player-card <%= p.alive ? '' : 'dead' %>" data-player-id="<%= p.id %>" data-game-id="<%= g.gameId %>" onclick="openPlayerModal(this)">
+                <div class="mod-player-card <%= p.alive ? '' : 'dead' %>" data-player-id="<%= p.id %>" data-game-id="<%= g.gameId %>">
                   <div class="mod-player-main">
                     <span class="mod-player-status"><%= p.alive ? '&#10084;&#65039;' : '&#9760;&#65039;' %></span>
                     <div class="mod-player-info">
@@ -66,7 +66,7 @@
                   <div class="mod-player-meta">
                     <span class="mod-player-role role-tag role-<%= (p.role || '').toLowerCase().replace(/[^a-z]/g, '') %>"><%= p.role || '—' %></span>
                     <% if (p.alive) { %>
-                      <button class="btn btn-sm btn-ghost mod-kill-btn" onclick="event.stopPropagation(); modAction('kill-player', '<%= g.gameId %>', '<%= p.id %>')" title="Éliminer ce joueur">
+                      <button class="btn btn-sm btn-ghost mod-kill-btn" data-mod-action="kill-player" data-game-id="<%= g.gameId %>" data-player-id="<%= p.id %>" title="Éliminer ce joueur">
                         &#9760;
                       </button>
                     <% } %>
@@ -109,9 +109,9 @@
 </div>
 
 <!-- Player Modal -->
-<div class="modal-overlay" id="player-modal" onclick="if(event.target===this)closePlayerModal()">
+<div class="modal-overlay" id="player-modal">
   <div class="modal-card">
-    <button class="modal-close" onclick="closePlayerModal()">&times;</button>
+    <button class="modal-close">&times;</button>
     <div class="modal-header" id="modal-header">
       <div class="modal-player-avatar"><span>&#128100;</span></div>
       <div>

@@ -23,7 +23,7 @@
         <% if (typeof user !== 'undefined' && user) { %>
           <a href="/moderation" class="nav-link<%= title === 'Moderation' ? ' active' : '' %>">Moderation</a>
           <div class="nav-user">
-            <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png?size=32" alt="" class="nav-avatar" onerror="this.style.display='none'">
+            <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png?size=32" alt="" class="nav-avatar">
             <span><%= user.username %></span>
             <a href="/auth/logout" class="btn btn-sm btn-outline">Logout</a>
           </div>
