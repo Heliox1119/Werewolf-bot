@@ -272,6 +272,24 @@ module.exports = function(webServer) {
 
   // ==================== MODERATION ====================
 
+  /** GET /api/mod/status — Debug: check mod API connectivity + auth state (no auth required) */
+  router.get('/mod/status', (req, res) => {
+    const isAuth = req.isAuthenticated && req.isAuthenticated();
+    const activeGames = [...gm.games.keys()];
+    const user = isAuth ? { id: req.user.id, username: req.user.username, guilds: (req.user.guilds || []).length } : null;
+    const clientReady = !!(client && client.isReady && client.isReady());
+    console.log('[MOD] Status check — auth:', isAuth, 'games:', activeGames.length, 'client:', clientReady);
+    res.json({
+      success: true,
+      authenticated: isAuth,
+      user,
+      clientReady,
+      activeGames: activeGames.length,
+      gameIds: activeGames,
+      timestamp: new Date().toISOString()
+    });
+  });
+
   // Helper: reliably get Discord guild object
   async function fetchGuild(guildId) {
     if (!client) return null;
@@ -283,19 +301,25 @@ module.exports = function(webServer) {
 
   // Helper: send a message to the game's village or main channel
   async function sendToGameChannel(guild, game, content) {
-    if (!guild) return;
+    if (!guild) { console.log('[MOD] No guild — cannot send message'); return; }
     try {
       const channelId = game.villageChannelId || game.mainChannelId;
+      console.log('[MOD] Sending to channel:', channelId);
       const channel = await guild.channels.fetch(channelId);
       if (channel) await channel.send(content);
-    } catch {}
+      else console.log('[MOD] Channel not found:', channelId);
+    } catch (e) { console.error('[MOD] sendToGameChannel error:', e.message); }
   }
 
   /** POST /api/mod/force-end/:gameId — Force end a game */
   router.post('/mod/force-end/:gameId', requireAuth, async (req, res) => {
     try {
+      console.log('[MOD] force-end requested for:', req.params.gameId, 'by:', req.user?.username);
       const game = gm.games.get(req.params.gameId);
-      if (!game) return res.status(404).json({ success: false, error: 'Partie introuvable' });
+      if (!game) {
+        console.log('[MOD] Game not found. Active games:', [...gm.games.keys()]);
+        return res.status(404).json({ success: false, error: 'Partie introuvable' });
+      }
       if (!webServer.isGuildAdmin(req.user, game.guildId)) {
         return res.status(403).json({ success: false, error: 'Permission admin requise' });
       }
@@ -324,8 +348,12 @@ module.exports = function(webServer) {
   /** POST /api/mod/skip-phase/:gameId — Force skip to next phase */
   router.post('/mod/skip-phase/:gameId', requireAuth, async (req, res) => {
     try {
+      console.log('[MOD] skip-phase requested for:', req.params.gameId, 'by:', req.user?.username);
       const game = gm.games.get(req.params.gameId);
-      if (!game) return res.status(404).json({ success: false, error: 'Partie introuvable' });
+      if (!game) {
+        console.log('[MOD] Game not found. Active games:', [...gm.games.keys()]);
+        return res.status(404).json({ success: false, error: 'Partie introuvable' });
+      }
       if (!webServer.isGuildAdmin(req.user, game.guildId)) {
         return res.status(403).json({ success: false, error: 'Permission admin requise' });
       }
@@ -359,8 +387,12 @@ module.exports = function(webServer) {
   /** POST /api/mod/kill-player/:gameId/:playerId — Force kill a player */
   router.post('/mod/kill-player/:gameId/:playerId', requireAuth, async (req, res) => {
     try {
+      console.log('[MOD] kill-player requested for:', req.params.gameId, 'player:', req.params.playerId, 'by:', req.user?.username);
       const game = gm.games.get(req.params.gameId);
-      if (!game) return res.status(404).json({ success: false, error: 'Partie introuvable' });
+      if (!game) {
+        console.log('[MOD] Game not found. Active games:', [...gm.games.keys()]);
+        return res.status(404).json({ success: false, error: 'Partie introuvable' });
+      }
       if (!webServer.isGuildAdmin(req.user, game.guildId)) {
         return res.status(403).json({ success: false, error: 'Permission admin requise' });
       }
@@ -451,7 +483,9 @@ module.exports = function(webServer) {
 // ==================== HELPERS ====================
 
 function requireAuth(req, res, next) {
-  if (req.isAuthenticated && req.isAuthenticated()) return next();
+  const isAuth = req.isAuthenticated && req.isAuthenticated();
+  console.log('[AUTH]', req.method, req.path, '— authenticated:', isAuth, '— user:', isAuth ? req.user?.username : 'none');
+  if (isAuth) return next();
   res.status(401).json({ success: false, error: 'Authentication required' });
 }
 

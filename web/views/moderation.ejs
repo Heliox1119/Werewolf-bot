@@ -134,4 +134,22 @@
 </div>
 
 <script src="/static/js/moderation.js"></script>
+<script>
+// Check API connectivity on page load
+(async function() {
+  try {
+    const res = await fetch('/api/mod/status', { credentials: 'same-origin' });
+    const data = await res.json();
+    console.log('[MOD] API Status:', data);
+    if (!data.authenticated) {
+      console.warn('[MOD] NOT AUTHENTICATED — redirecting to login');
+      document.body.insertAdjacentHTML('afterbegin',
+        '<div style="background:#ef4444;color:white;padding:0.75rem 1.5rem;text-align:center;font-weight:600;position:fixed;top:64px;left:0;right:0;z-index:9999;">' +
+        '⚠️ Session expirée — <a href="/auth/discord" style="color:white;text-decoration:underline;">Reconnectez-vous</a> pour utiliser les actions de modération</div>');
+    } else {
+      console.log('[MOD] Authenticated as:', data.user.username, '— Active games:', data.activeGames, '— IDs:', data.gameIds);
+    }
+  } catch(e) { console.error('[MOD] Status check failed:', e); }
+})();
+</script>
 <%- include('partials/footer') %>

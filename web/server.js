@@ -93,8 +93,9 @@ class WebServer {
     this.app.use(express.urlencoded({ extended: true }));
 
     // Session
+    const sessionSecret = process.env.SESSION_SECRET || 'werewolf-dashboard-v3-stable-secret-key';
     this.app.use(session({
-      secret: process.env.SESSION_SECRET || 'werewolf-dashboard-secret-' + Date.now(),
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 } // 7 days

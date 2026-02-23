@@ -130,11 +130,14 @@
     toast.textContent = msg;
     document.body.appendChild(toast);
     
-    requestAnimationFrame(() => toast.classList.add('show'));
+    // Force reflow then animate
+    toast.offsetHeight;
+    toast.classList.add('show');
+    console.log('[TOAST]', type, msg);
     setTimeout(() => {
       toast.classList.remove('show');
-      setTimeout(() => toast.remove(), 300);
-    }, 3000);
+      setTimeout(() => toast.remove(), 400);
+    }, 4000);
   }
 
   // === Real-time updates ===
