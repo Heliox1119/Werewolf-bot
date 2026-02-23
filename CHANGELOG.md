@@ -607,11 +607,32 @@ const voiceChannel = guild.channels.cache.get(voiceChannelId) ||
 - [x] 500+ clés de traduction
 - [x] Documentation bilingue (README FR/EN avec badges)
 
-### v2.5.0 (Planifié)
+### v2.5.0 – v2.5.1 (✅ Terminé)
+- [x] 3 nouveaux rôles (Salvateur, Ancien, Idiot du Village)
+- [x] Mode spectateur complet (👻-spectateurs, lecture seule)
+- [x] Système de thèmes d'embeds (4 palettes, 12 couleurs sémantiques)
 - [x] CI/CD Pipeline (GitHub Actions)
+- [x] Correctifs stabilité (validation catégorie, orphan cleanup)
+
+### v2.6.0 (✅ Terminé)
+- [x] Équilibrage des phases (AFK nuit 120s, délibération 300s, vote 180s)
+- [x] Vote capitaine automatique avec résolution
+- [x] Condition de victoire loups configurable (`majority`/`elimination`)
+- [x] Ping loups en début de phase nuit
+- [x] Correctif potion sorcière
+
+### v2.7.0 (✅ Terminé)
+- [x] Petite Fille : espionnage temps réel en DM (`/listen` relay anonymisé)
+- [x] Algorithme d'indices intelligents (`pickSmartHint()`, normalisation Unicode/zalgo)
+- [x] Configuration wolfwin serveur-wide (persistée SQLite, toggle lobby)
+- [x] Enregistrement commandes guild-only + nettoyage global
+- [x] Screenshots intégrés dans README FR/EN
+
+### v2.8.0 (Planifié)
 - [ ] Docker containerization
-- [ ] Backup automatique horaire
-- [ ] Multi-guild support (langue par serveur)
+- [ ] Backup automatique horaire SQLite
+- [ ] Multi-guild support (langue & config par serveur)
+- [ ] Système de rejouer (rematch rapide avec mêmes joueurs)
 
 ### v3.0.0 (Long terme)
 - [ ] Web interface d'administration
