@@ -1044,21 +1044,42 @@ class GameManager extends EventEmitter {
           game.subPhase = PHASES.LOUP_BLANC;
           await this.announcePhase(guild, game, t('phase.white_wolf_wakes'));
           this.notifyTurn(guild, game, ROLES.WHITE_WOLF);
-        } else {
+        } else if (this.hasAliveRealRole(game, ROLES.WITCH) && !game.villageRolesPowerless) {
           game.subPhase = PHASES.SORCIERE;
           await this.announcePhase(guild, game, t('phase.witch_wakes'));
           this.notifyTurn(guild, game, ROLES.WITCH);
+        } else if (this.hasAliveRealRole(game, ROLES.SEER) && !game.villageRolesPowerless) {
+          game.subPhase = PHASES.VOYANTE;
+          await this.announcePhase(guild, game, t('phase.seer_wakes'));
+          this.notifyTurn(guild, game, ROLES.SEER);
+        } else {
+          game.subPhase = PHASES.REVEIL;
+          await this.announcePhase(guild, game, t('phase.village_wakes'));
         }
         break;
       case PHASES.LOUP_BLANC:
-        game.subPhase = PHASES.SORCIERE;
-        await this.announcePhase(guild, game, t('phase.witch_wakes'));
-        this.notifyTurn(guild, game, ROLES.WITCH);
+        if (this.hasAliveRealRole(game, ROLES.WITCH) && !game.villageRolesPowerless) {
+          game.subPhase = PHASES.SORCIERE;
+          await this.announcePhase(guild, game, t('phase.witch_wakes'));
+          this.notifyTurn(guild, game, ROLES.WITCH);
+        } else if (this.hasAliveRealRole(game, ROLES.SEER) && !game.villageRolesPowerless) {
+          game.subPhase = PHASES.VOYANTE;
+          await this.announcePhase(guild, game, t('phase.seer_wakes'));
+          this.notifyTurn(guild, game, ROLES.SEER);
+        } else {
+          game.subPhase = PHASES.REVEIL;
+          await this.announcePhase(guild, game, t('phase.village_wakes'));
+        }
         break;
       case PHASES.SORCIERE:
-        game.subPhase = PHASES.VOYANTE;
-        await this.announcePhase(guild, game, t('phase.seer_wakes'));
-        this.notifyTurn(guild, game, ROLES.SEER);
+        if (this.hasAliveRealRole(game, ROLES.SEER) && !game.villageRolesPowerless) {
+          game.subPhase = PHASES.VOYANTE;
+          await this.announcePhase(guild, game, t('phase.seer_wakes'));
+          this.notifyTurn(guild, game, ROLES.SEER);
+        } else {
+          game.subPhase = PHASES.REVEIL;
+          await this.announcePhase(guild, game, t('phase.village_wakes'));
+        }
         break;
       case PHASES.VOYANTE:
         game.subPhase = PHASES.REVEIL;
