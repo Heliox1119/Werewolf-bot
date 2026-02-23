@@ -1,80 +1,60 @@
 <%- include('partials/header') %>
 
 <%
-  // Role image map — maps role IDs to actual image files in /static/img/roles/
+  // Role image map — maps role IDs (from game/roles.js) to image files
   var roleImageMap = {
     'WEREWOLF': 'loupSimple.webp',
     'SEER': 'voyante.webp',
     'WITCH': 'sorciere.png',
     'HUNTER': 'chasseur.webp',
     'CUPID': 'cupidon.webp',
-    'LITTLE_GIRL': 'petiteFille.webp',
+    'PETITE_FILLE': 'petiteFille.webp',
     'VILLAGER': 'villageois.webp',
-    'VILLAGE_IDIOT': 'idiot.webp',
-    'CAPTAIN': 'capitaine.webp',
-    'SAVIOR': 'salvateur.webp',
-    'GUARD': 'salvateur.webp',
-    'WHITE_WOLF': 'loupBlanc.webp',
-    'ELDER': 'ancien.webp',
-    'FOX': 'renard.webp',
-    'THIEF': 'villageois.webp'
+    'IDIOT': 'idiot.webp',
+    'SALVATEUR': 'salvateur.webp',
+    'ANCIEN': 'ancien.webp'
   };
 
   // Camp classification
   var campMap = {
     'WEREWOLF': 'wolves',
-    'WHITE_WOLF': 'solo',
     'SEER': 'village',
     'WITCH': 'village',
     'HUNTER': 'village',
     'CUPID': 'village',
-    'LITTLE_GIRL': 'village',
+    'PETITE_FILLE': 'village',
     'VILLAGER': 'village',
-    'VILLAGE_IDIOT': 'village',
-    'CAPTAIN': 'village',
-    'SAVIOR': 'village',
-    'GUARD': 'village',
-    'ELDER': 'village',
-    'FOX': 'village',
-    'THIEF': 'village'
+    'IDIOT': 'village',
+    'SALVATEUR': 'village',
+    'ANCIEN': 'village'
   };
 
-  // Role display names
+  // Role display names (French)
   var roleNameMap = {
     'WEREWOLF': 'Loup-Garou',
     'SEER': 'Voyante',
     'WITCH': 'Sorci\u00e8re',
     'HUNTER': 'Chasseur',
     'CUPID': 'Cupidon',
-    'LITTLE_GIRL': 'Petite Fille',
+    'PETITE_FILLE': 'Petite Fille',
     'VILLAGER': 'Villageois',
-    'VILLAGE_IDIOT': 'Idiot du Village',
-    'CAPTAIN': 'Capitaine',
-    'SAVIOR': 'Salvateur',
-    'GUARD': 'Salvateur',
-    'WHITE_WOLF': 'Loup Blanc',
-    'ELDER': 'Ancien',
-    'FOX': 'Renard',
-    'THIEF': 'Voleur'
+    'IDIOT': 'Idiot du Village',
+    'SALVATEUR': 'Salvateur',
+    'ANCIEN': 'Ancien'
   };
 
-  // Role descriptions
+  // Role descriptions (French)
   var roleDescMap = {
     'WEREWOLF': 'Chaque nuit, les loups-garous se r\u00e9unissent pour d\u00e9vorer un villageois.',
     'SEER': 'Chaque nuit, la voyante peut d\u00e9couvrir le r\u00f4le d\'un joueur.',
-    'WITCH': 'Poss\u00e8de une potion de vie et une potion de mort.',
+    'WITCH': 'Poss\u00e8de une potion de vie et une potion de mort, utilisable une fois chacune.',
     'HUNTER': 'En mourant, le chasseur peut emporter un autre joueur avec lui.',
-    'CUPID': 'D\u00e9signe deux amoureux au d\u00e9but de la partie.',
-    'LITTLE_GIRL': 'Peut espionner les loups-garous pendant la nuit.',
-    'VILLAGER': 'Un simple villageois sans pouvoir sp\u00e9cial.',
-    'VILLAGE_IDIOT': 'S\'il est vot\u00e9 par le village, il est r\u00e9v\u00e9l\u00e9 et perd son vote.',
-    'CAPTAIN': '\u00c9lu par le village, sa voix compte double lors des votes.',
-    'SAVIOR': 'Chaque nuit, prot\u00e8ge un joueur de l\'attaque des loups.',
-    'GUARD': 'Chaque nuit, prot\u00e8ge un joueur de l\'attaque des loups.',
-    'WHITE_WOLF': 'Loup solitaire qui peut aussi tuer un loup une nuit sur deux.',
-    'ELDER': 'R\u00e9siste \u00e0 la premi\u00e8re attaque des loups-garous.',
-    'FOX': 'Peut flairer un groupe de joueurs pour d\u00e9tecter un loup.',
-    'THIEF': 'Peut voler le r\u00f4le d\'un autre joueur au d\u00e9but de la partie.'
+    'CUPID': 'D\u00e9signe deux amoureux au d\u00e9but de la partie. Si l\'un meurt, l\'autre aussi.',
+    'PETITE_FILLE': 'Peut espionner les loups-garous pendant la nuit, au risque de se faire rep\u00e9rer.',
+    'VILLAGER': 'Un simple villageois sans pouvoir sp\u00e9cial. Il doit d\u00e9masquer les loups.',
+    'IDIOT': 'S\'il est vot\u00e9 par le village, il est r\u00e9v\u00e9l\u00e9 mais perd son droit de vote.',
+    'SALVATEUR': 'Chaque nuit, il prot\u00e8ge un joueur de l\'attaque des loups-garous.',
+    'ANCIEN': 'R\u00e9siste \u00e0 la premi\u00e8re attaque des loups-garous gr\u00e2ce \u00e0 sa robustesse.'
   };
 %>
 
