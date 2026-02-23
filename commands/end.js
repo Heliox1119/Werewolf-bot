@@ -80,12 +80,19 @@ module.exports = {
       phase: game.phase
     });
 
-    // Nettoyer les channels (retourne le nombre supprimé)
-    const deleted = await gameManager.cleanupChannels(interaction.guild, game);
-    
-    logger.info('Channels cleaned up', { deletedCount: deleted });
+    // 1) Annuler TOUS les timers en cours (AFK nuit, chasseur, capitaine, lobby)
+    gameManager.clearGameTimers(game);
+    gameManager.clearLobbyTimeout(interaction.channelId);
 
-    // Déconnecter le bot du channel vocal
+    // 2) Émettre l'événement gameEnded pour le dashboard web AVANT suppression
+    gameManager._emitGameEvent(game, 'gameEnded', {
+      victor: null,
+      reason: 'manual',
+      players: game.players.map(p => ({ id: p.id, username: p.username, role: p.role, alive: p.alive })),
+      dayCount: game.dayCount
+    });
+
+    // 3) Déconnecter le bot du channel vocal
     if (game.voiceChannelId) {
       try { 
         gameManager.disconnectVoice(game.voiceChannelId);
@@ -95,37 +102,27 @@ module.exports = {
       }
     }
 
-    // Émettre l'événement gameEnded pour le dashboard web AVANT suppression
-    gameManager._emitGameEvent(game, 'gameEnded', {
-      victor: null,
-      reason: 'manual',
-      players: game.players.map(p => ({ id: p.id, username: p.username, role: p.role, alive: p.alive })),
-      dayCount: game.dayCount
-    });
-
-    // Supprimer la partie de la mémoire et de la base de données
+    // 4) Supprimer la partie de la mémoire et de la base de données
     try { gameManager.db.deleteGame(interaction.channelId); } catch (e) { logger.warn('Failed to delete game from DB', { error: e.message }); }
     gameManager.games.delete(interaction.channelId);
     gameManager.saveState();
 
+    // 5) Répondre à l'interaction AVANT de supprimer les channels
+    //    (car le channel de l'interaction sera supprimé avec les autres)
+    if (deferSuccess) {
+      try {
+        await interaction.editReply({ content: t('game.ended', { deleted: game.channels ? game.channels.length : '?' }) });
+      } catch (e) {
+        logger.warn('Failed to send success message', { error: e.message });
+      }
+    }
+
+    // 6) Nettoyer les channels (suppression Discord — fait en dernier)
+    const deleted = await gameManager.cleanupChannels(interaction.guild, game);
+    
     logger.success('Game ended successfully', { 
       channelId: interaction.channelId,
       deletedChannels: deleted 
     });
-
-    // Envoyer message temporaire avec nettoyage auto (si possible)
-    if (deferSuccess) {
-      try {
-        await sendTemporaryMessage(
-          interaction,
-          t('game.ended', { deleted: deleted }),
-          2000
-        );
-      } catch (e) {
-        logger.warn('Failed to send success message', { error: e.message });
-      }
-    } else {
-      logger.info('Cleanup completed but cannot reply (interaction expired)');
-    }
   }
 };
