@@ -1,5 +1,63 @@
 # 📝 Changelog - Werewolf Bot
 
+## [2.9.0] - 2026-02-23 - Achievements, ELO, Death Reveal, DM Notifications
+
+### 🏆 Système de succès (Achievements)
+- **18 succès** répartis en 6 catégories : victoire, loup, village, spécial, social, général
+- **Tables SQLite auto-créées** : `player_achievements`, `player_extended_stats`
+- **Tracking en jeu** : seer_found_wolf, salvateur_save, witch_save, hunter_killed_wolf
+- **Annonce post-game** : les succès débloqués sont affichés dans le récapitulatif de fin de partie
+- **AchievementEngine** : `trackEvent()`, `processGameEnd()`, `checkAndAward()`, `getPlayerAchievements()`
+
+### 📊 Système ELO & Classement
+- **Calcul ELO dynamique** : facteur K adaptatif, multiplicateur de difficulté par rôle, bonus de survie
+- **7 paliers** : Fer (≤800) → Bronze → Argent → Or → Platine → Diamant → Loup Alpha (2000+)
+- **Commande `/leaderboard`** : top N joueurs avec tier, WR%, stats globales (village/loups WR, durée moy.)
+- **Commande `/stats` enrichie** : ELO, rang, peak, victoires loup/village, meilleure série, stats détaillées, badges de succès
+- **Calcul post-game** : ELO affiché dans le récapitulatif avec 📈/📉 et nouveau palier
+
+### 💀 Révélation des rôles à la mort
+- **Embed de mort thématique** : couleur rouge (loup) ou bleue (innocent), miniature du rôle
+- **Cause de mort** : dévoré par les loups, éliminé par le village, empoisonné, tir du chasseur, mort d'amour
+- **Footer contextuel** : "C'était un loup-garou !" ou "C'était un innocent..."
+- **Intégré** dans `transitionToDay()` et `transitionToNight()` pour toutes les sources de mort
+
+### 📩 Notifications DM de tour
+- **DM automatique** quand c'est le tour d'un rôle : Salvateur, Loups-Garous, Sorcière, Voyante
+- **Embed compact** avec emoji 🌙, nom du rôle, instruction contextuelle
+- **Fail-safe** : ignore silencieusement les DM fermés
+
+### 📜 Historique & Timeline
+- **Commande `/history`** : dernières N parties avec vainqueur, joueurs, jours, durée, timestamp relatif
+- **Détail dernière partie** : tous les joueurs avec rôle et statut
+- **Timeline post-game** : chronologie des événements clés dans le récapitulatif (morts, sauvetages, victoire)
+
+### 🐛 Corrections de bugs
+- **BUG-1** : `isInGameCategory()` passe maintenant `guildId` à `getCategoryId()` (support multi-guild)
+- **BUG-2** : `advanceSubPhase()` utilise `announceVictoryIfAny()` au lieu d'une logique inline cassée
+- **BUG-3** : `listen.js` corrigé — `logAction()` reçoit le bon format (game, string)
+- **BUG-9/10** : Restauration de `villageRolesPowerless` et `ancienExtraLife` au redémarrage via `loadState()`
+
+### 🌐 Localisation
+- **60+ nouvelles clés** FR et EN : death, dm, achievement, leaderboard, history, stats
+- **Sections ajoutées** : `death.*`, `dm.*`, `achievement.*`, `leaderboard.*`, `history.*`, `stats.*`
+
+### 🔧 Fichiers modifiés/créés
+- **game/achievements.js** (NEW) : AchievementEngine + ACHIEVEMENTS + ELO system
+- **commands/leaderboard.js** (NEW) : `/leaderboard` slash command
+- **commands/history.js** (NEW) : `/history` slash command
+- **game/gameManager.js** : death reveal, DM notifications, timeline, ELO integration, bug fixes
+- **commands/stats.js** : ELO, rank, extended stats, achievement badges
+- **commands/see.js** : achievement tracking (seer_found_wolf)
+- **commands/potion.js** : achievement tracking (witch_save)
+- **commands/shoot.js** : achievement tracking (hunter_killed_wolf)
+- **utils/validators.js** : guildId fix pour isInGameCategory
+- **commands/listen.js** : logAction fix
+- **index.js** : initAchievements() au démarrage
+- **locales/fr.js** + **locales/en.js** : 60+ nouvelles clés de traduction
+
+---
+
 ## [2.8.0] - 2026-02-23 - Docker, Backup Auto, Multi-Guild, Rematch
 
 ### 🐳 Docker containerization
@@ -689,10 +747,19 @@ const voiceChannel = guild.channels.cache.get(voiceChannelId) ||
 - [x] Multi-guild support (langue & config par serveur avec fallback global)
 - [x] Système de rematch (revanche rapide avec mêmes joueurs)
 
+### v2.9.0 (✅ Terminé)
+- [x] Système de succès (18 achievements, 6 catégories, tracking en jeu)
+- [x] ELO ranking system (7 paliers, calcul dynamique, leaderboard)
+- [x] Révélation des rôles à la mort (embeds thématiques)
+- [x] Notifications DM de tour (Salvateur, Loups, Sorcière, Voyante)
+- [x] Commandes `/leaderboard`, `/history`, `/stats` enrichi
+- [x] Timeline post-game dans le récapitulatif
+- [x] 60+ clés de locale FR/EN ajoutées
+- [x] 4 bugs critiques corrigés (multi-guild, victory flow, listen, persistence)
+
 ### v3.0.0 (Long terme)
 - [ ] Web interface d'administration
 - [ ] WebSocket dashboard temps réel
-- [ ] Achievements & leaderboard
 - [ ] Rôles personnalisés configurables
 - [ ] Support de langues communautaires
 

@@ -79,6 +79,11 @@ module.exports = {
     gameManager.logAction(game, `Chasseur tire sur: ${target.username}`);
     try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'shoot', interaction.user.id, target.id); } catch (e) { /* ignore */ }
 
+    // Track achievement: hunter killed a wolf
+    if (targetPlayer.role === ROLES.WEREWOLF && gameManager.achievements) {
+      try { gameManager.achievements.trackEvent(player.id, 'hunter_killed_wolf'); } catch (e) { /* ignore */ }
+    }
+
     const mainChannel = game.villageChannelId
       ? await interaction.guild.channels.fetch(game.villageChannelId)
       : await interaction.guild.channels.fetch(game.mainChannelId);

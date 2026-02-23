@@ -146,11 +146,7 @@ module.exports = {
       }
 
       // Log l'action
-      gameManager.logAction(game.mainChannelId, {
-        type: 'listen',
-        playerId: interaction.user.id,
-        detected: false
-      });
+      gameManager.logAction(game, `Petite Fille ${player.username} espionne les loups`);
 
     } catch (err) {
       logger.error("Erreur /listen:", { error: err.message });

@@ -10,7 +10,8 @@ const { app: logger } = require('./logger');
 async function isInGameCategory(interaction) {
   try {
     const config = ConfigManager.getInstance();
-    const CATEGORY_ID = config.getCategoryId();
+    const guildId = interaction.guildId || null;
+    const CATEGORY_ID = config.getCategoryId(guildId);
     
     if (!CATEGORY_ID) {
       // Configuration non faite

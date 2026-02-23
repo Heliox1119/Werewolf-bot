@@ -95,6 +95,12 @@ module.exports = {
       try { gameManager.db.useWitchPotion(game.mainChannelId, 'life'); } catch (e) { /* ignore */ }
       gameManager.logAction(game, `Sorciere utilise potion de vie pour sauver ${victimName}`);
       try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'save', interaction.user.id, game.nightVictim); } catch (e) { /* ignore */ }
+
+      // Track achievement: witch save
+      if (gameManager.achievements) {
+        try { gameManager.achievements.trackEvent(player.id, 'witch_save'); } catch (e) { /* ignore */ }
+      }
+
       await safeReply(interaction, { content: t('cmd.potion.life_success', { name: victimName }), flags: MessageFlags.Ephemeral });
     } else if (type === "death") {
       if (!game.witchPotions.death) {

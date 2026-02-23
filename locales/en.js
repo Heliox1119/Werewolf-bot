@@ -697,16 +697,97 @@ module.exports = {
     victory: "🏆 **{{name}}** won!",
   },
 
+  // ==================== DEATH & REVEAL ====================
+  death: {
+    cause_wolves: "Devoured by the werewolves",
+    cause_village: "Eliminated by village vote",
+    cause_witch: "Poisoned by the witch",
+    cause_hunter: "Shot by the hunter",
+    cause_love: "Died of heartbreak (lover)",
+    cause_generic: "Eliminated",
+    reveal_desc: "**{{name}}** was **{{role}}**\n💀 {{cause}}",
+    was_wolf: "They were a werewolf!",
+    was_innocent: "They were innocent...",
+  },
+
+  // ==================== DM NOTIFICATIONS ====================
+  dm: {
+    your_turn_title: "🌙 It's your turn!",
+    your_turn_desc: "It's time to use your **{{role}}** power. Head to your dedicated channel.",
+    your_turn_footer: "Act fast, the night won't last forever...",
+  },
+
   // ==================== SUMMARY ====================
   summary: {
     title: "Game Summary",
     winner: "🏆 Winner",
     duration: "⏱️ Duration",
+    days: "Days",
     players: "👥 Players",
     actions: "📜 Actions",
     no_actions: "No actions recorded",
     no_role: "No role",
     no_players: "None",
+    timeline: "Timeline",
+    achievements_unlocked: "Achievements Unlocked!",
+  },
+
+  // ==================== ACHIEVEMENTS ====================
+  achievement: {
+    first_win: "First Victory",
+    veteran: "Veteran (10 games)",
+    legend: "Legend (50 games)",
+    winning_streak_3: "Unstoppable (3 wins)",
+    winning_streak_5: "Invincible (5 wins)",
+    first_blood: "First Blood",
+    alpha_wolf: "Alpha Wolf (10 wolf wins)",
+    serial_killer: "Serial Killer (25 kills)",
+    village_hero: "Village Hero (5 wins)",
+    sherlock: "Sherlock (5 correct visions)",
+    guardian_angel: "Guardian Angel (3 saves)",
+    witch_master: "Master Alchemist (5 saves)",
+    sharpshooter: "Sharpshooter",
+    romeo_juliet: "Romeo & Juliet",
+    survivor: "Survivor (10 survivals)",
+    immortal: "Immortal (25 survivals)",
+    popular: "Popular (5 games)",
+    clown_prince: "Clown Prince",
+    elder_wisdom: "Elder Wisdom",
+  },
+
+  // ==================== LEADERBOARD ====================
+  leaderboard: {
+    title: "🏆 Player Leaderboard",
+    footer: "Rankings based on ELO — Play to climb!",
+    games: "games",
+    global_stats: "📊 Global Statistics",
+    total_games: "games played",
+    village_wr: "Village Wins",
+    wolves_wr: "Wolves Wins",
+    avg_duration: "Avg. Duration",
+    no_data: "📭 No ranking data available. Play some games to appear!",
+  },
+
+  // ==================== HISTORY ====================
+  history: {
+    title: "📜 Game History",
+    footer: "{{count}} recent game(s) shown",
+    no_data: "📭 No game history available.",
+    latest_game: "🔍 Latest Game — Players",
+  },
+
+  // ==================== STATS EXTENDED ====================
+  stats: {
+    rank: "Rank",
+    peak: "Peak ELO",
+    wolf_wins: "Wolf Wins",
+    village_wins: "Village Wins",
+    best_streak: "Best Streak",
+    seer_correct: "Correct Visions",
+    salvateur_saves: "Successful Protections",
+    witch_saves: "Witch Saves",
+    detailed: "Detailed Statistics",
+    achievements: "Achievements",
   },
 
   // ==================== TIPS ====================

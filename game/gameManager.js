@@ -5,6 +5,7 @@ const path = require('path');
 const { game: logger } = require('../utils/logger');
 const GameDatabase = require('../database/db');
 const { t, translateRole, translateRoleDesc, tips } = require('../utils/i18n');
+const { AchievementEngine, ACHIEVEMENTS } = require('./achievements');
 const { getColor } = require('../utils/theme');
 
 // Timeouts configurables (en ms)
@@ -366,6 +367,98 @@ class GameManager {
     return this.getAliveRealPlayersByRole(game, role).length > 0;
   }
 
+  /**
+   * Announce a player's role when they die (themed embed with role image)
+   */
+  async announceDeathReveal(channel, player, cause = 'generic') {
+    try {
+      const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
+      const { getRoleImageName } = require('../utils/roleHelpers');
+      const pathMod = require('path');
+
+      const roleName = translateRole(player.role) || t('summary.no_role');
+      const isWolf = player.role === ROLES.WEREWOLF;
+      
+      const causeText = cause === 'wolves' ? t('death.cause_wolves')
+        : cause === 'village' ? t('death.cause_village')
+        : cause === 'witch' ? t('death.cause_witch')
+        : cause === 'hunter' ? t('death.cause_hunter')
+        : cause === 'love' ? t('death.cause_love')
+        : t('death.cause_generic');
+
+      const color = isWolf ? 0xE74C3C : 0x3498DB;
+
+      const embed = new EmbedBuilder()
+        .setTitle(`💀 ${player.username}`)
+        .setDescription(t('death.reveal_desc', { 
+          name: player.username, 
+          role: roleName,
+          cause: causeText
+        }))
+        .setColor(color)
+        .setFooter({ text: isWolf ? t('death.was_wolf') : t('death.was_innocent') });
+
+      const imageName = getRoleImageName(player.role);
+      const files = [];
+      if (imageName) {
+        const imagePath = pathMod.join(__dirname, '..', 'img', imageName);
+        try {
+          files.push(new AttachmentBuilder(imagePath, { name: imageName }));
+          embed.setThumbnail(`attachment://${imageName}`);
+        } catch (e) { /* image not found, skip */ }
+      }
+
+      await channel.send({ embeds: [embed], files });
+    } catch (err) {
+      logger.warn('Failed to send death reveal', { error: err.message });
+    }
+  }
+
+  /**
+   * Send a DM notification to a player that it's their turn to act
+   */
+  async notifyTurn(guild, game, role) {
+    try {
+      const client = require.main?.exports?.client;
+      if (!client) return;
+      
+      const { EmbedBuilder } = require('discord.js');
+      const players = this.getAliveRealPlayersByRole(game, role);
+      
+      for (const player of players) {
+        try {
+          const user = await client.users.fetch(player.id);
+          const roleName = translateRole(role);
+          
+          const embed = new EmbedBuilder()
+            .setTitle(t('dm.your_turn_title'))
+            .setDescription(t('dm.your_turn_desc', { role: roleName }))
+            .setColor(0xF39C12)
+            .setFooter({ text: t('dm.your_turn_footer') })
+            .setTimestamp();
+
+          await user.send({ embeds: [embed] });
+        } catch (e) {
+          // DM failed (user has DMs disabled), ignore
+        }
+      }
+    } catch (err) {
+      logger.warn('Failed to send turn notifications', { error: err.message });
+    }
+  }
+
+  /**
+   * Initialize the AchievementEngine (called once on bot startup)
+   */
+  initAchievements() {
+    try {
+      this.achievements = new AchievementEngine(this.db.db);
+      logger.success('Achievement engine initialized');
+    } catch (err) {
+      logger.error('Failed to initialize achievements', { error: err.message });
+    }
+  }
+
   async transitionToDay(guild, game) {
     if (game._transitioning) return;
     if (game.phase !== PHASES.NIGHT) return;
@@ -401,6 +494,14 @@ class GameManager {
           if (protectedPlayer) {
             await this.sendLogged(mainChannel, t('game.salvateur_protected', { name: protectedPlayer.username }), { type: 'salvateurSave' });
             this.logAction(game, `Salvateur protège ${protectedPlayer.username} de l'attaque des loups`);
+
+            // Track achievement: salvateur save
+            if (this.achievements) {
+              const salvateur = game.players.find(p => p.role === ROLES.SALVATEUR && p.alive);
+              if (salvateur) {
+                try { this.achievements.trackEvent(salvateur.id, 'salvateur_save'); } catch (e) { /* ignore */ }
+              }
+            }
           }
         } else {
           const victimPlayer = game.players.find(p => p.id === game.nightVictim);
@@ -421,10 +522,12 @@ class GameManager {
               const collateral = this.kill(game.mainChannelId, game.nightVictim);
               nightDeaths.push(victimPlayer);
               this.logAction(game, `Mort la nuit: ${victimPlayer.username}`);
+              await this.announceDeathReveal(mainChannel, victimPlayer, 'wolves');
               for (const dead of collateral) {
                 await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
                 nightDeaths.push(dead);
                 this.logAction(game, `Mort d'amour: ${dead.username}`);
+                await this.announceDeathReveal(mainChannel, dead, 'love');
               }
             }
           }
@@ -449,10 +552,12 @@ class GameManager {
             const collateral = this.kill(game.mainChannelId, game.witchKillTarget);
             nightDeaths.push(witchVictim);
             this.logAction(game, `Empoisonné: ${witchVictim.username}`);
+            await this.announceDeathReveal(mainChannel, witchVictim, 'witch');
             for (const dead of collateral) {
               await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
               nightDeaths.push(dead);
               this.logAction(game, `Mort d'amour: ${dead.username}`);
+              await this.announceDeathReveal(mainChannel, dead, 'love');
             }
           }
           game.witchKillTarget = null;
@@ -547,10 +652,12 @@ class GameManager {
               await this.sendLogged(mainChannel, t('game.vote_result', { name: votedPlayer.username, count: voteCount }), { type: 'dayVoteResult' });
               const collateral = this.kill(game.mainChannelId, votedId);
               this.logAction(game, `Vote du village: ${votedPlayer.username} elimine`);
+              await this.announceDeathReveal(mainChannel, votedPlayer, 'village');
 
               for (const dead of collateral) {
                 await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
                 this.logAction(game, `Mort d'amour: ${dead.username}`);
+                await this.announceDeathReveal(mainChannel, dead, 'love');
               }
 
               // Vérifier chasseur (sauf si pouvoirs perdus)
@@ -653,7 +760,19 @@ class GameManager {
       this.logAction(game, `Erreur stats joueurs: ${e.message}`);
     }
 
-    await this.sendGameSummary(guild, game, victorDisplay, mainChannel);
+    // L5: Achievements & ELO
+    let eloChanges = null;
+    let newAchievements = null;
+    if (this.achievements) {
+      try {
+        eloChanges = this.achievements.calculateElo(game, victor);
+        newAchievements = this.achievements.processGameEnd(game, victor);
+      } catch (e) {
+        logger.error('Achievement/ELO processing error', { error: e.message });
+      }
+    }
+
+    await this.sendGameSummary(guild, game, victorDisplay, mainChannel, eloChanges, newAchievements);
   }
 
   formatDurationMs(ms) {
@@ -664,7 +783,7 @@ class GameManager {
     return `${min}m ${sec}s`;
   }
 
-  async sendGameSummary(guild, game, victor, mainChannel) {
+  async sendGameSummary(guild, game, victor, mainChannel, eloChanges = null, newAchievements = null) {
     try {
       const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
@@ -672,14 +791,22 @@ class GameManager {
         ? this.formatDurationMs(game.endedAt - game.startedAt)
         : 'N/A';
 
+      // Player list with ELO changes
       const players = game.players
-        .map(p => `${p.alive ? '✅' : '💀'} ${p.username} — ${p.role ? translateRole(p.role) : t('summary.no_role')}`)
+        .map(p => {
+          let line = `${p.alive ? '✅' : '💀'} ${p.username} — ${p.role ? translateRole(p.role) : t('summary.no_role')}`;
+          if (eloChanges && eloChanges.has(p.id)) {
+            const elo = eloChanges.get(p.id);
+            const arrow = elo.change >= 0 ? '📈' : '📉';
+            const tier = AchievementEngine.getEloTier(elo.newElo);
+            line += ` ${arrow} ${elo.change >= 0 ? '+' : ''}${elo.change} (${tier.emoji} ${elo.newElo})`;
+          }
+          return line;
+        })
         .join('\n');
 
-      const actions = (game.actionLog || [])
-        .slice(-20)
-        .map(a => `• ${a.text}`)
-        .join('\n') || t('summary.no_actions');
+      // Detailed timeline
+      const timeline = this._buildTimeline(game);
 
       // Store previous players for rematch
       game._previousPlayers = game.players.map(p => ({ id: p.id, username: p.username }));
@@ -690,10 +817,38 @@ class GameManager {
         .addFields(
           { name: t('summary.winner'), value: victor, inline: true },
           { name: t('summary.duration'), value: duration, inline: true },
-          { name: t('summary.players'), value: players.slice(0, 1024) || t('summary.no_players'), inline: false },
-          { name: t('summary.actions'), value: actions.slice(0, 1024), inline: false }
-        )
-        .setTimestamp(new Date());
+          { name: `📊 ${t('summary.days')}`, value: `${game.dayCount || 0}`, inline: true },
+          { name: t('summary.players'), value: players.slice(0, 1024) || t('summary.no_players'), inline: false }
+        );
+
+      // Add timeline
+      if (timeline) {
+        embed.addFields({ name: `📜 ${t('summary.timeline')}`, value: timeline.slice(0, 1024), inline: false });
+      }
+
+      // Add achievement announcements
+      if (newAchievements && newAchievements.size > 0) {
+        const achLines = [];
+        for (const [playerId, achievementIds] of newAchievements) {
+          const player = game.players.find(p => p.id === playerId);
+          if (!player) continue;
+          for (const achId of achievementIds) {
+            const ach = ACHIEVEMENTS[achId];
+            if (ach) {
+              achLines.push(`${ach.emoji} **${player.username}** — ${t(`achievement.${achId}`)}`);
+            }
+          }
+        }
+        if (achLines.length > 0) {
+          embed.addFields({ 
+            name: `🏅 ${t('summary.achievements_unlocked')}`, 
+            value: achLines.join('\n').slice(0, 1024), 
+            inline: false 
+          });
+        }
+      }
+
+      embed.setTimestamp(new Date());
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -717,34 +872,35 @@ class GameManager {
     }
   }
 
+  /**
+   * Build a detailed timeline for post-game summary
+   * Groups actions by day/night phases for readability
+   */
+  _buildTimeline(game) {
+    const logs = game.actionLog || [];
+    if (logs.length === 0) return null;
+
+    const keyEvents = logs.filter(a => {
+      const t = a.text || '';
+      return t.includes('Mort') || t.includes('elimine') || t.includes('Empoisonné') || 
+             t.includes('sauve') || t.includes('protège') || t.includes('Victoire') ||
+             t.includes('Capitaine') || t.includes('chasseur') || t.includes('Chasseur') ||
+             t.includes('pouvoirs perdus') || t.includes('révélé') || t.includes('survit') ||
+             t.includes('espionne') || t.includes('Partie demarree');
+    });
+
+    if (keyEvents.length === 0) return null;
+
+    return keyEvents.slice(-15).map(a => `• ${a.text}`).join('\n');
+  }
+
   // Enchaînement logique des sous-phases
   async advanceSubPhase(guild, game) {
     // Séquence : LOUPS -> SORCIERE -> VOYANTE -> REVEIL -> (si premier jour: VOTE_CAPITAINE) -> DELIBERATION -> (bouton capitaine) -> VOTE -> (retour nuit)
     // Vérifier la victoire à chaque sous-phase
-    const victory = this.checkVictory(game.mainChannelId);
+    const victory = this.checkWinner(game);
     if (victory) {
-      // Annonce victoire + son
-      const villageChannel = game.villageChannelId ? await guild.channels.fetch(game.villageChannelId) : null;
-      let msg = '';
-      let sound = '';
-      if (victory === 'village') {
-        msg = t('game.victory_village');
-        sound = 'victory_villagers.mp3';
-      } else if (victory === 'wolves') {
-        msg = t('game.victory_wolves');
-        sound = 'victory_wolves.mp3';
-      } else if (victory === 'lovers') {
-        msg = t('game.victory_lovers');
-        sound = 'victory_villagers.mp3';
-      } else if (victory === 'draw') {
-        msg = t('game.victory_draw');
-        sound = 'victory_villagers.mp3';
-      }
-      if (villageChannel) await this.sendLogged(villageChannel, msg, { type: 'victory' });
-      if (game.voiceChannelId) {
-        try { await this.playAmbience(game.voiceChannelId, sound); } catch (e) { /* ignore */ }
-      }
-      // Optionnel : cleanup automatique ou laisser la partie en pause ?
+      await this.announceVictoryIfAny(guild, game);
       return; // Stopper l'enchaînement des phases
     }
     switch (game.subPhase) {
@@ -753,23 +909,28 @@ class GameManager {
         if (this.hasAliveRealRole(game, ROLES.SALVATEUR) && !game.villageRolesPowerless) {
           game.subPhase = PHASES.SALVATEUR;
           await this.announcePhase(guild, game, t('phase.salvateur_wakes'));
+          this.notifyTurn(guild, game, ROLES.SALVATEUR);
         } else {
           game.subPhase = PHASES.LOUPS;
           await this.announcePhase(guild, game, t('phase.wolves_wake'));
+          this.notifyTurn(guild, game, ROLES.WEREWOLF);
         }
         break;
       case PHASES.SALVATEUR:
         game.subPhase = PHASES.LOUPS;
         await this.announcePhase(guild, game, t('phase.wolves_wake'));
+        this.notifyTurn(guild, game, ROLES.WEREWOLF);
         break;
       case PHASES.LOUPS:
         this.stopListenRelay(game);
         game.subPhase = PHASES.SORCIERE;
         await this.announcePhase(guild, game, t('phase.witch_wakes'));
+        this.notifyTurn(guild, game, ROLES.WITCH);
         break;
       case PHASES.SORCIERE:
         game.subPhase = PHASES.VOYANTE;
         await this.announcePhase(guild, game, t('phase.seer_wakes'));
+        this.notifyTurn(guild, game, ROLES.SEER);
         break;
       case PHASES.VOYANTE:
         game.subPhase = PHASES.REVEIL;
@@ -2191,6 +2352,8 @@ class GameManager {
           protectedPlayerId: null,
           lastProtectedPlayerId: null,
           villageRolesPowerless: false,
+          listenRelayUserId: null,
+          listenHintsGiven: [],
           rules: { 
             minPlayers: dbGame.min_players, 
             maxPlayers: dbGame.max_players 
@@ -2200,6 +2363,18 @@ class GameManager {
           endedAt: dbGame.ended_at,
           disableVoiceMute: dbGame.disable_voice_mute === 1
         };
+
+        // Restaurer villageRolesPowerless depuis les logs
+        if (actionLog.some(a => a.text && a.text.includes('pouvoirs perdus'))) {
+          game.villageRolesPowerless = true;
+        }
+
+        // Restaurer ancienExtraLife : si l'Ancien est vivant et pas de log de survie, il a encore sa vie
+        const ancienPlayer = players.find(p => p.role === 'Ancien');
+        if (ancienPlayer && ancienPlayer.alive) {
+          const ancienUsedLife = actionLog.some(a => a.text && a.text.includes('vie supplémentaire'));
+          ancienPlayer.ancienExtraLife = !ancienUsedLife;
+        }
         
         this.games.set(channelId, game);
       }

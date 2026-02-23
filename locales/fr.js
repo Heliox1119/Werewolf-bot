@@ -697,16 +697,97 @@ module.exports = {
     victory: "🏆 **{{name}}** a gagné!",
   },
 
+  // ==================== MORT & RÉVÉLATION ====================
+  death: {
+    cause_wolves: "Dévoré par les loups-garous",
+    cause_village: "Éliminé par le vote du village",
+    cause_witch: "Empoisonné par la sorcière",
+    cause_hunter: "Abattu par le chasseur",
+    cause_love: "Mort de chagrin (amoureux)",
+    cause_generic: "Éliminé",
+    reveal_desc: "**{{name}}** était **{{role}}**\n💀 {{cause}}",
+    was_wolf: "C'était un loup-garou !",
+    was_innocent: "C'était un innocent...",
+  },
+
+  // ==================== DM NOTIFICATIONS ====================
+  dm: {
+    your_turn_title: "🌙 C'est ton tour !",
+    your_turn_desc: "C'est le moment d'utiliser ton pouvoir de **{{role}}**. Rends-toi dans ton channel dédié.",
+    your_turn_footer: "Agis vite, la nuit ne dure pas éternellement...",
+  },
+
   // ==================== RÉSUMÉ ====================
   summary: {
     title: "Récapitulatif de la partie",
     winner: "🏆 Vainqueur",
     duration: "⏱️ Durée",
+    days: "Jours",
     players: "👥 Joueurs",
     actions: "📜 Actions",
     no_actions: "Aucune action enregistrée",
     no_role: "Sans rôle",
     no_players: "Aucun",
+    timeline: "Chronologie",
+    achievements_unlocked: "Succès débloqués !",
+  },
+
+  // ==================== ACHIEVEMENTS ====================
+  achievement: {
+    first_win: "Première Victoire",
+    veteran: "Vétéran (10 parties)",
+    legend: "Légende (50 parties)",
+    winning_streak_3: "Inarrêtable (3 victoires)",
+    winning_streak_5: "Invincible (5 victoires)",
+    first_blood: "Premier Sang",
+    alpha_wolf: "Loup Alpha (10 victoires loup)",
+    serial_killer: "Tueur en Série (25 kills)",
+    village_hero: "Héros du Village (5 victoires)",
+    sherlock: "Sherlock (5 visions correctes)",
+    guardian_angel: "Ange Gardien (3 protections)",
+    witch_master: "Maître Alchimiste (5 sauvetages)",
+    sharpshooter: "Tireur d'Élite",
+    romeo_juliet: "Roméo & Juliette",
+    survivor: "Survivant (10 survies)",
+    immortal: "Immortel (25 survies)",
+    popular: "Populaire (5 parties)",
+    clown_prince: "Prince Clown",
+    elder_wisdom: "Sagesse de l'Ancien",
+  },
+
+  // ==================== LEADERBOARD ====================
+  leaderboard: {
+    title: "🏆 Classement des joueurs",
+    footer: "Classement basé sur l'ELO — Jouez pour grimper !",
+    games: "parties",
+    global_stats: "📊 Statistiques globales",
+    total_games: "parties jouées",
+    village_wr: "Victoires Village",
+    wolves_wr: "Victoires Loups",
+    avg_duration: "Durée moy.",
+    no_data: "📭 Aucune donnée de classement disponible. Jouez des parties pour apparaître !",
+  },
+
+  // ==================== HISTORY ====================
+  history: {
+    title: "📜 Historique des parties",
+    footer: "{{count}} dernière(s) partie(s) affichée(s)",
+    no_data: "📭 Aucun historique de parties disponible.",
+    latest_game: "🔍 Dernière partie — Joueurs",
+  },
+
+  // ==================== STATS EXTENDED ====================
+  stats: {
+    rank: "Classement",
+    peak: "ELO max",
+    wolf_wins: "Victoires Loup",
+    village_wins: "Victoires Village",
+    best_streak: "Meilleure série",
+    seer_correct: "Visions correctes",
+    salvateur_saves: "Protections réussies",
+    witch_saves: "Sauvetages sorcière",
+    detailed: "Statistiques détaillées",
+    achievements: "Succès",
   },
 
   // ==================== TIPS ====================

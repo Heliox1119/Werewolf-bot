@@ -79,6 +79,11 @@ module.exports = {
     gameManager.logAction(game, `Voyante regarde ${target.username} (${targetPlayer.role})`);
     try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'see', interaction.user.id, target.id); } catch (e) { /* ignore */ }
 
+    // Track achievement: seer found a wolf
+    if (targetPlayer.role === ROLES.WEREWOLF && gameManager.achievements) {
+      try { gameManager.achievements.trackEvent(player.id, 'seer_found_wolf'); } catch (e) { /* ignore */ }
+    }
+
     if (game.phase === PHASES.NIGHT) {
       // Passer par advanceSubPhase (VOYANTE → REVEIL → DAY)
       await gameManager.advanceSubPhase(interaction.guild, game);

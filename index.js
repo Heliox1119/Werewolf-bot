@@ -133,6 +133,13 @@ client.once("clientReady", async () => {
     logger.error('Failed to initialize backup system', { error: error.message });
   }
 
+  // Initialiser le système d'achievements & ELO
+  try {
+    gameManager.initAchievements();
+  } catch (error) {
+    logger.error('Failed to initialize achievement system', { error: error.message });
+  }
+
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
   try {
