@@ -1,85 +1,228 @@
 <%- include('partials/header') %>
 
-<div class="guild-page">
-  <div class="page-header">
-    <% if (guild && guild.icon) { %>
-      <img src="<%= guild.icon %>" alt="" class="guild-icon-lg">
-    <% } %>
-    <div>
-      <h1><%= guild ? guild.name : 'Guild ' + guildId %></h1>
-      <p class="text-muted"><%= guild ? guild.memberCount + ' members' : '' %></p>
+<div class="guild-overview-page">
+
+  <!-- Guild Banner -->
+  <div class="guild-banner">
+    <div class="guild-banner-bg"></div>
+    <div class="guild-banner-content">
+      <% if (guild && guild.icon) { %>
+        <img src="<%= guild.icon %>" alt="" class="guild-banner-icon">
+      <% } else { %>
+        <div class="guild-banner-icon guild-banner-icon-placeholder">&#127968;</div>
+      <% } %>
+      <div class="guild-banner-info">
+        <h1><%= guild ? guild.name : 'Guild ' + guildId %></h1>
+        <div class="guild-banner-meta">
+          <% if (guild && guild.memberCount) { %>
+            <span class="guild-meta-item">&#128101; <span data-i18n="goverview.members"><%= guild.memberCount %> membres</span></span>
+          <% } %>
+          <span class="guild-meta-item">&#127918; <span data-i18n="goverview.total_played"><%= guildStats.totalGames %> parties jouées</span></span>
+          <% if (guildStats.activeGames > 0) { %>
+            <span class="guild-meta-item guild-meta-live"><span class="pulse-dot"></span> <%= guildStats.activeGames %> <span data-i18n="goverview.active_now">en cours</span></span>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="guild-stats-row">
+    <div class="guild-stat-card gstat-primary">
+      <div class="guild-stat-icon">&#127918;</div>
+      <div class="guild-stat-body">
+        <span class="guild-stat-value"><%= guildStats.totalGames %></span>
+        <span class="guild-stat-label" data-i18n="goverview.stat_games">Parties jouées</span>
+      </div>
+    </div>
+    <div class="guild-stat-card gstat-success">
+      <div class="guild-stat-icon">&#127969;</div>
+      <div class="guild-stat-body">
+        <span class="guild-stat-value"><%= guildStats.villageWins %></span>
+        <span class="guild-stat-label" data-i18n="goverview.stat_village">Victoires Village</span>
+      </div>
+    </div>
+    <div class="guild-stat-card gstat-danger">
+      <div class="guild-stat-icon">&#128058;</div>
+      <div class="guild-stat-body">
+        <span class="guild-stat-value"><%= guildStats.wolfWins %></span>
+        <span class="guild-stat-label" data-i18n="goverview.stat_wolves">Victoires Loups</span>
+      </div>
+    </div>
+    <div class="guild-stat-card gstat-pink">
+      <div class="guild-stat-icon">&#128149;</div>
+      <div class="guild-stat-body">
+        <span class="guild-stat-value"><%= guildStats.loversWins %></span>
+        <span class="guild-stat-label" data-i18n="goverview.stat_lovers">Victoires Amoureux</span>
+      </div>
+    </div>
+    <div class="guild-stat-card gstat-info">
+      <div class="guild-stat-icon">&#128101;</div>
+      <div class="guild-stat-body">
+        <span class="guild-stat-value"><%= guildStats.avgPlayers %></span>
+        <span class="guild-stat-label" data-i18n="goverview.stat_avg_players">Joueurs / partie</span>
+      </div>
+    </div>
+    <div class="guild-stat-card gstat-warning">
+      <div class="guild-stat-icon">&#9202;</div>
+      <div class="guild-stat-body">
+        <% var avgMin = Math.floor(guildStats.avgDuration / 60); %>
+        <span class="guild-stat-value"><%= avgMin %><small>min</small></span>
+        <span class="guild-stat-label" data-i18n="goverview.stat_avg_duration">Durée moyenne</span>
+      </div>
     </div>
   </div>
 
   <!-- Active Games -->
   <section class="section">
-    <h2 class="section-title"><span class="pulse-dot"></span> Active Games</h2>
+    <div class="section-header">
+      <h2 class="section-title"><span class="pulse-dot"></span> <span data-i18n="goverview.active_games">Parties en cours</span></h2>
+    </div>
     <div class="games-grid">
       <% if (games.length === 0) { %>
-        <div class="empty-state"><span class="empty-icon">&#127769;</span><p>No active games</p></div>
+        <div class="empty-state">
+          <span class="empty-icon">&#127769;</span>
+          <p data-i18n="goverview.no_games">Aucune partie en cours</p>
+          <p class="text-muted" data-i18n="goverview.no_games_hint">Les parties apparaîtront ici en temps réel</p>
+        </div>
       <% } else { games.forEach(function(g) { %>
         <a href="/game/<%= g.gameId %>" class="game-card" data-game="<%= g.gameId %>">
           <div class="game-card-header">
             <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>"><%= g.phase || 'Lobby' %></span>
-            <span class="game-day"><%= g.dayCount ? 'Day ' + g.dayCount : '' %></span>
+            <span class="game-day"><%= g.dayCount ? 'Jour ' + g.dayCount : '' %></span>
           </div>
           <div class="game-card-body">
             <div class="game-players">
-              <span class="alive-count">&#10084; <%= g.players ? g.players.filter(function(p){ return p.alive; }).length : 0 %> alive</span>
-              <span class="dead-count">&#9760; <%= g.dead ? g.dead.length : 0 %> dead</span>
+              <span class="alive-count"><%- '&#10084;' %> <%= g.players ? g.players.filter(function(p){ return p.alive; }).length : 0 %> <span data-i18n="goverview.alive">vivants</span></span>
+              <span class="dead-count"><%- '&#9760;' %> <%= g.players ? g.players.filter(function(p){ return !p.alive; }).length : 0 %> <span data-i18n="goverview.dead">morts</span></span>
             </div>
+            <% if (g.players && g.players.length > 0) { %>
+              <div class="game-card-player-list">
+                <% g.players.slice(0, 6).forEach(function(p) { %>
+                  <span class="game-mini-player <%= p.alive ? '' : 'dead' %>" title="<%= p.username %>"><%= p.username %></span>
+                <% }); %>
+                <% if (g.players.length > 6) { %>
+                  <span class="game-mini-more">+<%= g.players.length - 6 %></span>
+                <% } %>
+              </div>
+            <% } %>
           </div>
-          <div class="game-card-footer"><span class="spectate-btn">&#128065; Spectate</span></div>
+          <div class="game-card-footer">
+            <span class="spectate-btn">&#128065; <span data-i18n="goverview.spectate">Regarder</span></span>
+          </div>
         </a>
       <% }); } %>
     </div>
   </section>
 
-  <!-- Leaderboard -->
-  <section class="section">
-    <h2 class="section-title">Top Players</h2>
-    <% if (leaderboard.length === 0) { %>
-      <p class="text-muted">No ranked players yet.</p>
-    <% } else { %>
-      <div class="leaderboard-table">
-        <table>
-          <thead>
-            <tr><th>#</th><th>Player</th><th>ELO</th><th>Tier</th><th>Games</th><th>Wins</th></tr>
-          </thead>
-          <tbody>
-            <% leaderboard.forEach(function(p) { %>
-              <tr>
-                <td class="rank-col"><%= p.rank %></td>
-                <td><a href="/player/<%= p.player_id %>"><%= p.username || p.player_id %></a></td>
-                <td><strong><%= p.elo_rating || 1000 %></strong></td>
-                <td><span class="tier tier-<%= (p.tier || {}).id || 'bronze' %>"><%= (p.tier || {}).emoji || '' %> <%= (p.tier || {}).name || 'Bronze' %></span></td>
-                <td><%= p.games_played || 0 %></td>
-                <td><%= p.games_won || 0 %></td>
-              </tr>
-            <% }); %>
-          </tbody>
-        </table>
+  <!-- Two-Column Layout: Leaderboard Preview + Recent History -->
+  <div class="guild-overview-grid">
+
+    <!-- Top Players Preview -->
+    <section class="section guild-overview-panel">
+      <div class="section-header">
+        <h2 class="section-title">&#127942; <span data-i18n="goverview.top_players">Meilleurs joueurs</span></h2>
+        <a href="/guild/<%= guildId %>/leaderboard" class="section-link" data-i18n="goverview.see_all">Voir tout &#8594;</a>
       </div>
-    <% } %>
+      <% if (leaderboard.length === 0) { %>
+        <div class="empty-state empty-state-sm">
+          <span class="empty-icon">&#127942;</span>
+          <p class="text-muted" data-i18n="goverview.no_players">Aucun joueur classé</p>
+        </div>
+      <% } else { %>
+        <div class="guild-top-players">
+          <% leaderboard.forEach(function(p) { %>
+            <a href="/player/<%= p.player_id %>" class="guild-top-player-row">
+              <div class="guild-top-rank rank-<%= p.rank %>">#<%= p.rank %></div>
+              <div class="guild-top-info">
+                <span class="guild-top-name"><%= p.username || p.player_id %></span>
+                <span class="guild-top-tier tier tier-<%= (p.tier || {}).id || 'bronze' %>"><%= (p.tier || {}).emoji || '' %> <%= (p.tier || {}).name || 'Bronze' %></span>
+              </div>
+              <div class="guild-top-elo">
+                <span class="guild-top-elo-value"><%= p.elo_rating || 1000 %></span>
+                <span class="guild-top-elo-label">ELO</span>
+              </div>
+              <div class="guild-top-record">
+                <span class="guild-top-wins"><%= p.games_won || 0 %>W</span>
+                <span class="guild-top-games">/ <%= p.games_played || 0 %>G</span>
+              </div>
+            </a>
+          <% }); %>
+        </div>
+      <% } %>
+    </section>
+
+    <!-- Recent Games Preview -->
+    <section class="section guild-overview-panel">
+      <div class="section-header">
+        <h2 class="section-title">&#128218; <span data-i18n="goverview.recent_games">Parties récentes</span></h2>
+        <a href="/guild/<%= guildId %>/history" class="section-link" data-i18n="goverview.see_all_history">Voir tout &#8594;</a>
+      </div>
+      <% if (history.length === 0) { %>
+        <div class="empty-state empty-state-sm">
+          <span class="empty-icon">&#128218;</span>
+          <p class="text-muted" data-i18n="goverview.no_history">Aucune partie terminée</p>
+        </div>
+      <% } else { %>
+        <div class="guild-recent-games">
+          <% history.forEach(function(h) { %>
+            <div class="guild-recent-row">
+              <div class="guild-recent-winner">
+                <% if (h.winner === 'village') { %>
+                  <span class="ghistory-winner winner-village">&#127969; Village</span>
+                <% } else if (h.winner === 'wolves') { %>
+                  <span class="ghistory-winner winner-wolves">&#128058; Loups</span>
+                <% } else if (h.winner === 'lovers') { %>
+                  <span class="ghistory-winner winner-lovers">&#128149; Amoureux</span>
+                <% } else { %>
+                  <span class="ghistory-winner"><%= h.winner || '?' %></span>
+                <% } %>
+              </div>
+              <div class="guild-recent-meta">
+                <span>&#128101; <%= h.player_count || '?' %></span>
+                <span>&#128197; <%= h.day_count || 0 %>j</span>
+                <% if (h.duration_seconds) { %>
+                  <span>&#9202; <%= Math.floor(h.duration_seconds / 60) %>min</span>
+                <% } %>
+              </div>
+              <div class="guild-recent-date">
+                <%= h.ended_at ? new Date(h.ended_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '' %>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
+    </section>
+
+  </div>
+
+  <!-- Quick Navigation -->
+  <section class="section">
+    <h2 class="section-title">&#9889; <span data-i18n="goverview.quick_nav">Navigation rapide</span></h2>
+    <div class="guild-quick-nav">
+      <a href="/guild/<%= guildId %>/leaderboard" class="guild-nav-card">
+        <span class="guild-nav-icon">&#127942;</span>
+        <span class="guild-nav-title" data-i18n="guild.leaderboard">Classement</span>
+        <span class="guild-nav-desc" data-i18n="goverview.nav_leaderboard_desc">Classement complet et ELO</span>
+      </a>
+      <a href="/guild/<%= guildId %>/history" class="guild-nav-card">
+        <span class="guild-nav-icon">&#128218;</span>
+        <span class="guild-nav-title" data-i18n="guild.history">Historique</span>
+        <span class="guild-nav-desc" data-i18n="goverview.nav_history_desc">Toutes les parties jouées</span>
+      </a>
+      <a href="/guild/<%= guildId %>/rules" class="guild-nav-card">
+        <span class="guild-nav-icon">&#9881;</span>
+        <span class="guild-nav-title" data-i18n="guild.rules">Règles du jeu</span>
+        <span class="guild-nav-desc" data-i18n="goverview.nav_rules_desc">Rôles et paramètres</span>
+      </a>
+      <a href="/guild/<%= guildId %>/moderation" class="guild-nav-card">
+        <span class="guild-nav-icon">&#128737;</span>
+        <span class="guild-nav-title" data-i18n="gmod.title">Modération</span>
+        <span class="guild-nav-desc" data-i18n="goverview.nav_mod_desc">Gérer les parties en cours</span>
+      </a>
+    </div>
   </section>
 
-  <!-- History -->
-  <section class="section">
-    <h2 class="section-title">Recent Games</h2>
-    <% if (history.length === 0) { %>
-      <p class="text-muted">No game history yet.</p>
-    <% } else { %>
-      <div class="history-list">
-        <% history.forEach(function(h) { %>
-          <div class="history-item">
-            <span class="history-winner"><%= h.winner || '?' %></span>
-            <span class="history-players"><%= h.player_count || '?' %> players</span>
-            <span class="history-date"><%= h.ended_at ? new Date(h.ended_at).toLocaleDateString() : '' %></span>
-          </div>
-        <% }); %>
-      </div>
-    <% } %>
-  </section>
 </div>
 
 <%- include('partials/footer') %>

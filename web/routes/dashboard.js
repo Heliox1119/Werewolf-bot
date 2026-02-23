@@ -70,12 +70,19 @@ module.exports = function(webServer) {
     try {
       const client = webServer.client;
       const guild = client ? client.guilds.cache.get(req.params.id) : null;
-      const games = gm.getAllGames().filter(g => g.guildId === req.params.id).map(g => gm.getGameSnapshot(g));
+      const games = gm.getAllGames().filter(g => g.guildId === req.params.id).map(g => {
+        const snap = gm.getGameSnapshot(g);
+        snap.players = (g.players || []).map(p => ({
+          id: p.id, username: p.username, role: p.role, alive: p.alive,
+          inLove: p.inLove || false, isCaptain: p.id === g.captainId
+        }));
+        return snap;
+      });
       
       let leaderboard = [];
       if (gm.achievements) {
         const { AchievementEngine } = require('../../game/achievements');
-        leaderboard = gm.achievements.getLeaderboard(10, req.params.id).map((p, i) => ({
+        leaderboard = gm.achievements.getLeaderboard(5, req.params.id).map((p, i) => ({
           rank: i + 1,
           ...p,
           tier: AchievementEngine.getEloTier(p.elo_rating || 1000)
@@ -83,7 +90,20 @@ module.exports = function(webServer) {
       }
 
       let history = [];
-      try { history = db.getGuildHistory(req.params.id, 10); } catch {}
+      try { history = db.getGuildHistory(req.params.id, 5); } catch {}
+
+      // Compute guild-specific stats from history
+      let allHistory = [];
+      try { allHistory = db.getGuildHistory(req.params.id, 1000); } catch {}
+      const guildStats = {
+        totalGames: allHistory.length,
+        villageWins: allHistory.filter(h => h.winner === 'village').length,
+        wolfWins: allHistory.filter(h => h.winner === 'wolves').length,
+        loversWins: allHistory.filter(h => h.winner === 'lovers').length,
+        avgPlayers: allHistory.length > 0 ? Math.round(allHistory.reduce((s, h) => s + (h.player_count || 0), 0) / allHistory.length) : 0,
+        avgDuration: allHistory.length > 0 ? Math.round(allHistory.reduce((s, h) => s + (h.duration_seconds || 0), 0) / allHistory.length) : 0,
+        activeGames: games.length
+      };
 
       res.render('guild', {
         title: guild ? guild.name : `Guild ${req.params.id}`,
@@ -92,7 +112,8 @@ module.exports = function(webServer) {
         guildPage: 'overview',
         games,
         leaderboard,
-        history
+        history,
+        guildStats
       });
     } catch (e) {
       res.render('error', { title: 'Error', message: e.message });

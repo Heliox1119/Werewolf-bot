@@ -943,6 +943,232 @@ body[data-page="full"] .app-main {
 .page-header h1 { font-family: var(--font-display); font-size: 1.75rem; }
 .guild-icon-lg { width: 72px; height: 72px; border-radius: 16px; border: 2px solid var(--border-color); box-shadow: var(--shadow-md); }
 
+/* === Guild Overview Page === */
+.guild-overview-page { max-width: 1100px; }
+
+/* Banner */
+.guild-banner {
+  position: relative;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  margin-bottom: 2rem;
+  border: 1px solid var(--border-color);
+}
+.guild-banner-bg {
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(59, 130, 246, 0.1) 50%, rgba(16, 185, 129, 0.08) 100%);
+  z-index: 0;
+}
+.guild-banner-content {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 1.5rem;
+  padding: 2rem 2.5rem;
+}
+.guild-banner-icon {
+  width: 80px; height: 80px; border-radius: 20px;
+  border: 3px solid rgba(255,255,255,0.1);
+  box-shadow: var(--shadow-lg); flex-shrink: 0;
+}
+.guild-banner-icon-placeholder {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.5rem; background: var(--bg-secondary);
+}
+.guild-banner-info h1 {
+  font-family: var(--font-display); font-size: 1.85rem; margin: 0 0 0.5rem;
+}
+.guild-banner-meta {
+  display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: center;
+}
+.guild-meta-item {
+  font-size: 0.85rem; color: var(--text-secondary);
+  display: flex; align-items: center; gap: 0.3rem;
+}
+.guild-meta-live {
+  color: var(--color-success); font-weight: 700;
+}
+
+/* Stat Cards Row */
+.guild-stats-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 2.5rem;
+}
+.guild-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1.25rem 1rem;
+  display: flex; align-items: center; gap: 0.75rem;
+  transition: var(--transition);
+  position: relative; overflow: hidden;
+}
+.guild-stat-card::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  border-radius: 2px 2px 0 0;
+}
+.guild-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-color-hover);
+}
+.gstat-primary::before { background: linear-gradient(90deg, var(--accent-primary), transparent); }
+.gstat-success::before { background: linear-gradient(90deg, var(--color-success), transparent); }
+.gstat-danger::before { background: linear-gradient(90deg, var(--color-danger), transparent); }
+.gstat-pink::before { background: linear-gradient(90deg, #ec4899, transparent); }
+.gstat-info::before { background: linear-gradient(90deg, var(--color-info), transparent); }
+.gstat-warning::before { background: linear-gradient(90deg, var(--color-warning), transparent); }
+.guild-stat-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; flex-shrink: 0;
+}
+.gstat-primary .guild-stat-icon { background: rgba(139, 92, 246, 0.15); }
+.gstat-success .guild-stat-icon { background: rgba(16, 185, 129, 0.15); }
+.gstat-danger .guild-stat-icon { background: rgba(239, 68, 68, 0.15); }
+.gstat-pink .guild-stat-icon { background: rgba(236, 72, 153, 0.15); }
+.gstat-info .guild-stat-icon { background: rgba(59, 130, 246, 0.15); }
+.gstat-warning .guild-stat-icon { background: rgba(245, 158, 11, 0.15); }
+.guild-stat-body { min-width: 0; }
+.guild-stat-value {
+  font-size: 1.5rem; font-weight: 800; display: block;
+  line-height: 1.2; letter-spacing: -0.5px;
+}
+.guild-stat-value small { font-size: 0.7em; font-weight: 600; opacity: 0.7; }
+.guild-stat-label {
+  font-size: 0.65rem; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600;
+}
+
+/* Game card player list */
+.game-card-player-list {
+  display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.75rem;
+}
+.game-mini-player {
+  font-size: 0.7rem; padding: 0.15rem 0.5rem;
+  background: rgba(139, 92, 246, 0.1); border-radius: 999px;
+  color: var(--text-secondary); font-weight: 500;
+}
+.game-mini-player.dead { opacity: 0.4; text-decoration: line-through; }
+.game-mini-more {
+  font-size: 0.7rem; padding: 0.15rem 0.5rem;
+  color: var(--text-muted); font-weight: 600;
+}
+
+/* Overview Two-Column Grid */
+.guild-overview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+.guild-overview-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+}
+.guild-overview-panel .section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.guild-overview-panel .section-title { margin-bottom: 0; font-size: 1.05rem; }
+.section-link {
+  font-size: 0.8rem; color: var(--accent-primary);
+  font-weight: 600; text-decoration: none;
+  transition: var(--transition-fast);
+}
+.section-link:hover { color: var(--accent-secondary); }
+
+/* Top Players Preview */
+.guild-top-players { display: flex; flex-direction: column; gap: 0.5rem; }
+.guild-top-player-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--border-radius-sm);
+  background: var(--bg-secondary);
+  text-decoration: none; color: inherit;
+  transition: var(--transition-fast);
+}
+.guild-top-player-row:hover { background: var(--bg-hover); transform: translateX(4px); }
+.guild-top-rank {
+  font-weight: 800; font-size: 0.85rem; min-width: 2rem; text-align: center;
+  color: var(--text-muted);
+}
+.guild-top-rank.rank-1 { color: #ffd700; }
+.guild-top-rank.rank-2 { color: #c0c0c0; }
+.guild-top-rank.rank-3 { color: #cd7f32; }
+.guild-top-info { flex: 1; min-width: 0; }
+.guild-top-name { display: block; font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.guild-top-tier { font-size: 0.75rem; }
+.guild-top-elo { text-align: right; }
+.guild-top-elo-value { font-weight: 800; font-size: 1rem; display: block; }
+.guild-top-elo-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.guild-top-record { text-align: right; min-width: 4rem; }
+.guild-top-wins { font-weight: 700; color: var(--color-success); font-size: 0.85rem; }
+.guild-top-games { color: var(--text-muted); font-size: 0.75rem; }
+
+/* Recent Games Preview */
+.guild-recent-games { display: flex; flex-direction: column; gap: 0.5rem; }
+.guild-recent-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--border-radius-sm);
+  background: var(--bg-secondary);
+  transition: var(--transition-fast);
+}
+.guild-recent-row:hover { background: var(--bg-hover); }
+.guild-recent-winner { flex: 0 0 auto; }
+.guild-recent-meta {
+  flex: 1; display: flex; gap: 0.75rem;
+  font-size: 0.8rem; color: var(--text-secondary);
+}
+.guild-recent-date {
+  font-size: 0.75rem; color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* Quick Navigation */
+.guild-quick-nav {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem;
+}
+.guild-nav-card {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0.5rem; padding: 1.5rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  text-decoration: none; color: inherit;
+  transition: var(--transition);
+  text-align: center;
+}
+.guild-nav-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent-primary);
+}
+.guild-nav-icon { font-size: 2rem; }
+.guild-nav-title { font-weight: 700; font-size: 0.95rem; }
+.guild-nav-desc { font-size: 0.72rem; color: var(--text-muted); }
+
+/* Empty state small variant */
+.empty-state-sm { padding: 2rem 1rem; }
+.empty-state-sm .empty-icon { font-size: 2rem; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .guild-stats-row { grid-template-columns: repeat(3, 1fr); }
+  .guild-overview-grid { grid-template-columns: 1fr; }
+  .guild-quick-nav { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .guild-stats-row { grid-template-columns: repeat(2, 1fr); }
+  .guild-banner-content { flex-direction: column; text-align: center; padding: 1.5rem; }
+  .guild-banner-meta { justify-content: center; }
+  .guild-quick-nav { grid-template-columns: 1fr 1fr; }
+}
+
 /* Leaderboard */
 .leaderboard-table { overflow-x: auto; border-radius: var(--border-radius); border: 1px solid var(--border-color); }
 .leaderboard-table table { width: 100%; border-collapse: collapse; }
