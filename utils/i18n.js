@@ -180,6 +180,7 @@ const instance = new I18n();
 // Mapping des constantes internes (roles.js) vers les clés i18n
 const ROLE_KEY_MAP = {
   'Loup-Garou': 'werewolf',
+  'Loup Blanc': 'white_wolf',
   'Villageois': 'villager',
   'Voyante': 'seer',
   'Sorcière': 'witch',
@@ -189,6 +190,7 @@ const ROLE_KEY_MAP = {
   'Salvateur': 'salvateur',
   'Ancien': 'ancien',
   'Idiot du Village': 'idiot',
+  'Voleur': 'thief',
 };
 
 // Mapping des constantes internes (phases.js) vers les clés i18n
@@ -196,9 +198,11 @@ const PHASE_KEY_MAP = {
   'Nuit': 'night',
   'Jour': 'day',
   'Terminé': 'ended',
+  'Voleur': 'voleur',
   'Cupidon': 'cupidon',
   'Salvateur': 'salvateur',
   'Loups': 'loups',
+  'Loup Blanc': 'loup_blanc',
   'Sorcière': 'sorciere',
   'Voyante': 'voyante',
   'Réveil': 'reveil',

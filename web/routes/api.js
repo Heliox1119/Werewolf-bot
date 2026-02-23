@@ -326,7 +326,7 @@ module.exports = function(webServer) {
       const guild = await fetchGuild(game.guildId);
       // Clear all timers
       gm.clearGameTimers(game);
-      game.phase = 'ENDED';
+      game.phase = 'Terminé';
       game.endedAt = Date.now();
       gm.logAction(game, `[ADMIN] Partie forcée à terminer via interface web par ${req.user.username}`);
       // Announce in Discord
