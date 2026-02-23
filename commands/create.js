@@ -153,7 +153,7 @@ module.exports = {
     }
     
     game.lobbyHostId = interaction.user.id;
-    const defaultRules = config.getDefaultGameRules();
+    const defaultRules = config.getDefaultGameRules(interaction.guildId);
     const minPlayers = defaultRules.minPlayers || 5;
     const maxPlayers = defaultRules.maxPlayers || 10;
     game.rules = { minPlayers, maxPlayers };
