@@ -855,8 +855,10 @@
     // Support both old standalone button IDs and new dropdown IDs
     const flag = document.getElementById('lang-flag') || document.getElementById('user-menu-lang-flag');
     const label = document.getElementById('lang-label');
+    const sidebarLang = document.getElementById('sidebar-lang-toggle');
     if (flag) flag.textContent = lang === 'fr' ? '🇫🇷' : '🇬🇧';
     if (label) label.textContent = lang === 'fr' ? 'FR' : 'EN';
+    if (sidebarLang) sidebarLang.textContent = lang === 'fr' ? '🇫🇷' : '🇬🇧';
   }
 
   // Init on DOM ready
@@ -865,9 +867,11 @@
     applyTranslations(lang);
     updateLangButton(lang);
 
-    // Language toggle button (standalone or dropdown)
+    // Language toggle button (standalone, dropdown, or sidebar)
     document.addEventListener('click', (e) => {
-      if (e.target.id === 'lang-toggle' || e.target.closest('#lang-toggle')) {
+      if (e.target.id === 'lang-toggle' || e.target.closest('#lang-toggle')
+        || e.target.id === 'sidebar-lang-toggle' || e.target.closest('#sidebar-lang-toggle')
+        || e.target.id === 'user-menu-lang' || e.target.closest('#user-menu-lang')) {
         const current = getLang();
         setLang(current === 'fr' ? 'en' : 'fr');
       }

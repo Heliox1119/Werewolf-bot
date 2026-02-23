@@ -208,57 +208,7 @@ module.exports = function(webServer) {
     res.render('login', { title: 'Login' });
   });
 
-  /** GET /moderation — Moderation panel (Admin/Owner only, filtered per guild) */
-  router.get('/moderation', (req, res) => {
-    try {
-      if (!req.isAuthenticated || !req.isAuthenticated()) {
-        return res.redirect('/login');
-      }
-
-      const level = webServer.getUserAccessLevel(req);
-      if (level !== 'owner' && level !== 'admin') {
-        return res.render('error', { title: 'Forbidden', message: 'You need admin permissions to access moderation.' });
-      }
-
-      const isOwner = level === 'owner';
-      const botGuildIds = webServer.client ? [...webServer.client.guilds.cache.keys()] : [];
-
-      // Owner sees ALL guilds with bot; admin sees only their admin guilds
-      let guildIds;
-      let userGuilds;
-      if (isOwner) {
-        guildIds = botGuildIds;
-        userGuilds = botGuildIds.map(id => {
-          const g = webServer.client.guilds.cache.get(id);
-          return { id, name: g ? g.name : id, icon: g ? g.iconURL({ size: 64 }) : null };
-        });
-      } else {
-        userGuilds = (req.user.guilds || []).filter(g => (parseInt(g.permissions) & 0x28) !== 0 && botGuildIds.includes(g.id));
-        guildIds = userGuilds.map(g => g.id);
-        userGuilds = userGuilds.map(g => ({ id: g.id, name: g.name, icon: g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64` : null }));
-      }
-
-      const allGames = gm.getAllGames();
-      const games = allGames
-        .filter(g => guildIds.includes(g.guildId))
-        .map(g => {
-          const snap = gm.getGameSnapshot(g);
-          snap.players = (g.players || []).map(p => ({
-            id: p.id, username: p.username, role: p.role, alive: p.alive,
-            inLove: p.inLove || false, isCaptain: p.id === g.captainId
-          }));
-          return snap;
-        });
-
-      res.render('moderation', {
-        title: 'Moderation',
-        games,
-        guilds: userGuilds
-      });
-    } catch (e) {
-      res.render('error', { title: 'Error', message: e.message });
-    }
-  });
+  // Global /moderation removed — per-guild moderation is available at /guild/:id/moderation
 
   /** GET /monitoring — Monitoring page (access-level filtered) */
   router.get('/monitoring', (req, res) => {
