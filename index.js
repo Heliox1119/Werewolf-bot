@@ -214,6 +214,15 @@ client.once("clientReady", async () => {
       }
       // ──────────────────────────────────────────────────────────────
 
+      // Load saved game state BEFORE orphan cleanup so channels are recognized
+      try {
+        logger.info('Loading saved game state...');
+        gameManager.loadState();
+        logger.info('Games loaded from DB', { count: gameManager.games.size });
+      } catch (err) {
+        logger.error('❌ Game state load failed', err);
+      }
+
       // ─── Orphan channel cleanup ───────────────────────────────────
       try {
         logger.info('Checking for orphan game channels...');
@@ -229,7 +238,8 @@ client.once("clientReady", async () => {
               g.voiceChannelId === chId || g.villageChannelId === chId ||
               g.wolvesChannelId === chId || g.seerChannelId === chId ||
               g.witchChannelId === chId || g.cupidChannelId === chId ||
-              g.salvateurChannelId === chId || g.spectatorChannelId === chId
+              g.salvateurChannelId === chId || g.spectatorChannelId === chId ||
+              g.thiefChannelId === chId || g.whiteWolfChannelId === chId
             );
             if (!isOwned) {
               try {
@@ -255,11 +265,8 @@ client.once("clientReady", async () => {
       }
       // ──────────────────────────────────────────────────────────────
 
-      // Charger l'état sauvegardé des parties et tenter une restauration minimale
+      // Restaurer les parties chargées et tenter une restauration minimale
       try {
-        logger.info('Loading saved game state...');
-        gameManager.loadState();
-
         logger.info('Restoring games...', { count: gameManager.games.size });
         for (const [channelId, game] of gameManager.games.entries()) {
           // Résoudre le guild de cette partie

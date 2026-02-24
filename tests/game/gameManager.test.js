@@ -858,4 +858,86 @@ describe('GameManager', () => {
       expect(gameManager.getGameSnapshot(null)).toBeNull();
     });
   });
+
+  describe('loadState() — reboot restore', () => {
+    test('game in progress survives reboot and channels are not deleted', () => {
+      // Simulate a game that was persisted in DB mid-game (started, not ended)
+      const channelId = 'ch-reboot-test';
+      const dbGame = {
+        channel_id: channelId,
+        guild_id: 'guild-123',
+        lobby_message_id: 'msg-1',
+        lobby_host_id: 'host-1',
+        voice_channel_id: 'voice-1',
+        village_channel_id: 'village-1',
+        wolves_channel_id: 'wolves-1',
+        seer_channel_id: 'seer-1',
+        witch_channel_id: 'witch-1',
+        cupid_channel_id: 'cupid-1',
+        salvateur_channel_id: 'salvateur-1',
+        white_wolf_channel_id: 'ww-1',
+        thief_channel_id: 'thief-1',
+        spectator_channel_id: 'spectator-1',
+        phase: 'Nuit',
+        sub_phase: 'LOUPS',
+        day_count: 1,
+        captain_id: null,
+        night_victim_id: null,
+        witch_kill_target_id: null,
+        witch_save: 0,
+        white_wolf_kill_target_id: null,
+        protected_player_id: null,
+        last_protected_player_id: null,
+        village_roles_powerless: 0,
+        listen_hints_given: '[]',
+        thief_extra_roles: '[]',
+        min_players: 5,
+        max_players: 10,
+        started_at: Date.now() - 60000,  // started 1 minute ago
+        ended_at: null,                   // NOT ended
+        disable_voice_mute: 0
+      };
+
+      // Inject into mock DB
+      gameManager.db.games.set(channelId, dbGame);
+      gameManager.db.players.set(channelId, [
+        { id: 'p1', username: 'Alice', role: 'Loup-Garou', alive: true, inLove: false },
+        { id: 'p2', username: 'Bob', role: 'Villageois', alive: true, inLove: false }
+      ]);
+
+      // Spy on setLobbyTimeout to ensure it's NOT called for started games
+      const setLobbyTimeoutSpy = jest.spyOn(gameManager, 'setLobbyTimeout');
+
+      // Simulate reboot: loadState
+      gameManager.loadState();
+
+      // Game must be restored
+      expect(gameManager.games.has(channelId)).toBe(true);
+      const game = gameManager.games.get(channelId);
+
+      // Critical fields must be preserved
+      expect(game.startedAt).toBeTruthy();
+      expect(game.startedAt).toBe(dbGame.started_at);
+      expect(game.endedAt).toBeNull();
+      expect(game.phase).toBe('Nuit');
+      expect(game.subPhase).toBe('LOUPS');
+      expect(game.dayCount).toBe(1);
+
+      // All channels must be present (not null, not deleted)
+      expect(game.villageChannelId).toBe('village-1');
+      expect(game.wolvesChannelId).toBe('wolves-1');
+      expect(game.voiceChannelId).toBe('voice-1');
+      expect(game.thiefChannelId).toBe('thief-1');
+      expect(game.whiteWolfChannelId).toBe('ww-1');
+
+      // Players must be restored
+      expect(game.players).toHaveLength(2);
+      expect(game.players[0].role).toBe('Loup-Garou');
+
+      // Lobby timeout must NOT have been called (game is started)
+      expect(setLobbyTimeoutSpy).not.toHaveBeenCalled();
+
+      setLobbyTimeoutSpy.mockRestore();
+    });
+  });
 });
