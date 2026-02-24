@@ -1744,25 +1744,31 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 }
 .grules-roles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.6rem;
 }
 .grules-role-item {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  padding: 0.55rem 0.75rem;
   border-radius: var(--border-radius-xs);
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   transition: var(--transition-fast);
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
 }
 .grules-role-item:hover { border-color: var(--accent-primary); }
 .grules-role-item.camp-wolf { border-left: 3px solid var(--color-danger); }
 .grules-role-item.camp-village { border-left: 3px solid var(--color-success); }
 .grules-role-item.camp-neutral { border-left: 3px solid var(--color-warning); }
 .grules-role-emoji { font-size: 1.1rem; flex-shrink: 0; }
-.grules-role-name { font-size: 0.85rem; font-weight: 600; flex: 1; }
+.grules-role-name {
+  font-size: 0.85rem; font-weight: 600; flex: 1;
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .grules-role-camp { font-size: 0.8rem; flex-shrink: 0; }
 
 /* Role toggle disabled state */
@@ -1886,7 +1892,7 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   border-bottom-color: rgba(255, 215, 0, 0.15);
 }
 .grules-role-premium {
-  position: relative;
+  padding-right: 1rem;
 }
 .grules-role-premium:not(.grules-role-locked) {
   border-color: rgba(255, 215, 0, 0.2);
@@ -1900,19 +1906,18 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 
 /* Premium tag on role items */
 .grules-role-premium-tag {
-  font-size: 0.55rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.5px; padding: 0.1rem 0.4rem; border-radius: 4px;
-  flex-shrink: 0;
+  position: absolute; top: -1px; right: -1px;
+  font-size: 0.5rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; padding: 0.15rem 0.45rem; border-radius: 0 var(--border-radius-xs) 0 6px;
+  line-height: 1.2; z-index: 1;
 }
 .grules-role-premium-tag.unlocked {
-  background: rgba(255, 215, 0, 0.12);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(218, 165, 32, 0.18));
   color: #ffd700;
-  border: 1px solid rgba(255, 215, 0, 0.2);
 }
 .grules-role-premium-tag.locked {
-  background: rgba(148, 163, 184, 0.08);
+  background: rgba(148, 163, 184, 0.12);
   color: var(--text-muted);
-  border: 1px solid var(--border-color);
 }
 
 /* Locked state (non-premium users) */
