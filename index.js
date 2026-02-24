@@ -234,14 +234,19 @@ client.once("clientReady", async () => {
             if (!isOwned) {
               try {
                 // Check bot permissions before attempting to delete
-                const botPerms = ch.permissionsFor(guild.members.me);
-                if (!botPerms || !botPerms.has('ManageChannels')) {
-                  logger.debug('Skipping orphan channel (no ManageChannels perm)', { name: ch.name, id: chId, guild: guild.name });
-                  continue;
+                const botMember = guild.members.me;
+                if (!botMember) continue;
+                const botPerms = ch.permissionsFor(botMember);
+                if (!botPerms || !botPerms.has('ViewChannel') || !botPerms.has('ManageChannels')) {
+                  continue; // Silently skip — bot cannot manage this channel
                 }
                 await ch.delete('Orphan game channel cleanup');
                 logger.info('Deleted orphan channel', { name: ch.name, id: chId, guild: guild.name });
-              } catch (e) { logger.error('Failed to delete orphan channel', e); }
+              } catch (e) {
+                // Silently ignore Missing Access/Permissions errors (50001, 50013)
+                if (e.code === 50001 || e.code === 50013) continue;
+                logger.error('Failed to delete orphan channel', e);
+              }
             }
           }
         }
