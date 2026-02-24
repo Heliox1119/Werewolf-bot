@@ -5,12 +5,12 @@
 
 Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion vocale automatique, audio d'ambiance et lobby interactif.
 
-![Version](https://img.shields.io/badge/version-3.1.0-blue)
+![Version](https://img.shields.io/badge/version-3.2.0-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)
-![Tests](https://img.shields.io/badge/tests-200%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-223%20passed-brightgreen)
 
 ---
 
@@ -89,13 +89,20 @@ Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion
 
 ### 🗄️ Technique
 - **Persistance SQLite** — État des parties, stats joueurs, actions de nuit, métriques, succès, ELO
+- **GameMutex** — Verrou asynchrone par partie empêchant les race conditions sur les transitions de phases
+- **Table FSM de transitions** — Machine à états formelle validant toutes les transitions de phases, log des chemins invalides
+- **Sync transactionnelle** — Écritures DB atomiques via `db.transaction()`, pas d'état partiel en cas de crash
 - **Docker ready** — Dockerfile multi-stage, docker-compose avec volumes persistants, health checks
 - **Backup automatique** — Backup SQLite horaire avec rotation 24h, backup au shutdown
 - **Multi-guild** — Langue, config et catégorie par serveur avec fallback global
+- **Rate limiting API** — `express-rate-limit` (60 req/min API, 15 req/min mod), dédup commandes sur 12 commandes
+- **Métriques Prometheus** — `/api/metrics` (uptime, heap, rss, parties actives, joueurs, latence)
+- **Endpoint santé** — `/api/health` pour sondes load balancer (200/503)
+- **CORS configurable** — Restriction des origines via la variable `CORS_ORIGINS`
 - **i18n centralisé** — Singleton `I18n`, interpolation `{{variable}}`, fallback automatique
 - **Architecture EventEmitter** — GameManager émet des événements temps réel vers le web
 - **Gestion d'erreurs robuste** — safeReply, graceful shutdown, zero crash en production
-- **191 tests automatisés** — 15 suites, 0 failures
+- **223 tests automatisés** — 16 suites, 0 failures
 - **Thèmes d'embed** — 4 palettes de couleurs, commande `/theme`, 12 couleurs sémantiques
 
 ---
@@ -357,7 +364,9 @@ npm run clear-commands      # Réinitialiser les commandes Discord
 ## 📊 Historique des versions
 
 | Version | Highlights |
-|---------|-----------|| **v3.1.0** | 🛡️ Audit architecture 15 points, élimination XSS, rate limiting & debounce WebSocket, isolation multi-tenant, fixes critiques FSM, archivage parties, 200 tests || **v3.0.0** | 🌐 Tableau de bord web (Express + EJS), Spectateur live (Socket.IO), API REST (15 endpoints), Discord OAuth2, Rôles personnalisés, Architecture EventEmitter || **v2.9.0** | 🏆 Succès (18), classement ELO (7 paliers), révélation rôle à la mort, notification DM de tour, `/leaderboard`, `/history`, timeline post-game, 4 bug fixes |
+|---------|-----------|
+| **v3.2.0** | 🛡️ Renforcement 6 axes : GameMutex, transitions FSM, sync transactionnelle, dirty flag, 7 nouvelles colonnes DB, isRecentDuplicate sur 12 commandes, express-rate-limit, CORS, WS guild-scoped, Prometheus /metrics, /health, 223 tests |
+| **v3.1.0** | 🛡️ Audit architecture 15 points, élimination XSS, rate limiting & debounce WebSocket, isolation multi-tenant, fixes critiques FSM, archivage parties, 200 tests || **v3.0.0** | 🌐 Tableau de bord web (Express + EJS), Spectateur live (Socket.IO), API REST (15 endpoints), Discord OAuth2, Rôles personnalisés, Architecture EventEmitter || **v2.9.0** | 🏆 Succès (18), classement ELO (7 paliers), révélation rôle à la mort, notification DM de tour, `/leaderboard`, `/history`, timeline post-game, 4 bug fixes |
 | **v2.8.0** | 🐳 Docker, backup SQLite auto (horaire), multi-guild (langue & config par serveur), système de revanche |
 | **v2.7.0** | Petite Fille relay temps réel en DM, indices ambigus intelligents, normalisation Unicode/zalgo, wolfwin serveur-wide, commandes guild-only |
 | **v2.6.0** | Équilibrage phases, vote capitaine auto, fix potion sorcière, victoire loups configurable, ping loups |

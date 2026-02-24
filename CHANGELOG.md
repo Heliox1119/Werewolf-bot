@@ -1,5 +1,63 @@
 # 📝 Changelog - Werewolf Bot
 
+## [3.2.0] - 2026-02-24 - 6-Axis Architecture Hardening (State, Security, Multi-Tenant, Performance, Monitoring, Tests)
+
+### 🏗️ Axis 1 — State Management
+- **GameMutex** : new async promise-chaining lock per game, replaces fragile `_transitioning` boolean — prevents all race conditions on phase transitions
+- **FSM transition table** : `VALID_TRANSITIONS` map enforces valid `subPhase → subPhase` transitions, `isValidTransition()` logs warnings on invalid paths
+- **`_setSubPhase()`** : single entry point for all 30+ `game.subPhase` assignments — validates via FSM, marks game dirty, centralizes state changes
+- **Transaction-wrapped DB sync** : `syncGameToDb()` now runs inside `this.db.transaction()` — atomic writes, no partial state on crash
+- **Dirty flag** : `dirtyGames` Set tracks modified games, `saveState()` only syncs changed games (skip unnecessary I/O)
+- **7 new DB columns** : `white_wolf_channel_id`, `white_wolf_kill_target_id`, `protected_player_id`, `last_protected_player_id`, `village_roles_powerless`, `listen_hints_given`, `thief_extra_roles` — previously ephemeral state now persists across restarts
+- **`loadState()` enriched** : reads all new columns from DB instead of hardcoded defaults
+- **Timer re-arm on boot** : in-progress games get their phase timers re-armed after `loadState()` (nightAfk, transitionToDay, dayTimeout, captainVoteTimeout)
+
+### 🛡️ Axis 2 — Security & Concurrency
+- **`isRecentDuplicate` on 12 commands** : vote, kill, see, potion, protect, shoot, love, join, start, captainvote, skip, nextphase — prevents double-click / network retry exploits
+- **Session secret fix** : removed hardcoded fallback `'werewolf-dashboard-v3-stable-secret-key'`, now uses `crypto.randomBytes(32)` if no env var, with console warning
+- **API rate limiting** : `express-rate-limit` added — `apiLimiter` (60 req/min/IP) on all `/api` routes, `modLimiter` (15 req/min/IP) on POST `/api/mod/*`
+- **CORS restriction** : configurable via `CORS_ORIGINS` env var (comma-separated), applied to both Express and Socket.IO
+
+### 🌐 Axis 3 — Multi-Tenant Strict
+- **Guild-scoped WebSocket rooms** : `globalEvent` now emits to `guild:${guildId}` room instead of broadcasting to all clients
+- **`joinGuild` socket event** : clients join their guild room with snowflake validation, auto-leave previous rooms
+- **`player_stats.guild_id`** : `updatePlayerStats()` now accepts and stores `guildId`, with `COALESCE` backfill on UPDATE
+- **Composite DB index** : `(guild_id, phase)` on games table for efficient multi-tenant queries
+
+### ⚡ Axis 4 — Performance & I/O
+- **Pagination on `/api/history`** : accepts `offset` query param, returns `{ games, pagination: { offset, limit, returned } }`
+- **Pagination on `/api/leaderboard`** : accepts `offset` query param
+- **`getGuildHistory()` offset** : DB function now supports `offset` parameter for efficient pagination
+
+### 📊 Axis 5 — Monitoring & Observability
+- **`/api/health` endpoint** : lightweight health check (200 ok / 503 degraded) with `uptime`, `activeGames`, `memoryMB`, `timestamp` — designed for load balancers
+- **`/api/metrics` endpoint** : Prometheus-compatible text format — `process_uptime_seconds`, `heap_used_bytes`, `rss_bytes`, `active_games`, `total_players`, `guilds_count`, `event_loop_lag_ms`
+- **Alert system auto-wire** : `alertSystem.checkMetrics()` called automatically after each MetricsCollector `collect()` cycle
+
+### 🧪 Axis 6 — Tests & Robustness
+- **14 FSM tests** : VALID_TRANSITIONS table completeness, isValidTransition for valid/invalid/ENDED/null/undefined/unknown/full cycles
+- **9 GameMutex tests** : acquire/release, sequential execution, independent channels, concurrent serialization, isLocked, delete, destroy, auto-timeout, three-way serialization
+- **DB mock updated** : 8 new fields in createGame, 12 new fields in updateGame mapping, guildId param on updatePlayerStats, offset param on getGuildHistory
+- **Test harness fix** : `cleanupTest()` now clears `recentCommands` to prevent isRecentDuplicate from blocking subsequent test executions
+- **223 tests passing** (16 suites, 0 failures) — was 200 tests / 13 suites
+
+### 📦 Dependencies
+- **`express-rate-limit`** ^8.2.1 added
+
+### 🔧 Files Modified (27 files)
+- **game/GameMutex.js** *(new)* — Async mutex implementation
+- **game/gameManager.js** — Mutex, FSM, _setSubPhase, dirty flag, transaction sync, loadState enriched, destroy cleanup
+- **game/phases.js** — VALID_TRANSITIONS + isValidTransition()
+- **database/db.js** — 7 new column migrations, composite index, updateGame/updatePlayerStats/getGuildHistory updated
+- **index.js** — Timer re-arm on boot
+- **web/server.js** — Session secret fix, CORS restriction, guild-scoped WS rooms, joinGuild event
+- **web/routes/api.js** — express-rate-limit, /health, /metrics, pagination
+- **monitoring/metrics.js** — alertSystem.checkMetrics auto-wire
+- **12 command files** — isRecentDuplicate (vote, kill, see, potion, protect, shoot, love, join, start, captainvote, skip, nextphase)
+- **tests/** — gameMutex.test.js *(new)*, phases.test.js, vote.test.js, testHelpers.js, DB mock
+
+---
+
 ## [3.1.0] - 2026-02-24 - Architecture Audit, Security Hardening, Multi-Tenant Fixes
 
 ### 🛡️ Security
