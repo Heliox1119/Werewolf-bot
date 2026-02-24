@@ -46,7 +46,7 @@
       <% if (guild && guild.icon) { %>
         <img src="<%= guild.icon %>" alt="" class="grules-banner-icon">
       <% } else { %>
-        <div class="grules-banner-icon grules-banner-icon-placeholder">&#9881;</div>
+        <div class="grules-banner-icon grules-banner-icon-placeholder">&#128220;</div>
       <% } %>
       <div class="grules-banner-info">
         <h1><span data-i18n="grules.title">Règles du jeu</span></h1>
@@ -69,7 +69,7 @@
           <% if (isPremium) { %>
             <span class="grules-banner-stat-sep"></span>
             <span class="grules-banner-stat grules-banner-stat-premium">
-              <span class="grules-banner-stat-value">&#11088;</span>
+              <span class="grules-banner-stat-value">&#128081;</span>
               <span>Premium</span>
             </span>
           <% } %>
@@ -81,7 +81,7 @@
   <!-- Settings Section: 3 cards in a row -->
   <div class="grules-section">
     <div class="grules-section-header">
-      <div class="grules-section-icon">&#9881;</div>
+      <div class="grules-section-icon">&#9881;&#65039;</div>
       <div>
         <h2 data-i18n="grules.settings_title">Paramètres de partie</h2>
         <p data-i18n="grules.settings_desc">Configuration générale des règles du jeu</p>
@@ -183,7 +183,7 @@
   <!-- Classic Roles Section -->
   <div class="grules-section">
     <div class="grules-section-header">
-      <div class="grules-section-icon">&#9813;</div>
+      <div class="grules-section-icon">&#9876;&#65039;</div>
       <div>
         <h2 data-i18n="grules.classic_roles">Rôles Classiques</h2>
         <p data-i18n="grules.classic_roles_desc">Rôles de base disponibles pour tous les serveurs</p>
@@ -226,7 +226,7 @@
   <!-- Premium Roles Section -->
   <div class="grules-section grules-section-premium">
     <div class="grules-section-header premium">
-      <div class="grules-section-icon premium-icon">&#11088;</div>
+      <div class="grules-section-icon premium-icon">&#128081;</div>
       <div>
         <h2 class="grules-premium-title" data-i18n="grules.premium_roles">Rôles Premium</h2>
         <p data-i18n="grules.premium_roles_desc">Rôles exclusifs réservés aux membres Premium</p>
@@ -234,9 +234,9 @@
       <% if (isPremium) { %>
         <span class="grules-premium-badge-status unlocked">
           <% if (premiumTier === 'lifetime') { %>
-            &#9734; <span data-i18n="grules.premium_lifetime">Premium Lifetime</span>
+            &#128081; <span data-i18n="grules.premium_lifetime">Premium Lifetime</span>
           <% } else { %>
-            &#11088; <span data-i18n="grules.premium_active">Premium Actif</span>
+            &#128081; <span data-i18n="grules.premium_active">Premium Actif</span>
           <% } %>
         </span>
       <% } else { %>
@@ -286,7 +286,7 @@
     </div>
     <% if (!isPremium) { %>
       <div class="grules-premium-cta">
-        <div class="grules-premium-cta-icon">&#11088;</div>
+        <div class="grules-premium-cta-icon">&#128081;</div>
         <div>
           <strong data-i18n="grules.premium_cta_title">Débloquer les rôles Premium</strong>
           <p data-i18n="grules.premium_cta">Passez en Premium pour débloquer tous les rôles exclusifs et fonctionnalités avancées.</p>
@@ -298,7 +298,7 @@
   <!-- Setup Status -->
   <div class="grules-section">
     <div class="grules-section-header">
-      <div class="grules-section-icon">&#128295;</div>
+      <div class="grules-section-icon">&#128736;&#65039;</div>
       <div>
         <h2 data-i18n="grules.setup_title">Configuration</h2>
         <p data-i18n="grules.setup_desc">État du setup Discord pour ce serveur</p>

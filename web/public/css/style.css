@@ -1702,6 +1702,7 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   display: flex; align-items: center; justify-content: center;
   font-size: 1.15rem; flex-shrink: 0;
   background: rgba(139, 92, 246, 0.1);
+  overflow: hidden; line-height: 1;
 }
 .grules-section-icon.premium-icon {
   background: linear-gradient(135deg, rgba(255, 215, 0, 0.18), rgba(218, 165, 32, 0.12));
