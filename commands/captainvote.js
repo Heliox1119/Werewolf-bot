@@ -18,6 +18,9 @@ module.exports = {
     }
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) return safeReply(interaction, { content: t('error.no_game'), flags: MessageFlags.Ephemeral });
+    if (gameManager.isRecentDuplicate('captainvote', interaction.channelId, interaction.user.id)) {
+      return;
+    }
     if (interaction.channelId !== game.villageChannelId) {
       return safeReply(interaction, { content: t('error.only_village_channel'), flags: MessageFlags.Ephemeral });
     }

@@ -38,8 +38,9 @@ class WebServer {
   async start() {
     this.app = express();
     this.server = http.createServer(this.app);
+    const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : undefined;
     this.io = new SocketIO(this.server, {
-      cors: { origin: '*', methods: ['GET', 'POST'] }
+      cors: { origin: allowedOrigins || '*', methods: ['GET', 'POST'] }
     });
 
     this._setupMiddleware();
@@ -88,15 +89,18 @@ class WebServer {
         }
       }
     }));
-    this.app.use(cors());
+    this.app.use(cors(allowedOrigins ? { origin: allowedOrigins } : undefined));
     this.app.use(cookieParser());
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
 
     // Session
-    const sessionSecret = process.env.SESSION_SECRET || 'werewolf-dashboard-v3-stable-secret-key';
+    const sessionSecret = process.env.SESSION_SECRET;
+    if (!sessionSecret) {
+      logger.warn('⚠️  SESSION_SECRET env var not set — using random secret (sessions will not persist across restarts)');
+    }
     this.app.use(session({
-      secret: sessionSecret,
+      secret: sessionSecret || require('crypto').randomBytes(32).toString('hex'),
       resave: false,
       saveUninitialized: false,
       cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 } // 7 days
@@ -223,6 +227,17 @@ class WebServer {
         return rl.count > 30;
       };
 
+      // Join a guild dashboard room (for scoped globalEvent broadcasts)
+      socket.on('joinGuild', (guildId) => {
+        if (checkRateLimit()) return socket.emit('error', { message: 'Rate limited' });
+        if (typeof guildId !== 'string' || !/^\d{17,19}$/.test(guildId)) return;
+        // Leave any previous guild rooms to prevent cross-guild leaking
+        for (const room of socket.rooms) {
+          if (room.startsWith('guild:')) socket.leave(room);
+        }
+        socket.join(`guild:${guildId}`);
+      });
+
       // Join a game spectator room
       socket.on('spectate', (gameId) => {
         if (checkRateLimit()) return socket.emit('error', { message: 'Rate limited' });
@@ -300,10 +315,10 @@ class WebServer {
         this.io.to(`guild:${guildId}`).emit('gameEvent', data);
       }
 
-      // Broadcast globally (dashboard) — scoped to guild room + spectator rooms only
-      // Removed: this.io.emit('globalEvent', data) — was leaking events across guilds
-      // Dashboard clients should join their guild rooms; fallback: emit to all connected sockets
-      this.io.emit('globalEvent', { event, gameId, guildId, timestamp: data.timestamp });
+      // Broadcast globally — scoped to guild room instead of all sockets
+      if (guildId) {
+        this.io.to(`guild:${guildId}`).emit('globalEvent', { event, gameId, guildId, timestamp: data.timestamp });
+      }
 
       // On full state events, send debounced updated snapshot (200ms)
       if (['gameStarted', 'phaseChanged', 'playerKilled', 'gameEnded'].includes(event)) {

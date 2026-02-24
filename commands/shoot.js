@@ -23,6 +23,9 @@ module.exports = {
       return;
     }
 
+    if (gameManager.isRecentDuplicate('shoot', interaction.channelId, interaction.user.id)) {
+      return;
+    }
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
       await safeReply(interaction, { content: t('error.no_game'), flags: MessageFlags.Ephemeral });

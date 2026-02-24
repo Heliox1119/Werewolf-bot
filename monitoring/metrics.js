@@ -221,6 +221,14 @@ class MetricsCollector {
       this.collectDiscordMetrics();
       this.collectGameMetrics();
       this.updateHistory();
+
+      // Auto-check alerts after each collection cycle
+      try {
+        const alertSystem = require('./alerts');
+        if (alertSystem && typeof alertSystem.checkMetrics === 'function') {
+          alertSystem.checkMetrics(this.metrics);
+        }
+      } catch { /* alerts module not available */ }
       
       logger.debug('Metrics collected', {
         memory: this.metrics.system.memory.percentage,

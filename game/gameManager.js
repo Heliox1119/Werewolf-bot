@@ -5,6 +5,7 @@ const path = require('path');
 const EventEmitter = require('events');
 const { game: logger } = require('../utils/logger');
 const GameDatabase = require('../database/db');
+const gameMutex = require('./GameMutex');
 const { t, translateRole, translateRoleDesc, tips } = require('../utils/i18n');
 const { AchievementEngine, ACHIEVEMENTS } = require('./achievements');
 const { getColor } = require('../utils/theme');
@@ -32,6 +33,8 @@ class GameManager extends EventEmitter {
     this.saveInProgress = false;
     this.creationsInProgress = new Set(); // Track ongoing channel creation to prevent duplicates
     this.recentCommands = new Map(); // Cache pour déduplication: "command:channelId:userId" -> timestamp
+    this.dirtyGames = new Set(); // Track which games need DB sync
+    this.gameMutex = gameMutex; // Async mutex per game
     
     // Nettoyage périodique des recentCommands
     this._recentCommandsInterval = setInterval(() => {
@@ -209,11 +212,35 @@ class GameManager extends EventEmitter {
       clearTimeout(timeoutId);
     }
     this.lobbyTimeouts.clear();
-    // Save state and close DB
-    this.saveState();
+    // Save state (force all) and close DB
+    this.saveState(true);
+    this.gameMutex.destroy();
     if (this.db) {
       this.db.close();
     }
+  }
+
+  /**
+   * Mark a game as needing DB sync (dirty flag).
+   * @param {string} channelId
+   */
+  markDirty(channelId) {
+    this.dirtyGames.add(channelId);
+  }
+
+  /**
+   * Set sub-phase with FSM validation + dirty marking.
+   * @param {object} game
+   * @param {string} newSubPhase
+   */
+  _setSubPhase(game, newSubPhase) {
+    const from = game.subPhase;
+    if (!PHASES.isValidTransition(from, newSubPhase)) {
+      logger.warn('Invalid FSM transition attempted', { from, to: newSubPhase, channelId: game.mainChannelId });
+      // Still allow it for backward compatibility, but log loudly
+    }
+    game.subPhase = newSubPhase;
+    this.markDirty(game.mainChannelId);
   }
 
   // Retourne toutes les parties actives sous forme de tableau
@@ -552,11 +579,12 @@ class GameManager extends EventEmitter {
   }
 
   async transitionToDay(guild, game) {
-    if (game._transitioning) return;
     if (game.phase !== PHASES.NIGHT) return;
-    game._transitioning = true;
+    const release = await this.gameMutex.acquire(game.mainChannelId);
 
     try {
+      // Re-check after acquiring lock
+      if (game.phase !== PHASES.NIGHT) return;
       const newPhase = await this.nextPhase(guild, game);
       if (newPhase !== PHASES.DAY) return;
 
@@ -700,17 +728,18 @@ class GameManager extends EventEmitter {
         await this.advanceSubPhase(guild, game);
       }
     } finally {
-      game._transitioning = false;
+      release();
     }
   }
 
   async transitionToNight(guild, game) {
-    if (game._transitioning) return;
     if (game.phase !== PHASES.DAY) return;
-    game._transitioning = true;
+    const release = await this.gameMutex.acquire(game.mainChannelId);
     this.clearDayTimeout(game);
 
     try {
+      // Re-check after acquiring lock
+      if (game.phase !== PHASES.DAY) return;
       // IMPORTANT: Snapshot votes BEFORE nextPhase clears them
       const voteSnapshot = Array.from(game.votes.entries()).sort((a, b) => b[1] - a[1]);
 
@@ -807,7 +836,7 @@ class GameManager extends EventEmitter {
       this.startNightAfkTimeout(guild, game);
 
     } finally {
-      game._transitioning = false;
+      release();
     }
   }
 
@@ -867,7 +896,7 @@ class GameManager extends EventEmitter {
           times_killed: p.alive ? 0 : 1,
           times_survived: p.alive ? 1 : 0,
           favorite_role: p.role || null
-        });
+        }, game.guildId);
       }
     } catch (e) {
       this.logAction(game, `Erreur stats joueurs: ${e.message}`);
@@ -1017,7 +1046,6 @@ class GameManager extends EventEmitter {
 
   // Enchaînement logique des sous-phases
   async advanceSubPhase(guild, game) {
-    // Séquence : LOUPS -> SORCIERE -> VOYANTE -> REVEIL -> (si premier jour: VOTE_CAPITAINE) -> DELIBERATION -> (bouton capitaine) -> VOTE -> (retour nuit)
     // Vérifier la victoire à chaque sous-phase
     const victory = this.checkWinner(game);
     if (victory) {
@@ -1028,15 +1056,15 @@ class GameManager extends EventEmitter {
       case PHASES.VOLEUR:
         // Après le Voleur, vérifier si Cupidon est en jeu (première nuit uniquement)
         if (this.hasAliveRealRole(game, ROLES.CUPID)) {
-          game.subPhase = PHASES.CUPIDON;
+          this._setSubPhase(game, PHASES.CUPIDON);
           await this.announcePhase(guild, game, t('phase.cupid_wakes') || 'Cupidon se réveille...');
           this.notifyTurn(guild, game, ROLES.CUPID);
         } else if (this.hasAliveRealRole(game, ROLES.SALVATEUR) && !game.villageRolesPowerless) {
-          game.subPhase = PHASES.SALVATEUR;
+          this._setSubPhase(game, PHASES.SALVATEUR);
           await this.announcePhase(guild, game, t('phase.salvateur_wakes'));
           this.notifyTurn(guild, game, ROLES.SALVATEUR);
         } else {
-          game.subPhase = PHASES.LOUPS;
+          this._setSubPhase(game, PHASES.LOUPS);
           await this.announcePhase(guild, game, t('phase.wolves_wake'));
           this.notifyTurn(guild, game, ROLES.WEREWOLF);
         }
@@ -1044,17 +1072,17 @@ class GameManager extends EventEmitter {
       case PHASES.CUPIDON:
         // Après Cupidon, vérifier si Salvateur est en jeu
         if (this.hasAliveRealRole(game, ROLES.SALVATEUR) && !game.villageRolesPowerless) {
-          game.subPhase = PHASES.SALVATEUR;
+          this._setSubPhase(game, PHASES.SALVATEUR);
           await this.announcePhase(guild, game, t('phase.salvateur_wakes'));
           this.notifyTurn(guild, game, ROLES.SALVATEUR);
         } else {
-          game.subPhase = PHASES.LOUPS;
+          this._setSubPhase(game, PHASES.LOUPS);
           await this.announcePhase(guild, game, t('phase.wolves_wake'));
           this.notifyTurn(guild, game, ROLES.WEREWOLF);
         }
         break;
       case PHASES.SALVATEUR:
-        game.subPhase = PHASES.LOUPS;
+        this._setSubPhase(game, PHASES.LOUPS);
         await this.announcePhase(guild, game, t('phase.wolves_wake'));
         this.notifyTurn(guild, game, ROLES.WEREWOLF);
         break;
@@ -1063,48 +1091,48 @@ class GameManager extends EventEmitter {
         // Après les loups, vérifier si le Loup Blanc se réveille (nuits impaires, dayCount >= 1)
         const isOddNight = (game.dayCount || 0) % 2 === 1;
         if (isOddNight && this.hasAliveRealRole(game, ROLES.WHITE_WOLF)) {
-          game.subPhase = PHASES.LOUP_BLANC;
+          this._setSubPhase(game, PHASES.LOUP_BLANC);
           await this.announcePhase(guild, game, t('phase.white_wolf_wakes'));
           this.notifyTurn(guild, game, ROLES.WHITE_WOLF);
         } else if (this.hasAliveRealRole(game, ROLES.WITCH) && !game.villageRolesPowerless) {
-          game.subPhase = PHASES.SORCIERE;
+          this._setSubPhase(game, PHASES.SORCIERE);
           await this.announcePhase(guild, game, t('phase.witch_wakes'));
           this.notifyTurn(guild, game, ROLES.WITCH);
         } else if (this.hasAliveRealRole(game, ROLES.SEER) && !game.villageRolesPowerless) {
-          game.subPhase = PHASES.VOYANTE;
+          this._setSubPhase(game, PHASES.VOYANTE);
           await this.announcePhase(guild, game, t('phase.seer_wakes'));
           this.notifyTurn(guild, game, ROLES.SEER);
         } else {
-          game.subPhase = PHASES.REVEIL;
+          this._setSubPhase(game, PHASES.REVEIL);
           await this.announcePhase(guild, game, t('phase.village_wakes'));
         }
         break;
       case PHASES.LOUP_BLANC:
         if (this.hasAliveRealRole(game, ROLES.WITCH) && !game.villageRolesPowerless) {
-          game.subPhase = PHASES.SORCIERE;
+          this._setSubPhase(game, PHASES.SORCIERE);
           await this.announcePhase(guild, game, t('phase.witch_wakes'));
           this.notifyTurn(guild, game, ROLES.WITCH);
         } else if (this.hasAliveRealRole(game, ROLES.SEER) && !game.villageRolesPowerless) {
-          game.subPhase = PHASES.VOYANTE;
+          this._setSubPhase(game, PHASES.VOYANTE);
           await this.announcePhase(guild, game, t('phase.seer_wakes'));
           this.notifyTurn(guild, game, ROLES.SEER);
         } else {
-          game.subPhase = PHASES.REVEIL;
+          this._setSubPhase(game, PHASES.REVEIL);
           await this.announcePhase(guild, game, t('phase.village_wakes'));
         }
         break;
       case PHASES.SORCIERE:
         if (this.hasAliveRealRole(game, ROLES.SEER) && !game.villageRolesPowerless) {
-          game.subPhase = PHASES.VOYANTE;
+          this._setSubPhase(game, PHASES.VOYANTE);
           await this.announcePhase(guild, game, t('phase.seer_wakes'));
           this.notifyTurn(guild, game, ROLES.SEER);
         } else {
-          game.subPhase = PHASES.REVEIL;
+          this._setSubPhase(game, PHASES.REVEIL);
           await this.announcePhase(guild, game, t('phase.village_wakes'));
         }
         break;
       case PHASES.VOYANTE:
-        game.subPhase = PHASES.REVEIL;
+        this._setSubPhase(game, PHASES.REVEIL);
         await this.announcePhase(guild, game, t('phase.village_wakes'));
         break;
       case PHASES.REVEIL:
@@ -1114,29 +1142,29 @@ class GameManager extends EventEmitter {
         const captainDead = !captain || !captain.alive;
         if ((isFirstDay && !game.captainId) || captainDead) {
           game.captainId = null; // reset
-          game.subPhase = PHASES.VOTE_CAPITAINE;
+          this._setSubPhase(game, PHASES.VOTE_CAPITAINE);
           await this.announcePhase(guild, game, t('phase.captain_vote_announce'));
           this.startCaptainVoteTimeout(guild, game);
         } else {
-          game.subPhase = PHASES.DELIBERATION;
+          this._setSubPhase(game, PHASES.DELIBERATION);
           await this.announcePhase(guild, game, t('phase.deliberation_announce'));
           this.startDayTimeout(guild, game, 'deliberation');
         }
         break;
       case PHASES.VOTE_CAPITAINE:
-        game.subPhase = PHASES.DELIBERATION;
+        this._setSubPhase(game, PHASES.DELIBERATION);
         await this.announcePhase(guild, game, t('phase.deliberation_announce'));
         this.startDayTimeout(guild, game, 'deliberation');
         break;
       case PHASES.DELIBERATION:
         // Passage en phase de vote
-        game.subPhase = PHASES.VOTE;
+        this._setSubPhase(game, PHASES.VOTE);
         await this.announcePhase(guild, game, t('phase.vote_announce'));
         this.startDayTimeout(guild, game, 'vote');
         break;
       case PHASES.VOTE:
       default:
-        game.subPhase = PHASES.LOUPS;
+        this._setSubPhase(game, PHASES.LOUPS);
         await this.announcePhase(guild, game, t('phase.night_wolves_wake'));
         break;
     }
@@ -1250,7 +1278,7 @@ class GameManager extends EventEmitter {
           // End of deliberation → move to vote phase
           await this.sendLogged(mainChannel, t('game.afk_deliberation'), { type: 'afkTimeout' });
           this.logAction(game, 'Timeout: fin de la délibération');
-          game.subPhase = PHASES.VOTE;
+          this._setSubPhase(game, PHASES.VOTE);
           await this.announcePhase(guild, game, t('phase.vote_announce'));
           this.startDayTimeout(guild, game, 'vote');
         } else {
@@ -1428,15 +1456,15 @@ class GameManager extends EventEmitter {
     // Ordre: VOLEUR → CUPIDON → SALVATEUR → LOUPS
     const hasThief = game.players.some(p => p.role === ROLES.THIEF && p.alive);
     if (hasThief && game.thiefExtraRoles.length === 2) {
-      game.subPhase = PHASES.VOLEUR;
+      this._setSubPhase(game, PHASES.VOLEUR);
     } else {
       const hasCupid = game.players.some(p => p.role === ROLES.CUPID && p.alive);
       if (hasCupid) {
-        game.subPhase = PHASES.CUPIDON;
+        this._setSubPhase(game, PHASES.CUPIDON);
       } else {
         const hasSalvateur = game.players.some(p => p.role === ROLES.SALVATEUR && p.alive);
         if (hasSalvateur) {
-          game.subPhase = PHASES.SALVATEUR;
+          this._setSubPhase(game, PHASES.SALVATEUR);
         }
       }
     }
@@ -2256,18 +2284,18 @@ class GameManager extends EventEmitter {
       const cupidAlive = this.hasAliveRealRole(game, ROLES.CUPID);
       const cupidNotUsed = !game.lovers || game.lovers.length === 0;
       if (isFirstNight && cupidAlive && cupidNotUsed) {
-        game.subPhase = PHASES.CUPIDON;
+        this._setSubPhase(game, PHASES.CUPIDON);
       } else {
         // Si Salvateur en jeu et pas de perte de pouvoirs, sous-phase SALVATEUR
         const salvateurAlive = this.hasAliveRealRole(game, ROLES.SALVATEUR);
         if (salvateurAlive && !game.villageRolesPowerless) {
-          game.subPhase = PHASES.SALVATEUR;
+          this._setSubPhase(game, PHASES.SALVATEUR);
         } else {
-          game.subPhase = PHASES.LOUPS;
+          this._setSubPhase(game, PHASES.LOUPS);
         }
       }
     } else {
-      game.subPhase = PHASES.REVEIL;
+      this._setSubPhase(game, PHASES.REVEIL);
     }
 
     // Mettre à jour les permissions vocales
@@ -2593,14 +2621,15 @@ class GameManager extends EventEmitter {
     }, 500);
   }
 
-  // Synchronise une partie du cache vers la base de données
+  // Synchronise une partie du cache vers la base de données (wrapped in transaction)
   syncGameToDb(channelId) {
     const game = this.games.get(channelId);
     if (!game) return;
 
-    try {
-      // Mettre à jour la partie
-      this.db.updateGame(channelId, {
+    const self = this;
+    const syncFn = this.db.transaction(function() {
+      // Mettre à jour la partie (all state fields including previously missing ones)
+      self.db.updateGame(channelId, {
         lobbyMessageId: game.lobbyMessageId,
         lobbyHostId: game.lobbyHostId,
         voiceChannelId: game.voiceChannelId,
@@ -2611,6 +2640,7 @@ class GameManager extends EventEmitter {
         cupidChannelId: game.cupidChannelId,
         salvateurChannelId: game.salvateurChannelId,
         thiefChannelId: game.thiefChannelId,
+        whiteWolfChannelId: game.whiteWolfChannelId,
         spectatorChannelId: game.spectatorChannelId,
         phase: game.phase,
         subPhase: game.subPhase,
@@ -2620,49 +2650,64 @@ class GameManager extends EventEmitter {
         endedAt: game.endedAt,
         nightVictim: game.nightVictim,
         witchKillTarget: game.witchKillTarget,
-        witchSave: game.witchSave ? 1 : 0
+        witchSave: game.witchSave ? 1 : 0,
+        // Previously missing — now persisted
+        whiteWolfKillTarget: game.whiteWolfKillTarget || null,
+        protectedPlayerId: game.protectedPlayerId || null,
+        lastProtectedPlayerId: game.lastProtectedPlayerId || null,
+        villageRolesPowerless: game.villageRolesPowerless ? 1 : 0,
+        listenHintsGiven: JSON.stringify(game.listenHintsGiven || []),
+        thiefExtraRoles: JSON.stringify(game.thiefExtraRoles || [])
       });
 
       // Mettre à jour les lovers (in-memory: [[id1, id2]], DB: flat pair)
       if (game.lovers && game.lovers.length > 0 && Array.isArray(game.lovers[0])) {
         const pair = game.lovers[0];
-        this.db.setLovers(channelId, pair[0], pair[1]);
+        self.db.setLovers(channelId, pair[0], pair[1]);
       }
 
       // Synchroniser les joueurs
-      const dbPlayers = this.db.getPlayers(channelId);
+      const dbPlayers = self.db.getPlayers(channelId);
       const dbPlayerIds = new Set(dbPlayers.map(p => p.id));
       
       // Ajouter les nouveaux joueurs
       for (const player of game.players) {
         if (!dbPlayerIds.has(player.id)) {
-          this.db.addPlayer(channelId, player.id, player.username);
+          self.db.addPlayer(channelId, player.id, player.username);
         }
         // Mettre à jour le statut
-        this.db.updatePlayer(channelId, player.id, {
+        self.db.updatePlayer(channelId, player.id, {
           role: player.role,
           alive: player.alive,
           inLove: player.inLove || false
         });
       }
+    });
 
-      logger.debug('Game synced to DB', { channelId });
+    try {
+      syncFn();
+      logger.debug('Game synced to DB (transaction)', { channelId });
     } catch (error) {
       logger.error('Failed to sync game to DB', error);
     }
   }
 
-  // Immediate save (synchronous) - Legacy pour compatibilité
-  saveState() {
+  // Immediate save — only syncs dirty games (or all on force)
+  saveState(force = false) {
     if (this.saveInProgress) return;
     this.saveInProgress = true;
     
     try {
-      // Synchroniser toutes les parties vers la DB
-      for (const channelId of this.games.keys()) {
-        this.syncGameToDb(channelId);
+      const toSync = force ? Array.from(this.games.keys()) : Array.from(this.dirtyGames);
+      for (const channelId of toSync) {
+        if (this.games.has(channelId)) {
+          this.syncGameToDb(channelId);
+        }
       }
-      logger.debug('All games synced to DB', { gameCount: this.games.size });
+      this.dirtyGames.clear();
+      if (toSync.length > 0) {
+        logger.debug('Games synced to DB', { count: toSync.length });
+      }
     } catch (error) {
       logger.error('❌ Failed to sync games to DB', error);
     } finally {
@@ -2706,27 +2751,32 @@ class GameManager extends EventEmitter {
           witchChannelId: dbGame.witch_channel_id,
           cupidChannelId: dbGame.cupid_channel_id,
           salvateurChannelId: dbGame.salvateur_channel_id || null,
+          whiteWolfChannelId: dbGame.white_wolf_channel_id || null,
+          thiefChannelId: dbGame.thief_channel_id || null,
           spectatorChannelId: dbGame.spectator_channel_id || null,
           phase: dbGame.phase,
           subPhase: dbGame.sub_phase,
           dayCount: dbGame.day_count,
           captainId: dbGame.captain_id,
-          captainVotes: new Map(), // Pas persisté dans la DB car temporaire
-          captainVoters: new Map(), // Pas persisté dans la DB car temporaire
+          captainVotes: new Map(),
+          captainVoters: new Map(),
           lovers: lovers,
           players: players,
           dead: dead,
-          votes: new Map(), // Charger depuis votes table si besoin
+          votes: new Map(),
           voteVoters: new Map(),
           witchPotions: witchPotions,
           nightVictim: dbGame.night_victim_id || null,
           witchKillTarget: dbGame.witch_kill_target_id || null,
           witchSave: dbGame.witch_save === 1,
-          protectedPlayerId: null,
-          lastProtectedPlayerId: null,
-          villageRolesPowerless: false,
-          listenRelayUserId: null,
-          listenHintsGiven: [],
+          // v3.2 — now persisted properly instead of heuristic restore
+          whiteWolfKillTarget: dbGame.white_wolf_kill_target_id || null,
+          protectedPlayerId: dbGame.protected_player_id || null,
+          lastProtectedPlayerId: dbGame.last_protected_player_id || null,
+          villageRolesPowerless: dbGame.village_roles_powerless === 1,
+          listenRelayUserId: null, // Runtime-only (relay dies on restart)
+          listenHintsGiven: JSON.parse(dbGame.listen_hints_given || '[]'),
+          thiefExtraRoles: JSON.parse(dbGame.thief_extra_roles || '[]'),
           rules: { 
             minPlayers: dbGame.min_players, 
             maxPlayers: dbGame.max_players 
@@ -2737,8 +2787,8 @@ class GameManager extends EventEmitter {
           disableVoiceMute: dbGame.disable_voice_mute === 1
         };
 
-        // Restaurer villageRolesPowerless depuis les logs
-        if (actionLog.some(a => a.text && a.text.includes('pouvoirs perdus'))) {
+        // Fallback: restore villageRolesPowerless from logs if column was 0 but logs say otherwise
+        if (!game.villageRolesPowerless && actionLog.some(a => a.text && a.text.includes('pouvoirs perdus'))) {
           game.villageRolesPowerless = true;
         }
 

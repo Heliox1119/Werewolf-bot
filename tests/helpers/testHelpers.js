@@ -194,6 +194,11 @@ function assertValidPlayer(player) {
 function cleanupTest() {
   jest.clearAllTimers();
   jest.clearAllMocks();
+  // Clear the recentCommands map to prevent isRecentDuplicate from blocking
+  const gameManager = require('../../game/gameManager');
+  if (gameManager.recentCommands) {
+    gameManager.recentCommands.clear();
+  }
 }
 
 /**

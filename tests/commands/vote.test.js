@@ -200,6 +200,9 @@ describe('Commande /vote', () => {
     i1.options.getUser = jest.fn(() => ({ id: '222222222222222222', username: 'Target1' }));
     await voteCommand.execute(i1);
 
+    // Clear dedup cache so the same user can vote again in the same test
+    gameManager.recentCommands.clear();
+
     // Deuxième vote (changement)
     const i2 = createMockInteraction({ commandName: 'vote', channelId: 'ch-vote', userId: '111111111111111111' });
     i2.options.getUser = jest.fn(() => ({ id: '333333333333333333', username: 'Target2' }));

@@ -2,12 +2,32 @@
  * REST API routes — Stats, Games, Leaderboard, History, Config
  */
 const express = require('express');
+const rateLimit = require('express-rate-limit');
+
+// Rate limiters for API routes
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,             // 60 requests per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many requests, please try again later.' }
+});
+const modLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 15,             // 15 mod actions per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many mod actions, please try again later.' }
+});
 
 module.exports = function(webServer) {
   const router = express.Router();
   const gm = webServer.gameManager;
   const db = webServer.db;
   const client = webServer.client; // Discord client for guild fetching
+
+  // Apply rate limiting to all API routes
+  router.use(apiLimiter);
 
   // ==================== GAMES ====================
 
@@ -34,10 +54,11 @@ module.exports = function(webServer) {
 
   // ==================== LEADERBOARD ====================
 
-  /** GET /api/leaderboard?limit=10&guild=id — ELO leaderboard */
+  /** GET /api/leaderboard?limit=10&offset=0&guild=id — ELO leaderboard */
   router.get('/leaderboard', (req, res) => {
     try {
       const limit = Math.min(parseInt(req.query.limit) || 25, 100);
+      const offset = Math.max(parseInt(req.query.offset) || 0, 0);
       const guildId = req.query.guild || null;
 
       if (gm.achievements) {
@@ -99,13 +120,14 @@ module.exports = function(webServer) {
 
   // ==================== HISTORY ====================
 
-  /** GET /api/history?guild=id&limit=10 — Game history */
+  /** GET /api/history?guild=id&limit=10&offset=0 — Game history */
   router.get('/history', (req, res) => {
     try {
       const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+      const offset = Math.max(parseInt(req.query.offset) || 0, 0);
       const guildId = req.query.guild || null;
-      const history = guildId ? db.getGuildHistory(guildId, limit) : db.getGuildHistory(null, limit);
-      res.json({ success: true, data: history });
+      const history = guildId ? db.getGuildHistory(guildId, limit, offset) : db.getGuildHistory(null, limit, offset);
+      res.json({ success: true, data: history, pagination: { limit, offset } });
     } catch (e) {
       res.status(500).json({ success: false, error: e.message });
     }
@@ -323,7 +345,7 @@ module.exports = function(webServer) {
   }
 
   /** POST /api/mod/force-end/:gameId — Force end a game */
-  router.post('/mod/force-end/:gameId', requireAuth, async (req, res) => {
+  router.post('/mod/force-end/:gameId', modLimiter, requireAuth, async (req, res) => {
     try {
       console.log('[MOD] force-end requested for:', req.params.gameId, 'by:', req.user?.username);
       const game = gm.games.get(req.params.gameId);
@@ -357,7 +379,7 @@ module.exports = function(webServer) {
   });
 
   /** POST /api/mod/skip-phase/:gameId — Force skip to next phase */
-  router.post('/mod/skip-phase/:gameId', requireAuth, async (req, res) => {
+  router.post('/mod/skip-phase/:gameId', modLimiter, requireAuth, async (req, res) => {
     try {
       console.log('[MOD] skip-phase requested for:', req.params.gameId, 'by:', req.user?.username);
       const game = gm.games.get(req.params.gameId);
@@ -396,7 +418,7 @@ module.exports = function(webServer) {
   });
 
   /** POST /api/mod/kill-player/:gameId/:playerId — Force kill a player */
-  router.post('/mod/kill-player/:gameId/:playerId', requireAuth, async (req, res) => {
+  router.post('/mod/kill-player/:gameId/:playerId', modLimiter, requireAuth, async (req, res) => {
     try {
       console.log('[MOD] kill-player requested for:', req.params.gameId, 'player:', req.params.playerId, 'by:', req.user?.username);
       const game = gm.games.get(req.params.gameId);
@@ -452,7 +474,7 @@ module.exports = function(webServer) {
   });
 
   /** POST /api/mod/reveal-role/:gameId/:playerId — Reveal a player's role */
-  router.post('/mod/reveal-role/:gameId/:playerId', requireAuth, (req, res) => {
+  router.post('/mod/reveal-role/:gameId/:playerId', modLimiter, requireAuth, (req, res) => {
     try {
       const game = gm.games.get(req.params.gameId);
       if (!game) return res.status(404).json({ success: false, error: 'Game not found' });
@@ -573,6 +595,62 @@ module.exports = function(webServer) {
       }
     } catch (e) {
       res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  // ==================== HEALTH & METRICS ====================
+
+  /** GET /api/health — Lightweight health check (for load balancers / uptime monitors) */
+  router.get('/health', (req, res) => {
+    const activeGames = gm.getAllGames().length;
+    const uptime = Math.floor(process.uptime());
+    const mem = process.memoryUsage();
+    const healthy = uptime > 0 && mem.heapUsed < mem.heapTotal * 0.95;
+    res.status(healthy ? 200 : 503).json({
+      status: healthy ? 'ok' : 'degraded',
+      uptime,
+      activeGames,
+      memoryMB: Math.round(mem.heapUsed / 1024 / 1024),
+      timestamp: Date.now()
+    });
+  });
+
+  /** GET /api/metrics — Prometheus-compatible text metrics */
+  router.get('/metrics', (req, res) => {
+    try {
+      const mem = process.memoryUsage();
+      const activeGames = gm.getAllGames().length;
+      const totalPlayers = gm.getAllGames().reduce((s, g) => s + g.players.length, 0);
+      const guilds = client ? client.guilds.cache.size : 0;
+      const latency = client ? client.ws.ping : 0;
+
+      const lines = [
+        '# HELP process_uptime_seconds Process uptime in seconds',
+        '# TYPE process_uptime_seconds gauge',
+        `process_uptime_seconds ${Math.floor(process.uptime())}`,
+        '# HELP process_heap_bytes Process heap usage in bytes',
+        '# TYPE process_heap_bytes gauge',
+        `process_heap_bytes ${mem.heapUsed}`,
+        '# HELP process_rss_bytes Process RSS in bytes',
+        '# TYPE process_rss_bytes gauge',
+        `process_rss_bytes ${mem.rss}`,
+        '# HELP werewolf_active_games Number of active games',
+        '# TYPE werewolf_active_games gauge',
+        `werewolf_active_games ${activeGames}`,
+        '# HELP werewolf_total_players Total players in active games',
+        '# TYPE werewolf_total_players gauge',
+        `werewolf_total_players ${totalPlayers}`,
+        '# HELP discord_guilds Number of Discord guilds',
+        '# TYPE discord_guilds gauge',
+        `discord_guilds ${guilds}`,
+        '# HELP discord_latency_ms Discord WebSocket latency',
+        '# TYPE discord_latency_ms gauge',
+        `discord_latency_ms ${latency}`,
+      ];
+      res.set('Content-Type', 'text/plain; version=0.0.4');
+      res.send(lines.join('\n') + '\n');
+    } catch (e) {
+      res.status(500).send('# Error collecting metrics\n');
     }
   });
 

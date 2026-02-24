@@ -69,6 +69,42 @@ class GameDatabase {
         this.db.exec('ALTER TABLE games ADD COLUMN spectator_channel_id TEXT');
         logger.info('Migration: added spectator_channel_id column');
       }
+      // v3.2 migrations — persist previously missing state fields
+      if (!columns.includes('white_wolf_channel_id')) {
+        this.db.exec('ALTER TABLE games ADD COLUMN white_wolf_channel_id TEXT');
+        logger.info('Migration: added white_wolf_channel_id column');
+      }
+      if (!columns.includes('white_wolf_kill_target_id')) {
+        this.db.exec('ALTER TABLE games ADD COLUMN white_wolf_kill_target_id TEXT');
+        logger.info('Migration: added white_wolf_kill_target_id column');
+      }
+      if (!columns.includes('protected_player_id')) {
+        this.db.exec('ALTER TABLE games ADD COLUMN protected_player_id TEXT');
+        logger.info('Migration: added protected_player_id column');
+      }
+      if (!columns.includes('last_protected_player_id')) {
+        this.db.exec('ALTER TABLE games ADD COLUMN last_protected_player_id TEXT');
+        logger.info('Migration: added last_protected_player_id column');
+      }
+      if (!columns.includes('village_roles_powerless')) {
+        this.db.exec('ALTER TABLE games ADD COLUMN village_roles_powerless BOOLEAN DEFAULT 0');
+        logger.info('Migration: added village_roles_powerless column');
+      }
+      if (!columns.includes('listen_hints_given')) {
+        this.db.exec("ALTER TABLE games ADD COLUMN listen_hints_given TEXT DEFAULT '[]'");
+        logger.info('Migration: added listen_hints_given column');
+      }
+      if (!columns.includes('thief_extra_roles')) {
+        this.db.exec("ALTER TABLE games ADD COLUMN thief_extra_roles TEXT DEFAULT '[]'");
+        logger.info('Migration: added thief_extra_roles column');
+      }
+      // Add guild_id to player_stats for per-guild leaderboards
+      const statsColumns = this.db.pragma('table_info(player_stats)').map(c => c.name);
+      if (!statsColumns.includes('guild_id')) {
+        this.db.exec('ALTER TABLE player_stats ADD COLUMN guild_id TEXT');
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_player_stats_guild ON player_stats(guild_id)');
+        logger.info('Migration: added guild_id to player_stats');
+      }
 
       // Migration: create game_history table if it doesn't exist
       const tables = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='game_history'").get();
@@ -115,6 +151,7 @@ class GameDatabase {
       // Migration: add missing indexes for performance
       this.db.exec('CREATE INDEX IF NOT EXISTS idx_games_guild ON games(guild_id)');
       this.db.exec('CREATE INDEX IF NOT EXISTS idx_games_guild_ended ON games(guild_id, ended_at)');
+      this.db.exec('CREATE INDEX IF NOT EXISTS idx_games_guild_phase ON games(guild_id, phase)');
       this.db.exec('CREATE INDEX IF NOT EXISTS idx_player_stats_username ON player_stats(username)');
     } catch (err) {
       logger.error('Schema migration error', { error: err.message });
@@ -197,7 +234,9 @@ class GameDatabase {
       witchChannelId: 'witch_channel_id',
       cupidChannelId: 'cupid_channel_id',
       salvateurChannelId: 'salvateur_channel_id',
+      whiteWolfChannelId: 'white_wolf_channel_id',
       spectatorChannelId: 'spectator_channel_id',
+      thiefChannelId: 'thief_channel_id',
       phase: 'phase',
       subPhase: 'sub_phase',
       dayCount: 'day_count',
@@ -206,7 +245,14 @@ class GameDatabase {
       endedAt: 'ended_at',
       nightVictim: 'night_victim_id',
       witchKillTarget: 'witch_kill_target_id',
-      witchSave: 'witch_save'
+      witchSave: 'witch_save',
+      // v3.2 — previously missing state fields
+      whiteWolfKillTarget: 'white_wolf_kill_target_id',
+      protectedPlayerId: 'protected_player_id',
+      lastProtectedPlayerId: 'last_protected_player_id',
+      villageRolesPowerless: 'village_roles_powerless',
+      listenHintsGiven: 'listen_hints_given',
+      thiefExtraRoles: 'thief_extra_roles'
     };
 
     for (const [jsKey, dbKey] of Object.entries(mapping)) {
@@ -485,21 +531,23 @@ class GameDatabase {
 
   // ===== PLAYER STATS =====
 
-  updatePlayerStats(playerId, username, updates) {
+  updatePlayerStats(playerId, username, updates, guildId = null) {
     try {
       // Upsert: insérer ou mettre à jour
       const existing = this.db.prepare('SELECT * FROM player_stats WHERE player_id = ?').get(playerId);
       if (!existing) {
         this.db.prepare(`
-          INSERT INTO player_stats (player_id, username, games_played, games_won, times_killed, times_survived, favorite_role)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO player_stats (player_id, username, games_played, games_won, times_killed, times_survived, favorite_role, guild_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
           playerId, username,
           updates.games_played || 0, updates.games_won || 0,
           updates.times_killed || 0, updates.times_survived || 0,
-          updates.favorite_role || null
+          updates.favorite_role || null,
+          guildId
         );
       } else {
+        // Also update guild_id if not set and now available
         this.db.prepare(`
           UPDATE player_stats SET
             username = ?,
@@ -507,12 +555,14 @@ class GameDatabase {
             games_won = games_won + ?,
             times_killed = times_killed + ?,
             times_survived = times_survived + ?,
+            guild_id = COALESCE(guild_id, ?),
             updated_at = strftime('%s', 'now')
           WHERE player_id = ?
         `).run(
           username,
           updates.games_played || 0, updates.games_won || 0,
           updates.times_killed || 0, updates.times_survived || 0,
+          guildId,
           playerId
         );
       }
@@ -571,11 +621,16 @@ class GameDatabase {
     }
   }
 
-  getGuildHistory(guildId, limit = 10) {
+  getGuildHistory(guildId, limit = 10, offset = 0) {
     try {
+      if (guildId) {
+        return this.db.prepare(
+          'SELECT * FROM game_history WHERE guild_id = ? ORDER BY ended_at DESC LIMIT ? OFFSET ?'
+        ).all(guildId, limit, offset);
+      }
       return this.db.prepare(
-        'SELECT * FROM game_history WHERE guild_id = ? ORDER BY ended_at DESC LIMIT ?'
-      ).all(guildId, limit);
+        'SELECT * FROM game_history ORDER BY ended_at DESC LIMIT ? OFFSET ?'
+      ).all(limit, offset);
     } catch (err) {
       return [];
     }

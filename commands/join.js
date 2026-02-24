@@ -15,6 +15,9 @@ module.exports = {
       await safeReply(interaction, { content: t('error.action_forbidden'), flags: MessageFlags.Ephemeral });
       return;
     }
+    if (gameManager.isRecentDuplicate('join', interaction.channelId, interaction.user.id)) {
+      return;
+    }
     // Trouver la partie via n'importe quel channel de la catégorie
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {

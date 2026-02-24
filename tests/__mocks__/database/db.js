@@ -36,7 +36,15 @@ class MockGameDatabase {
       sub_phase: null,
       day_count: 0,
       captain_id: null,
-      disable_voice_mute: options.disableVoiceMute || 0
+      disable_voice_mute: options.disableVoiceMute || 0,
+      white_wolf_channel_id: null,
+      thief_channel_id: null,
+      white_wolf_kill_target_id: null,
+      protected_player_id: null,
+      last_protected_player_id: null,
+      village_roles_powerless: 0,
+      listen_hints_given: '[]',
+      thief_extra_roles: '[]'
     });
     
     this.players.set(channelId, []);
@@ -72,6 +80,14 @@ class MockGameDatabase {
       cupidChannelId: 'cupid_channel_id',
       salvateurChannelId: 'salvateur_channel_id',
       spectatorChannelId: 'spectator_channel_id',
+      whiteWolfChannelId: 'white_wolf_channel_id',
+      thiefChannelId: 'thief_channel_id',
+      whiteWolfKillTarget: 'white_wolf_kill_target_id',
+      protectedPlayerId: 'protected_player_id',
+      lastProtectedPlayerId: 'last_protected_player_id',
+      villageRolesPowerless: 'village_roles_powerless',
+      listenHintsGiven: 'listen_hints_given',
+      thiefExtraRoles: 'thief_extra_roles',
       phase: 'phase',
       subPhase: 'sub_phase',
       dayCount: 'day_count',
@@ -251,7 +267,7 @@ class MockGameDatabase {
 
   // ===== PLAYER STATS =====
 
-  updatePlayerStats(playerId, username, updates) {
+  updatePlayerStats(playerId, username, updates, guildId = null) {
     return true;
   }
 
@@ -265,7 +281,7 @@ class MockGameDatabase {
     return true;
   }
 
-  getGuildHistory(guildId, limit = 10) {
+  getGuildHistory(guildId, limit = 10, offset = 0) {
     return [];
   }
 

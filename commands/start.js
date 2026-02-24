@@ -18,6 +18,9 @@ module.exports = {
       await interaction.reply({ content: t('error.action_forbidden'), flags: MessageFlags.Ephemeral });
       return;
     }
+    if (gameManager.isRecentDuplicate('start', interaction.channelId, interaction.user.id)) {
+      return;
+    }
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
       await interaction.reply({ content: t('error.no_game'), flags: MessageFlags.Ephemeral });

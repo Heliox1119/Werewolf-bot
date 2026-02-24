@@ -33,6 +33,9 @@ module.exports = {
       await safeReply(interaction, { content: t('error.action_forbidden'), flags: MessageFlags.Ephemeral });
       return;
     }
+    if (gameManager.isRecentDuplicate('potion', interaction.channelId, interaction.user.id)) {
+      return;
+    }
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
       await safeReply(interaction, { content: t('error.no_game'), flags: MessageFlags.Ephemeral });

@@ -23,6 +23,9 @@ module.exports = {
     }
     const { safeDefer } = require('../utils/interaction');
     await safeDefer(interaction);
+    if (gameManager.isRecentDuplicate('nextphase', interaction.channelId, interaction.user.id)) {
+      return;
+    }
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
       await interaction.editReply({ content: t('error.no_game'), flags: MessageFlags.Ephemeral });

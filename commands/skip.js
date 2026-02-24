@@ -17,6 +17,9 @@ module.exports = {
       return;
     }
 
+    if (gameManager.isRecentDuplicate('skip', interaction.channelId, interaction.user.id)) {
+      return;
+    }
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
       await safeReply(interaction, { content: t('error.no_game_dot'), flags: MessageFlags.Ephemeral });

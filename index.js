@@ -306,6 +306,29 @@ client.once("clientReady", async () => {
           if (!game.startedAt) {
             gameManager.setLobbyTimeout(channelId);
             logger.debug('Re-armed lobby timeout for restored game', { channelId });
+          } else {
+            // Re-arm gameplay timers for in-progress games
+            const PHASES = require('./game/phases');
+            const nightActionPhases = [PHASES.VOLEUR, PHASES.LOUPS, PHASES.LOUP_BLANC, PHASES.SORCIERE, PHASES.VOYANTE, PHASES.SALVATEUR, PHASES.CUPIDON];
+            if (game.phase === PHASES.NIGHT && nightActionPhases.includes(game.subPhase)) {
+              gameManager.startNightAfkTimeout(guild, game);
+              logger.debug('Re-armed night AFK timeout for restored game', { channelId, subPhase: game.subPhase });
+            } else if (game.phase === PHASES.NIGHT && game.subPhase === PHASES.REVEIL) {
+              // Was about to transition to day — do it now
+              gameManager.transitionToDay(guild, game).catch(e => logger.error('Restore transitionToDay error', { error: e.message }));
+              logger.debug('Resuming day transition for restored game', { channelId });
+            } else if (game.phase === PHASES.DAY) {
+              if (game.subPhase === PHASES.DELIBERATION) {
+                gameManager.startDayTimeout(guild, game, 'deliberation');
+                logger.debug('Re-armed deliberation timeout for restored game', { channelId });
+              } else if (game.subPhase === PHASES.VOTE) {
+                gameManager.startDayTimeout(guild, game, 'vote');
+                logger.debug('Re-armed vote timeout for restored game', { channelId });
+              } else if (game.subPhase === PHASES.VOTE_CAPITAINE) {
+                gameManager.startCaptainVoteTimeout(guild, game);
+                logger.debug('Re-armed captain vote timeout for restored game', { channelId });
+              }
+            }
           }
         }
       } catch (err) {
