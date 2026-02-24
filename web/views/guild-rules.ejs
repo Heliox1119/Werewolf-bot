@@ -91,54 +91,73 @@
 
       <!-- Players -->
       <div class="grules-setting-card">
-        <div class="grules-setting-icon">&#128101;</div>
-        <h3 data-i18n="grules.players_title">Joueurs</h3>
+        <div class="grules-setting-header">
+          <div class="grules-setting-icon-wrap"><span class="grules-setting-icon">&#128101;</span></div>
+          <h3 data-i18n="grules.players_title">Joueurs</h3>
+        </div>
         <div class="grules-setting-fields">
           <div class="grules-setting-field">
-            <label data-i18n="grules.min_players">Minimum</label>
-            <% if (isAdmin) { %>
-              <input type="number" id="rule-min" class="grules-input" min="3" max="6" value="<%= config.defaultRules.minPlayers || 5 %>">
-            <% } else { %>
-              <span class="grules-setting-value"><%= config.defaultRules.minPlayers || 5 %></span>
-            <% } %>
-            <span class="grules-setting-hint" data-i18n="grules.min_hint">3 – 6</span>
+            <label data-i18n="grules.min_players">Minimum de joueurs</label>
+            <div class="grules-field-right">
+              <% if (isAdmin) { %>
+                <div class="grules-stepper">
+                  <button type="button" class="grules-stepper-btn" data-target="rule-min" data-dir="-1">&#8722;</button>
+                  <input type="number" id="rule-min" class="grules-stepper-input" min="3" max="6" value="<%= config.defaultRules.minPlayers || 5 %>" readonly>
+                  <button type="button" class="grules-stepper-btn" data-target="rule-min" data-dir="1">&#43;</button>
+                </div>
+              <% } else { %>
+                <span class="grules-setting-value"><%= config.defaultRules.minPlayers || 5 %></span>
+              <% } %>
+              <span class="grules-setting-hint" data-i18n="grules.min_hint">Entre 3 et 6</span>
+            </div>
           </div>
           <div class="grules-setting-divider"></div>
           <div class="grules-setting-field">
-            <label data-i18n="grules.max_players">Maximum</label>
-            <% if (isAdmin) { %>
-              <input type="number" id="rule-max" class="grules-input" min="5" max="20" value="<%= config.defaultRules.maxPlayers || 10 %>">
-            <% } else { %>
-              <span class="grules-setting-value"><%= config.defaultRules.maxPlayers || 10 %></span>
-            <% } %>
-            <span class="grules-setting-hint" data-i18n="grules.max_hint">min – 20</span>
+            <label data-i18n="grules.max_players">Maximum de joueurs</label>
+            <div class="grules-field-right">
+              <% if (isAdmin) { %>
+                <div class="grules-stepper">
+                  <button type="button" class="grules-stepper-btn" data-target="rule-max" data-dir="-1">&#8722;</button>
+                  <input type="number" id="rule-max" class="grules-stepper-input" min="5" max="20" value="<%= config.defaultRules.maxPlayers || 10 %>" readonly>
+                  <button type="button" class="grules-stepper-btn" data-target="rule-max" data-dir="1">&#43;</button>
+                </div>
+              <% } else { %>
+                <span class="grules-setting-value"><%= config.defaultRules.maxPlayers || 10 %></span>
+              <% } %>
+              <span class="grules-setting-hint" data-i18n="grules.max_hint">Entre min et 20</span>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Win Condition -->
       <div class="grules-setting-card">
-        <div class="grules-setting-icon">&#127942;</div>
-        <h3 data-i18n="grules.win_title">Victoire des loups</h3>
+        <div class="grules-setting-header">
+          <div class="grules-setting-icon-wrap grules-setting-icon-gold"><span class="grules-setting-icon">&#127942;</span></div>
+          <h3 data-i18n="grules.win_title">Condition de victoire</h3>
+        </div>
         <div class="grules-setting-fields">
           <% if (isAdmin) { %>
-            <label class="grules-option<%= config.wolfWinCondition === 'majority' || !config.wolfWinCondition ? ' active' : '' %>">
+            <label class="grules-radio<%= config.wolfWinCondition === 'majority' || !config.wolfWinCondition ? ' active' : '' %>">
               <input type="radio" name="wolfWin" value="majority" <%= config.wolfWinCondition === 'majority' || !config.wolfWinCondition ? 'checked' : '' %>>
-              <div class="grules-option-content">
+              <span class="grules-radio-dot"></span>
+              <div class="grules-radio-content">
                 <strong data-i18n="grules.majority">Majorité</strong>
                 <small data-i18n="grules.majority_desc">Loups ≥ Villageois</small>
               </div>
             </label>
-            <label class="grules-option<%= config.wolfWinCondition === 'elimination' ? ' active' : '' %>">
+            <label class="grules-radio<%= config.wolfWinCondition === 'elimination' ? ' active' : '' %>">
               <input type="radio" name="wolfWin" value="elimination" <%= config.wolfWinCondition === 'elimination' ? 'checked' : '' %>>
-              <div class="grules-option-content">
+              <span class="grules-radio-dot"></span>
+              <div class="grules-radio-content">
                 <strong data-i18n="grules.elimination">Élimination totale</strong>
                 <small data-i18n="grules.elimination_desc">Tous les villageois morts</small>
               </div>
             </label>
           <% } else { %>
-            <div class="grules-option active readonly">
-              <div class="grules-option-content">
+            <div class="grules-radio active readonly">
+              <span class="grules-radio-dot"></span>
+              <div class="grules-radio-content">
                 <strong><%= config.wolfWinCondition === 'elimination' ? 'Élimination totale' : 'Majorité' %></strong>
               </div>
             </div>
@@ -148,27 +167,32 @@
 
       <!-- Language -->
       <div class="grules-setting-card">
-        <div class="grules-setting-icon">&#127760;</div>
-        <h3 data-i18n="grules.lang_title">Langue du bot</h3>
+        <div class="grules-setting-header">
+          <div class="grules-setting-icon-wrap grules-setting-icon-blue"><span class="grules-setting-icon">&#127760;</span></div>
+          <h3 data-i18n="grules.lang_title">Langue du bot</h3>
+        </div>
         <div class="grules-setting-fields">
           <% if (isAdmin) { %>
-            <label class="grules-option grules-option-lang<%= config.locale === 'fr' ? ' active' : '' %>">
+            <label class="grules-radio grules-radio-lang<%= config.locale === 'fr' ? ' active' : '' %>">
               <input type="radio" name="locale" value="fr" <%= config.locale === 'fr' ? 'checked' : '' %>>
-              <div class="grules-option-content">
+              <span class="grules-radio-dot"></span>
+              <div class="grules-radio-content grules-radio-content-row">
                 <span class="grules-lang-flag">🇫🇷</span>
                 <strong>Français</strong>
               </div>
             </label>
-            <label class="grules-option grules-option-lang<%= config.locale !== 'fr' ? ' active' : '' %>">
+            <label class="grules-radio grules-radio-lang<%= config.locale !== 'fr' ? ' active' : '' %>">
               <input type="radio" name="locale" value="en" <%= config.locale !== 'fr' ? 'checked' : '' %>>
-              <div class="grules-option-content">
+              <span class="grules-radio-dot"></span>
+              <div class="grules-radio-content grules-radio-content-row">
                 <span class="grules-lang-flag">🇬🇧</span>
                 <strong>English</strong>
               </div>
             </label>
           <% } else { %>
-            <div class="grules-option active readonly">
-              <div class="grules-option-content">
+            <div class="grules-radio active readonly">
+              <span class="grules-radio-dot"></span>
+              <div class="grules-radio-content grules-radio-content-row">
                 <span class="grules-lang-flag"><%= config.locale === 'fr' ? '🇫🇷' : '🇬🇧' %></span>
                 <strong><%= config.locale === 'fr' ? 'Français' : 'English' %></strong>
               </div>
@@ -360,11 +384,11 @@
   }
 
   // Radio option visual feedback
-  document.querySelectorAll('.grules-option input[type="radio"]').forEach(function(radio) {
+  document.querySelectorAll('.grules-radio input[type="radio"]').forEach(function(radio) {
     radio.addEventListener('change', function() {
       var group = radio.closest('.grules-setting-fields');
-      group.querySelectorAll('.grules-option').forEach(function(opt) { opt.classList.remove('active'); });
-      radio.closest('.grules-option').classList.add('active');
+      group.querySelectorAll('.grules-radio').forEach(function(opt) { opt.classList.remove('active'); });
+      radio.closest('.grules-radio').classList.add('active');
       markChanged();
     });
   });
@@ -380,9 +404,22 @@
     });
   });
 
-  // Number input changes
-  document.querySelectorAll('.grules-input').forEach(function(input) {
-    input.addEventListener('change', markChanged);
+  // Stepper buttons
+  document.querySelectorAll('.grules-stepper-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var targetId = btn.dataset.target;
+      var input = document.getElementById(targetId);
+      if (!input) return;
+      var val = parseInt(input.value) || 0;
+      var dir = parseInt(btn.dataset.dir) || 0;
+      var min = parseInt(input.min) || 0;
+      var max = parseInt(input.max) || 99;
+      var newVal = Math.max(min, Math.min(max, val + dir));
+      if (newVal !== val) {
+        input.value = newVal;
+        markChanged();
+      }
+    });
   });
 
   saveBtn.addEventListener('click', async function() {

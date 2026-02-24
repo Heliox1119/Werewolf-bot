@@ -1734,90 +1734,177 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
   padding: 1.25rem;
-  display: flex; flex-direction: column; gap: 0.75rem;
+  display: flex; flex-direction: column; gap: 0;
   transition: var(--transition-fast);
+  min-height: 220px;
 }
 .grules-setting-card:hover {
   border-color: rgba(139, 92, 246, 0.25);
   box-shadow: 0 4px 20px rgba(0,0,0,0.15);
 }
+
+/* Card header: icon + title */
+.grules-setting-header {
+  display: flex; align-items: center; gap: 0.7rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.grules-setting-icon-wrap {
+  width: 34px; height: 34px; min-width: 34px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(139, 92, 246, 0.1);
+  flex-shrink: 0;
+}
+.grules-setting-icon-wrap.grules-setting-icon-gold {
+  background: rgba(255, 215, 0, 0.12);
+}
+.grules-setting-icon-wrap.grules-setting-icon-blue {
+  background: rgba(96, 165, 250, 0.12);
+}
 .grules-setting-icon {
-  font-size: 1.5rem; line-height: 1;
+  font-size: 1.15rem; line-height: 1;
 }
 .grules-setting-card h3 {
-  font-size: 0.85rem; font-weight: 700; margin: 0;
+  font-size: 0.8rem; font-weight: 700; margin: 0;
   font-family: var(--font-display);
-  text-transform: uppercase; letter-spacing: 0.3px;
+  text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--text-primary);
 }
 .grules-setting-fields {
-  display: flex; flex-direction: column; gap: 0.5rem;
+  display: flex; flex-direction: column; gap: 0.6rem;
   flex: 1;
+  justify-content: center;
 }
+
+/* Player fields (label + stepper) */
 .grules-setting-field {
-  display: flex; align-items: center; gap: 0.6rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
 }
 .grules-setting-field label {
   font-size: 0.78rem; font-weight: 600; color: var(--text-secondary);
-  min-width: 65px;
 }
-.grules-input {
-  width: 68px; padding: 0.4rem 0.55rem;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-xs);
-  color: var(--text-primary);
-  font-size: 0.85rem; font-weight: 700; text-align: center;
-  font-family: var(--font-body);
-  transition: var(--transition-fast);
-}
-.grules-input:focus {
-  outline: none;
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 2px var(--accent-glow);
+.grules-field-right {
+  display: flex; align-items: center; gap: 0.6rem;
 }
 .grules-setting-hint {
-  font-size: 0.65rem; color: var(--text-muted);
+  font-size: 0.62rem; color: var(--text-muted); white-space: nowrap;
 }
 .grules-setting-value {
   font-size: 1.1rem; font-weight: 800; color: var(--text-primary);
 }
 .grules-setting-divider {
-  height: 1px; background: var(--border-color); margin: 0.15rem 0;
+  height: 1px; background: var(--border-color); margin: 0.2rem 0;
 }
 
-/* ---- Radio Options (win condition, language) ---- */
-.grules-option {
-  display: flex; align-items: center; gap: 0.6rem;
-  padding: 0.6rem 0.75rem;
-  border-radius: var(--border-radius-xs);
+/* Custom stepper (replaces native number input) */
+.grules-stepper {
+  display: flex; align-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-tertiary);
+  height: 34px;
+}
+.grules-stepper-btn {
+  width: 32px; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1rem; font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  user-select: none;
+}
+.grules-stepper-btn:hover {
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--accent-primary);
+}
+.grules-stepper-btn:active {
+  background: rgba(139, 92, 246, 0.25);
+  transform: scale(0.92);
+}
+.grules-stepper-input {
+  width: 40px; height: 100%;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 0.9rem; font-weight: 800; text-align: center;
+  font-family: var(--font-body);
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.grules-stepper-input::-webkit-outer-spin-button,
+.grules-stepper-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Custom radio options (replaces native radios) */
+.grules-radio {
+  display: flex; align-items: center; gap: 0.65rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
   border: 1px solid var(--border-color);
   background: var(--bg-tertiary);
   cursor: pointer;
-  transition: var(--transition-fast);
+  transition: all 0.2s ease;
+  position: relative;
 }
-.grules-option:hover {
-  border-color: rgba(139, 92, 246, 0.3);
+.grules-radio:hover {
+  border-color: rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.04);
 }
-.grules-option.active {
+.grules-radio.active {
   border-color: var(--accent-primary);
-  background: rgba(139, 92, 246, 0.06);
+  background: rgba(139, 92, 246, 0.08);
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.15);
 }
-.grules-option.readonly {
+.grules-radio.readonly {
   cursor: default;
 }
-.grules-option input[type="radio"] {
-  accent-color: var(--accent-primary);
-  margin: 0; flex-shrink: 0;
+.grules-radio input[type="radio"] {
+  position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;
 }
-.grules-option-content {
+
+/* Custom radio dot */
+.grules-radio-dot {
+  width: 18px; height: 18px; min-width: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  position: relative;
+}
+.grules-radio-dot::after {
+  content: '';
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+.grules-radio.active .grules-radio-dot {
+  border-color: var(--accent-primary);
+  background: rgba(139, 92, 246, 0.08);
+}
+.grules-radio.active .grules-radio-dot::after {
+  background: var(--accent-primary);
+}
+
+.grules-radio-content {
   display: flex; flex-direction: column; gap: 0.1rem;
 }
-.grules-option-content strong { font-size: 0.8rem; }
-.grules-option-content small { font-size: 0.68rem; color: var(--text-muted); }
-.grules-option-lang .grules-option-content {
-  flex-direction: row; align-items: center; gap: 0.5rem;
+.grules-radio-content strong { font-size: 0.82rem; color: var(--text-primary); }
+.grules-radio-content small { font-size: 0.68rem; color: var(--text-muted); }
+.grules-radio-content-row {
+  flex-direction: row; align-items: center; gap: 0.55rem;
 }
-.grules-lang-flag { font-size: 1.15rem; }
+.grules-lang-flag { font-size: 1.2rem; line-height: 1; }
 
 /* ---- Role Cards ---- */
 .grules-roles-grid {
