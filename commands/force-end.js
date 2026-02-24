@@ -35,8 +35,10 @@ module.exports = {
 
     const game = gameManager.games.get(targetChannelId);
     
-    if (!game) {
-      const allGames = Array.from(gameManager.games.keys());
+    if (!game || game.guildId !== interaction.guildId) {
+      const allGames = Array.from(gameManager.games.entries())
+        .filter(([, g]) => g.guildId === interaction.guildId)
+        .map(([id]) => id);
       let message = t('cleanup.force_end_no_game', { id: targetChannelId }) + `\n\n`;
       
       if (allGames.length > 0) {

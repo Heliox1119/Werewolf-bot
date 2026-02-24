@@ -76,7 +76,9 @@ module.exports = {
     // Trouver la partie associée (par channel ou par joueur)
     let game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
-      game = Array.from(gameManager.games.values()).find(g => g.players.some(p => p.id === interaction.user.id));
+      game = Array.from(gameManager.games.values())
+        .filter(g => g.guildId === interaction.guildId)
+        .find(g => g.players.some(p => p.id === interaction.user.id));
     }
     if (!game) {
       await safeReply(interaction, { content: t('error.not_in_any_game'), flags: MessageFlags.Ephemeral });

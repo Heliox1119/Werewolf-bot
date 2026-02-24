@@ -32,8 +32,10 @@ module.exports = {
     
     logger.debug('Checking for game in channel', { channelId: interaction.channelId });
     
-    // Log all active games for debugging
-    const allGames = Array.from(gameManager.games.keys());
+    // Log all active games for debugging (guild-scoped)
+    const allGames = Array.from(gameManager.games.entries())
+      .filter(([, g]) => g.guildId === interaction.guildId)
+      .map(([id]) => id);
     logger.debug('Active games', { games: allGames });
     
     const game = gameManager.getGameByChannelId(interaction.channelId);

@@ -22,7 +22,9 @@ module.exports = {
       gamesCount: gameManager.games.size 
     });
 
-    const gamesCount = gameManager.games.size;
+    const guildId = interaction.guildId;
+    const guildGames = Array.from(gameManager.games.entries()).filter(([, g]) => g.guildId === guildId);
+    const gamesCount = guildGames.length;
 
     if (gamesCount === 0) {
       await interaction.editReply(t('cmd.debug_games.no_active'));
@@ -34,7 +36,7 @@ module.exports = {
       .setColor(getColor(interaction.guildId, 'success'))
       .setDescription(t('cmd.debug_games.description', { count: gamesCount }));
 
-    for (const [channelId, game] of gameManager.games.entries()) {
+    for (const [channelId, game] of guildGames) {
       const channelName = await interaction.guild.channels.fetch(channelId)
         .then(ch => ch.name)
         .catch(() => t('cmd.debug_games.unknown_channel'));
@@ -61,8 +63,8 @@ module.exports = {
       name: t('cmd.debug_games.tech_title'),
       value: [
         `${t('cmd.debug_games.current_channel')}: <#${interaction.channelId}>`,
-        `${t('cmd.debug_games.game_ids')}: ${Array.from(gameManager.games.keys()).map(id => `\`${id}\``).join(', ')}`,
-        `Map size: ${gameManager.games.size}`
+        `${t('cmd.debug_games.game_ids')}: ${guildGames.map(([id]) => `\`${id}\``).join(', ')}`,
+        `Map size: ${gamesCount}`
       ].join('\n'),
       inline: false
     });

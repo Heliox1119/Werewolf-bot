@@ -69,10 +69,12 @@ module.exports = {
         }
       }
 
-      // Nettoyer toutes les games en mémoire
-      const gamesCount = gameManager.games.size;
-      // Annuler tous les timers et émettre gameEnded pour chaque partie
-      for (const [channelId, game] of gameManager.games.entries()) {
+      // Nettoyer les games de CE serveur uniquement
+      const guildId = interaction.guildId;
+      const guildGames = Array.from(gameManager.games.entries()).filter(([, g]) => g.guildId === guildId);
+      const gamesCount = guildGames.length;
+      // Annuler tous les timers et émettre gameEnded pour chaque partie du serveur
+      for (const [channelId, game] of guildGames) {
         // Annuler les timers (AFK nuit, chasseur, capitaine, lobby)
         gameManager.clearGameTimers(game);
         gameManager.clearLobbyTimeout(channelId);
@@ -101,18 +103,23 @@ module.exports = {
         }
       }
 
-      // Supprimer les games de la base de données
-      for (const channelId of gameManager.games.keys()) {
+      // Supprimer les games de CE serveur de la base de données
+      for (const [channelId] of guildGames) {
         try { gameManager.db.deleteGame(channelId); } catch (e) { /* ignore */ }
       }
-      // Also clean orphaned DB games (not in memory but still in DB)
+      // Also clean orphaned DB games for THIS guild (not in memory but still in DB)
       try {
         const dbGames = gameManager.db.getAllGames();
         for (const dbGame of dbGames) {
-          try { gameManager.db.deleteGame(dbGame.channel_id); } catch (e) { /* ignore */ }
+          if (dbGame.guild_id === guildId) {
+            try { gameManager.db.deleteGame(dbGame.channel_id); } catch (e) { /* ignore */ }
+          }
         }
       } catch (e) { /* ignore */ }
-      gameManager.games.clear();
+      // Remove only this guild's games from memory
+      for (const [channelId] of guildGames) {
+        gameManager.games.delete(channelId);
+      }
       gameManager.saveState();
 
       // Envoyer message temporaire avec nettoyage auto
