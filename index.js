@@ -156,7 +156,7 @@ client.once("clientReady", async () => {
     });
     await webServer.start();
   } catch (error) {
-    logger.error('Failed to initialize web dashboard', { error: error.message });
+    logger.error('Failed to initialize web dashboard', { error: error.message, stack: error.stack });
   }
 
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);

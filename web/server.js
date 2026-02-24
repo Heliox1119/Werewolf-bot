@@ -38,9 +38,9 @@ class WebServer {
   async start() {
     this.app = express();
     this.server = http.createServer(this.app);
-    const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : undefined;
+    this.allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : undefined;
     this.io = new SocketIO(this.server, {
-      cors: { origin: allowedOrigins || '*', methods: ['GET', 'POST'] }
+      cors: { origin: this.allowedOrigins || '*', methods: ['GET', 'POST'] }
     });
 
     this._setupMiddleware();
@@ -89,7 +89,7 @@ class WebServer {
         }
       }
     }));
-    this.app.use(cors(allowedOrigins ? { origin: allowedOrigins } : undefined));
+    this.app.use(cors(this.allowedOrigins ? { origin: this.allowedOrigins } : undefined));
     this.app.use(cookieParser());
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
