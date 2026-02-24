@@ -382,8 +382,10 @@ module.exports = function(webServer) {
     try {
       const guildId = req.params.id;
       const clientId = process.env.CLIENT_ID || '';
-      // Permissions: ManageChannels, SendMessages, EmbedLinks, MuteMembers, ManageRoles, ReadMessageHistory, UseApplicationCommands
-      const permissions = '278528739328';
+      // Permissions: ViewChannel, ManageChannels, ManageRoles, SendMessages, SendMessagesInThreads,
+      // EmbedLinks, AttachFiles, ReadMessageHistory, MentionEveryone, UseExternalEmojis,
+      // Connect, Speak, MuteMembers, MoveMembers, UseApplicationCommands
+      const permissions = '277318454288';
       const inviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=${permissions}&scope=bot%20applications.commands&guild_id=${guildId}`;
 
       // Try to get guild name from user's guilds
