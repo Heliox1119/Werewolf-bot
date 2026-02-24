@@ -1,7 +1,7 @@
 /* ============================================
-   🐺 Werewolf Bot — Web Dashboard v3.1
-   Professional dark theme · Glassmorphism · Atmospheric
-   ============================================ */
+  🐺 Werewolf Bot — Web Dashboard v3.3
+  Professional dark theme · Glassmorphism · Atmospheric
+  ============================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Cinzel:wght@400;600;700;900&display=swap');
 
@@ -2235,9 +2235,9 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 }
 
 /* ============================================
-   Interactive Enhancements — v3.1
-   Moderation, Modals, Activity Feed, Votes
-   ============================================ */
+  Interactive Enhancements — v3.3
+  Moderation, Modals, Activity Feed, Votes
+  ============================================ */
 
 /* === Dashboard Grid Layout === */
 .dashboard-grid { display: grid; grid-template-columns: 1fr 320px; gap: 2rem; align-items: start; }

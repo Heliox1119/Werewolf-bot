@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS players (
   role TEXT,
   alive BOOLEAN DEFAULT 1,
   in_love BOOLEAN DEFAULT 0,
+  has_shot BOOLEAN DEFAULT 0,
   
   -- Métadonnées
   joined_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
@@ -122,6 +123,8 @@ CREATE TABLE IF NOT EXISTS night_actions (
 
 CREATE INDEX IF NOT EXISTS idx_actions_game ON night_actions(game_id, night_number);
 CREATE INDEX IF NOT EXISTS idx_actions_type ON night_actions(action_type);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_actions_idempotent_actor
+ON night_actions(game_id, night_number, action_type, actor_id);
 
 -- Table des potions de la sorcière (track usage)
 CREATE TABLE IF NOT EXISTS witch_potions (

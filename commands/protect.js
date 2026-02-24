@@ -92,9 +92,15 @@ module.exports = {
       return;
     }
 
-    // Enregistrer la protection
-    game.protectedPlayerId = target.id;
-    gameManager.logAction(game, `Salvateur protège ${targetPlayer.username}`);
+    try {
+      await gameManager.runAtomic(game.mainChannelId, (state) => {
+        state.protectedPlayerId = target.id;
+        gameManager.logAction(state, `Salvateur protège ${targetPlayer.username}`);
+      });
+    } catch (e) {
+      await safeReply(interaction, { content: t('error.internal'), flags: MessageFlags.Ephemeral });
+      return;
+    }
 
     await safeReply(interaction, { content: t('cmd.protect.success', { name: targetPlayer.username }) });
 

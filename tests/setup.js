@@ -24,3 +24,23 @@ if (!process.env.VERBOSE) {
 afterEach(() => {
   jest.clearAllMocks();
 });
+
+afterAll(() => {
+  try {
+    const gameManager = require('../game/gameManager');
+    if (gameManager && typeof gameManager.destroy === 'function') {
+      gameManager.destroy();
+    }
+  } catch (_) {
+    // noop: cleanup best-effort
+  }
+
+  try {
+    const rateLimiter = require('../utils/rateLimiter');
+    if (rateLimiter && typeof rateLimiter.destroy === 'function') {
+      rateLimiter.destroy();
+    }
+  } catch (_) {
+    // noop: cleanup best-effort
+  }
+});

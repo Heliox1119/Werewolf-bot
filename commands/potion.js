@@ -92,12 +92,32 @@ module.exports = {
       const victimPlayer = game.players.find(p => p.id === game.nightVictim);
       const victimName = victimPlayer ? victimPlayer.username : t('game.someone');
 
-      game.witchPotions.life = false;
-      game.witchSave = true;
-      game.witchKillTarget = null; // Sécurité: empêcher la potion de mort si potion de vie utilisée
-      try { gameManager.db.useWitchPotion(game.mainChannelId, 'life'); } catch (e) { /* ignore */ }
-      gameManager.logAction(game, `Sorciere utilise potion de vie pour sauver ${victimName}`);
-      try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'save', interaction.user.id, game.nightVictim); } catch (e) { /* ignore */ }
+      let lifeResult;
+      try {
+        lifeResult = await gameManager.runAtomic(game.mainChannelId, () => {
+          const potionClaim = gameManager.db.useWitchPotionIfAvailable(game.mainChannelId, 'life');
+          if (!potionClaim.ok) throw new Error('Failed to persist life potion claim');
+          if (potionClaim.affectedRows === 0) return { alreadyExecuted: true };
+
+          const actionResult = gameManager.db.addNightActionOnce(game.mainChannelId, game.dayCount || 0, 'save', interaction.user.id, game.nightVictim);
+          if (!actionResult.ok) throw new Error('Failed to persist life potion action');
+          if (actionResult.affectedRows === 0) return { alreadyExecuted: true };
+
+          game.witchPotions.life = false;
+          game.witchSave = true;
+          game.witchKillTarget = null; // Sécurité: empêcher la potion de mort si potion de vie utilisée
+          gameManager.logAction(game, `Sorciere utilise potion de vie pour sauver ${victimName}`);
+          return { alreadyExecuted: false };
+        });
+      } catch (e) {
+        await safeReply(interaction, { content: t('error.internal'), flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      if (lifeResult.alreadyExecuted) {
+        await safeReply(interaction, { content: t('error.no_life_potion'), flags: MessageFlags.Ephemeral });
+        return;
+      }
 
       // Track achievement: witch save
       if (gameManager.achievements) {
@@ -128,17 +148,40 @@ module.exports = {
         return;
       }
 
-      game.witchPotions.death = false;
-      game.witchKillTarget = target.id;
-      try { gameManager.db.useWitchPotion(game.mainChannelId, 'death'); } catch (e) { /* ignore */ }
-      gameManager.logAction(game, `Sorciere empoisonne: ${target.username}`);
-      try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'poison', interaction.user.id, target.id); } catch (e) { /* ignore */ }
+      let deathResult;
+      try {
+        deathResult = await gameManager.runAtomic(game.mainChannelId, () => {
+          const potionClaim = gameManager.db.useWitchPotionIfAvailable(game.mainChannelId, 'death');
+          if (!potionClaim.ok) throw new Error('Failed to persist death potion claim');
+          if (potionClaim.affectedRows === 0) return { alreadyExecuted: true };
+
+          const actionResult = gameManager.db.addNightActionOnce(game.mainChannelId, game.dayCount || 0, 'poison', interaction.user.id, target.id);
+          if (!actionResult.ok) throw new Error('Failed to persist death potion action');
+          if (actionResult.affectedRows === 0) return { alreadyExecuted: true };
+
+          game.witchPotions.death = false;
+          game.witchKillTarget = target.id;
+          gameManager.logAction(game, `Sorciere empoisonne: ${target.username}`);
+          return { alreadyExecuted: false };
+        });
+      } catch (e) {
+        await safeReply(interaction, { content: t('error.internal'), flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      if (deathResult.alreadyExecuted) {
+        await safeReply(interaction, { content: t('error.no_death_potion'), flags: MessageFlags.Ephemeral });
+        return;
+      }
+
       await safeReply(interaction, { content: t('cmd.potion.death_success', { name: target.username }), flags: MessageFlags.Ephemeral });
     }
 
     if (game.phase === PHASES.NIGHT) {
       if (gameManager.hasAliveRealRole(game, ROLES.SEER)) {
-        gameManager._setSubPhase(game, PHASES.VOYANTE);
+        await gameManager.runAtomic(game.mainChannelId, (state) => {
+          gameManager._setSubPhase(state, PHASES.VOYANTE);
+        });
         await gameManager.announcePhase(interaction.guild, game, t('phase.seer_wakes'));
         gameManager.startNightAfkTimeout(interaction.guild, game);
       } else {

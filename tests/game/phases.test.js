@@ -127,20 +127,12 @@ describe('isValidTransition()', () => {
     expect(PHASES.isValidTransition(PHASES.VOTE, PHASES.DELIBERATION)).toBe(false);
   });
 
-  test('always allows transition to ENDED', () => {
-    const allPhases = [PHASES.VOLEUR, PHASES.CUPIDON, PHASES.LOUPS, PHASES.SORCIERE, PHASES.VOYANTE, PHASES.REVEIL, PHASES.DELIBERATION, PHASES.VOTE];
-    for (const phase of allPhases) {
-      expect(PHASES.isValidTransition(phase, PHASES.ENDED)).toBe(true);
-    }
-  });
-
-  test('allows any transition from null/undefined (initial state)', () => {
-    expect(PHASES.isValidTransition(null, PHASES.VOLEUR)).toBe(true);
-    expect(PHASES.isValidTransition(undefined, PHASES.LOUPS)).toBe(true);
-  });
-
-  test('allows transition from unknown phase (backwards compat)', () => {
-    expect(PHASES.isValidTransition('UnknownPhase', PHASES.LOUPS)).toBe(true);
+  test('rejects unknown and null states', () => {
+    expect(PHASES.isValidTransition(null, PHASES.VOLEUR)).toBe(false);
+    expect(PHASES.isValidTransition(undefined, PHASES.LOUPS)).toBe(false);
+    expect(PHASES.isValidTransition('UnknownPhase', PHASES.LOUPS)).toBe(false);
+    expect(PHASES.isValidTransition(PHASES.LOUPS, 'UnknownPhase')).toBe(false);
+    expect(PHASES.isValidTransition(PHASES.LOUPS, PHASES.ENDED)).toBe(false);
   });
 
   test('validates full night cycle', () => {
@@ -159,11 +151,41 @@ describe('isValidTransition()', () => {
   });
 
   test('validates skipped-role transitions', () => {
-    // Skip Voleur/Cupidon/Salvateur → direct LOUPS
-    expect(PHASES.isValidTransition(null, PHASES.LOUPS)).toBe(true);
     // Skip Loup Blanc/Sorciere → direct VOYANTE
     expect(PHASES.isValidTransition(PHASES.LOUPS, PHASES.VOYANTE)).toBe(true);
     // Skip everything after loups → REVEIL
     expect(PHASES.isValidTransition(PHASES.LOUPS, PHASES.REVEIL)).toBe(true);
+  });
+
+  test('validates every transition path exhaustively', () => {
+    const subPhases = PHASES.SUB_PHASES;
+    for (const from of subPhases) {
+      const allowed = new Set(PHASES.VALID_TRANSITIONS[from] || []);
+      for (const to of subPhases) {
+        if (to === from) {
+          expect(PHASES.isValidTransition(from, to)).toBe(true);
+          continue;
+        }
+        expect(PHASES.isValidTransition(from, to)).toBe(allowed.has(to));
+      }
+    }
+  });
+});
+
+describe('isValidMainTransition()', () => {
+  test('allows only declared main phase transitions', () => {
+    expect(PHASES.isValidMainTransition(PHASES.NIGHT, PHASES.DAY)).toBe(true);
+    expect(PHASES.isValidMainTransition(PHASES.DAY, PHASES.NIGHT)).toBe(true);
+    expect(PHASES.isValidMainTransition(PHASES.NIGHT, PHASES.ENDED)).toBe(true);
+    expect(PHASES.isValidMainTransition(PHASES.DAY, PHASES.ENDED)).toBe(true);
+  });
+
+  test('rejects illegal and unknown main phase transitions', () => {
+    expect(PHASES.isValidMainTransition(PHASES.ENDED, PHASES.NIGHT)).toBe(false);
+    expect(PHASES.isValidMainTransition(PHASES.ENDED, PHASES.DAY)).toBe(false);
+    expect(PHASES.isValidMainTransition(PHASES.ENDED, PHASES.ENDED)).toBe(false);
+    expect(PHASES.isValidMainTransition('Unknown', PHASES.DAY)).toBe(false);
+    expect(PHASES.isValidMainTransition(PHASES.DAY, 'Unknown')).toBe(false);
+    expect(PHASES.isValidMainTransition(null, PHASES.DAY)).toBe(false);
   });
 });

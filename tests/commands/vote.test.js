@@ -211,4 +211,53 @@ describe('Commande /vote', () => {
     expect(game.votes.has('222222222222222222')).toBe(false);
     expect(game.votes.get('333333333333333333')).toBe(1);
   });
+
+  test('rollback le vote mémoire si la persistance DB échoue', async () => {
+    const game = setupGame('ch-vote');
+    game.players.push(
+      createMockPlayer({ id: '111111111111111111', alive: true }),
+      createMockPlayer({ id: '222222222222222222', username: 'Target', alive: true })
+    );
+
+    const interaction = createMockInteraction({ commandName: 'vote', channelId: 'ch-vote', userId: '111111111111111111' });
+    interaction.options.getUser = jest.fn(() => ({ id: '222222222222222222', username: 'Target' }));
+
+    const addVoteSpy = jest.spyOn(gameManager.db, 'addVoteIfChanged').mockReturnValue({ ok: false, affectedRows: 0, alreadyExecuted: false });
+
+    await voteCommand.execute(interaction);
+
+    expect(game.voteVoters.has('111111111111111111')).toBe(false);
+    expect(game.votes.has('222222222222222222')).toBe(false);
+    expect(safeReply).toHaveBeenCalledWith(interaction, expect.objectContaining({
+      content: expect.stringContaining('interne')
+    }));
+
+    addVoteSpy.mockRestore();
+  });
+
+  test('deux votes concurrents du même joueur ne corrompent pas l\'état (un seul commit)', async () => {
+    const game = setupGame('ch-vote-concurrent');
+    game.players.push(
+      createMockPlayer({ id: '111111111111111111', alive: true }),
+      createMockPlayer({ id: '222222222222222222', username: 'Target1', alive: true }),
+      createMockPlayer({ id: '333333333333333333', username: 'Target2', alive: true })
+    );
+
+    const i1 = createMockInteraction({ commandName: 'vote', channelId: 'ch-vote-concurrent', userId: '111111111111111111' });
+    i1.options.getUser = jest.fn(() => ({ id: '222222222222222222', username: 'Target1' }));
+
+    const i2 = createMockInteraction({ commandName: 'vote', channelId: 'ch-vote-concurrent', userId: '111111111111111111' });
+    i2.options.getUser = jest.fn(() => ({ id: '333333333333333333', username: 'Target2' }));
+
+    const addVoteSpy = jest.spyOn(gameManager.db, 'addVoteIfChanged');
+
+    await Promise.all([voteCommand.execute(i1), voteCommand.execute(i2)]);
+
+    expect(addVoteSpy).toHaveBeenCalledTimes(1);
+    expect(game.voteVoters.size).toBe(1);
+    const totalVotes = Array.from(game.votes.values()).reduce((sum, value) => sum + value, 0);
+    expect(totalVotes).toBe(1);
+
+    addVoteSpy.mockRestore();
+  });
 });

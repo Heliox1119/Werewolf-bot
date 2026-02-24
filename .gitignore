@@ -29,6 +29,7 @@ Thumbs.db
 # Bot data
 data/games.json
 .bot.lock
+data/werewolf-bot.lock
 
 # SQLite databases
 data/*.db

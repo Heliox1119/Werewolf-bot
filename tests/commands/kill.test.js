@@ -176,7 +176,7 @@ describe('Commande /kill', () => {
 
     expect(game.nightVictim).toBe('123456789012345678');
     expect(safeReply).toHaveBeenCalledWith(interaction, expect.objectContaining({
-      content: expect.stringContaining('Victim')
+      content: expect.stringContaining('Consensus atteint')
     }));
   });
 

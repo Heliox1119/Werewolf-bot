@@ -2,6 +2,7 @@
  * Tests for GameMutex — async per-game locking
  */
 const { GameMutex } = require('../../game/GameMutex');
+const logger = require('../../utils/logger');
 
 describe('GameMutex', () => {
   let mutex;
@@ -119,5 +120,32 @@ describe('GameMutex', () => {
     release3();
 
     expect(order).toEqual([1, 2, 3]);
+  });
+
+  test('tracks wait/hold metrics and warns for long-held lock', async () => {
+    jest.useFakeTimers();
+    const warnSpy = jest.spyOn(logger.game, 'warn').mockImplementation(() => {});
+
+    const release1 = await mutex.acquire('ch-metrics');
+    const waitingAcquire = mutex.acquire('ch-metrics');
+
+    expect(mutex.getMetrics().active_locks).toBe(1);
+    expect(mutex.getQueueLength('ch-metrics')).toBe(1);
+
+    await jest.advanceTimersByTimeAsync(5200);
+    release1();
+
+    const release2 = await waitingAcquire;
+    release2();
+
+    const metrics = mutex.getMetrics();
+    expect(metrics.max_wait_ms).toBeGreaterThanOrEqual(5000);
+    expect(metrics.avg_wait_ms).toBeGreaterThan(0);
+    expect(metrics.active_locks).toBe(0);
+    expect(metrics.max_queue_length).toBeGreaterThanOrEqual(1);
+    expect(warnSpy).toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+    jest.useRealTimers();
   });
 });

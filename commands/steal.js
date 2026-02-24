@@ -76,17 +76,24 @@ module.exports = {
     // Échanger le rôle
     const chosenRole = game.thiefExtraRoles[choice - 1];
     const oldRole = player.role;
-    player.role = chosenRole;
-    
-    // Synchroniser avec la DB
-    gameManager.db.updatePlayer(game.mainChannelId, player.id, { role: chosenRole });
 
-    // Vider les cartes (le voleur a fait son choix)
-    game.thiefExtraRoles = [];
-
-    gameManager.clearNightAfkTimeout(game);
-    gameManager.logAction(game, `Voleur vole la carte ${choice}: ${chosenRole} (ancien rôle: ${oldRole})`);
-    try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'steal', interaction.user.id, null); } catch (e) { /* ignore */ }
+    try {
+      await gameManager.runAtomic(game.mainChannelId, (state) => {
+        const actor = state.players.find(p => p.id === interaction.user.id);
+        if (!actor) throw new Error('Thief disappeared during atomic mutation');
+        actor.role = chosenRole;
+        state.thiefExtraRoles = [];
+        gameManager.clearNightAfkTimeout(state);
+        gameManager.logAction(state, `Voleur vole la carte ${choice}: ${chosenRole} (ancien rôle: ${oldRole})`);
+        const persistedPlayer = gameManager.db.updatePlayer(state.mainChannelId, actor.id, { role: chosenRole });
+        if (!persistedPlayer) throw new Error('Failed to persist thief role swap');
+        const persistedAction = gameManager.db.addNightAction(state.mainChannelId, state.dayCount || 0, 'steal', interaction.user.id, null);
+        if (!persistedAction) throw new Error('Failed to persist thief action');
+      });
+    } catch (e) {
+      await safeReply(interaction, { content: t('error.internal'), flags: MessageFlags.Ephemeral });
+      return;
+    }
 
     await safeReply(interaction, { content: t('cmd.steal.success', { role: translateRole(chosenRole) }), flags: MessageFlags.Ephemeral });
 

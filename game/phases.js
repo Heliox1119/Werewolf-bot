@@ -38,6 +38,44 @@ PHASES.VALID_TRANSITIONS = {
   [PHASES.VOTE]:          [PHASES.LOUPS, PHASES.CUPIDON, PHASES.SALVATEUR, PHASES.VOLEUR],
 };
 
+PHASES.MAIN_PHASES = [PHASES.NIGHT, PHASES.DAY, PHASES.ENDED];
+PHASES.SUB_PHASES = [
+  PHASES.VOLEUR,
+  PHASES.CUPIDON,
+  PHASES.SALVATEUR,
+  PHASES.LOUPS,
+  PHASES.LOUP_BLANC,
+  PHASES.SORCIERE,
+  PHASES.VOYANTE,
+  PHASES.REVEIL,
+  PHASES.VOTE_CAPITAINE,
+  PHASES.DELIBERATION,
+  PHASES.VOTE
+];
+
+PHASES.VALID_MAIN_TRANSITIONS = {
+  [PHASES.NIGHT]: [PHASES.DAY, PHASES.ENDED],
+  [PHASES.DAY]: [PHASES.NIGHT, PHASES.ENDED],
+  [PHASES.ENDED]: []
+};
+
+PHASES.isKnownMainPhase = function(phase) {
+  return PHASES.MAIN_PHASES.includes(phase);
+};
+
+PHASES.isKnownSubPhase = function(subPhase) {
+  return PHASES.SUB_PHASES.includes(subPhase);
+};
+
+PHASES.isValidMainTransition = function(fromPhase, toPhase) {
+  if (!PHASES.isKnownMainPhase(fromPhase) || !PHASES.isKnownMainPhase(toPhase)) {
+    return false;
+  }
+  if (fromPhase === PHASES.ENDED) return false;
+  if (fromPhase === toPhase) return true;
+  return PHASES.VALID_MAIN_TRANSITIONS[fromPhase].includes(toPhase);
+};
+
 /**
  * Validate a sub-phase transition.
  * @param {string} fromSubPhase
@@ -45,12 +83,12 @@ PHASES.VALID_TRANSITIONS = {
  * @returns {boolean}
  */
 PHASES.isValidTransition = function(fromSubPhase, toSubPhase) {
-  // ENDED is always valid (victory can happen at any sub-phase)
-  if (toSubPhase === PHASES.ENDED) return true;
-  // No from = initial state (game start), allow anything
-  if (!fromSubPhase) return true;
+  if (!PHASES.isKnownSubPhase(fromSubPhase) || !PHASES.isKnownSubPhase(toSubPhase)) {
+    return false;
+  }
+  if (fromSubPhase === toSubPhase) return true;
   const allowed = PHASES.VALID_TRANSITIONS[fromSubPhase];
-  if (!allowed) return true; // Unknown from → allow (backwards compat)
+  if (!allowed) return false;
   return allowed.includes(toSubPhase);
 };
 

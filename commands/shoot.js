@@ -70,17 +70,41 @@ module.exports = {
       return;
     }
 
-    // Effacer le flag et le timer
-    game._hunterMustShoot = null;
-    if (game._hunterTimer) {
-      clearTimeout(game._hunterTimer);
-      game._hunterTimer = null;
+    let shootResult;
+    try {
+      shootResult = await gameManager.runAtomic(game.mainChannelId, () => {
+        const shotClaim = gameManager.db.markHunterShotIfFirst(game.mainChannelId, interaction.user.id);
+        if (!shotClaim.ok) throw new Error('Failed to persist hunter shot claim');
+        if (shotClaim.affectedRows === 0) {
+          return { alreadyExecuted: true, collateral: [], victory: false };
+        }
+
+        // Effacer le flag et le timer
+        game._hunterMustShoot = null;
+        if (game._hunterTimer) {
+          clearTimeout(game._hunterTimer);
+          game._hunterTimer = null;
+        }
+
+        const collateral = gameManager.kill(game.mainChannelId, target.id, { throwOnDbFailure: true });
+        gameManager.logAction(game, `Chasseur tire sur: ${target.username}`);
+        const actionResult = gameManager.db.addNightActionOnce(game.mainChannelId, game.dayCount || 0, 'shoot', interaction.user.id, target.id);
+        if (!actionResult.ok) throw new Error('Failed to persist hunter shoot action');
+        if (actionResult.affectedRows === 0) {
+          return { alreadyExecuted: true, collateral: [], victory: false };
+        }
+        const victory = gameManager.checkWinner(game);
+        return { alreadyExecuted: false, collateral, victory };
+      });
+    } catch (e) {
+      await safeReply(interaction, { content: t('error.internal'), flags: MessageFlags.Ephemeral });
+      return;
     }
 
-    // Tuer la cible
-    const collateral = gameManager.kill(game.mainChannelId, target.id);
-    gameManager.logAction(game, `Chasseur tire sur: ${target.username}`);
-    try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'shoot', interaction.user.id, target.id); } catch (e) { /* ignore */ }
+    if (shootResult.alreadyExecuted) {
+      await safeReply(interaction, { content: t('error.hunter_can_only_shoot_on_death'), flags: MessageFlags.Ephemeral });
+      return;
+    }
 
     // Track achievement: hunter killed a wolf
     if (targetPlayer.role === ROLES.WEREWOLF && gameManager.achievements) {
@@ -94,7 +118,7 @@ module.exports = {
     await gameManager.sendLogged(mainChannel, t('game.hunter_shoot', { name: player.username, target: target.username }), { type: 'hunterShoot' });
 
     // Annoncer les morts collatérales (amoureux)
-    for (const dead of collateral) {
+    for (const dead of shootResult.collateral) {
       await gameManager.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
       gameManager.logAction(game, `Mort d'amour: ${dead.username}`);
     }
@@ -103,6 +127,8 @@ module.exports = {
 
     // Vérifier si la cible du chasseur était aussi un chasseur (edge case improbable mais sécurisé)
     // et vérifier la victoire
-    await gameManager.announceVictoryIfAny(interaction.guild, game);
+    if (shootResult.victory) {
+      await gameManager.announceVictoryIfAny(interaction.guild, game);
+    }
   }
 };

@@ -152,12 +152,14 @@ module.exports = {
       return;
     }
     
-    game.lobbyHostId = interaction.user.id;
     const defaultRules = config.getDefaultGameRules(interaction.guildId);
     const minPlayers = defaultRules.minPlayers || 5;
     const maxPlayers = defaultRules.maxPlayers || 10;
-    game.rules = { minPlayers, maxPlayers };
-    game._lobbyCreatedAt = Date.now();
+    await gameManager.runAtomic(game.mainChannelId, (state) => {
+      state.lobbyHostId = interaction.user.id;
+      state.rules = { minPlayers, maxPlayers };
+      state._lobbyCreatedAt = Date.now();
+    });
 
     logger.debug('Creating initial channels', { categoryId: CATEGORY_ID });
     const setupSuccess = await gameManager.createInitialChannels(
@@ -203,7 +205,9 @@ module.exports = {
     const lobbyPayload = buildLobbyMessage(game, interaction.user.id);
     logger.info('Channel send', { channelId: lobbyChannel.id, channelName: lobbyChannel.name, content: '[lobby message]' });
     const lobbyMsg = await lobbyChannel.send(lobbyPayload);
-    game.lobbyMessageId = lobbyMsg.id;
+    await gameManager.runAtomic(game.mainChannelId, (state) => {
+      state.lobbyMessageId = lobbyMsg.id;
+    });
     logger.debug('Lobby message posted', { messageId: lobbyMsg.id });
 
     // Ajouter le host automatiquement

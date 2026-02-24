@@ -5,12 +5,12 @@
 
 A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice management, ambient audio and interactive lobby.
 
-![Version](https://img.shields.io/badge/version-3.2.0-blue)
+![Version](https://img.shields.io/badge/version-3.3.0-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)
-![Tests](https://img.shields.io/badge/tests-223%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-251%20passed-brightgreen)
 
 ---
 
@@ -102,7 +102,7 @@ A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice ma
 - **Centralized i18n** — `I18n` singleton, `{{variable}}` interpolation, automatic fallback
 - **EventEmitter architecture** — GameManager emits real-time events to web layer
 - **Robust error handling** — safeReply, graceful shutdown, zero crash in production
-- **223 automated tests** — 16 suites, 0 failures
+- **251 automated tests** — 21 suites, 0 failures
 - **Embed themes** — 4 color palettes, `/theme` command, 12 semantic colors
 
 ---
@@ -344,7 +344,7 @@ Werewolf-bot/
 │   └── alerts.js           # Webhook alerts
 ├── Dockerfile              # Multi-stage Docker build
 ├── docker-compose.yml      # Production-ready compose
-├── tests/                  # 191 Jest tests
+├── tests/                  # 251 Jest tests
 ├── audio/                  # Ambient sounds (.mp3)
 └── img/                    # Role images
 ```
@@ -365,6 +365,7 @@ npm run clear-commands      # Reset Discord commands
 
 | Version | Highlights |
 |---------|-----------|
+| **v3.3.0** | 🚀 Production-readiness hardening: crash simulation matrix, WebSocket isolation/anti-abuse tests, GameMutex observability metrics, startup split-brain lock, stuck game liveness detection (`stuck_games_count`) |
 | **v3.2.0** | 🛡️ 6-axis architecture hardening: GameMutex, FSM transitions, transaction sync, dirty flag, 7 new DB columns, isRecentDuplicate on 12 commands, express-rate-limit, CORS, guild-scoped WS, Prometheus /metrics, /health, 223 tests |
 | **v3.1.0** | 🛡️ 15-point architecture audit, XSS elimination, WebSocket rate limiting & debounce, multi-tenant isolation, critical FSM fixes, game archiving, 200 tests || **v3.0.0** | 🌐 Web Dashboard (Express + EJS), Live Spectator (Socket.IO), REST API (15 endpoints), Discord OAuth2, Custom Roles system, EventEmitter architecture || **v2.9.0** | 🏆 Achievements (18), ELO ranking (7 tiers), death reveal embeds, DM turn notifications, `/leaderboard`, `/history`, post-game timeline, 4 bug fixes |
 | **v2.8.0** | 🐳 Docker, auto SQLite backup (hourly), multi-guild (per-server lang & config), rematch system |

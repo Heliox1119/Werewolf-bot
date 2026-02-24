@@ -102,6 +102,22 @@ class GameDatabase {
         this.db.exec("ALTER TABLE games ADD COLUMN thief_extra_roles TEXT DEFAULT '[]'");
         logger.info('Migration: added thief_extra_roles column');
       }
+      const playerColumns = this.db.pragma('table_info(players)').map(c => c.name);
+      if (!playerColumns.includes('has_shot')) {
+        this.db.exec('ALTER TABLE players ADD COLUMN has_shot BOOLEAN DEFAULT 0');
+        logger.info('Migration: added has_shot column to players');
+      }
+
+      // Ensure idempotent uniqueness for actor/night/action logs
+      this.db.exec(`
+        DELETE FROM night_actions
+        WHERE id NOT IN (
+          SELECT MIN(id)
+          FROM night_actions
+          GROUP BY game_id, night_number, action_type, actor_id
+        )
+      `);
+      this.db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_actions_idempotent_actor ON night_actions(game_id, night_number, action_type, actor_id)');
       // Add guild_id to player_stats for per-guild leaderboards
       const statsColumns = this.db.pragma('table_info(player_stats)').map(c => c.name);
       if (!statsColumns.includes('guild_id')) {
@@ -319,7 +335,7 @@ class GameDatabase {
     if (!game) return [];
 
     const stmt = this.db.prepare(`
-      SELECT user_id as id, username, role, alive, in_love as inLove
+      SELECT user_id as id, username, role, alive, in_love as inLove, has_shot as hasShot
       FROM players WHERE game_id = ?
       ORDER BY joined_at
     `);
@@ -345,6 +361,10 @@ class GameDatabase {
       fields.push('in_love = ?');
       values.push(updates.inLove ? 1 : 0);
     }
+    if (updates.hasShot !== undefined) {
+      fields.push('has_shot = ?');
+      values.push(updates.hasShot ? 1 : 0);
+    }
 
     if (fields.length === 0) return false;
 
@@ -360,21 +380,51 @@ class GameDatabase {
   // ===== VOTES =====
 
   addVote(channelId, voterId, targetId, voteType = 'village', round = 0) {
+    const result = this.addVoteIfChanged(channelId, voterId, targetId, voteType, round);
+    return result.ok;
+  }
+
+  addVoteIfChanged(channelId, voterId, targetId, voteType = 'village', round = 0) {
     const game = this.getGame(channelId);
-    if (!game) return false;
+    if (!game) return { ok: false, affectedRows: 0, alreadyExecuted: false };
 
     try {
-      const stmt = this.db.prepare(`
-        INSERT INTO votes (game_id, voter_id, target_id, vote_type, round)
-        VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(game_id, voter_id, vote_type, round) 
-        DO UPDATE SET target_id = excluded.target_id
-      `);
-      stmt.run(game.id, voterId, targetId, voteType, round);
-      return true;
+      const tx = this.db.transaction(() => {
+        const updated = this.db.prepare(`
+          UPDATE votes
+          SET target_id = ?
+          WHERE game_id = ?
+            AND voter_id = ?
+            AND vote_type = ?
+            AND round = ?
+            AND target_id IS NOT ?
+        `).run(targetId, game.id, voterId, voteType, round, targetId);
+
+        if (updated.changes > 0) {
+          return { ok: true, affectedRows: 1, alreadyExecuted: false };
+        }
+
+        const inserted = this.db.prepare(`
+          INSERT OR IGNORE INTO votes (game_id, voter_id, target_id, vote_type, round)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(game.id, voterId, targetId, voteType, round);
+
+        if (inserted.changes === 0) {
+          return { ok: true, affectedRows: 0, alreadyExecuted: true };
+        }
+
+        return { ok: true, affectedRows: 1, alreadyExecuted: false };
+      });
+
+      const result = tx();
+      return {
+        ok: result.ok,
+        affectedRows: result.affectedRows,
+        alreadyExecuted: result.alreadyExecuted
+      };
     } catch (err) {
       logger.error('Failed to add vote', err);
-      return false;
+      return { ok: false, affectedRows: 0, alreadyExecuted: false };
     }
   }
 
@@ -410,19 +460,55 @@ class GameDatabase {
   // ===== NIGHT ACTIONS =====
 
   addNightAction(channelId, nightNumber, actionType, actorId, targetId = null) {
+    const result = this.addNightActionOnce(channelId, nightNumber, actionType, actorId, targetId);
+    return result.ok;
+  }
+
+  addNightActionOnce(channelId, nightNumber, actionType, actorId, targetId = null) {
     const game = this.getGame(channelId);
-    if (!game) return false;
+    if (!game) return { ok: false, affectedRows: 0, alreadyExecuted: false };
 
     try {
-      const stmt = this.db.prepare(`
-        INSERT INTO night_actions (game_id, night_number, action_type, actor_id, target_id)
-        VALUES (?, ?, ?, ?, ?)
-      `);
-      stmt.run(game.id, nightNumber, actionType, actorId, targetId);
-      return true;
+      const tx = this.db.transaction(() => {
+        const claimed = this.db.prepare(`
+          UPDATE games
+          SET updated_at = updated_at
+          WHERE id = ?
+            AND NOT EXISTS (
+              SELECT 1
+              FROM night_actions
+              WHERE game_id = ?
+                AND night_number = ?
+                AND action_type = ?
+                AND actor_id = ?
+            )
+        `).run(game.id, game.id, nightNumber, actionType, actorId);
+
+        if (claimed.changes === 0) {
+          return { ok: true, affectedRows: 0, alreadyExecuted: true };
+        }
+
+        const inserted = this.db.prepare(`
+          INSERT OR IGNORE INTO night_actions (game_id, night_number, action_type, actor_id, target_id)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(game.id, nightNumber, actionType, actorId, targetId);
+
+        if (inserted.changes === 0) {
+          return { ok: true, affectedRows: 0, alreadyExecuted: true };
+        }
+
+        return { ok: true, affectedRows: 1, alreadyExecuted: false };
+      });
+
+      const result = tx();
+      return {
+        ok: result.ok,
+        affectedRows: result.affectedRows,
+        alreadyExecuted: result.alreadyExecuted
+      };
     } catch (err) {
       logger.error('Failed to add night action', err);
-      return false;
+      return { ok: false, affectedRows: 0, alreadyExecuted: false };
     }
   }
 
@@ -470,17 +556,64 @@ class GameDatabase {
     };
   }
 
-  useWitchPotion(channelId, potionType) {
+  useWitchPotionIfAvailable(channelId, potionType) {
     const game = this.getGame(channelId);
-    if (!game) return false;
+    if (!game) return { ok: false, affectedRows: 0, alreadyExecuted: false };
 
     const field = potionType === 'life' ? 'life_potion_used' : 'death_potion_used';
-    const stmt = this.db.prepare(`
-      UPDATE witch_potions SET ${field} = 1
-      WHERE game_id = ?
-    `);
-    const result = stmt.run(game.id);
-    return result.changes > 0;
+
+    try {
+      const tx = this.db.transaction(() => {
+        this.db.prepare(`
+          INSERT OR IGNORE INTO witch_potions (game_id, life_potion_used, death_potion_used)
+          VALUES (?, 0, 0)
+        `).run(game.id);
+
+        const updated = this.db.prepare(`
+          UPDATE witch_potions
+          SET ${field} = 1
+          WHERE game_id = ? AND ${field} = 0
+        `).run(game.id);
+
+        if (updated.changes === 0) {
+          return { ok: true, affectedRows: 0, alreadyExecuted: true };
+        }
+
+        return { ok: true, affectedRows: 1, alreadyExecuted: false };
+      });
+
+      return tx();
+    } catch (err) {
+      logger.error('Failed to use witch potion', err);
+      return { ok: false, affectedRows: 0, alreadyExecuted: false };
+    }
+  }
+
+  useWitchPotion(channelId, potionType) {
+    const result = this.useWitchPotionIfAvailable(channelId, potionType);
+    return result.ok && result.affectedRows > 0;
+  }
+
+  markHunterShotIfFirst(channelId, hunterId) {
+    const game = this.getGame(channelId);
+    if (!game) return { ok: false, affectedRows: 0, alreadyExecuted: false };
+
+    try {
+      const stmt = this.db.prepare(`
+        UPDATE players
+        SET has_shot = 1
+        WHERE game_id = ? AND user_id = ? AND has_shot = 0
+      `);
+      const result = stmt.run(game.id, hunterId);
+      return {
+        ok: true,
+        affectedRows: result.changes,
+        alreadyExecuted: result.changes === 0
+      };
+    } catch (err) {
+      logger.error('Failed to mark hunter shot', err);
+      return { ok: false, affectedRows: 0, alreadyExecuted: false };
+    }
   }
 
   // ===== ACTION LOG =====

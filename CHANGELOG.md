@@ -1,5 +1,34 @@
 # 📝 Changelog - Werewolf Bot
 
+## [3.3.0] - 2026-02-24 - Production Readiness & Stability Hardening
+
+### ✅ Reliability & Determinism
+- **Crash simulation matrix** added with automated restart verification at critical failure points (after memory mutation, before/after DB commit, before timer scheduling, during subPhase transition)
+- **Atomic mutation hardening** continued: rollback and idempotency scenarios validated under crash conditions
+
+### 🔒 Concurrency & Split-Brain Protection
+- **GameMutex observability**: acquisition wait/hold tracking, queue length, exposed metrics (`max_wait_ms`, `avg_wait_ms`, `active_locks`)
+- **Long lock warning**: emits warning when a lock is held for more than 5 seconds
+- **Startup lock**: file-based inter-process boot lock prevents accidental multi-instance startup on same host
+- **Second instance fail-fast**: logs critical error and refuses startup
+- **Shutdown-safe unlock**: lock release on graceful shutdown and fatal exit paths
+
+### 🌐 WebSocket Isolation & Abuse Resistance
+- **Server-side guild authorization** enforced for `joinGuild`
+- **Unauthorized room/game subscription blocked** (`joinGuild`, `spectate`, `requestGames` scope filtering)
+- **Guild-scoped throttled broadcasts** for `gameEvent` / `globalEvent`
+- **Security tests added** for malicious join rejection, unauthorized spectate rejection, and throttled/coalesced guild broadcasts
+
+### 📈 Liveness Monitoring
+- **Per-game mutation timestamp** tracking (`_lastMutationAt`)
+- **STUCK detection** for games inactive beyond configured threshold (`GAME_STUCK_THRESHOLD_MS`)
+- **Metric exposed**: `stuck_games_count`
+- **Non-destructive behavior**: detection + warning only (no auto-delete)
+
+### 🧪 Tests
+- Added crash matrix tests, mutex observability tests, startup lock tests, websocket isolation tests, and liveness freeze detection
+- **251 tests passing** (21 suites)
+
 ## [3.2.0] - 2026-02-24 - 6-Axis Architecture Hardening (State, Security, Multi-Tenant, Performance, Monitoring, Tests)
 
 ### 🏗️ Axis 1 — State Management
@@ -972,7 +1001,7 @@ const voiceChannel = guild.channels.cache.get(voiceChannelId) ||
 - [x] Re-arm timers après loadState()
 - [x] 11 nouveaux tests FSM + snapshot (200 total)
 
-### v3.2.0 (Planned)
+### v3.4.0 (Planned)
 - [ ] Support de langues communautaires
 - [ ] Tableau de bord avancé avec graphiques (Chart.js)
 - [ ] Système de tournois

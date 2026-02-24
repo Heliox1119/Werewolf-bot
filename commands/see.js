@@ -78,9 +78,18 @@ module.exports = {
     }
 
     gameManager.clearNightAfkTimeout(game);
+    const actionResult = gameManager.db.addNightActionOnce(game.mainChannelId, game.dayCount || 0, 'see', interaction.user.id, target.id);
+    if (!actionResult.ok) {
+      await safeReply(interaction, { content: t('error.internal'), flags: MessageFlags.Ephemeral });
+      return;
+    }
+    if (actionResult.affectedRows === 0) {
+      await safeReply(interaction, { content: t('error.not_seer_turn'), flags: MessageFlags.Ephemeral });
+      return;
+    }
+
     await safeReply(interaction, { content: t('cmd.see.result', { name: target.username, role: translateRole(targetPlayer.role) }), flags: MessageFlags.Ephemeral });
     gameManager.logAction(game, `Voyante regarde ${target.username} (${targetPlayer.role})`);
-    try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'see', interaction.user.id, target.id); } catch (e) { /* ignore */ }
 
     // Track achievement: seer found a wolf
     if (targetPlayer.role === ROLES.WEREWOLF && gameManager.achievements) {

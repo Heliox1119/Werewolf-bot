@@ -1,5 +1,5 @@
 /**
- * Werewolf Bot — Web Dashboard Server v3.2.0
+ * Werewolf Bot — Web Dashboard Server v3.3.0
  * 
  * Express + Socket.IO server providing:
  * - Discord OAuth2 authentication
@@ -30,6 +30,9 @@ class WebServer {
     this.server = null;
     this.io = null;
     this.spectatorRooms = new Map(); // gameId -> Set of socket IDs
+    this.sessionMiddleware = null;
+    this._wsRateLimits = new Map();
+    this._guildBroadcastThrottle = new Map();
   }
 
   /**
@@ -61,6 +64,11 @@ class WebServer {
    * Stop the web server gracefully.
    */
   async stop() {
+    for (const state of this._guildBroadcastThrottle.values()) {
+      if (state && state.timer) clearTimeout(state.timer);
+    }
+    this._guildBroadcastThrottle.clear();
+    this._wsRateLimits.clear();
     if (this.io) this.io.close();
     if (this.server) {
       return new Promise((resolve) => {
@@ -99,12 +107,13 @@ class WebServer {
     if (!sessionSecret) {
       logger.warn('⚠️  SESSION_SECRET env var not set — using random secret (sessions will not persist across restarts)');
     }
-    this.app.use(session({
+    this.sessionMiddleware = session({
       secret: sessionSecret || require('crypto').randomBytes(32).toString('hex'),
       resave: false,
       saveUninitialized: false,
       cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 } // 7 days
-    }));
+    });
+    this.app.use(this.sessionMiddleware);
 
     this.app.use(passport.initialize());
     this.app.use(passport.session());
@@ -210,42 +219,59 @@ class WebServer {
   _setupSocketIO() {
     // Debounce map for gameState emissions: gameId -> timeout
     this._gameStateDebounce = new Map();
-    // Rate limiting: socketId -> { count, resetAt }
-    this._wsRateLimits = new Map();
+
+    if (this.sessionMiddleware) {
+      this.io.use((socket, next) => {
+        this.sessionMiddleware(socket.request, {}, next);
+      });
+    }
+
+    const SOCKET_WINDOW_MS = 10_000;
+    const SOCKET_MAX_EVENTS = 30;
 
     this.io.on('connection', (socket) => {
       // Initialize rate limit for this socket
-      this._wsRateLimits.set(socket.id, { count: 0, resetAt: Date.now() + 10000 });
+      this._wsRateLimits.set(socket.id, { count: 0, resetAt: Date.now() + SOCKET_WINDOW_MS });
 
       // Rate limiter check (30 events per 10 seconds per socket)
-      const checkRateLimit = () => {
+      const checkRateLimit = (cost = 1) => {
         const rl = this._wsRateLimits.get(socket.id);
         if (!rl) return false;
         const now = Date.now();
-        if (now > rl.resetAt) { rl.count = 0; rl.resetAt = now + 10000; }
-        rl.count++;
-        return rl.count > 30;
+        if (now > rl.resetAt) { rl.count = 0; rl.resetAt = now + SOCKET_WINDOW_MS; }
+        rl.count += cost;
+        return rl.count > SOCKET_MAX_EVENTS;
       };
+
+      const reject = (message) => socket.emit('error', { message });
 
       // Join a guild dashboard room (for scoped globalEvent broadcasts)
       socket.on('joinGuild', (guildId) => {
-        if (checkRateLimit()) return socket.emit('error', { message: 'Rate limited' });
-        if (typeof guildId !== 'string' || !/^\d{17,19}$/.test(guildId)) return;
+        if (checkRateLimit()) return reject('Rate limited');
+        if (typeof guildId !== 'string' || !/^\d{17,19}$/.test(guildId)) {
+          return reject('Invalid guild id');
+        }
+        if (!this._canSocketAccessGuild(socket, guildId)) {
+          return reject('Unauthorized guild');
+        }
         // Leave any previous guild rooms to prevent cross-guild leaking
         for (const room of socket.rooms) {
           if (room.startsWith('guild:')) socket.leave(room);
         }
         socket.join(`guild:${guildId}`);
+        socket.emit('joinedGuild', { guildId });
       });
 
       // Join a game spectator room
       socket.on('spectate', (gameId) => {
-        if (checkRateLimit()) return socket.emit('error', { message: 'Rate limited' });
-        if (typeof gameId !== 'string' || gameId.length > 30) return;
+        if (checkRateLimit()) return reject('Rate limited');
+        if (typeof gameId !== 'string' || gameId.length > 30) return reject('Invalid game id');
         const game = this.gameManager.games.get(gameId);
         if (!game) {
-          socket.emit('error', { message: 'Game not found' });
-          return;
+          return reject('Game not found');
+        }
+        if (!this._canSocketAccessGame(socket, game)) {
+          return reject('Unauthorized game');
         }
 
         socket.join(`game:${gameId}`);
@@ -273,13 +299,12 @@ class WebServer {
 
       // Request all active games (for dashboard) — filtered by user's guild membership
       socket.on('requestGames', () => {
-        if (checkRateLimit()) return socket.emit('error', { message: 'Rate limited' });
+        if (checkRateLimit()) return reject('Rate limited');
         const allGames = this.gameManager.getAllGames();
-        // Get user guild IDs from socket handshake session if available
         const userGuildIds = this._getSocketUserGuildIds(socket);
         const filtered = userGuildIds.length > 0
-          ? allGames.filter(g => userGuildIds.includes(g.guildId))
-          : allGames; // If no auth info, show all (public dashboard)
+          ? allGames.filter(g => g.guildId && userGuildIds.includes(g.guildId))
+          : [];
         const games = filtered.map(g => this._enrichSnapshot(this.gameManager.getGameSnapshot(g)));
         socket.emit('activeGames', games);
       });
@@ -310,14 +335,10 @@ class WebServer {
       // Broadcast to spectators of this game
       this.io.to(`game:${gameId}`).emit('gameEvent', data);
 
-      // Broadcast to guild dashboard room
+      // Broadcast to guild dashboard room (strictly scoped + throttled)
       if (guildId) {
-        this.io.to(`guild:${guildId}`).emit('gameEvent', data);
-      }
-
-      // Broadcast globally — scoped to guild room instead of all sockets
-      if (guildId) {
-        this.io.to(`guild:${guildId}`).emit('globalEvent', { event, gameId, guildId, timestamp: data.timestamp });
+        this._emitGuildScopedThrottled(guildId, 'gameEvent', data, 100);
+        this._emitGuildScopedThrottled(guildId, 'globalEvent', { event, gameId, guildId, timestamp: data.timestamp }, 250);
       }
 
       // On full state events, send debounced updated snapshot (200ms)
@@ -357,6 +378,59 @@ class WebServer {
       }
     } catch {}
     return [];
+  }
+
+  _canSocketAccessGuild(socket, guildId) {
+    if (!guildId) return false;
+    const guildIds = this._getSocketUserGuildIds(socket);
+    if (!Array.isArray(guildIds) || guildIds.length === 0) return false;
+    if (!guildIds.includes(guildId)) return false;
+    if (this.client && this.client.guilds && this.client.guilds.cache && !this.client.guilds.cache.has(guildId)) {
+      return false;
+    }
+    return true;
+  }
+
+  _canSocketAccessGame(socket, game) {
+    if (!game || !game.guildId) return false;
+    return this._canSocketAccessGuild(socket, game.guildId);
+  }
+
+  _emitGuildScopedThrottled(guildId, eventName, payload, throttleMs = 250) {
+    const key = `${guildId}:${eventName}`;
+    const now = Date.now();
+    const state = this._guildBroadcastThrottle.get(key) || { lastAt: 0, timer: null, pending: null };
+    const elapsed = now - state.lastAt;
+
+    const emitNow = (data) => {
+      state.lastAt = Date.now();
+      this.io.to(`guild:${guildId}`).emit(eventName, data);
+    };
+
+    if (elapsed >= throttleMs) {
+      if (state.timer) {
+        clearTimeout(state.timer);
+        state.timer = null;
+      }
+      state.pending = null;
+      emitNow(payload);
+      this._guildBroadcastThrottle.set(key, state);
+      return;
+    }
+
+    state.pending = payload;
+    if (state.timer) {
+      clearTimeout(state.timer);
+    }
+    const waitMs = Math.max(0, throttleMs - elapsed);
+    state.timer = setTimeout(() => {
+      const pendingPayload = state.pending;
+      state.pending = null;
+      state.timer = null;
+      emitNow(pendingPayload);
+      this._guildBroadcastThrottle.set(key, state);
+    }, waitMs);
+    this._guildBroadcastThrottle.set(key, state);
   }
 
   /**

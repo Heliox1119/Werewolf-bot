@@ -38,24 +38,45 @@ module.exports = {
       return;
     }
 
-    // Initialiser le Set de votes si nécessaire
-    if (!game.endVotes) {
-      game.endVotes = new Set();
+    let voteState;
+    try {
+      voteState = await gameManager.runAtomic(game.mainChannelId, (state) => {
+        if (!state.endVotes) {
+          state.endVotes = new Set();
+        }
+
+        if (state.endVotes.has(interaction.user.id)) {
+          return { alreadyVoted: true };
+        }
+
+        state.endVotes.add(interaction.user.id);
+
+        const alivePlayers = state.players.filter(p => p.alive);
+        const votesNeeded = Math.ceil(alivePlayers.length / 2);
+        const currentVotes = [...state.endVotes].filter(id => alivePlayers.some(p => p.id === id)).length;
+
+        gameManager.logAction(state, `${interaction.user.username} a voté pour arrêter la partie (${currentVotes}/${votesNeeded})`);
+
+        return {
+          alreadyVoted: false,
+          alivePlayersCount: alivePlayers.length,
+          votesNeeded,
+          currentVotes
+        };
+      });
+    } catch (e) {
+      await safeReply(interaction, { content: t('error.internal'), flags: MessageFlags.Ephemeral });
+      return;
     }
 
-    // Vérifier si le joueur a déjà voté
-    if (game.endVotes.has(interaction.user.id)) {
+    if (voteState.alreadyVoted) {
       await safeReply(interaction, { content: t('error.already_voted_end'), flags: MessageFlags.Ephemeral });
       return;
     }
 
-    // Ajouter le vote
-    game.endVotes.add(interaction.user.id);
-
     const alivePlayers = game.players.filter(p => p.alive);
-    const votesNeeded = Math.ceil(alivePlayers.length / 2);
-    // Ne compter que les votes de joueurs encore vivants
-    const currentVotes = [...game.endVotes].filter(id => alivePlayers.some(p => p.id === id)).length;
+    const votesNeeded = voteState.votesNeeded;
+    const currentVotes = voteState.currentVotes;
 
     logger.info('Vote-end received', {
       channelId: interaction.channelId,
@@ -64,8 +85,6 @@ module.exports = {
       needed: votesNeeded,
       alivePlayers: alivePlayers.length
     });
-
-    gameManager.logAction(game, `${interaction.user.username} a voté pour arrêter la partie (${currentVotes}/${votesNeeded})`);
 
     // Majorité atteinte ?
     if (currentVotes >= votesNeeded) {

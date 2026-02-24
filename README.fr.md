@@ -5,12 +5,12 @@
 
 Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion vocale automatique, audio d'ambiance et lobby interactif.
 
-![Version](https://img.shields.io/badge/version-3.2.0-blue)
+![Version](https://img.shields.io/badge/version-3.3.0-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)
-![Tests](https://img.shields.io/badge/tests-223%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-251%20passed-brightgreen)
 
 ---
 
@@ -102,7 +102,7 @@ Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion
 - **i18n centralisé** — Singleton `I18n`, interpolation `{{variable}}`, fallback automatique
 - **Architecture EventEmitter** — GameManager émet des événements temps réel vers le web
 - **Gestion d'erreurs robuste** — safeReply, graceful shutdown, zero crash en production
-- **223 tests automatisés** — 16 suites, 0 failures
+- **251 tests automatisés** — 21 suites, 0 failures
 - **Thèmes d'embed** — 4 palettes de couleurs, commande `/theme`, 12 couleurs sémantiques
 
 ---
@@ -344,7 +344,7 @@ Werewolf-bot/
 │   └── alerts.js           # Alertes webhook
 ├── Dockerfile              # Build Docker multi-stage
 ├── docker-compose.yml      # Compose production-ready
-├── tests/                  # 191 tests Jest
+├── tests/                  # 251 tests Jest
 ├── audio/                  # Sons d'ambiance (.mp3)
 └── img/                    # Images des rôles
 ```
@@ -365,6 +365,7 @@ npm run clear-commands      # Réinitialiser les commandes Discord
 
 | Version | Highlights |
 |---------|-----------|
+| **v3.3.0** | 🚀 Renforcement production : matrice de crash/restart, tests d'isolation WebSocket anti-abus, observabilité GameMutex, verrou anti split-brain au démarrage, détection de liveness STUCK (`stuck_games_count`) |
 | **v3.2.0** | 🛡️ Renforcement 6 axes : GameMutex, transitions FSM, sync transactionnelle, dirty flag, 7 nouvelles colonnes DB, isRecentDuplicate sur 12 commandes, express-rate-limit, CORS, WS guild-scoped, Prometheus /metrics, /health, 223 tests |
 | **v3.1.0** | 🛡️ Audit architecture 15 points, élimination XSS, rate limiting & debounce WebSocket, isolation multi-tenant, fixes critiques FSM, archivage parties, 200 tests || **v3.0.0** | 🌐 Tableau de bord web (Express + EJS), Spectateur live (Socket.IO), API REST (15 endpoints), Discord OAuth2, Rôles personnalisés, Architecture EventEmitter || **v2.9.0** | 🏆 Succès (18), classement ELO (7 paliers), révélation rôle à la mort, notification DM de tour, `/leaderboard`, `/history`, timeline post-game, 4 bug fixes |
 | **v2.8.0** | 🐳 Docker, backup SQLite auto (horaire), multi-guild (langue & config par serveur), système de revanche |

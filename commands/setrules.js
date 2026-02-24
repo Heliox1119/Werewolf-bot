@@ -81,7 +81,14 @@ module.exports = {
         await interaction.editReply({ content: t('error.max_out_of_range'), flags: MessageFlags.Ephemeral });
         return;
       }
-      game.rules = { ...game.rules, minPlayers: newMin, maxPlayers: newMax };
+      try {
+        await gameManager.runAtomic(game.mainChannelId, (state) => {
+          state.rules = { ...state.rules, minPlayers: newMin, maxPlayers: newMax };
+        });
+      } catch (e) {
+        await interaction.editReply({ content: t('error.internal'), flags: MessageFlags.Ephemeral });
+        return;
+      }
     }
 
     if (wolfWin) {

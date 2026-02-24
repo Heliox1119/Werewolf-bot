@@ -23,7 +23,9 @@ module.exports = {
       return;
     }
     // Ajoute un flag debug
-    game.disableVoiceMute = true;
+    await gameManager.runAtomic(game.mainChannelId, (state) => {
+      state.disableVoiceMute = true;
+    });
     gameManager.scheduleSave();
     await interaction.editReply({ content: t('cmd.debug_voicemute.success'), flags: MessageFlags.Ephemeral });
   }

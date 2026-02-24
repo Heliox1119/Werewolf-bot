@@ -46,7 +46,8 @@ class MetricsCollector {
         activeGames: 0,
         totalPlayers: 0,
         gamesCreated24h: 0,
-        gamesCompleted24h: 0
+        gamesCompleted24h: 0,
+        stuck_games_count: 0
       },
       
       // Métriques des commandes
@@ -317,6 +318,9 @@ class MetricsCollector {
       games.forEach(game => {
         totalPlayers += game.players.length;
       });
+      const stuckGamesCount = typeof gameManager.getStuckGamesCount === 'function'
+        ? gameManager.getStuckGamesCount()
+        : 0;
       
       // Stats 24h depuis la DB (persistent, survit aux restarts)
       let gamesCreated24h = 0;
@@ -332,7 +336,8 @@ class MetricsCollector {
         activeGames: games.length,
         totalPlayers,
         gamesCreated24h,
-        gamesCompleted24h
+        gamesCompleted24h,
+        stuck_games_count: stuckGamesCount
       };
       
       this.metrics.errors.last24h = errorsLast24h;

@@ -17,6 +17,9 @@ const TIMEOUTS = {
   HUNTER_SHOOT: 90_000,                // 90s (augmenté)
   DAY_DELIBERATION: 300_000,           // 5 min de discussion (augmenté)
   DAY_VOTE: 180_000,                   // 3 min pour voter (augmenté)
+  STUCK_GAME_THRESHOLD: Number.isFinite(Number(process.env.GAME_STUCK_THRESHOLD_MS))
+    ? Number(process.env.GAME_STUCK_THRESHOLD_MS)
+    : 10 * 60 * 1000,
   CAPTAIN_VOTE: 120_000,               // 2 min pour le vote capitaine
   RECENT_COMMAND_WINDOW: 5_000,        // 5s
   RECENT_COMMAND_CLEANUP: 30_000,      // 30s
@@ -24,10 +27,10 @@ const TIMEOUTS = {
 };
 
 class GameManager extends EventEmitter {
-  constructor() {
+  constructor(options = {}) {
     super();
     this.games = new Map(); // Cache en mémoire pour performance
-    this.db = new GameDatabase(); // Base de données SQLite
+    this.db = options.db || new GameDatabase(options.dbPath || null); // Base de données SQLite
     this.lobbyTimeouts = new Map(); // channelId -> timeoutId
     this.saveTimeout = null; // Debounce saveState calls
     this.saveInProgress = false;
@@ -35,6 +38,12 @@ class GameManager extends EventEmitter {
     this.recentCommands = new Map(); // Cache pour déduplication: "command:channelId:userId" -> timestamp
     this.dirtyGames = new Set(); // Track which games need DB sync
     this.gameMutex = gameMutex; // Async mutex per game
+    this._atomicContexts = new Map(); // channelId -> { active, postCommit: [] }
+    this.activeGameTimers = new Map(); // channelId -> { type, epoch }
+    this._timerEpochs = new Map(); // channelId -> number
+    this._testMode = options.testMode ?? process.env.NODE_ENV === 'test';
+    this._failurePoints = new Map();
+    this.stuckGameThresholdMs = TIMEOUTS.STUCK_GAME_THRESHOLD;
     
     // Nettoyage périodique des recentCommands
     this._recentCommandsInterval = setInterval(() => {
@@ -47,6 +56,69 @@ class GameManager extends EventEmitter {
     }, TIMEOUTS.RECENT_COMMAND_INTERVAL);
   }
 
+  setFailurePoint(pointName, config = {}) {
+    if (!this._testMode) return;
+    const normalized = typeof config === 'number' ? { hits: config } : config;
+    const hits = Math.max(1, normalized.hits || 1);
+    this._failurePoints.set(pointName, {
+      hits,
+      message: normalized.message || `Simulated crash at ${pointName}`,
+      code: normalized.code || 'SIMULATED_CRASH'
+    });
+  }
+
+  clearFailurePoint(pointName) {
+    this._failurePoints.delete(pointName);
+  }
+
+  clearFailurePoints() {
+    this._failurePoints.clear();
+  }
+
+  _maybeFail(pointName, context = {}) {
+    if (!this._testMode) return;
+    const failure = this._failurePoints.get(pointName);
+    if (!failure) return;
+
+    failure.hits -= 1;
+    if (failure.hits > 0) {
+      this._failurePoints.set(pointName, failure);
+      return;
+    }
+    this._failurePoints.delete(pointName);
+
+    const error = new Error(failure.message);
+    error.code = failure.code;
+    error.isSimulatedCrash = true;
+    error.failurePoint = pointName;
+    error.failureContext = context;
+    throw error;
+  }
+
+  simulateProcessCrashForTests() {
+    if (!this._testMode) return;
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+      this.saveTimeout = null;
+    }
+    if (this._recentCommandsInterval) {
+      clearInterval(this._recentCommandsInterval);
+      this._recentCommandsInterval = null;
+    }
+    for (const game of this.games.values()) {
+      this._clearAllNonLobbyTimerHandles(game);
+    }
+    for (const timeoutId of this.lobbyTimeouts.values()) {
+      clearTimeout(timeoutId);
+    }
+    this.lobbyTimeouts.clear();
+    this.activeGameTimers.clear();
+    this._timerEpochs.clear();
+    if (this.db) {
+      this.db.close();
+    }
+  }
+
   // Check if command was recently executed (within 5 seconds) to prevent Discord retries
   isRecentDuplicate(commandName, channelId, userId) {
     const key = `${commandName}:${channelId}:${userId}`;
@@ -55,29 +127,40 @@ class GameManager extends EventEmitter {
     if (lastExecution) {
       const elapsed = Date.now() - lastExecution;
       if (elapsed < TIMEOUTS.RECENT_COMMAND_WINDOW) {
-        logger.warn('Duplicate command detected (Discord retry)', { 
+        logger.warn('Duplicate command detected (Discord retry)', {
           command: commandName,
           channelId,
           userId,
-          elapsedMs: elapsed 
+          elapsedMs: elapsed
         });
         return true;
       }
     }
-    
-    // Mark this execution
+
     this.recentCommands.set(key, Date.now());
-    
     return false;
   }
 
   setLobbyTimeout(channelId) {
+    const existing = this.activeGameTimers.get(channelId);
+    if (existing && existing.type === 'lobby' && this.lobbyTimeouts.has(channelId)) {
+      return;
+    }
+
+    const game = this.games.get(channelId);
+    if (game) {
+      this._clearAllNonLobbyTimerHandles(game);
+      game._activeTimerType = null;
+    }
+
     this.clearLobbyTimeout(channelId);
+    const epoch = this._activateTimer(channelId, 'lobby');
     const timeoutId = setTimeout(async () => {
       const game = this.games.get(channelId);
+      if (!this._isTimerStillActive(channelId, 'lobby', epoch)) return;
+      this._deactivateTimer(channelId, 'lobby', epoch);
       if (!game) return;
       try {
-        // On suppose que le bot principal est accessible via require.main.exports.client
         const bot = require.main && require.main.exports && require.main.exports.client ? require.main.exports.client : null;
         const guild = bot ? bot.guilds.cache.get(game.guildId) : null;
         if (guild) {
@@ -85,13 +168,15 @@ class GameManager extends EventEmitter {
           await this.cleanupChannels(guild, game);
           this.clearGameTimers(game);
           this.games.delete(channelId);
-          // Supprimer de la DB
           this.db.deleteGame(channelId);
           logger.info(`💤 Lobby auto-deleted after 1h of inactivity`, { channelId });
         }
       } catch (e) { logger.error('Auto-cleanup lobby failed', e); }
     }, TIMEOUTS.LOBBY_AUTO_CLEANUP);
     this.lobbyTimeouts.set(channelId, timeoutId);
+    if (game) {
+      game._activeTimerType = 'lobby';
+    }
   }
 
   clearLobbyTimeout(channelId) {
@@ -100,37 +185,136 @@ class GameManager extends EventEmitter {
       clearTimeout(timeoutId);
       this.lobbyTimeouts.delete(channelId);
     }
+    const active = this.activeGameTimers.get(channelId);
+    if (active && active.type === 'lobby') {
+      this._deactivateTimer(channelId, 'lobby', active.epoch);
+    }
+    const game = this.games.get(channelId);
+    if (game && game._activeTimerType === 'lobby') {
+      game._activeTimerType = null;
+    }
   }
 
   // Nettoyer tous les timers d'une partie (AFK nuit, chasseur, capitaine)
   clearGameTimers(game) {
-    this.clearNightAfkTimeout(game);
-    this.clearDayTimeout(game);
-    this.clearCaptainVoteTimeout(game);
+    if (!game) return;
+    this.clearLobbyTimeout(game.mainChannelId);
+    this._clearAllNonLobbyTimerHandles(game);
+    this._deactivateTimer(game.mainChannelId);
+    game._activeTimerType = null;
+  }
+
+  _clearAllNonLobbyTimerHandles(game) {
+    if (!game) return;
+    if (game._nightAfkTimer) {
+      clearTimeout(game._nightAfkTimer);
+      game._nightAfkTimer = null;
+    }
     if (game._hunterTimer) {
       clearTimeout(game._hunterTimer);
       game._hunterTimer = null;
     }
+    if (game._dayTimer) {
+      clearTimeout(game._dayTimer);
+      game._dayTimer = null;
+    }
+    if (game._captainVoteTimer) {
+      clearTimeout(game._captainVoteTimer);
+      game._captainVoteTimer = null;
+    }
+  }
+
+  _getTimerFieldByType(timerType) {
+    if (timerType.startsWith('night')) return '_nightAfkTimer';
+    if (timerType.startsWith('hunter')) return '_hunterTimer';
+    if (timerType.startsWith('day')) return '_dayTimer';
+    if (timerType.startsWith('captain')) return '_captainVoteTimer';
+    return null;
+  }
+
+  _nextTimerEpoch(channelId) {
+    const next = (this._timerEpochs.get(channelId) || 0) + 1;
+    this._timerEpochs.set(channelId, next);
+    return next;
+  }
+
+  _activateTimer(channelId, type) {
+    const epoch = this._nextTimerEpoch(channelId);
+    this.activeGameTimers.set(channelId, { type, epoch });
+    return epoch;
+  }
+
+  _deactivateTimer(channelId, expectedType = null, expectedEpoch = null) {
+    const active = this.activeGameTimers.get(channelId);
+    if (!active) return;
+    if (expectedType && active.type !== expectedType) return;
+    if (expectedEpoch !== null && active.epoch !== expectedEpoch) return;
+    this.activeGameTimers.delete(channelId);
+    const game = this.games.get(channelId);
+    if (game) {
+      game._activeTimerType = null;
+    }
+  }
+
+  _isTimerStillActive(channelId, type, epoch) {
+    const active = this.activeGameTimers.get(channelId);
+    return !!active && active.type === type && active.epoch === epoch;
+  }
+
+  _scheduleGameTimer(game, timerType, delay, callback) {
+    const channelId = game.mainChannelId;
+    const active = this.activeGameTimers.get(channelId);
+    const timerField = this._getTimerFieldByType(timerType);
+
+    if (active && active.type === timerType && timerField && game[timerField]) {
+      return false;
+    }
+
+    this.clearLobbyTimeout(channelId);
+    this._clearAllNonLobbyTimerHandles(game);
+    this._maybeFail('before_timer_scheduling', { channelId, timerType, delay });
+
+    const epoch = this._activateTimer(channelId, timerType);
+    game._activeTimerType = timerType;
+
+    const timeoutId = setTimeout(async () => {
+      if (!this._isTimerStillActive(channelId, timerType, epoch)) return;
+
+      if (timerField) {
+        game[timerField] = null;
+      }
+      this._deactivateTimer(channelId, timerType, epoch);
+      await callback();
+    }, delay);
+
+    if (timerField) {
+      game[timerField] = timeoutId;
+    }
+    return true;
   }
 
   // --- Captain vote timeout ---
   startCaptainVoteTimeout(guild, game) {
+    const ctx = this._atomicContexts.get(game.mainChannelId);
+    if (ctx && ctx.active) {
+      this._queuePostCommit(game.mainChannelId, () => this.startCaptainVoteTimeout(guild, game));
+      return;
+    }
     this.clearCaptainVoteTimeout(game);
-    game._captainVoteTimer = setTimeout(async () => {
+    this._scheduleGameTimer(game, 'captain-vote', TIMEOUTS.CAPTAIN_VOTE, async () => {
       try {
         if (game.subPhase !== PHASES.VOTE_CAPITAINE) return;
-        if (game.captainId) return; // Déjà élu
+        if (game.captainId) return;
 
         const mainChannel = game.villageChannelId
           ? await guild.channels.fetch(game.villageChannelId)
           : await guild.channels.fetch(game.mainChannelId);
 
-        // Tenter de résoudre les votes existants\n        const res = this.resolveCaptainVote(game.mainChannelId);
+        const res = await this.resolveCaptainVote(game.mainChannelId);
         if (res.ok) {
           const msgKey = res.wasTie ? 'game.captain_random_elected' : 'game.captain_auto_elected';
           await this.sendLogged(mainChannel, t(msgKey, { name: res.username }), { type: 'captainAutoElected' });
           this.logAction(game, `Capitaine auto-élu (timeout): ${res.username}${res.wasTie ? ' (égalité)' : ''}`);
-          // Envoyer le DM au capitaine
           try {
             const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
             const pathMod = require('path');
@@ -145,31 +329,36 @@ class GameManager extends EventEmitter {
             await user.send({ embeds: [embed], files: [new AttachmentBuilder(imagePath, { name: imageName })] });
           } catch (e) { /* DM failure ignored */ }
         } else if (res.reason === 'no_votes') {
-          // Aucun vote : choisir un joueur vivant au hasard
-          const alivePlayers = game.players.filter(p => p.alive);
-          if (alivePlayers.length > 0) {
+          const randomResult = await this.runAtomic(game.mainChannelId, (state) => {
+            const alivePlayers = state.players.filter(p => p.alive);
+            if (alivePlayers.length === 0) return null;
             const random = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
-            game.captainId = random.id;
-            this.db.updateGame(game.mainChannelId, { captainId: random.id });
-            game.captainVotes.clear();
-            game.captainVoters.clear();
-            await this.sendLogged(mainChannel, t('game.captain_random_no_votes', { name: random.username }), { type: 'captainRandomNoVotes' });
-            this.logAction(game, `Capitaine élu au hasard (aucun vote): ${random.username}`);
+            state.captainId = random.id;
+            state.captainVotes.clear();
+            state.captainVoters.clear();
+            return { id: random.id, username: random.username };
+          });
+          if (randomResult) {
+            await this.sendLogged(mainChannel, t('game.captain_random_no_votes', { name: randomResult.username }), { type: 'captainRandomNoVotes' });
+            this.logAction(game, `Capitaine élu au hasard (aucun vote): ${randomResult.username}`);
           }
         }
 
-        // Avancer vers la délibération
         await this.advanceSubPhase(guild, game);
       } catch (e) {
         logger.error('Captain vote timeout error', { error: e.message });
       }
-    }, TIMEOUTS.CAPTAIN_VOTE);
+    });
   }
 
   clearCaptainVoteTimeout(game) {
     if (game._captainVoteTimer) {
       clearTimeout(game._captainVoteTimer);
       game._captainVoteTimer = null;
+    }
+    const active = this.activeGameTimers.get(game.mainChannelId);
+    if (active && active.type === 'captain-vote') {
+      this._deactivateTimer(game.mainChannelId, active.type, active.epoch);
     }
   }
 
@@ -225,7 +414,55 @@ class GameManager extends EventEmitter {
    * @param {string} channelId
    */
   markDirty(channelId) {
+    this._markMutation(channelId);
     this.dirtyGames.add(channelId);
+  }
+
+  _markMutation(channelOrGame) {
+    const game = typeof channelOrGame === 'string'
+      ? this.games.get(channelOrGame)
+      : channelOrGame;
+    if (!game) return;
+    game._lastMutationAt = Date.now();
+    game.stuckStatus = 'OK';
+  }
+
+  detectStuckGames(thresholdMs = this.stuckGameThresholdMs) {
+    const now = Date.now();
+    const stuckGames = [];
+
+    for (const game of this.games.values()) {
+      if (!game || !game.startedAt || game.phase === PHASES.ENDED) {
+        continue;
+      }
+
+      const referenceTs = game._lastMutationAt || game.startedAt;
+      const inactivityMs = now - referenceTs;
+      const isStuck = inactivityMs > thresholdMs;
+
+      if (isStuck) {
+        if (game.stuckStatus !== 'STUCK') {
+          game.stuckStatus = 'STUCK';
+          logger.warn('Game liveness detected STUCK game', {
+            channelId: game.mainChannelId,
+            guildId: game.guildId,
+            phase: game.phase,
+            subPhase: game.subPhase,
+            inactivityMs,
+            thresholdMs
+          });
+        }
+        stuckGames.push(game);
+      } else if (game.stuckStatus === 'STUCK') {
+        game.stuckStatus = 'OK';
+      }
+    }
+
+    return stuckGames;
+  }
+
+  getStuckGamesCount(thresholdMs = this.stuckGameThresholdMs) {
+    return this.detectStuckGames(thresholdMs).length;
   }
 
   /**
@@ -233,62 +470,155 @@ class GameManager extends EventEmitter {
    * @param {object} game
    * @param {string} newSubPhase
    */
-  _setSubPhase(game, newSubPhase) {
+  _setSubPhase(game, newSubPhase, options = {}) {
+    const { allowOutsideAtomic = false, skipValidation = false } = options;
     const from = game.subPhase;
-    if (!PHASES.isValidTransition(from, newSubPhase)) {
-      logger.warn('Invalid FSM transition attempted', { from, to: newSubPhase, channelId: game.mainChannelId });
-      // Still allow it for backward compatibility, but log loudly
+    if (!PHASES.isKnownSubPhase(newSubPhase)) {
+      throw new Error(`Unknown subPhase rejected: ${newSubPhase}`);
     }
-    // Persist first to avoid exposing in-memory mutation before DB commit.
-    this.db.updateGame(game.mainChannelId, { subPhase: newSubPhase });
+    if (!skipValidation && !PHASES.isValidTransition(from, newSubPhase)) {
+      throw new Error(`Illegal subPhase transition: ${from} -> ${newSubPhase}`);
+    }
+    if (!allowOutsideAtomic) {
+      this._assertAtomic(game.mainChannelId);
+    }
+    this._maybeFail('during_subphase_transition', {
+      channelId: game.mainChannelId,
+      from,
+      to: newSubPhase
+    });
     game.subPhase = newSubPhase;
     this.markDirty(game.mainChannelId);
   }
 
+  _setPhase(game, newPhase, options = {}) {
+    const { allowOutsideAtomic = false } = options;
+    const from = game.phase;
+    if (!PHASES.isKnownMainPhase(newPhase)) {
+      throw new Error(`Unknown phase rejected: ${newPhase}`);
+    }
+    if (!PHASES.isValidMainTransition(from, newPhase)) {
+      throw new Error(`Illegal phase transition: ${from} -> ${newPhase}`);
+    }
+    if (!allowOutsideAtomic) {
+      this._assertAtomic(game.mainChannelId);
+    }
+    game.phase = newPhase;
+    this.markDirty(game.mainChannelId);
+  }
+
+  _assertAtomic(channelId) {
+    const ctx = this._atomicContexts.get(channelId);
+    if (!ctx || !ctx.active) {
+      throw new Error(`State mutation outside runAtomic is forbidden for channel ${channelId}`);
+    }
+    return ctx;
+  }
+
+  _queuePostCommit(channelId, fn) {
+    const ctx = this._atomicContexts.get(channelId);
+    if (!ctx || !ctx.active) {
+      fn();
+      return;
+    }
+    ctx.postCommit.push(fn);
+  }
+
   _createStateSnapshot(game) {
-    return {
-      phase: game.phase,
-      subPhase: game.subPhase,
-      dayCount: game.dayCount,
-      nightVictim: game.nightVictim,
-      wolfVotes: game.wolfVotes instanceof Map
-        ? new Map(game.wolfVotes)
-        : (game.wolfVotes && typeof game.wolfVotes === 'object' ? { ...game.wolfVotes } : game.wolfVotes),
-      votes: game.votes ? new Map(game.votes) : new Map(),
-      voteVoters: game.voteVoters ? new Map(game.voteVoters) : new Map(),
-      voteIncrements: game._voteIncrements ? new Map(game._voteIncrements) : null,
-      witchKillTarget: game.witchKillTarget,
-      witchSave: game.witchSave,
-      whiteWolfKillTarget: game.whiteWolfKillTarget,
-      protectedPlayerId: game.protectedPlayerId,
-      lastProtectedPlayerId: game.lastProtectedPlayerId,
-      villageRolesPowerless: game.villageRolesPowerless,
-      endedAt: game.endedAt,
-      players: (game.players || []).map(p => ({ ...p })),
-      dead: (game.dead || []).map(p => ({ ...p }))
+    const clone = (value) => {
+      if (value === null || value === undefined) return value;
+      if (value instanceof Map) return new Map(Array.from(value.entries(), ([k, v]) => [k, clone(v)]));
+      if (value instanceof Set) return new Set(Array.from(value.values(), (v) => clone(v)));
+      if (Array.isArray(value)) return value.map(clone);
+      if (value instanceof Date) return new Date(value.getTime());
+      if (typeof value === 'object') {
+        const out = {};
+        for (const [k, v] of Object.entries(value)) {
+          if (typeof v === 'function') continue;
+          out[k] = clone(v);
+        }
+        return out;
+      }
+      return value;
     };
+
+    const snapshot = {};
+    const excluded = new Set(['_nightAfkTimer', '_hunterTimer', '_dayTimer', '_captainVoteTimer']);
+    for (const [key, value] of Object.entries(game)) {
+      if (excluded.has(key)) continue;
+      if (typeof value === 'function') continue;
+      snapshot[key] = clone(value);
+    }
+    return snapshot;
   }
 
   _restoreStateSnapshot(game, snapshot) {
-    game.phase = snapshot.phase;
-    game.subPhase = snapshot.subPhase;
-    game.dayCount = snapshot.dayCount;
-    game.nightVictim = snapshot.nightVictim;
-    game.wolfVotes = snapshot.wolfVotes instanceof Map
-      ? new Map(snapshot.wolfVotes)
-      : (snapshot.wolfVotes && typeof snapshot.wolfVotes === 'object' ? { ...snapshot.wolfVotes } : snapshot.wolfVotes);
-    game.votes = new Map(snapshot.votes || []);
-    game.voteVoters = new Map(snapshot.voteVoters || []);
-    game._voteIncrements = snapshot.voteIncrements ? new Map(snapshot.voteIncrements) : null;
-    game.witchKillTarget = snapshot.witchKillTarget;
-    game.witchSave = snapshot.witchSave;
-    game.whiteWolfKillTarget = snapshot.whiteWolfKillTarget;
-    game.protectedPlayerId = snapshot.protectedPlayerId;
-    game.lastProtectedPlayerId = snapshot.lastProtectedPlayerId;
-    game.villageRolesPowerless = snapshot.villageRolesPowerless;
-    game.endedAt = snapshot.endedAt;
-    game.players = (snapshot.players || []).map(p => ({ ...p }));
-    game.dead = (snapshot.dead || []).map(p => ({ ...p }));
+    const excluded = new Set(['_nightAfkTimer', '_hunterTimer', '_dayTimer', '_captainVoteTimer']);
+    for (const key of Object.keys(game)) {
+      if (excluded.has(key)) continue;
+      delete game[key];
+    }
+    for (const [key, value] of Object.entries(snapshot)) {
+      game[key] = value;
+    }
+  }
+
+  /**
+   * Run a state mutation atomically:
+   * - acquire per-game mutex
+   * - snapshot in-memory state
+   * - apply mutation callback
+   * - sync to DB (must succeed)
+   * - rollback snapshot on any error
+   */
+  async runAtomic(channelId, mutationFn) {
+    const existing = this._atomicContexts.get(channelId);
+    if (existing && existing.active) {
+      throw new Error(`runAtomic recursion is forbidden for channel ${channelId}`);
+    }
+
+    const release = await this.gameMutex.acquire(channelId);
+    const game = this.games.get(channelId);
+    if (!game) {
+      release();
+      throw new Error(`runAtomic called for unknown game ${channelId}`);
+    }
+
+    const snapshot = this._createStateSnapshot(game);
+    const ctx = { active: true, postCommit: [] };
+    this._atomicContexts.set(channelId, ctx);
+
+    try {
+      const mutationResult = mutationFn(game);
+      if (mutationResult && typeof mutationResult.then === 'function') {
+        throw new Error('runAtomic mutationFn must be synchronous (async gap forbidden before commit)');
+      }
+
+      this._maybeFail('after_memory_mutation', { channelId });
+      this._maybeFail('before_db_commit', { channelId });
+
+      this.syncGameToDb(channelId, { throwOnError: true });
+      this._markMutation(game);
+
+      this._maybeFail('after_db_commit', { channelId });
+
+      for (const action of ctx.postCommit) {
+        action();
+      }
+
+      return mutationResult;
+    } catch (error) {
+      this._restoreStateSnapshot(game, snapshot);
+      throw error;
+    } finally {
+      ctx.active = false;
+      this._atomicContexts.delete(channelId);
+      release();
+    }
+  }
+
+  async runAtomicMutation(game, mutator) {
+    return this.runAtomic(game.mainChannelId, mutator);
   }
 
   // Retourne toutes les parties actives sous forme de tableau
@@ -361,7 +691,10 @@ class GameManager extends EventEmitter {
       actionLog: [],
       startedAt: null,
       endedAt: null,
-      disableVoiceMute: options.disableVoiceMute || false
+      disableVoiceMute: options.disableVoiceMute || false,
+      _activeTimerType: null,
+      _lastMutationAt: Date.now(),
+      stuckStatus: 'OK'
     });
 
     // Démarrer le timeout de lobby zombie (1h)
@@ -634,7 +967,7 @@ class GameManager extends EventEmitter {
     try {
       // Re-check after acquiring lock
       if (game.phase !== PHASES.NIGHT) return;
-      const newPhase = await this.nextPhase(guild, game);
+      const newPhase = await this.nextPhase(guild, game, { skipAtomic: true });
       if (newPhase !== PHASES.DAY) return;
 
       if (game.voiceChannelId) {
@@ -688,7 +1021,7 @@ class GameManager extends EventEmitter {
                 this.playAmbience(game.voiceChannelId, 'death.mp3');
               }
               await this.sendLogged(mainChannel, t('game.night_victim', { name: victimPlayer.username }), { type: 'nightVictim' });
-              const collateral = this.kill(game.mainChannelId, game.nightVictim);
+              const collateral = this.kill(game.mainChannelId, game.nightVictim, { throwOnDbFailure: true });
               nightDeaths.push(victimPlayer);
               this.logAction(game, `Mort la nuit: ${victimPlayer.username}`);
               await this.announceDeathReveal(mainChannel, victimPlayer, 'wolves');
@@ -718,7 +1051,7 @@ class GameManager extends EventEmitter {
           const witchVictim = game.players.find(p => p.id === game.witchKillTarget);
           if (witchVictim && witchVictim.alive) {
             await this.sendLogged(mainChannel, t('game.witch_kill', { name: witchVictim.username }), { type: 'witchKill' });
-            const collateral = this.kill(game.mainChannelId, game.witchKillTarget);
+            const collateral = this.kill(game.mainChannelId, game.witchKillTarget, { throwOnDbFailure: true });
             nightDeaths.push(witchVictim);
             this.logAction(game, `Empoisonné: ${witchVictim.username}`);
             await this.announceDeathReveal(mainChannel, witchVictim, 'witch');
@@ -738,7 +1071,7 @@ class GameManager extends EventEmitter {
         const wwVictim = game.players.find(p => p.id === game.whiteWolfKillTarget);
         if (wwVictim && wwVictim.alive) {
           await this.sendLogged(mainChannel, t('game.white_wolf_kill', { name: wwVictim.username }), { type: 'whiteWolfKill' });
-          const collateral = this.kill(game.mainChannelId, game.whiteWolfKillTarget);
+          const collateral = this.kill(game.mainChannelId, game.whiteWolfKillTarget, { throwOnDbFailure: true });
           nightDeaths.push(wwVictim);
           this.logAction(game, `Dévoré par le Loup Blanc: ${wwVictim.username}`);
           await this.announceDeathReveal(mainChannel, wwVictim, 'white_wolf');
@@ -845,7 +1178,7 @@ class GameManager extends EventEmitter {
                 this.playAmbience(game.voiceChannelId, 'death.mp3');
               }
               await this.sendLogged(mainChannel, t('game.vote_result', { name: votedPlayer.username, count: voteCount }), { type: 'dayVoteResult' });
-              const collateral = this.kill(game.mainChannelId, votedId);
+              const collateral = this.kill(game.mainChannelId, votedId, { throwOnDbFailure: true });
               this.logAction(game, `Vote du village: ${votedPlayer.username} elimine`);
               await this.announceDeathReveal(mainChannel, votedPlayer, 'village');
 
@@ -878,7 +1211,7 @@ class GameManager extends EventEmitter {
 
       // Maintenant on passe à la nuit
       game._captainTiebreak = null;
-      const newPhase = await this.nextPhase(guild, game);
+      const newPhase = await this.nextPhase(guild, game, { skipAtomic: true });
       if (newPhase !== PHASES.NIGHT) return;
 
       if (game.voiceChannelId) {
@@ -909,7 +1242,7 @@ class GameManager extends EventEmitter {
     // Traduire le résultat pour l'affichage
     const victorDisplay = t(`game.victory_${victor}_display`) || victor;
 
-    game.phase = PHASES.ENDED;
+    this._setPhase(game, PHASES.ENDED, { allowOutsideAtomic: true });
     game.endedAt = Date.now();
     this.clearGameTimers(game);
     this.logAction(game, `Victoire: ${victorDisplay}`);
@@ -1114,127 +1447,139 @@ class GameManager extends EventEmitter {
 
   // Enchaînement logique des sous-phases
   async advanceSubPhase(guild, game) {
-    // Vérifier la victoire à chaque sous-phase
     const victory = this.checkWinner(game);
     if (victory) {
       await this.announceVictoryIfAny(guild, game);
-      return; // Stopper l'enchaînement des phases
+      return;
     }
-    switch (game.subPhase) {
-      case PHASES.VOLEUR:
-        // Après le Voleur, vérifier si Cupidon est en jeu (première nuit uniquement)
-        if (this.hasAliveRealRole(game, ROLES.CUPID)) {
-          this._setSubPhase(game, PHASES.CUPIDON);
-          await this.announcePhase(guild, game, t('phase.cupid_wakes') || 'Cupidon se réveille...');
-          this.notifyTurn(guild, game, ROLES.CUPID);
-        } else if (this.hasAliveRealRole(game, ROLES.SALVATEUR) && !game.villageRolesPowerless) {
-          this._setSubPhase(game, PHASES.SALVATEUR);
-          await this.announcePhase(guild, game, t('phase.salvateur_wakes'));
-          this.notifyTurn(guild, game, ROLES.SALVATEUR);
-        } else {
-          this._setSubPhase(game, PHASES.LOUPS);
-          await this.announcePhase(guild, game, t('phase.wolves_wake'));
-          this.notifyTurn(guild, game, ROLES.WEREWOLF);
+
+    const outcome = await this.runAtomic(game.mainChannelId, (state) => {
+      const result = { announce: null, notifyRole: null, timer: null, stopListenRelay: false };
+      switch (state.subPhase) {
+        case PHASES.VOLEUR:
+          if (this.hasAliveRealRole(state, ROLES.CUPID) && (!state.lovers || state.lovers.length === 0)) {
+            this._setSubPhase(state, PHASES.CUPIDON);
+            result.announce = t('phase.cupid_wakes');
+            result.notifyRole = ROLES.CUPID;
+          } else if (this.hasAliveRealRole(state, ROLES.SALVATEUR) && !state.villageRolesPowerless) {
+            this._setSubPhase(state, PHASES.SALVATEUR);
+            result.announce = t('phase.salvateur_wakes');
+            result.notifyRole = ROLES.SALVATEUR;
+          } else {
+            this._setSubPhase(state, PHASES.LOUPS);
+            result.announce = t('phase.wolves_wake');
+            result.notifyRole = ROLES.WEREWOLF;
+          }
+          break;
+        case PHASES.CUPIDON:
+          if (this.hasAliveRealRole(state, ROLES.SALVATEUR) && !state.villageRolesPowerless) {
+            this._setSubPhase(state, PHASES.SALVATEUR);
+            result.announce = t('phase.salvateur_wakes');
+            result.notifyRole = ROLES.SALVATEUR;
+          } else {
+            this._setSubPhase(state, PHASES.LOUPS);
+            result.announce = t('phase.wolves_wake');
+            result.notifyRole = ROLES.WEREWOLF;
+          }
+          break;
+        case PHASES.SALVATEUR:
+          this._setSubPhase(state, PHASES.LOUPS);
+          result.announce = t('phase.wolves_wake');
+          result.notifyRole = ROLES.WEREWOLF;
+          break;
+        case PHASES.LOUPS: {
+          result.stopListenRelay = true;
+          const isOddNight = (state.dayCount || 0) % 2 === 1;
+          if (isOddNight && this.hasAliveRealRole(state, ROLES.WHITE_WOLF)) {
+            this._setSubPhase(state, PHASES.LOUP_BLANC);
+            result.announce = t('phase.white_wolf_wakes');
+            result.notifyRole = ROLES.WHITE_WOLF;
+          } else if (this.hasAliveRealRole(state, ROLES.WITCH) && !state.villageRolesPowerless) {
+            this._setSubPhase(state, PHASES.SORCIERE);
+            result.announce = t('phase.witch_wakes');
+            result.notifyRole = ROLES.WITCH;
+          } else if (this.hasAliveRealRole(state, ROLES.SEER) && !state.villageRolesPowerless) {
+            this._setSubPhase(state, PHASES.VOYANTE);
+            result.announce = t('phase.seer_wakes');
+            result.notifyRole = ROLES.SEER;
+          } else {
+            this._setSubPhase(state, PHASES.REVEIL);
+            result.announce = t('phase.village_wakes');
+          }
+          break;
         }
-        break;
-      case PHASES.CUPIDON:
-        // Après Cupidon, vérifier si Salvateur est en jeu
-        if (this.hasAliveRealRole(game, ROLES.SALVATEUR) && !game.villageRolesPowerless) {
-          this._setSubPhase(game, PHASES.SALVATEUR);
-          await this.announcePhase(guild, game, t('phase.salvateur_wakes'));
-          this.notifyTurn(guild, game, ROLES.SALVATEUR);
-        } else {
-          this._setSubPhase(game, PHASES.LOUPS);
-          await this.announcePhase(guild, game, t('phase.wolves_wake'));
-          this.notifyTurn(guild, game, ROLES.WEREWOLF);
+        case PHASES.LOUP_BLANC:
+          if (this.hasAliveRealRole(state, ROLES.WITCH) && !state.villageRolesPowerless) {
+            this._setSubPhase(state, PHASES.SORCIERE);
+            result.announce = t('phase.witch_wakes');
+            result.notifyRole = ROLES.WITCH;
+          } else if (this.hasAliveRealRole(state, ROLES.SEER) && !state.villageRolesPowerless) {
+            this._setSubPhase(state, PHASES.VOYANTE);
+            result.announce = t('phase.seer_wakes');
+            result.notifyRole = ROLES.SEER;
+          } else {
+            this._setSubPhase(state, PHASES.REVEIL);
+            result.announce = t('phase.village_wakes');
+          }
+          break;
+        case PHASES.SORCIERE:
+          if (this.hasAliveRealRole(state, ROLES.SEER) && !state.villageRolesPowerless) {
+            this._setSubPhase(state, PHASES.VOYANTE);
+            result.announce = t('phase.seer_wakes');
+            result.notifyRole = ROLES.SEER;
+          } else {
+            this._setSubPhase(state, PHASES.REVEIL);
+            result.announce = t('phase.village_wakes');
+          }
+          break;
+        case PHASES.VOYANTE:
+          this._setSubPhase(state, PHASES.REVEIL);
+          result.announce = t('phase.village_wakes');
+          break;
+        case PHASES.REVEIL: {
+          const isFirstDay = (state.dayCount || 0) === 1;
+          const captain = state.captainId ? state.players.find(p => p.id === state.captainId) : null;
+          const captainDead = !captain || !captain.alive;
+          if ((isFirstDay && !state.captainId) || captainDead) {
+            state.captainId = null;
+            this._setSubPhase(state, PHASES.VOTE_CAPITAINE);
+            result.announce = t('phase.captain_vote_announce');
+            result.timer = 'captain';
+          } else {
+            this._setSubPhase(state, PHASES.DELIBERATION);
+            result.announce = t('phase.deliberation_announce');
+            result.timer = 'day_deliberation';
+          }
+          break;
         }
-        break;
-      case PHASES.SALVATEUR:
-        this._setSubPhase(game, PHASES.LOUPS);
-        await this.announcePhase(guild, game, t('phase.wolves_wake'));
-        this.notifyTurn(guild, game, ROLES.WEREWOLF);
-        break;
-      case PHASES.LOUPS:
-        this.stopListenRelay(game);
-        // Après les loups, vérifier si le Loup Blanc se réveille (nuits impaires, dayCount >= 1)
-        const isOddNight = (game.dayCount || 0) % 2 === 1;
-        if (isOddNight && this.hasAliveRealRole(game, ROLES.WHITE_WOLF)) {
-          this._setSubPhase(game, PHASES.LOUP_BLANC);
-          await this.announcePhase(guild, game, t('phase.white_wolf_wakes'));
-          this.notifyTurn(guild, game, ROLES.WHITE_WOLF);
-        } else if (this.hasAliveRealRole(game, ROLES.WITCH) && !game.villageRolesPowerless) {
-          this._setSubPhase(game, PHASES.SORCIERE);
-          await this.announcePhase(guild, game, t('phase.witch_wakes'));
-          this.notifyTurn(guild, game, ROLES.WITCH);
-        } else if (this.hasAliveRealRole(game, ROLES.SEER) && !game.villageRolesPowerless) {
-          this._setSubPhase(game, PHASES.VOYANTE);
-          await this.announcePhase(guild, game, t('phase.seer_wakes'));
-          this.notifyTurn(guild, game, ROLES.SEER);
-        } else {
-          this._setSubPhase(game, PHASES.REVEIL);
-          await this.announcePhase(guild, game, t('phase.village_wakes'));
-        }
-        break;
-      case PHASES.LOUP_BLANC:
-        if (this.hasAliveRealRole(game, ROLES.WITCH) && !game.villageRolesPowerless) {
-          this._setSubPhase(game, PHASES.SORCIERE);
-          await this.announcePhase(guild, game, t('phase.witch_wakes'));
-          this.notifyTurn(guild, game, ROLES.WITCH);
-        } else if (this.hasAliveRealRole(game, ROLES.SEER) && !game.villageRolesPowerless) {
-          this._setSubPhase(game, PHASES.VOYANTE);
-          await this.announcePhase(guild, game, t('phase.seer_wakes'));
-          this.notifyTurn(guild, game, ROLES.SEER);
-        } else {
-          this._setSubPhase(game, PHASES.REVEIL);
-          await this.announcePhase(guild, game, t('phase.village_wakes'));
-        }
-        break;
-      case PHASES.SORCIERE:
-        if (this.hasAliveRealRole(game, ROLES.SEER) && !game.villageRolesPowerless) {
-          this._setSubPhase(game, PHASES.VOYANTE);
-          await this.announcePhase(guild, game, t('phase.seer_wakes'));
-          this.notifyTurn(guild, game, ROLES.SEER);
-        } else {
-          this._setSubPhase(game, PHASES.REVEIL);
-          await this.announcePhase(guild, game, t('phase.village_wakes'));
-        }
-        break;
-      case PHASES.VOYANTE:
-        this._setSubPhase(game, PHASES.REVEIL);
-        await this.announcePhase(guild, game, t('phase.village_wakes'));
-        break;
-      case PHASES.REVEIL:
-        // Si premier jour et pas de capitaine, ou si le capitaine est mort, on refait un vote capitaine
-        const isFirstDay = (game.dayCount || 0) === 1;
-        const captain = game.captainId ? game.players.find(p => p.id === game.captainId) : null;
-        const captainDead = !captain || !captain.alive;
-        if ((isFirstDay && !game.captainId) || captainDead) {
-          game.captainId = null; // reset
-          this._setSubPhase(game, PHASES.VOTE_CAPITAINE);
-          await this.announcePhase(guild, game, t('phase.captain_vote_announce'));
-          this.startCaptainVoteTimeout(guild, game);
-        } else {
-          this._setSubPhase(game, PHASES.DELIBERATION);
-          await this.announcePhase(guild, game, t('phase.deliberation_announce'));
-          this.startDayTimeout(guild, game, 'deliberation');
-        }
-        break;
-      case PHASES.VOTE_CAPITAINE:
-        this._setSubPhase(game, PHASES.DELIBERATION);
-        await this.announcePhase(guild, game, t('phase.deliberation_announce'));
-        this.startDayTimeout(guild, game, 'deliberation');
-        break;
-      case PHASES.DELIBERATION:
-        // Passage en phase de vote
-        this._setSubPhase(game, PHASES.VOTE);
-        await this.announcePhase(guild, game, t('phase.vote_announce'));
-        this.startDayTimeout(guild, game, 'vote');
-        break;
-      case PHASES.VOTE:
-      default:
-        this._setSubPhase(game, PHASES.LOUPS);
-        await this.announcePhase(guild, game, t('phase.night_wolves_wake'));
-        break;
+        case PHASES.VOTE_CAPITAINE:
+          this._setSubPhase(state, PHASES.DELIBERATION);
+          result.announce = t('phase.deliberation_announce');
+          result.timer = 'day_deliberation';
+          break;
+        case PHASES.DELIBERATION:
+          this._setSubPhase(state, PHASES.VOTE);
+          result.announce = t('phase.vote_announce');
+          result.timer = 'day_vote';
+          break;
+        case PHASES.VOTE:
+        default:
+          this._setSubPhase(state, PHASES.LOUPS);
+          result.announce = t('phase.night_wolves_wake');
+          break;
+      }
+      return result;
+    });
+
+    if (outcome.stopListenRelay) await this.stopListenRelay(game);
+    if (outcome.announce) await this.announcePhase(guild, game, outcome.announce);
+    if (outcome.notifyRole) this.notifyTurn(guild, game, outcome.notifyRole);
+    if (outcome.timer === 'captain') {
+      this.startCaptainVoteTimeout(guild, game);
+    } else if (outcome.timer === 'day_deliberation') {
+      this.startDayTimeout(guild, game, 'deliberation');
+    } else if (outcome.timer === 'day_vote') {
+      this.startDayTimeout(guild, game, 'vote');
     }
     this.scheduleSave();
   }
@@ -1251,9 +1596,14 @@ class GameManager extends EventEmitter {
   // --- Night AFK timeout ---
   // Auto-avance la sous-phase si le rôle ne joue pas dans le délai imparti (90s)
   startNightAfkTimeout(guild, game) {
+    const ctx = this._atomicContexts.get(game.mainChannelId);
+    if (ctx && ctx.active) {
+      this._queuePostCommit(game.mainChannelId, () => this.startNightAfkTimeout(guild, game));
+      return;
+    }
     this.clearNightAfkTimeout(game);
     const NIGHT_AFK_DELAY = TIMEOUTS.NIGHT_AFK;
-    game._nightAfkTimer = setTimeout(async () => {
+    this._scheduleGameTimer(game, `night-afk:${game.subPhase}`, NIGHT_AFK_DELAY, async () => {
       try {
         if (game.phase !== PHASES.NIGHT) return;
         const mainChannel = game.villageChannelId
@@ -1262,7 +1612,10 @@ class GameManager extends EventEmitter {
 
         const currentSub = game.subPhase;
         if (currentSub === PHASES.LOUPS) {
-          game.wolfVotes = null; // Reset wolf consensus on timeout
+          await this.runAtomic(game.mainChannelId, (state) => {
+            if (state.phase !== PHASES.NIGHT || state.subPhase !== PHASES.LOUPS) return;
+            state.wolfVotes = null;
+          });
           await this.sendLogged(mainChannel, t('game.afk_wolves'), { type: 'afkTimeout' });
           this.logAction(game, 'AFK timeout: loups');
         } else if (currentSub === PHASES.SORCIERE) {
@@ -1296,7 +1649,7 @@ class GameManager extends EventEmitter {
       } catch (e) {
         logger.error('Night AFK timeout error', { error: e.message });
       }
-    }, NIGHT_AFK_DELAY);
+    });
   }
 
   clearNightAfkTimeout(game) {
@@ -1304,17 +1657,29 @@ class GameManager extends EventEmitter {
       clearTimeout(game._nightAfkTimer);
       game._nightAfkTimer = null;
     }
+    const active = this.activeGameTimers.get(game.mainChannelId);
+    if (active && active.type.startsWith('night-afk:')) {
+      this._deactivateTimer(game.mainChannelId, active.type, active.epoch);
+    }
   }
 
   // --- Hunter timeout ---
   // Le chasseur a 60s pour tirer sinon il perd son tir
   startHunterTimeout(guild, game, hunterId) {
+    const ctx = this._atomicContexts.get(game.mainChannelId);
+    if (ctx && ctx.active) {
+      this._queuePostCommit(game.mainChannelId, () => this.startHunterTimeout(guild, game, hunterId));
+      return;
+    }
     if (game._hunterTimer) clearTimeout(game._hunterTimer);
     const HUNTER_DELAY = TIMEOUTS.HUNTER_SHOOT;
-    game._hunterTimer = setTimeout(async () => {
+    this._scheduleGameTimer(game, `hunter-shoot:${hunterId}`, HUNTER_DELAY, async () => {
       try {
         if (game._hunterMustShoot !== hunterId) return;
-        game._hunterMustShoot = null;
+        await this.runAtomic(game.mainChannelId, (state) => {
+          if (state._hunterMustShoot !== hunterId) return;
+          state._hunterMustShoot = null;
+        });
         const mainChannel = game.villageChannelId
           ? await guild.channels.fetch(game.villageChannelId)
           : await guild.channels.fetch(game.mainChannelId);
@@ -1324,17 +1689,22 @@ class GameManager extends EventEmitter {
       } catch (e) {
         logger.error('Hunter timeout error', { error: e.message });
       }
-    }, HUNTER_DELAY);
+    });
   }
 
   // --- Day timeout ---
   // Auto-ends deliberation or vote if players are AFK during the day
   startDayTimeout(guild, game, type = 'deliberation') {
+    const ctx = this._atomicContexts.get(game.mainChannelId);
+    if (ctx && ctx.active) {
+      this._queuePostCommit(game.mainChannelId, () => this.startDayTimeout(guild, game, type));
+      return;
+    }
     this.clearDayTimeout(game);
     const delay = type === 'vote' ? TIMEOUTS.DAY_VOTE : TIMEOUTS.DAY_DELIBERATION;
     const label = type === 'vote' ? 'vote' : 'deliberation';
 
-    game._dayTimer = setTimeout(async () => {
+    this._scheduleGameTimer(game, `day-${type}`, delay, async () => {
       try {
         if (game.phase !== PHASES.DAY) return;
 
@@ -1345,8 +1715,10 @@ class GameManager extends EventEmitter {
         if (type === 'deliberation') {
           // End of deliberation → move to vote phase
           await this.sendLogged(mainChannel, t('game.afk_deliberation'), { type: 'afkTimeout' });
-          this.logAction(game, 'Timeout: fin de la délibération');
-          this._setSubPhase(game, PHASES.VOTE);
+          await this.runAtomic(game.mainChannelId, (state) => {
+            this.logAction(state, 'Timeout: fin de la délibération');
+            this._setSubPhase(state, PHASES.VOTE);
+          });
           await this.announcePhase(guild, game, t('phase.vote_announce'));
           this.startDayTimeout(guild, game, 'vote');
         } else {
@@ -1358,13 +1730,17 @@ class GameManager extends EventEmitter {
       } catch (e) {
         logger.error('Day timeout error', { error: e.message, type: label });
       }
-    }, delay);
+    });
   }
 
   clearDayTimeout(game) {
     if (game._dayTimer) {
       clearTimeout(game._dayTimer);
       game._dayTimer = null;
+    }
+    const active = this.activeGameTimers.get(game.mainChannelId);
+    if (active && active.type.startsWith('day-')) {
+      this._deactivateTimer(game.mainChannelId, active.type, active.epoch);
     }
   }
 
@@ -1523,19 +1899,23 @@ class GameManager extends EventEmitter {
     // Déterminer la première sous-phase nocturne
     // Ordre: VOLEUR → CUPIDON → SALVATEUR → LOUPS
     const hasThief = game.players.some(p => p.role === ROLES.THIEF && p.alive);
+    let initialSubPhase = PHASES.LOUPS;
     if (hasThief && game.thiefExtraRoles.length === 2) {
-      this._setSubPhase(game, PHASES.VOLEUR);
+      initialSubPhase = PHASES.VOLEUR;
     } else {
       const hasCupid = game.players.some(p => p.role === ROLES.CUPID && p.alive);
       if (hasCupid) {
-        this._setSubPhase(game, PHASES.CUPIDON);
+        initialSubPhase = PHASES.CUPIDON;
       } else {
         const hasSalvateur = game.players.some(p => p.role === ROLES.SALVATEUR && p.alive);
         if (hasSalvateur) {
-          this._setSubPhase(game, PHASES.SALVATEUR);
+          initialSubPhase = PHASES.SALVATEUR;
         }
       }
     }
+    this._setSubPhase(game, initialSubPhase, { allowOutsideAtomic: true, skipValidation: true });
+    this.db.updateGame(channelId, { subPhase: initialSubPhase });
+    this.markDirty(channelId);
 
     // Initialiser les vies de l'Ancien (1 vie supplémentaire)
     const ancienPlayer = game.players.find(p => p.role === ROLES.ANCIEN);
@@ -2310,81 +2690,65 @@ class GameManager extends EventEmitter {
     }
   }
 
-  async nextPhase(guild, game) {
+  async nextPhase(guild, game, options = {}) {
+    const { skipAtomic = false } = options;
     // Guard: never toggle an ENDED game back
     if (game.phase === PHASES.ENDED) {
       logger.warn('nextPhase called on ENDED game, ignoring', { channelId: game.mainChannelId });
       return game.phase;
     }
 
-    const snapshot = this._createStateSnapshot(game);
+    const applyNextPhaseMutation = (state) => {
+      const computedPhase = state.phase === PHASES.NIGHT ? PHASES.DAY : PHASES.NIGHT;
+      const computedDayCount = computedPhase === PHASES.DAY ? (state.dayCount || 0) + 1 : (state.dayCount || 0);
+      let computedSubPhase = state.subPhase;
 
-    // Compute next state first (DB-first persistence)
-    const nextPhase = game.phase === PHASES.NIGHT ? PHASES.DAY : PHASES.NIGHT;
-    const nextDayCount = nextPhase === PHASES.DAY ? (game.dayCount || 0) + 1 : (game.dayCount || 0);
-    let nextSubPhase = game.subPhase;
-
-    if (nextPhase === PHASES.NIGHT) {
-      const isFirstNight = nextDayCount === 0;
-      const cupidAlive = this.hasAliveRealRole(game, ROLES.CUPID);
-      const cupidNotUsed = !game.lovers || game.lovers.length === 0;
-      if (isFirstNight && cupidAlive && cupidNotUsed) {
-        nextSubPhase = PHASES.CUPIDON;
+      if (computedPhase === PHASES.NIGHT) {
+        const isFirstNight = computedDayCount === 0;
+        const cupidAlive = this.hasAliveRealRole(state, ROLES.CUPID);
+        const cupidNotUsed = !state.lovers || state.lovers.length === 0;
+        if (isFirstNight && cupidAlive && cupidNotUsed) {
+          computedSubPhase = PHASES.CUPIDON;
+        } else {
+          const salvateurAlive = this.hasAliveRealRole(state, ROLES.SALVATEUR);
+          computedSubPhase = (salvateurAlive && !state.villageRolesPowerless) ? PHASES.SALVATEUR : PHASES.LOUPS;
+        }
       } else {
-        const salvateurAlive = this.hasAliveRealRole(game, ROLES.SALVATEUR);
-        nextSubPhase = (salvateurAlive && !game.villageRolesPowerless) ? PHASES.SALVATEUR : PHASES.LOUPS;
-      }
-    } else {
-      nextSubPhase = PHASES.REVEIL;
-    }
-
-    try {
-      // Persist first: no visible mutation before DB commit
-      this.db.updateGame(game.mainChannelId, {
-        phase: nextPhase,
-        subPhase: nextSubPhase,
-        dayCount: nextDayCount
-      });
-
-      // Apply in-memory only after successful DB write
-      game.phase = nextPhase;
-      game.dayCount = nextDayCount;
-      game.subPhase = nextSubPhase;
-
-      // Réinitialiser les votes
-      game.votes.clear();
-      if (game.voteVoters) {
-        game.voteVoters.clear();
-      }
-      if (game._voteIncrements) {
-        game._voteIncrements.clear();
-      }
-      // Effacer les votes du tour précédent dans la DB
-      this.db.clearVotes(game.mainChannelId, 'village', game.dayCount);
-
-      // Reset night victim only when a new night starts
-      if (game.phase === PHASES.NIGHT) {
-        game.nightVictim = null;
-        game.wolfVotes = null; // Reset wolf consensus votes
+        computedSubPhase = PHASES.REVEIL;
       }
 
-      // Mettre à jour les permissions vocales
-      await this.updateVoicePerms(guild, game);
+      this._setPhase(state, computedPhase);
+      state.dayCount = computedDayCount;
+      this._setSubPhase(state, computedSubPhase, { skipValidation: true });
 
-      this._emitGameEvent(game, 'phaseChanged', {
-        phase: game.phase,
-        subPhase: game.subPhase,
-        dayCount: game.dayCount
-      });
+      state.votes.clear();
+      if (state.voteVoters) state.voteVoters.clear();
+      if (state._voteIncrements) state._voteIncrements.clear();
+      this.db.clearVotes(state.mainChannelId, 'village', state.dayCount);
 
-      return game.phase;
-    } catch (error) {
-      this._restoreStateSnapshot(game, snapshot);
-      throw error;
-    }
+      if (state.phase === PHASES.NIGHT) {
+        state.nightVictim = null;
+        state.wolfVotes = null;
+      }
+
+      return state.phase;
+    };
+
+    const newPhase = skipAtomic
+      ? applyNextPhaseMutation(game)
+      : await this.runAtomic(game.mainChannelId, applyNextPhaseMutation);
+
+    await this.updateVoicePerms(guild, game);
+    this._emitGameEvent(game, 'phaseChanged', {
+      phase: game.phase,
+      subPhase: game.subPhase,
+      dayCount: game.dayCount
+    });
+
+    return newPhase;
   }
 
-  voteCaptain(channelId, voterId, targetId) {
+  async voteCaptain(channelId, voterId, targetId) {
     const game = this.games.get(channelId);
     if (!game) return { ok: false, reason: "no_game" };
     if (game.phase !== PHASES.DAY) return { ok: false, reason: "not_day" };
@@ -2398,75 +2762,84 @@ class GameManager extends EventEmitter {
     if (!target) return { ok: false, reason: "target_not_found" };
     if (!target.alive) return { ok: false, reason: "target_dead" };
 
-    // Remove previous vote if exists
-    const prev = game.captainVoters.get(voterId);
-    if (prev) {
-      game.captainVotes.set(prev, (game.captainVotes.get(prev) || 1) - 1);
-      if (game.captainVotes.get(prev) <= 0) game.captainVotes.delete(prev);
-    }
+    return this.runAtomic(channelId, (state) => {
+      const prev = state.captainVoters.get(voterId);
+      if (prev) {
+        state.captainVotes.set(prev, (state.captainVotes.get(prev) || 1) - 1);
+        if (state.captainVotes.get(prev) <= 0) state.captainVotes.delete(prev);
+      }
 
-    // Add new vote
-    game.captainVoters.set(voterId, targetId);
-    game.captainVotes.set(targetId, (game.captainVotes.get(targetId) || 0) + 1);
+      state.captainVoters.set(voterId, targetId);
+      state.captainVotes.set(targetId, (state.captainVotes.get(targetId) || 0) + 1);
 
-    // Vérifier si tous les joueurs vivants ont voté
-    const alivePlayers = game.players.filter(p => p.alive);
-    const allVoted = alivePlayers.length > 0 && alivePlayers.every(p => game.captainVoters.has(p.id));
+      const alivePlayers = state.players.filter(p => p.alive);
+      const allVoted = alivePlayers.length > 0 && alivePlayers.every(p => state.captainVoters.has(p.id));
+      if (!allVoted) {
+        return { ok: true, allVoted: false, voted: state.captainVoters.size, total: alivePlayers.length };
+      }
 
-    if (allVoted) {
-      // Résoudre automatiquement le vote
-      const resolution = this.resolveCaptainVote(channelId);
-      return { ok: true, allVoted: true, resolution };
-    }
+      const entries = Array.from(state.captainVotes.entries());
+      if (entries.length === 0) return { ok: false, reason: 'no_votes' };
+      entries.sort((a, b) => b[1] - a[1]);
+      const top = entries[0][1];
+      const tied = entries.filter(e => e[1] === top).map(e => e[0]);
 
-    return { ok: true, allVoted: false, voted: game.captainVoters.size, total: alivePlayers.length };
+      let winnerId = entries[0][0];
+      let wasTie = false;
+      if (tied.length > 1) {
+        winnerId = tied[Math.floor(Math.random() * tied.length)];
+        wasTie = true;
+      }
+
+      const winner = state.players.find(p => p.id === winnerId);
+      if (!winner) return { ok: false, reason: 'winner_not_found' };
+
+      state.captainId = winnerId;
+      state.captainVotes.clear();
+      state.captainVoters.clear();
+      this.clearCaptainVoteTimeout(state);
+
+      return { ok: true, allVoted: true, resolution: { ok: true, winnerId, username: winner.username, wasTie, tied: wasTie ? tied : undefined } };
+    });
   }
 
   /**
    * Résout le vote du capitaine (utilisé par auto-resolve et timeout)
    */
-  resolveCaptainVote(channelId) {
+  async resolveCaptainVote(channelId) {
     const game = this.games.get(channelId);
     if (!game) return { ok: false, reason: "no_game" };
     if (game.captainId) return { ok: false, reason: "already_set" };
     if (game.subPhase !== PHASES.VOTE_CAPITAINE) return { ok: false, reason: "wrong_phase" };
 
-    const entries = Array.from(game.captainVotes.entries());
-    if (entries.length === 0) return { ok: false, reason: "no_votes" };
+    return this.runAtomic(channelId, (state) => {
+      const entries = Array.from(state.captainVotes.entries());
+      if (entries.length === 0) return { ok: false, reason: "no_votes" };
 
-    entries.sort((a, b) => b[1] - a[1]);
-    const top = entries[0][1];
-    const tied = entries.filter(e => e[1] === top).map(e => e[0]);
+      entries.sort((a, b) => b[1] - a[1]);
+      const top = entries[0][1];
+      const tied = entries.filter(e => e[1] === top).map(e => e[0]);
 
-    if (tied.length > 1) {
-      // Égalité : choisir au hasard parmi les ex-aequo
-      const randomId = tied[Math.floor(Math.random() * tied.length)];
-      const winner = game.players.find(p => p.id === randomId);
-      if (winner) {
-        game.captainId = randomId;
-        this.db.updateGame(channelId, { captainId: randomId });
-        game.captainVotes.clear();
-        game.captainVoters.clear();
-        this.clearCaptainVoteTimeout(game);
-        return { ok: true, winnerId: randomId, username: winner.username, wasTie: true, tied };
+      let winnerId = entries[0][0];
+      let wasTie = false;
+      if (tied.length > 1) {
+        winnerId = tied[Math.floor(Math.random() * tied.length)];
+        wasTie = true;
       }
-    }
 
-    const winnerId = entries[0][0];
-    const winner = game.players.find(p => p.id === winnerId);
-    if (!winner) return { ok: false, reason: "winner_not_found" };
+      const winner = state.players.find(p => p.id === winnerId);
+      if (!winner) return { ok: false, reason: "winner_not_found" };
 
-    game.captainId = winnerId;
-    this.db.updateGame(channelId, { captainId: winnerId });
-    game.captainVotes.clear();
-    game.captainVoters.clear();
-    this.clearCaptainVoteTimeout(game);
-
-    return { ok: true, winnerId, username: winner.username, wasTie: false };
+      state.captainId = winnerId;
+      state.captainVotes.clear();
+      state.captainVoters.clear();
+      this.clearCaptainVoteTimeout(state);
+      return { ok: true, winnerId, username: winner.username, wasTie, tied: wasTie ? tied : undefined };
+    });
   }
 
   // Alias pour compatibilité des tests et du timeout
-  declareCaptain(channelId) {
+  async declareCaptain(channelId) {
     return this.resolveCaptainVote(channelId);
   }
 
@@ -2476,7 +2849,8 @@ class GameManager extends EventEmitter {
     return game.players.filter(p => p.alive);
   }
 
-  kill(channelId, playerId) {
+  kill(channelId, playerId, options = {}) {
+    const { throwOnDbFailure = false } = options;
     const game = this.games.get(channelId);
     if (!game) return [];
     const player = game.players.find(p => p.id === playerId);
@@ -2485,7 +2859,13 @@ class GameManager extends EventEmitter {
     game.dead.push(player);
     
     // Synchroniser avec la DB
-    this.db.updatePlayer(channelId, playerId, { alive: false });
+    const primaryUpdated = this.db.updatePlayer(channelId, playerId, { alive: false });
+    if (!primaryUpdated) {
+      if (throwOnDbFailure) {
+        throw new Error(`Failed to persist kill for player ${playerId}`);
+      }
+      logger.warn('Kill DB update failed (non-strict mode)', { channelId, playerId });
+    }
     
     this._emitGameEvent(game, 'playerKilled', { playerId, username: player.username, role: player.role });
     
@@ -2505,7 +2885,13 @@ class GameManager extends EventEmitter {
             game.dead.push(other);
             collateralDeaths.push(other);
             // Synchroniser avec la DB
-            this.db.updatePlayer(channelId, otherId, { alive: false });
+            const collateralUpdated = this.db.updatePlayer(channelId, otherId, { alive: false });
+            if (!collateralUpdated) {
+              if (throwOnDbFailure) {
+                throw new Error(`Failed to persist collateral kill for player ${otherId}`);
+              }
+              logger.warn('Collateral kill DB update failed (non-strict mode)', { channelId, playerId: otherId });
+            }
             // Révoquer l'accès pour l'amoureux aussi
             this._pendingLockouts.push({ channelId, playerId: otherId, role: other.role });
           }
@@ -2860,7 +3246,10 @@ class GameManager extends EventEmitter {
           actionLog: actionLog,
           startedAt: dbGame.started_at,
           endedAt: dbGame.ended_at,
-          disableVoiceMute: dbGame.disable_voice_mute === 1
+          disableVoiceMute: dbGame.disable_voice_mute === 1,
+          _activeTimerType: null,
+          _lastMutationAt: Date.now(),
+          stuckStatus: 'OK'
         };
 
         // Fallback: restore villageRolesPowerless from logs if column was 0 but logs say otherwise

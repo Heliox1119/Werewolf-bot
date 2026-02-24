@@ -26,7 +26,7 @@ module.exports = {
     }
 
     const target = interaction.options.getUser('target');
-    const res = gameManager.voteCaptain(game.mainChannelId, interaction.user.id, target.id);
+    const res = await gameManager.voteCaptain(game.mainChannelId, interaction.user.id, target.id);
 
     if (!res.ok) {
       let msg = t('error.cannot_vote');

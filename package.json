@@ -1,13 +1,14 @@
 {
   "name": "werewolf-bot",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "Discord Werewolf game bot with voice control and ambient audio",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "health": "node scripts/health-check.js",
     "clear-commands": "node scripts/clear_commands.js",
-    "test": "jest",
+    "test": "jest --runInBand --forceExit",
+    "test:ci": "jest --runInBand --forceExit",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:verbose": "jest --verbose",

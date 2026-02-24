@@ -48,12 +48,15 @@ class MockMessage {
       }
     });
     // Auto-end after a short delay for testing
-    setTimeout(() => {
+    const autoEndTimeout = setTimeout(() => {
       if (!collector._ended) {
         collector._ended = true;
         collector.emit('end', [], 'time');
       }
     }, 10);
+    if (typeof autoEndTimeout.unref === 'function') {
+      autoEndTimeout.unref();
+    }
     return collector;
   }
 }

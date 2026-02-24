@@ -31,14 +31,28 @@ module.exports = {
     const count = interaction.options.getInteger("count");
     const names = ["Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Henry", "Ivy", "Jack"];
     
+    const fakePlayers = [];
     for (let i = 0; i < count; i++) {
       const fakeName = names[Math.floor(Math.random() * names.length)] + Math.random().toString().slice(2, 5);
-      game.players.push({
+      fakePlayers.push({
         id: `fake_${Date.now()}_${i}`,
         username: fakeName,
         role: null,
         alive: true
       });
+    }
+
+    try {
+      await gameManager.runAtomic(game.mainChannelId, (state) => {
+        for (const fakePlayer of fakePlayers) {
+          state.players.push(fakePlayer);
+          const persisted = gameManager.db.addPlayer(state.mainChannelId, fakePlayer.id, fakePlayer.username);
+          if (!persisted) throw new Error('Failed to persist fake debug player');
+        }
+      });
+    } catch (e) {
+      await interaction.reply({ content: t('error.internal'), flags: MessageFlags.Ephemeral });
+      return;
     }
 
     // Rafraîchir le lobby embed

@@ -85,55 +85,77 @@ module.exports = {
       return;
     }
 
-    // --- Consensus loup : vote de meute ---
-    if (!game.wolfVotes) game.wolfVotes = new Map(); // wolfId -> targetId
-    game.wolfVotes.set(interaction.user.id, target.id);
-
     const aliveWolves = game.players.filter(p => (p.role === ROLES.WEREWOLF || p.role === ROLES.WHITE_WOLF) && p.alive && gameManager.isRealPlayerId(p.id));
     const totalWolves = aliveWolves.length;
-    const votesForTarget = [...game.wolfVotes.values()].filter(v => v === target.id).length;
     const majorityNeeded = Math.ceil(totalWolves / 2);
+
+    let killResult;
+    try {
+      killResult = await gameManager.runAtomic(game.mainChannelId, () => {
+        if (!game.wolfVotes) game.wolfVotes = new Map(); // wolfId -> targetId
+        game.wolfVotes.set(interaction.user.id, target.id);
+
+        const votesForTarget = [...game.wolfVotes.values()].filter(v => v === target.id).length;
+        let finalVictim = null;
+        let mode = 'pending';
+
+        if (votesForTarget >= majorityNeeded) {
+          finalVictim = target.id;
+          mode = 'consensus';
+        } else {
+          const allVoted = aliveWolves.every(w => game.wolfVotes.has(w.id));
+          if (allVoted) {
+            const voteCounts = new Map();
+            for (const targetId of game.wolfVotes.values()) {
+              voteCounts.set(targetId, (voteCounts.get(targetId) || 0) + 1);
+            }
+            const sorted = [...voteCounts.entries()].sort((a, b) => b[1] - a[1]);
+            finalVictim = sorted[0][0];
+            mode = 'plurality';
+          }
+        }
+
+        if (finalVictim) {
+          const victimPlayer = game.players.find(p => p.id === finalVictim);
+          game.nightVictim = finalVictim;
+          game.wolfVotes = null;
+          gameManager.clearNightAfkTimeout(game);
+          const victimName = victimPlayer ? victimPlayer.username : finalVictim;
+          gameManager.logAction(game, `Loups choisissent: ${victimName} (${mode === 'consensus' ? `consensus ${votesForTarget}/${totalWolves}` : 'pluralité'})`);
+          const ok = gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'kill', interaction.user.id, finalVictim);
+          if (!ok) throw new Error('Failed to persist wolf kill action');
+        }
+
+        return {
+          votesForTarget,
+          mode,
+          finalVictim,
+          victimName: finalVictim ? (game.players.find(p => p.id === finalVictim)?.username || finalVictim) : target.username
+        };
+      });
+    } catch (e) {
+      await safeReply(interaction, { content: t('error.internal'), flags: MessageFlags.Ephemeral });
+      return;
+    }
 
     // Notifier les autres loups du vote dans le channel
     const wolvesChannel = await interaction.guild.channels.fetch(game.wolvesChannelId);
-    await wolvesChannel.send(t('cmd.kill.wolf_vote', { name: interaction.user.username, target: target.username, n: votesForTarget, m: majorityNeeded }));
+    await wolvesChannel.send(t('cmd.kill.wolf_vote', { name: interaction.user.username, target: target.username, n: killResult.votesForTarget, m: majorityNeeded }));
 
-    if (votesForTarget >= majorityNeeded) {
-      // Consensus atteint
-      game.nightVictim = target.id;
-      game.wolfVotes = null; // Reset
-      gameManager.clearNightAfkTimeout(game);
-      gameManager.logAction(game, `Loups choisissent: ${target.username} (consensus ${votesForTarget}/${totalWolves})`);
-      try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'kill', interaction.user.id, target.id); } catch (e) { /* ignore */ }
-      await safeReply(interaction, { content: t('cmd.kill.consensus', { name: target.username }), flags: MessageFlags.Ephemeral });
+    if (killResult.mode === 'consensus') {
+      await safeReply(interaction, { content: t('cmd.kill.consensus', { name: killResult.victimName }), flags: MessageFlags.Ephemeral });
 
       // Auto-chain to next night role
-      await this.advanceFromWolves(interaction.guild, game, target.username);
+      await this.advanceFromWolves(interaction.guild, game, killResult.victimName);
     } else {
-      // Pas encore consensus
-      const allVoted = aliveWolves.every(w => game.wolfVotes.has(w.id));
-      if (allVoted) {
-        // Tous ont voté mais pas de majorité — le plus voté gagne
-        const voteCounts = new Map();
-        for (const targetId of game.wolfVotes.values()) {
-          voteCounts.set(targetId, (voteCounts.get(targetId) || 0) + 1);
-        }
-        const sorted = [...voteCounts.entries()].sort((a, b) => b[1] - a[1]);
-        const winnerId = sorted[0][0];
-        const winnerPlayer = game.players.find(p => p.id === winnerId);
-
-        game.nightVictim = winnerId;
-        game.wolfVotes = null;
-        gameManager.clearNightAfkTimeout(game);
-        gameManager.logAction(game, `Loups choisissent: ${winnerPlayer.username} (pluralité)`);
-        try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'kill', interaction.user.id, winnerId); } catch (e) { /* ignore */ }
-        await wolvesChannel.send(t('cmd.kill.pack_chose', { name: winnerPlayer.username }));
-        await safeReply(interaction, { content: t('cmd.kill.all_voted', { name: winnerPlayer.username }), flags: MessageFlags.Ephemeral });
+      if (killResult.mode === 'plurality') {
+        await wolvesChannel.send(t('cmd.kill.pack_chose', { name: killResult.victimName }));
+        await safeReply(interaction, { content: t('cmd.kill.all_voted', { name: killResult.victimName }), flags: MessageFlags.Ephemeral });
 
         // Auto-chain to next night role
-        await this.advanceFromWolves(interaction.guild, game, winnerPlayer.username);
+        await this.advanceFromWolves(interaction.guild, game, killResult.victimName);
       } else {
-        await safeReply(interaction, { content: t('cmd.kill.vote_pending', { name: target.username, n: votesForTarget, m: majorityNeeded }), flags: MessageFlags.Ephemeral });
+        await safeReply(interaction, { content: t('cmd.kill.vote_pending', { name: target.username, n: killResult.votesForTarget, m: majorityNeeded }), flags: MessageFlags.Ephemeral });
       }
     }
   },
@@ -145,7 +167,9 @@ module.exports = {
     // Vérifier si le Loup Blanc se réveille (nuits impaires, dayCount >= 1)
     const isOddNight = (game.dayCount || 0) % 2 === 1;
     if (isOddNight && gameManager.hasAliveRealRole(game, ROLES.WHITE_WOLF)) {
-      gameManager._setSubPhase(game, PHASES.LOUP_BLANC);
+      await gameManager.runAtomic(game.mainChannelId, (state) => {
+        gameManager._setSubPhase(state, PHASES.LOUP_BLANC);
+      });
       await gameManager.announcePhase(guild, game, t('phase.white_wolf_wakes'));
       gameManager.notifyTurn(guild, game, ROLES.WHITE_WOLF);
       gameManager.startNightAfkTimeout(guild, game);
@@ -153,7 +177,9 @@ module.exports = {
     }
 
     if (gameManager.hasAliveRealRole(game, ROLES.WITCH)) {
-      gameManager._setSubPhase(game, PHASES.SORCIERE);
+      await gameManager.runAtomic(game.mainChannelId, (state) => {
+        gameManager._setSubPhase(state, PHASES.SORCIERE);
+      });
       // Informer la sorcière de la victime dans son channel privé
       if (game.witchChannelId) {
         try {
@@ -167,7 +193,9 @@ module.exports = {
     }
 
     if (gameManager.hasAliveRealRole(game, ROLES.SEER)) {
-      gameManager._setSubPhase(game, PHASES.VOYANTE);
+      await gameManager.runAtomic(game.mainChannelId, (state) => {
+        gameManager._setSubPhase(state, PHASES.VOYANTE);
+      });
       await gameManager.announcePhase(guild, game, t('phase.seer_wakes'));
       gameManager.startNightAfkTimeout(guild, game);
       return;
@@ -205,17 +233,26 @@ module.exports = {
       return;
     }
 
-    // Enregistrer la cible
-    game.whiteWolfKillTarget = target.id;
-    gameManager.clearNightAfkTimeout(game);
-    gameManager.logAction(game, `Loup Blanc choisit de dévorer: ${target.username}`);
-    try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'white_wolf_kill', interaction.user.id, target.id); } catch (e) { /* ignore */ }
+    try {
+      await gameManager.runAtomic(game.mainChannelId, () => {
+        game.whiteWolfKillTarget = target.id;
+        gameManager.clearNightAfkTimeout(game);
+        gameManager.logAction(game, `Loup Blanc choisit de dévorer: ${target.username}`);
+        const ok = gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'white_wolf_kill', interaction.user.id, target.id);
+        if (!ok) throw new Error('Failed to persist white wolf action');
+      });
+    } catch (e) {
+      await safeReply(interaction, { content: t('error.internal'), flags: MessageFlags.Ephemeral });
+      return;
+    }
 
     await safeReply(interaction, { content: t('cmd.kill.white_wolf_success', { name: target.username }), flags: MessageFlags.Ephemeral });
 
     // Avancer vers la sous-phase suivante (SORCIERE ou VOYANTE ou jour)
     if (gameManager.hasAliveRealRole(game, ROLES.WITCH)) {
-      gameManager._setSubPhase(game, PHASES.SORCIERE);
+      await gameManager.runAtomic(game.mainChannelId, (state) => {
+        gameManager._setSubPhase(state, PHASES.SORCIERE);
+      });
       if (game.witchChannelId && game.nightVictim) {
         try {
           const nightVictimPlayer = game.players.find(p => p.id === game.nightVictim);
@@ -229,7 +266,9 @@ module.exports = {
     }
 
     if (gameManager.hasAliveRealRole(game, ROLES.SEER)) {
-      gameManager._setSubPhase(game, PHASES.VOYANTE);
+      await gameManager.runAtomic(game.mainChannelId, (state) => {
+        gameManager._setSubPhase(state, PHASES.VOYANTE);
+      });
       await gameManager.announcePhase(interaction.guild, game, t('phase.seer_wakes'));
       gameManager.startNightAfkTimeout(interaction.guild, game);
       return;

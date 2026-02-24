@@ -50,11 +50,7 @@ function pickSmartHint(username, game) {
   scored.sort((a, b) => b.matchCount - a.matchCount);
 
   // Prendre la lettre la plus ambiguë
-  const chosen = scored[0].letter;
-  game.listenHintsGiven = game.listenHintsGiven || [];
-  game.listenHintsGiven.push(chosen);
-
-  return chosen;
+  return scored[0].letter;
 }
 
 module.exports = {
@@ -125,19 +121,28 @@ module.exports = {
     }
 
     try {
+      let hintLetter = null;
       // Activer le relais temps réel
-      game.listenRelayUserId = interaction.user.id;
+      await gameManager.runAtomic(game.mainChannelId, (state) => {
+        state.listenRelayUserId = interaction.user.id;
+        if (Math.random() < DETECTION_CHANCE) {
+          hintLetter = pickSmartHint(player.username, state);
+          if (hintLetter) {
+            state.listenHintsGiven = state.listenHintsGiven || [];
+            state.listenHintsGiven.push(hintLetter);
+          }
+        }
+      });
 
       // Envoyer un DM de confirmation à la Petite Fille
       await interaction.user.send(t('cmd.listen.relay_started'));
       await safeReply(interaction, { content: t('cmd.listen.relay_active'), flags: MessageFlags.Ephemeral });
 
       // Chance de détection par les loups
-      if (Math.random() < DETECTION_CHANCE) {
+      if (hintLetter !== null) {
         const wolvesChannel = await interaction.guild.channels.fetch(game.wolvesChannelId);
         if (wolvesChannel) {
           // Indice intelligent : lettre du pseudo qui apparaît dans le plus d'autres pseudos
-          const hintLetter = pickSmartHint(player.username, game);
           if (hintLetter) {
             await wolvesChannel.send(t('cmd.listen.wolves_alert', { letter: hintLetter.toUpperCase() }));
           } else {
@@ -152,7 +157,11 @@ module.exports = {
 
     } catch (err) {
       logger.error("Erreur /listen:", { error: err.message });
-      game.listenRelayUserId = null;
+      try {
+        await gameManager.runAtomic(game.mainChannelId, (state) => {
+          state.listenRelayUserId = null;
+        });
+      } catch (_) { /* ignore secondary rollback error */ }
       await safeReply(interaction, { content: t('error.listen_fetch_error'), flags: MessageFlags.Ephemeral });
     }
   }

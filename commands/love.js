@@ -74,9 +74,17 @@ module.exports = {
       return;
     }
 
-    game.lovers.push([a.id, b.id]);
-    gameManager.logAction(game, `Cupidon lie ${a.username} et ${b.username}`);
-    try { gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'love', interaction.user.id, a.id); } catch (e) { /* ignore */ }
+    try {
+      await gameManager.runAtomic(game.mainChannelId, (state) => {
+        state.lovers.push([a.id, b.id]);
+        gameManager.logAction(state, `Cupidon lie ${a.username} et ${b.username}`);
+        const ok = gameManager.db.addNightAction(state.mainChannelId, state.dayCount || 0, 'love', interaction.user.id, a.id);
+        if (!ok) throw new Error('Failed to persist cupid action');
+      });
+    } catch (e) {
+      await safeReply(interaction, { content: t('error.internal'), flags: MessageFlags.Ephemeral });
+      return;
+    }
 
     try {
       await a.send(t('cmd.love.dm', { name: b.username }));

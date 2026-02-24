@@ -12,6 +12,7 @@ const {
   cleanupTest
 } = require('../helpers/testHelpers');
 const fs = require('fs');
+const { game: gameLogger } = require('../../utils/logger');
 
 // Mock fs pour éviter l'écriture de fichiers pendant les tests
 jest.mock('fs');
@@ -27,6 +28,9 @@ describe('GameManager', () => {
   });
 
   afterEach(() => {
+    if (gameManager && typeof gameManager.destroy === 'function') {
+      gameManager.destroy();
+    }
     cleanupTest();
   });
 
@@ -473,7 +477,7 @@ describe('GameManager', () => {
   });
 
   describe('voteCaptain()', () => {
-    test('enregistre un vote valide', () => {
+    test('enregistre un vote valide', async () => {
       gameManager.create('ch-cap');
       const game = gameManager.games.get('ch-cap');
       game.phase = PHASES.DAY;
@@ -483,7 +487,7 @@ describe('GameManager', () => {
         createMockPlayer({ id: 't1', alive: true })
       );
 
-      const result = gameManager.voteCaptain('ch-cap', 'v1', 't1');
+      const result = await gameManager.voteCaptain('ch-cap', 'v1', 't1');
 
       expect(result.ok).toBe(true);
       expect(result.allVoted).toBe(false);
@@ -493,35 +497,35 @@ describe('GameManager', () => {
       expect(game.captainVoters.get('v1')).toBe('t1');
     });
 
-    test('refuse si pas le jour', () => {
+    test('refuse si pas le jour', async () => {
       gameManager.create('ch-cap2');
       const game = gameManager.games.get('ch-cap2');
       game.phase = PHASES.NIGHT;
       game.players.push(createMockPlayer({ id: 'v1' }));
 
-      expect(gameManager.voteCaptain('ch-cap2', 'v1', 't1').reason).toBe('not_day');
+      expect((await gameManager.voteCaptain('ch-cap2', 'v1', 't1')).reason).toBe('not_day');
     });
 
-    test('refuse si mauvaise sous-phase', () => {
+    test('refuse si mauvaise sous-phase', async () => {
       gameManager.create('ch-cap3');
       const game = gameManager.games.get('ch-cap3');
       game.phase = PHASES.DAY;
       game.subPhase = PHASES.DELIBERATION;
 
-      expect(gameManager.voteCaptain('ch-cap3', 'v1', 't1').reason).toBe('wrong_phase');
+      expect((await gameManager.voteCaptain('ch-cap3', 'v1', 't1')).reason).toBe('wrong_phase');
     });
 
-    test('refuse si capitaine déjà élu', () => {
+    test('refuse si capitaine déjà élu', async () => {
       gameManager.create('ch-cap4');
       const game = gameManager.games.get('ch-cap4');
       game.phase = PHASES.DAY;
       game.subPhase = PHASES.VOTE_CAPITAINE;
       game.captainId = 'someone';
 
-      expect(gameManager.voteCaptain('ch-cap4', 'v1', 't1').reason).toBe('captain_already');
+      expect((await gameManager.voteCaptain('ch-cap4', 'v1', 't1')).reason).toBe('captain_already');
     });
 
-    test('refuse si le votant est mort', () => {
+    test('refuse si le votant est mort', async () => {
       gameManager.create('ch-cap5');
       const game = gameManager.games.get('ch-cap5');
       game.phase = PHASES.DAY;
@@ -531,10 +535,10 @@ describe('GameManager', () => {
         createMockPlayer({ id: 't1', alive: true })
       );
 
-      expect(gameManager.voteCaptain('ch-cap5', 'v1', 't1').reason).toBe('voter_dead');
+      expect((await gameManager.voteCaptain('ch-cap5', 'v1', 't1')).reason).toBe('voter_dead');
     });
 
-    test('permet de changer de vote', () => {
+    test('permet de changer de vote', async () => {
       gameManager.create('ch-cap6');
       const game = gameManager.games.get('ch-cap6');
       game.phase = PHASES.DAY;
@@ -545,8 +549,8 @@ describe('GameManager', () => {
         createMockPlayer({ id: 't2', alive: true })
       );
 
-      gameManager.voteCaptain('ch-cap6', 'v1', 't1');
-      const result = gameManager.voteCaptain('ch-cap6', 'v1', 't2');
+      await gameManager.voteCaptain('ch-cap6', 'v1', 't1');
+      const result = await gameManager.voteCaptain('ch-cap6', 'v1', 't2');
 
       expect(result.ok).toBe(true);
       expect(game.captainVotes.has('t1')).toBe(false);
@@ -555,7 +559,7 @@ describe('GameManager', () => {
   });
 
   describe('declareCaptain()', () => {
-    test('déclare le capitaine avec un gagnant clair', () => {
+    test('déclare le capitaine avec un gagnant clair', async () => {
       gameManager.create('ch-dec');
       const game = gameManager.games.get('ch-dec');
       game.phase = PHASES.DAY;
@@ -567,7 +571,7 @@ describe('GameManager', () => {
       game.captainVotes.set('p1', 3);
       game.captainVotes.set('p2', 1);
 
-      const result = gameManager.declareCaptain('ch-dec');
+      const result = await gameManager.declareCaptain('ch-dec');
 
       expect(result.ok).toBe(true);
       expect(result.winnerId).toBe('p1');
@@ -575,15 +579,15 @@ describe('GameManager', () => {
       expect(game.captainId).toBe('p1');
     });
 
-    test('retourne no_votes si aucun vote', () => {
+    test('retourne no_votes si aucun vote', async () => {
       gameManager.create('ch-dec2');
       const game = gameManager.games.get('ch-dec2');
       game.subPhase = PHASES.VOTE_CAPITAINE;
 
-      expect(gameManager.declareCaptain('ch-dec2').reason).toBe('no_votes');
+      expect((await gameManager.declareCaptain('ch-dec2')).reason).toBe('no_votes');
     });
 
-    test('résout une égalité par tirage au sort', () => {
+    test('résout une égalité par tirage au sort', async () => {
       gameManager.create('ch-dec3');
       const game = gameManager.games.get('ch-dec3');
       game.subPhase = PHASES.VOTE_CAPITAINE;
@@ -594,14 +598,14 @@ describe('GameManager', () => {
       game.captainVotes.set('p1', 2);
       game.captainVotes.set('p2', 2);
 
-      const result = gameManager.declareCaptain('ch-dec3');
+      const result = await gameManager.declareCaptain('ch-dec3');
       expect(result.ok).toBe(true);
       expect(result.wasTie).toBe(true);
       expect(['p1', 'p2']).toContain(result.winnerId);
       expect(game.captainId).toBe(result.winnerId);
     });
 
-    test('nettoie l\'état des votes après déclaration', () => {
+    test('nettoie l\'état des votes après déclaration', async () => {
       gameManager.create('ch-dec4');
       const game = gameManager.games.get('ch-dec4');
       game.subPhase = PHASES.VOTE_CAPITAINE;
@@ -609,7 +613,7 @@ describe('GameManager', () => {
       game.captainVotes.set('p1', 1);
       game.captainVoters.set('v1', 'p1');
 
-      gameManager.declareCaptain('ch-dec4');
+      await gameManager.declareCaptain('ch-dec4');
 
       expect(game.captainVotes.size).toBe(0);
       expect(game.captainVoters.size).toBe(0);
@@ -674,6 +678,30 @@ describe('GameManager', () => {
 
     test('retourne un tableau vide si aucune partie', () => {
       expect(gameManager.getAllGames()).toHaveLength(0);
+    });
+  });
+
+  describe('liveness detection', () => {
+    test('freeze game artificiellement et déclenche STUCK', () => {
+      gameManager.create('ch-stuck', { guildId: 'guild-stuck' });
+      const game = gameManager.games.get('ch-stuck');
+      game.startedAt = Date.now() - 120000;
+      game.phase = PHASES.DAY;
+      game.subPhase = PHASES.DELIBERATION;
+      game._lastMutationAt = Date.now() - 120000;
+
+      const warnSpy = jest.spyOn(gameLogger, 'warn').mockImplementation(() => {});
+
+      const stuckGames = gameManager.detectStuckGames(1000);
+      expect(stuckGames.map(g => g.mainChannelId)).toContain('ch-stuck');
+      expect(game.stuckStatus).toBe('STUCK');
+      expect(gameManager.getStuckGamesCount(1000)).toBe(1);
+
+      // Warning only on first transition to STUCK
+      gameManager.detectStuckGames(1000);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+
+      warnSpy.mockRestore();
     });
   });
 
@@ -862,6 +890,50 @@ describe('GameManager', () => {
 
       updateGameSpy.mockRestore();
     });
+
+    test('runAtomic() forbids recursive atomic calls', async () => {
+      gameManager.create('ch-atomic-rec');
+      gameManager._atomicContexts.set('ch-atomic-rec', { active: true, postCommit: [] });
+      await expect(gameManager.runAtomic('ch-atomic-rec', () => {})).rejects.toThrow('runAtomic recursion is forbidden');
+      gameManager._atomicContexts.delete('ch-atomic-rec');
+    });
+
+    test('runAtomic() rejects async mutation callback', async () => {
+      gameManager.create('ch-atomic-async');
+      await expect(
+        gameManager.runAtomic('ch-atomic-async', async () => {
+          await Promise.resolve();
+        })
+      ).rejects.toThrow('mutationFn must be synchronous');
+    });
+
+    test('advanceSubPhase() rolls back subPhase and does not schedule timer on DB failure', async () => {
+      gameManager.create('ch-atomic-phase-fail');
+      const game = gameManager.games.get('ch-atomic-phase-fail');
+      game.phase = PHASES.DAY;
+      game.subPhase = PHASES.REVEIL;
+      game.dayCount = 1;
+      game.players.push(createMockPlayer({ id: '111111111111111111', alive: true }));
+
+      const beforeSubPhase = game.subPhase;
+      const beforeCaptain = game.captainId;
+      const updateGameSpy = jest.spyOn(gameManager.db, 'updateGame').mockImplementation(() => {
+        throw new Error('Simulated commit crash');
+      });
+      const dayTimerSpy = jest.spyOn(gameManager, 'startDayTimeout');
+      const captainTimerSpy = jest.spyOn(gameManager, 'startCaptainVoteTimeout');
+
+      await expect(gameManager.advanceSubPhase(createMockGuild(), game)).rejects.toThrow('Simulated commit crash');
+
+      expect(game.subPhase).toBe(beforeSubPhase);
+      expect(game.captainId).toBe(beforeCaptain);
+      expect(dayTimerSpy).not.toHaveBeenCalled();
+      expect(captainTimerSpy).not.toHaveBeenCalled();
+
+      updateGameSpy.mockRestore();
+      dayTimerSpy.mockRestore();
+      captainTimerSpy.mockRestore();
+    });
   });
 
   describe('getGameSnapshot()', () => {
@@ -971,6 +1043,81 @@ describe('GameManager', () => {
       expect(setLobbyTimeoutSpy).not.toHaveBeenCalled();
 
       setLobbyTimeoutSpy.mockRestore();
+    });
+
+    test('restart during NIGHT keeps exactly one active timer and avoids duplicate transition', async () => {
+      jest.useFakeTimers();
+
+      const channelId = 'ch-restart-night';
+      const dbGame = {
+        channel_id: channelId,
+        guild_id: 'guild-123',
+        lobby_message_id: 'msg-1',
+        lobby_host_id: 'host-1',
+        voice_channel_id: null,
+        village_channel_id: 'village-1',
+        wolves_channel_id: 'wolves-1',
+        seer_channel_id: null,
+        witch_channel_id: null,
+        cupid_channel_id: null,
+        salvateur_channel_id: null,
+        white_wolf_channel_id: null,
+        thief_channel_id: null,
+        spectator_channel_id: null,
+        phase: PHASES.NIGHT,
+        sub_phase: PHASES.LOUPS,
+        day_count: 2,
+        captain_id: null,
+        night_victim_id: null,
+        witch_kill_target_id: null,
+        witch_save: 0,
+        white_wolf_kill_target_id: null,
+        protected_player_id: null,
+        last_protected_player_id: null,
+        village_roles_powerless: 0,
+        listen_hints_given: '[]',
+        thief_extra_roles: '[]',
+        min_players: 5,
+        max_players: 10,
+        started_at: Date.now() - 60000,
+        ended_at: null,
+        disable_voice_mute: 0
+      };
+
+      gameManager.db.games.set(channelId, dbGame);
+      gameManager.db.players.set(channelId, [
+        { id: '111111111111111111', username: 'Wolf', role: ROLES.WEREWOLF, alive: true, inLove: false },
+        { id: '222222222222222222', username: 'Villager', role: ROLES.VILLAGER, alive: true, inLove: false }
+      ]);
+
+      gameManager.loadState();
+      const game = gameManager.games.get(channelId);
+      const guild = createMockGuild({ id: 'guild-123' });
+
+      const advanceSpy = jest.spyOn(gameManager, 'advanceSubPhase').mockResolvedValue(undefined);
+      const transitionSpy = jest.spyOn(gameManager, 'transitionToDay').mockResolvedValue(undefined);
+
+      // Simulate duplicate re-arm during restart path
+      gameManager.startNightAfkTimeout(guild, game);
+      gameManager.startNightAfkTimeout(guild, game);
+
+      const activeTimer = gameManager.activeGameTimers.get(channelId);
+      expect(activeTimer).toBeDefined();
+      expect(activeTimer.type).toBe(`night-afk:${PHASES.LOUPS}`);
+      expect(game._activeTimerType).toBe(`night-afk:${PHASES.LOUPS}`);
+
+      const activeHandles = [game._nightAfkTimer, game._dayTimer, game._hunterTimer, game._captainVoteTimer]
+        .filter(Boolean).length;
+      expect(activeHandles).toBe(1);
+
+      await jest.advanceTimersByTimeAsync(120_000);
+
+      expect(advanceSpy).toHaveBeenCalledTimes(1);
+      expect(transitionSpy).toHaveBeenCalledTimes(0);
+
+      advanceSpy.mockRestore();
+      transitionSpy.mockRestore();
+      jest.useRealTimers();
     });
   });
 });

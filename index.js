@@ -8,6 +8,7 @@ const { app: logger, discord: discordLogger, interaction: interactionLogger } = 
 const { safeEditReply } = require("./utils/interaction");
 const { t } = require('./utils/i18n');
 const WebServer = require('./web/server');
+const startupLock = require('./utils/startupLock');
 
 // Web server (initialized on bot ready)
 let webServer = null;
@@ -23,6 +24,23 @@ for (const key of REQUIRED_ENV) {
     process.exit(1);
   }
 }
+
+// Inter-process startup lock (split-brain protection)
+const lockResult = startupLock.acquire();
+if (!lockResult.ok) {
+  logger.critical('Refusing startup: another bot instance appears to be running', {
+    reason: lockResult.reason,
+    ownerPid: lockResult.ownerPid,
+    ownerStartedAt: lockResult.ownerStartedAt,
+    lockFilePath: lockResult.lockFilePath,
+    error: lockResult.error ? lockResult.error.message : undefined
+  });
+  process.exit(1);
+}
+logger.info('Startup lock acquired', {
+  pid: lockResult.pid,
+  lockFilePath: lockResult.lockFilePath
+});
 
 const client = new Client({
   intents: [
@@ -935,6 +953,7 @@ process.on('uncaughtException', (error) => {
   logger.critical('Uncaught Exception — saving state before crash', error);
   // Best-effort state save before crash
   try { gameManager.saveState(); } catch (e) { /* ignore */ }
+  try { startupLock.release(); } catch (_) { /* ignore */ }
   process.exit(1);
 });
 
@@ -966,6 +985,7 @@ client.on('shardResume', (shardId, replayedEvents) => {
 client.on('invalidated', () => {
   logger.critical('Session invalidated — restarting...');
   try { gameManager.saveState(); } catch (e) { /* ignore */ }
+  try { startupLock.release(); } catch (_) { /* ignore */ }
   process.exit(1);
 });
 
@@ -1009,14 +1029,19 @@ async function gracefulShutdown(signal) {
 
     // Destroy Discord client
     client.destroy();
+    startupLock.release();
     logger.info('Shutdown complete');
   } catch (err) {
     logger.error('Shutdown error', { error: err.message });
+    try { startupLock.release(); } catch (_) { /* ignore */ }
   }
   process.exit(0);
 }
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('exit', () => {
+  try { startupLock.release(); } catch (_) { /* ignore */ }
+});
 
 client.login(process.env.TOKEN);

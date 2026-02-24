@@ -50,6 +50,10 @@ class MockGameDatabase {
     this.players.set(channelId, []);
     this.votes.set(channelId, []);
     this.logs.set(channelId, []);
+    if (!this.nightActions) this.nightActions = new Map();
+    this.nightActions.set(channelId, []);
+    if (!this.witchPotions) this.witchPotions = new Map();
+    this.witchPotions.set(channelId, { life: false, death: false });
     
     return gameId;
   }
@@ -108,6 +112,8 @@ class MockGameDatabase {
     this.players.delete(channelId);
     this.votes.delete(channelId);
     this.logs.delete(channelId);
+    if (this.nightActions) this.nightActions.delete(channelId);
+    if (this.witchPotions) this.witchPotions.delete(channelId);
     return true;
   }
 
@@ -167,6 +173,11 @@ class MockGameDatabase {
   // ===== VOTES =====
 
   addVote(channelId, voterId, targetId, voteType = 'village', round = 0) {
+    const result = this.addVoteIfChanged(channelId, voterId, targetId, voteType, round);
+    return result.ok;
+  }
+
+  addVoteIfChanged(channelId, voterId, targetId, voteType = 'village', round = 0) {
     if (!this.votes.has(channelId)) {
       this.votes.set(channelId, []);
     }
@@ -177,12 +188,15 @@ class MockGameDatabase {
     );
     
     if (existing !== -1) {
+      if (votes[existing].target_id === targetId) {
+        return { ok: true, affectedRows: 0, alreadyExecuted: true };
+      }
       votes[existing].target_id = targetId;
     } else {
       votes.push({ voter_id: voterId, target_id: targetId, vote_type: voteType, round });
     }
     
-    return true;
+    return { ok: true, affectedRows: 1, alreadyExecuted: false };
   }
 
   getVotes(channelId, voteType = 'village', round = 0) {
@@ -209,7 +223,24 @@ class MockGameDatabase {
   // ===== NIGHT ACTIONS =====
 
   addNightAction(channelId, nightNumber, actionType, actorId, targetId = null) {
-    return true; // Pas implémenté dans mock
+    const result = this.addNightActionOnce(channelId, nightNumber, actionType, actorId, targetId);
+    return result.ok;
+  }
+
+  addNightActionOnce(channelId, nightNumber, actionType, actorId, targetId = null) {
+    if (!this.nightActions) this.nightActions = new Map();
+    if (!this.nightActions.has(channelId)) this.nightActions.set(channelId, []);
+    const actions = this.nightActions.get(channelId);
+    const duplicate = actions.find(a =>
+      a.nightNumber === nightNumber &&
+      a.actionType === actionType &&
+      a.actorId === actorId
+    );
+    if (duplicate) {
+      return { ok: true, affectedRows: 0, alreadyExecuted: true };
+    }
+    actions.push({ nightNumber, actionType, actorId, targetId });
+    return { ok: true, affectedRows: 1, alreadyExecuted: false };
   }
 
   getNightActions(channelId, nightNumber) {
@@ -226,8 +257,32 @@ class MockGameDatabase {
     return { life: true, death: true };
   }
 
+  useWitchPotionIfAvailable(channelId, potionType) {
+    if (!this.witchPotions) this.witchPotions = new Map();
+    if (!this.witchPotions.has(channelId)) {
+      this.witchPotions.set(channelId, { life: false, death: false });
+    }
+    const potions = this.witchPotions.get(channelId);
+    if (potions[potionType]) {
+      return { ok: true, affectedRows: 0, alreadyExecuted: true };
+    }
+    potions[potionType] = true;
+    return { ok: true, affectedRows: 1, alreadyExecuted: false };
+  }
+
   useWitchPotion(channelId, potionType) {
-    return true;
+    const result = this.useWitchPotionIfAvailable(channelId, potionType);
+    return result.ok && result.affectedRows > 0;
+  }
+
+  markHunterShotIfFirst(channelId, hunterId) {
+    if (!this.hunterShots) this.hunterShots = new Map();
+    const key = `${channelId}:${hunterId}`;
+    if (this.hunterShots.get(key)) {
+      return { ok: true, affectedRows: 0, alreadyExecuted: true };
+    }
+    this.hunterShots.set(key, true);
+    return { ok: true, affectedRows: 1, alreadyExecuted: false };
   }
 
   // ===== ACTION LOG =====

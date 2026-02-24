@@ -149,11 +149,14 @@ function createMockCollector(timeout = 60000) {
 
   // Auto-stop after timeout
   if (timeout > 0) {
-    setTimeout(() => {
+    const collectorTimeout = setTimeout(() => {
       if (!collector.stopped) {
         collector.stop('time');
       }
     }, timeout);
+    if (typeof collectorTimeout.unref === 'function') {
+      collectorTimeout.unref();
+    }
   }
 
   return collector;
