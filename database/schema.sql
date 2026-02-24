@@ -54,6 +54,8 @@ CREATE TABLE IF NOT EXISTS games (
 CREATE INDEX IF NOT EXISTS idx_games_channel ON games(channel_id);
 CREATE INDEX IF NOT EXISTS idx_games_phase ON games(phase);
 CREATE INDEX IF NOT EXISTS idx_games_started ON games(started_at);
+CREATE INDEX IF NOT EXISTS idx_games_guild ON games(guild_id);
+CREATE INDEX IF NOT EXISTS idx_games_guild_ended ON games(guild_id, ended_at);
 
 -- Table des joueurs
 CREATE TABLE IF NOT EXISTS players (

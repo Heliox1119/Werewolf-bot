@@ -406,7 +406,16 @@ class GameManager extends EventEmitter {
       votes: game.votes ? Object.fromEntries(game.votes) : {},
       voteVoters: game.voteVoters ? Object.fromEntries(game.voteVoters) : {},
       lobbyHostId: game.lobbyHostId,
-      rules: game.rules
+      rules: game.rules,
+      // Additional state fields
+      wolfVotes: game.wolfVotes || null,
+      protectedPlayerId: game.protectedPlayerId || null,
+      witchKillTarget: game.witchKillTarget || null,
+      witchSave: game.witchSave || false,
+      whiteWolfKillTarget: game.whiteWolfKillTarget || null,
+      thiefExtraRoles: game.thiefExtraRoles || [],
+      listenRelayUserId: game.listenRelayUserId || null,
+      disableVoiceMute: game.disableVoiceMute || false
     };
   }
 
@@ -1411,6 +1420,9 @@ class GameManager extends EventEmitter {
     });
 
     game.startedAt = Date.now();
+
+    // Clear lobby timeout — game is now active
+    this.clearLobbyTimeout(channelId);
     
     // Déterminer la première sous-phase nocturne
     // Ordre: VOLEUR → CUPIDON → SALVATEUR → LOUPS
@@ -2203,6 +2215,12 @@ class GameManager extends EventEmitter {
   }
 
   async nextPhase(guild, game) {
+    // Guard: never toggle an ENDED game back
+    if (game.phase === PHASES.ENDED) {
+      logger.warn('nextPhase called on ENDED game, ignoring', { channelId: game.mainChannelId });
+      return game.phase;
+    }
+
     // Passer de NIGHT à DAY ou DAY à NIGHT
     game.phase = game.phase === PHASES.NIGHT ? PHASES.DAY : PHASES.NIGHT;
 

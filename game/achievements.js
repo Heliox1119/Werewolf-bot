@@ -511,9 +511,14 @@ class AchievementEngine {
           FROM player_stats ps
           LEFT JOIN player_extended_stats pes ON ps.player_id = pes.player_id
           WHERE ps.games_played > 0
+            AND ps.player_id IN (
+              SELECT DISTINCT p.user_id FROM players p
+              JOIN games g ON p.game_id = g.id
+              WHERE g.guild_id = ?
+            )
           ORDER BY COALESCE(pes.elo_rating, 1000) DESC
           LIMIT ?
-        `).all(limit);
+        `).all(guildId, limit);
       }
       return this.db.prepare(`
         SELECT ps.player_id, ps.username, ps.games_played, ps.games_won,

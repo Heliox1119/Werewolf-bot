@@ -204,9 +204,29 @@ class WebServer {
   }
 
   _setupSocketIO() {
+    // Debounce map for gameState emissions: gameId -> timeout
+    this._gameStateDebounce = new Map();
+    // Rate limiting: socketId -> { count, resetAt }
+    this._wsRateLimits = new Map();
+
     this.io.on('connection', (socket) => {
+      // Initialize rate limit for this socket
+      this._wsRateLimits.set(socket.id, { count: 0, resetAt: Date.now() + 10000 });
+
+      // Rate limiter check (30 events per 10 seconds per socket)
+      const checkRateLimit = () => {
+        const rl = this._wsRateLimits.get(socket.id);
+        if (!rl) return false;
+        const now = Date.now();
+        if (now > rl.resetAt) { rl.count = 0; rl.resetAt = now + 10000; }
+        rl.count++;
+        return rl.count > 30;
+      };
+
       // Join a game spectator room
       socket.on('spectate', (gameId) => {
+        if (checkRateLimit()) return socket.emit('error', { message: 'Rate limited' });
+        if (typeof gameId !== 'string' || gameId.length > 30) return;
         const game = this.gameManager.games.get(gameId);
         if (!game) {
           socket.emit('error', { message: 'Game not found' });
@@ -228,6 +248,7 @@ class WebServer {
 
       // Leave spectator room
       socket.on('leaveSpectate', (gameId) => {
+        if (typeof gameId !== 'string' || gameId.length > 30) return;
         socket.leave(`game:${gameId}`);
         if (this.spectatorRooms.has(gameId)) {
           this.spectatorRooms.get(gameId).delete(socket.id);
@@ -235,13 +256,22 @@ class WebServer {
         }
       });
 
-      // Request all active games (for dashboard)
+      // Request all active games (for dashboard) — filtered by user's guild membership
       socket.on('requestGames', () => {
-        const games = this.gameManager.getAllGames().map(g => this._enrichSnapshot(this.gameManager.getGameSnapshot(g)));
+        if (checkRateLimit()) return socket.emit('error', { message: 'Rate limited' });
+        const allGames = this.gameManager.getAllGames();
+        // Get user guild IDs from socket handshake session if available
+        const userGuildIds = this._getSocketUserGuildIds(socket);
+        const filtered = userGuildIds.length > 0
+          ? allGames.filter(g => userGuildIds.includes(g.guildId))
+          : allGames; // If no auth info, show all (public dashboard)
+        const games = filtered.map(g => this._enrichSnapshot(this.gameManager.getGameSnapshot(g)));
         socket.emit('activeGames', games);
       });
 
       socket.on('disconnect', () => {
+        // Clean up rate limits
+        this._wsRateLimits.delete(socket.id);
         // Clean up spectator rooms
         for (const [gameId, sockets] of this.spectatorRooms) {
           if (sockets.has(socket.id)) {
@@ -265,18 +295,29 @@ class WebServer {
       // Broadcast to spectators of this game
       this.io.to(`game:${gameId}`).emit('gameEvent', data);
 
-      // Broadcast to guild dashboard
-      this.io.to(`guild:${guildId}`).emit('gameEvent', data);
+      // Broadcast to guild dashboard room
+      if (guildId) {
+        this.io.to(`guild:${guildId}`).emit('gameEvent', data);
+      }
 
-      // Broadcast to global dashboard
-      this.io.emit('globalEvent', data);
+      // Broadcast globally (dashboard) — scoped to guild room + spectator rooms only
+      // Removed: this.io.emit('globalEvent', data) — was leaking events across guilds
+      // Dashboard clients should join their guild rooms; fallback: emit to all connected sockets
+      this.io.emit('globalEvent', { event, gameId, guildId, timestamp: data.timestamp });
 
-      // On full state events, send updated snapshot
+      // On full state events, send debounced updated snapshot (200ms)
       if (['gameStarted', 'phaseChanged', 'playerKilled', 'gameEnded'].includes(event)) {
-        const game = this.gameManager.games.get(gameId);
-        if (game) {
-          this.io.to(`game:${gameId}`).emit('gameState', this._enrichSnapshot(this.gameManager.getGameSnapshot(game)));
+        // Debounce: only emit once per 200ms per game
+        if (this._gameStateDebounce.has(gameId)) {
+          clearTimeout(this._gameStateDebounce.get(gameId));
         }
+        this._gameStateDebounce.set(gameId, setTimeout(() => {
+          this._gameStateDebounce.delete(gameId);
+          const game = this.gameManager.games.get(gameId);
+          if (game) {
+            this.io.to(`game:${gameId}`).emit('gameState', this._enrichSnapshot(this.gameManager.getGameSnapshot(game)));
+          }
+        }, 200));
       }
 
       // Clean up spectator room on game end
@@ -286,6 +327,21 @@ class WebServer {
         }, 60000); // Keep room for 1 minute after end
       }
     });
+  }
+
+  /**
+   * Extract the user's guild IDs from a Socket.IO socket's session (if authenticated).
+   */
+  _getSocketUserGuildIds(socket) {
+    try {
+      const session = socket.request?.session;
+      const passport = session?.passport;
+      const user = passport?.user;
+      if (user && user.guilds) {
+        return user.guilds.map(g => g.id);
+      }
+    } catch {}
+    return [];
   }
 
   /**

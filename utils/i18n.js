@@ -139,10 +139,12 @@ class I18n {
    * Traduit une clé avec interpolation de variables
    * @param {string} key - La clé de traduction (ex: 'error.no_game')
    * @param {Object} params - Les variables à interpoler (ex: { name: 'Alice' })
+   * @param {string} [guildId] - Guild ID for per-guild locale resolution
    * @returns {string} La chaîne traduite
    */
-  t(key, params = {}) {
-    const localeData = this.locales[this.locale] || this.locales.fr;
+  t(key, params = {}, guildId = null) {
+    const locale = guildId ? this.getLocaleForGuild(guildId) : this.locale;
+    const localeData = this.locales[locale] || this.locales.fr;
     let value = this._resolve(localeData, key);
 
     // Fallback vers le français si la clé n'existe pas dans la langue courante
@@ -213,9 +215,12 @@ const PHASE_KEY_MAP = {
 
 /**
  * Fonction raccourci globale
+ * @param {string} key
+ * @param {Object} [params]
+ * @param {string} [guildId] - Guild ID for per-guild locale
  */
-function t(key, params = {}) {
-  return instance.t(key, params);
+function t(key, params = {}, guildId = null) {
+  return instance.t(key, params, guildId);
 }
 
 /**

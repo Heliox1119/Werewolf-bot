@@ -290,9 +290,23 @@ client.once("clientReady", async () => {
 
           // Rafraîchir le lobby embed si présent
           try { await updateLobbyEmbed(guild, channelId); } catch (e) { /* ignore */ }
+
+          // Re-arm timers: lobby timeout for games not yet started
+          if (!game.startedAt) {
+            gameManager.setLobbyTimeout(channelId);
+            logger.debug('Re-armed lobby timeout for restored game', { channelId });
+          }
         }
       } catch (err) {
         logger.error('❌ Game state restoration failed', err);
+      }
+
+      // Archive old completed games (cleanup DB)
+      try {
+        const archived = gameManager.db.archiveOldGames(7);
+        if (archived > 0) logger.info(`🗃️ Archived ${archived} old games from DB`);
+      } catch (err) {
+        logger.error('Game archiving failed', err);
       }
   } catch (error) {
     logger.error("❌ Failed to register commands", error);

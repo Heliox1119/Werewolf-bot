@@ -84,17 +84,48 @@
       div.dataset.playerId = p.id;
       div.dataset.playerAvatar = p.avatar || '';
       div.onclick = function() { if (window.openSpectatorPlayerModal) window.openSpectatorPlayerModal(this); };
-      const avatarHtml = p.avatar
-        ? `<img class="player-avatar" src="${p.avatar}" alt="" />`
-        : '<span class="player-avatar player-avatar-default">👤</span>';
-      div.innerHTML = `
-        ${avatarHtml}
-        <span class="player-name">${p.username || p.id}</span>
-        ${!p.alive && p.role ? `<span class="player-role">${p.role}</span>` : ''}
-        ${p.isCaptain ? '<span class="player-badge">👑</span>' : ''}
-        ${p.inLove ? '<span class="player-badge">💕</span>' : ''}
-        <span class="player-arrow">›</span>
-      `;
+
+      // Build player row using safe DOM methods (no innerHTML with user data)
+      if (p.avatar) {
+        const img = document.createElement('img');
+        img.className = 'player-avatar';
+        img.src = p.avatar;
+        img.alt = '';
+        div.appendChild(img);
+      } else {
+        const avatarSpan = document.createElement('span');
+        avatarSpan.className = 'player-avatar player-avatar-default';
+        avatarSpan.textContent = '👤';
+        div.appendChild(avatarSpan);
+      }
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'player-name';
+      nameSpan.textContent = p.username || p.id;
+      div.appendChild(nameSpan);
+
+      if (!p.alive && p.role) {
+        const roleSpan = document.createElement('span');
+        roleSpan.className = 'player-role';
+        roleSpan.textContent = p.role;
+        div.appendChild(roleSpan);
+      }
+      if (p.isCaptain) {
+        const badge = document.createElement('span');
+        badge.className = 'player-badge';
+        badge.textContent = '👑';
+        div.appendChild(badge);
+      }
+      if (p.inLove) {
+        const badge = document.createElement('span');
+        badge.className = 'player-badge';
+        badge.textContent = '💕';
+        div.appendChild(badge);
+      }
+      const arrow = document.createElement('span');
+      arrow.className = 'player-arrow';
+      arrow.textContent = '›';
+      div.appendChild(arrow);
       list.appendChild(div);
     });
     if (aliveCount) aliveCount.textContent = alive;
@@ -155,7 +186,15 @@
       }
     }
 
-    div.innerHTML = `<span class="event-time">${time}</span><span class="event-text">${text}</span>`;
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'event-time';
+    timeSpan.textContent = time;
+    div.appendChild(timeSpan);
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'event-text';
+    textSpan.textContent = text;
+    div.appendChild(textSpan);
     
     // Insert at top
     feed.insertBefore(div, feed.firstChild);

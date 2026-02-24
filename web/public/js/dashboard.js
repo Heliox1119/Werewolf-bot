@@ -73,13 +73,23 @@
 
     const item = document.createElement('div');
     item.className = 'activity-item';
-    item.innerHTML = `
-      <span class="activity-icon">${icon}</span>
-      <div class="activity-content">
-        <span class="activity-text">${text}</span>
-        <span class="activity-time">${new Date().toLocaleTimeString()}</span>
-      </div>
-    `;
+
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'activity-icon';
+    iconSpan.textContent = icon;
+    item.appendChild(iconSpan);
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'activity-content';
+    const textSpan = document.createElement('span');
+    textSpan.className = 'activity-text';
+    textSpan.textContent = text;
+    contentDiv.appendChild(textSpan);
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'activity-time';
+    timeSpan.textContent = new Date().toLocaleTimeString();
+    contentDiv.appendChild(timeSpan);
+    item.appendChild(contentDiv);
     feed.insertBefore(item, feed.firstChild);
 
     // Limit to 20 items
@@ -94,23 +104,48 @@
     if (grid.querySelector(`[data-game="${data.gameId}"]`)) return;
 
     const card = document.createElement('a');
-    card.href = `/game/${data.gameId}`;
+    card.href = `/game/${encodeURIComponent(data.gameId)}`;
     card.className = 'game-card';
     card.setAttribute('data-game', data.gameId);
-    card.innerHTML = `
-      <div class="game-card-header">
-        <span class="game-phase phase-lobby">Lobby</span>
-        <span class="game-day"></span>
-      </div>
-      <div class="game-card-body">
-        <div class="game-guild">${data.guildName || data.guildId || 'Unknown'}</div>
-        <div class="game-players">
-          <span class="alive-count">❤ 0 vivants</span>
-          <span class="dead-count">💀 0 morts</span>
-        </div>
-      </div>
-      <div class="game-card-footer"><span class="spectate-btn">👁 Regarder en direct</span></div>
-    `;
+
+    // Build card with safe DOM methods
+    const header = document.createElement('div');
+    header.className = 'game-card-header';
+    const phaseSpan = document.createElement('span');
+    phaseSpan.className = 'game-phase phase-lobby';
+    phaseSpan.textContent = 'Lobby';
+    header.appendChild(phaseSpan);
+    const daySpan = document.createElement('span');
+    daySpan.className = 'game-day';
+    header.appendChild(daySpan);
+    card.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'game-card-body';
+    const guildDiv = document.createElement('div');
+    guildDiv.className = 'game-guild';
+    guildDiv.textContent = data.guildName || data.guildId || 'Unknown';
+    body.appendChild(guildDiv);
+    const playersDiv = document.createElement('div');
+    playersDiv.className = 'game-players';
+    const aliveSpan = document.createElement('span');
+    aliveSpan.className = 'alive-count';
+    aliveSpan.textContent = '❤ 0 vivants';
+    playersDiv.appendChild(aliveSpan);
+    const deadSpan = document.createElement('span');
+    deadSpan.className = 'dead-count';
+    deadSpan.textContent = '💀 0 morts';
+    playersDiv.appendChild(deadSpan);
+    body.appendChild(playersDiv);
+    card.appendChild(body);
+
+    const footer = document.createElement('div');
+    footer.className = 'game-card-footer';
+    const spectateBtn = document.createElement('span');
+    spectateBtn.className = 'spectate-btn';
+    spectateBtn.textContent = '👁 Regarder en direct';
+    footer.appendChild(spectateBtn);
+    card.appendChild(footer);
     card.style.animation = 'fadeIn 0.4s ease';
     grid.appendChild(card);
   }

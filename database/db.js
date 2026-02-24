@@ -111,6 +111,11 @@ class GameDatabase {
         this.db.exec('CREATE INDEX IF NOT EXISTS idx_premium_expires ON premium_users(expires_at)');
         logger.info('Migration: created premium_users table');
       }
+
+      // Migration: add missing indexes for performance
+      this.db.exec('CREATE INDEX IF NOT EXISTS idx_games_guild ON games(guild_id)');
+      this.db.exec('CREATE INDEX IF NOT EXISTS idx_games_guild_ended ON games(guild_id, ended_at)');
+      this.db.exec('CREATE INDEX IF NOT EXISTS idx_player_stats_username ON player_stats(username)');
     } catch (err) {
       logger.error('Schema migration error', { error: err.message });
     }
@@ -590,6 +595,29 @@ class GameDatabase {
       `).get();
     } catch (err) {
       return null;
+    }
+  }
+
+  /**
+   * Archive old completed games — remove games from the active `games` table
+   * that have been ended for more than `retentionDays` days.
+   * They are already saved in `game_history` by saveGameHistory().
+   * @param {number} retentionDays - Number of days to keep ended games (default: 7)
+   * @returns {number} Number of archived (deleted) games
+   */
+  archiveOldGames(retentionDays = 7) {
+    try {
+      const cutoff = Math.floor(Date.now() / 1000) - (retentionDays * 24 * 60 * 60);
+      const result = this.db.prepare(
+        "DELETE FROM games WHERE ended_at IS NOT NULL AND ended_at < ? AND phase = 'Terminé'"
+      ).run(cutoff);
+      if (result.changes > 0) {
+        logger.info(`Archived ${result.changes} old games (older than ${retentionDays} days)`);
+      }
+      return result.changes;
+    } catch (err) {
+      logger.error('Failed to archive old games', { error: err.message });
+      return 0;
     }
   }
 

@@ -705,4 +705,157 @@ describe('GameManager', () => {
       expect(result).toBe('draw');
     });
   });
+
+  // ==================== FSM TRANSITION TESTS ====================
+
+  describe('FSM — Phase Transitions', () => {
+    test('start() clears lobby timeout', () => {
+      gameManager.create('ch-fsm-1', { guildId: 'g1' });
+      const game = gameManager.games.get('ch-fsm-1');
+      // Add 5 players (minimum)
+      for (let i = 0; i < 5; i++) {
+        game.players.push(createMockPlayer({ id: `${100000000000000000 + i}`, username: `P${i}`, role: null }));
+      }
+      // Lobby timeout should exist
+      expect(gameManager.lobbyTimeouts.has('ch-fsm-1')).toBe(true);
+
+      const result = gameManager.start('ch-fsm-1', [ROLES.WEREWOLF, ROLES.SEER, ROLES.WITCH, ROLES.HUNTER, ROLES.VILLAGER]);
+      expect(result).not.toBeNull();
+      // Lobby timeout should be cleared after start
+      expect(gameManager.lobbyTimeouts.has('ch-fsm-1')).toBe(false);
+    });
+
+    test('start() sets startedAt and assigns roles', () => {
+      gameManager.create('ch-fsm-2');
+      const game = gameManager.games.get('ch-fsm-2');
+      for (let i = 0; i < 5; i++) {
+        game.players.push(createMockPlayer({ id: `${200000000000000000 + i}`, username: `P${i}`, role: null }));
+      }
+      const result = gameManager.start('ch-fsm-2', [ROLES.WEREWOLF, ROLES.SEER, ROLES.WITCH, ROLES.HUNTER, ROLES.VILLAGER]);
+      expect(result).not.toBeNull();
+      expect(result.startedAt).toBeDefined();
+      expect(result.startedAt).toBeGreaterThan(0);
+      // All players should have roles
+      result.players.forEach(p => {
+        expect(p.role).toBeDefined();
+        expect(p.role).not.toBeNull();
+      });
+    });
+
+    test('start() prevents double-start', () => {
+      gameManager.create('ch-fsm-3');
+      const game = gameManager.games.get('ch-fsm-3');
+      for (let i = 0; i < 5; i++) {
+        game.players.push(createMockPlayer({ id: `${300000000000000000 + i}`, username: `P${i}`, role: null }));
+      }
+      gameManager.start('ch-fsm-3', [ROLES.WEREWOLF, ROLES.SEER, ROLES.WITCH, ROLES.HUNTER, ROLES.VILLAGER]);
+      // Second start should return null
+      const result2 = gameManager.start('ch-fsm-3');
+      expect(result2).toBeNull();
+    });
+
+    test('nextPhase() toggles NIGHT → DAY and increments dayCount', async () => {
+      gameManager.create('ch-fsm-4');
+      const game = gameManager.games.get('ch-fsm-4');
+      for (let i = 0; i < 5; i++) {
+        game.players.push(createMockPlayer({ id: `${400000000000000000 + i}`, username: `P${i}`, role: null }));
+      }
+      gameManager.start('ch-fsm-4', [ROLES.WEREWOLF, ROLES.SEER, ROLES.WITCH, ROLES.HUNTER, ROLES.VILLAGER]);
+      
+      expect(game.phase).toBe(PHASES.NIGHT);
+      expect(game.dayCount).toBe(0);
+
+      const mockGuild = createMockGuild();
+      await gameManager.nextPhase(mockGuild, game);
+      
+      expect(game.phase).toBe(PHASES.DAY);
+      expect(game.dayCount).toBe(1);
+    });
+
+    test('nextPhase() toggles DAY → NIGHT', async () => {
+      gameManager.create('ch-fsm-5');
+      const game = gameManager.games.get('ch-fsm-5');
+      for (let i = 0; i < 5; i++) {
+        game.players.push(createMockPlayer({ id: `${500000000000000000 + i}`, username: `P${i}`, role: null }));
+      }
+      gameManager.start('ch-fsm-5', [ROLES.WEREWOLF, ROLES.SEER, ROLES.WITCH, ROLES.HUNTER, ROLES.VILLAGER]);
+
+      const mockGuild = createMockGuild();
+      await gameManager.nextPhase(mockGuild, game); // NIGHT → DAY
+      expect(game.phase).toBe(PHASES.DAY);
+
+      await gameManager.nextPhase(mockGuild, game); // DAY → NIGHT  
+      expect(game.phase).toBe(PHASES.NIGHT);
+    });
+
+    test('nextPhase() does NOT toggle ENDED game', async () => {
+      gameManager.create('ch-fsm-6');
+      const game = gameManager.games.get('ch-fsm-6');
+      for (let i = 0; i < 5; i++) {
+        game.players.push(createMockPlayer({ id: `${600000000000000000 + i}`, username: `P${i}`, role: null }));
+      }
+      gameManager.start('ch-fsm-6', [ROLES.WEREWOLF, ROLES.SEER, ROLES.WITCH, ROLES.HUNTER, ROLES.VILLAGER]);
+
+      // Force game to ENDED
+      game.phase = PHASES.ENDED;
+
+      const mockGuild = createMockGuild();
+      const result = await gameManager.nextPhase(mockGuild, game);
+      
+      // Phase should still be ENDED
+      expect(result).toBe(PHASES.ENDED);
+      expect(game.phase).toBe(PHASES.ENDED);
+    });
+
+    test('nextPhase() resets votes and wolfVotes on new night', async () => {
+      gameManager.create('ch-fsm-7');
+      const game = gameManager.games.get('ch-fsm-7');
+      for (let i = 0; i < 5; i++) {
+        game.players.push(createMockPlayer({ id: `${700000000000000000 + i}`, username: `P${i}`, role: null }));
+      }
+      gameManager.start('ch-fsm-7', [ROLES.WEREWOLF, ROLES.SEER, ROLES.WITCH, ROLES.HUNTER, ROLES.VILLAGER]);
+
+      const mockGuild = createMockGuild();
+      // NIGHT → DAY
+      await gameManager.nextPhase(mockGuild, game);
+      // Add some votes
+      game.votes.set('voter1', 'target1');
+      game.wolfVotes = { target: 'someone' };
+      
+      // DAY → NIGHT
+      await gameManager.nextPhase(mockGuild, game);
+      
+      expect(game.votes.size).toBe(0);
+      expect(game.wolfVotes).toBeNull();
+      expect(game.nightVictim).toBeNull();
+    });
+  });
+
+  describe('getGameSnapshot()', () => {
+    test('includes all required fields', () => {
+      gameManager.create('ch-snap-1');
+      const game = gameManager.games.get('ch-snap-1');
+      game.players.push(createMockPlayer({ id: '123456789012345678', role: ROLES.WEREWOLF }));
+
+      const snap = gameManager.getGameSnapshot(game);
+      
+      expect(snap).toBeDefined();
+      expect(snap.gameId).toBe('ch-snap-1');
+      expect(snap.phase).toBeDefined();
+      expect(snap.players).toBeInstanceOf(Array);
+      expect(snap.dead).toBeInstanceOf(Array);
+      expect(snap.rules).toBeDefined();
+      // New fields from audit fix
+      expect(snap).toHaveProperty('wolfVotes');
+      expect(snap).toHaveProperty('protectedPlayerId');
+      expect(snap).toHaveProperty('witchKillTarget');
+      expect(snap).toHaveProperty('witchSave');
+      expect(snap).toHaveProperty('thiefExtraRoles');
+      expect(snap).toHaveProperty('disableVoiceMute');
+    });
+
+    test('returns null for null game', () => {
+      expect(gameManager.getGameSnapshot(null)).toBeNull();
+    });
+  });
 });
