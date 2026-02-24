@@ -70,6 +70,10 @@ class GameDatabase {
         logger.info('Migration: added spectator_channel_id column');
       }
       // v3.2 migrations — persist previously missing state fields
+      if (!columns.includes('thief_channel_id')) {
+        this.db.exec('ALTER TABLE games ADD COLUMN thief_channel_id TEXT');
+        logger.info('Migration: added thief_channel_id column');
+      }
       if (!columns.includes('white_wolf_channel_id')) {
         this.db.exec('ALTER TABLE games ADD COLUMN white_wolf_channel_id TEXT');
         logger.info('Migration: added white_wolf_channel_id column');

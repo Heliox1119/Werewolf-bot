@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS games (
   witch_channel_id TEXT,
   cupid_channel_id TEXT,
   salvateur_channel_id TEXT,
+  white_wolf_channel_id TEXT,
+  thief_channel_id TEXT,
   spectator_channel_id TEXT,
   
   -- État de la partie
@@ -40,6 +42,12 @@ CREATE TABLE IF NOT EXISTS games (
   night_victim_id TEXT,
   witch_kill_target_id TEXT,
   witch_save BOOLEAN DEFAULT 0,
+  white_wolf_kill_target_id TEXT,
+  protected_player_id TEXT,
+  last_protected_player_id TEXT,
+  village_roles_powerless BOOLEAN DEFAULT 0,
+  listen_hints_given TEXT DEFAULT '[]',
+  thief_extra_roles TEXT DEFAULT '[]',
   
   -- Métadonnées
   started_at INTEGER,
