@@ -138,7 +138,7 @@
       <% } %>
       <span class="guild-panel-name"><%= activeGuild.name || 'Server' %></span>
       <div class="guild-panel-settings-wrap" id="sidebar-settings-wrap">
-        <button class="guild-panel-settings" id="sidebar-settings-btn" type="button" title="Settings">&#9881;</button>
+        <button class="guild-panel-settings" id="sidebar-settings-btn" type="button" title="Settings">&#9881;&#65039;</button>
         <div class="guild-panel-settings-popup" id="sidebar-settings-popup">
           <button class="guild-panel-settings-lang" id="sidebar-lang-toggle" type="button">
             <span id="sidebar-lang-flag">&#127760;</span>
@@ -149,7 +149,7 @@
     </div>
     <nav class="guild-panel-nav">
       <a href="/guild/<%= activeGuildId %>" class="guild-panel-item<%= guildPage === 'overview' ? ' active' : '' %>">
-        <span class="guild-panel-icon">&#127918;</span>
+        <span class="guild-panel-icon">&#127760;</span>
         <span data-i18n="guild.overview">Vue d'ensemble</span>
       </a>
       <a href="/guild/<%= activeGuildId %>/leaderboard" class="guild-panel-item<%= guildPage === 'leaderboard' ? ' active' : '' %>">
@@ -157,18 +157,18 @@
         <span data-i18n="guild.leaderboard">Classement</span>
       </a>
       <a href="/guild/<%= activeGuildId %>/history" class="guild-panel-item<%= guildPage === 'history' ? ' active' : '' %>">
-        <span class="guild-panel-icon">&#128218;</span>
+        <span class="guild-panel-icon">&#128216;</span>
         <span data-i18n="guild.history">Historique</span>
       </a>
       <% if (typeof accessLevel !== 'undefined' && (accessLevel === 'owner' || accessLevel === 'admin')) { %>
       <div class="guild-panel-sep"></div>
       <span class="guild-panel-label" data-i18n="guild.admin_section">Administration</span>
       <a href="/guild/<%= activeGuildId %>/moderation" class="guild-panel-item<%= guildPage === 'moderation' ? ' active' : '' %>">
-        <span class="guild-panel-icon">&#128737;</span>
+        <span class="guild-panel-icon">&#128737;&#65039;</span>
         <span data-i18n="nav.moderation">Modération</span>
       </a>
       <a href="/guild/<%= activeGuildId %>/rules" class="guild-panel-item<%= guildPage === 'rules' ? ' active' : '' %>">
-        <span class="guild-panel-icon">&#9881;</span>
+        <span class="guild-panel-icon">&#9881;&#65039;</span>
         <span data-i18n="guild.rules">Règles du jeu</span>
       </a>
       <% } %>

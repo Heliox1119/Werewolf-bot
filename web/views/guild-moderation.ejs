@@ -6,14 +6,14 @@
       <img src="<%= guild.icon %>" alt="" class="guild-icon-lg">
     <% } %>
     <div>
-      <h1>&#128737; <span data-i18n="gmod.title">Modération</span> — <%= guild ? guild.name : guildId %></h1>
+      <h1>&#128737;&#65039; <span data-i18n="gmod.title">Modération</span> — <%= guild ? guild.name : guildId %></h1>
       <p class="text-muted" data-i18n="gmod.subtitle">Gérez les parties actives de ce serveur</p>
     </div>
   </div>
 
   <% if (games.length === 0) { %>
     <div class="empty-state">
-      <span class="empty-icon">&#128737;</span>
+      <span class="empty-icon">&#128737;&#65039;</span>
       <p data-i18n="gmod.no_games">Aucune partie en cours sur ce serveur</p>
       <p class="text-muted" data-i18n="gmod.no_games_hint">Les parties apparaîtront ici en temps réel</p>
     </div>
@@ -33,7 +33,7 @@
               &#9193; <span data-i18n="gmod.skip_phase">Passer la phase</span>
             </button>
             <button class="btn btn-sm btn-danger" data-mod-action="force-end" data-game-id="<%= g.gameId %>" title="Force End">
-              &#9724; <span data-i18n="gmod.force_end">Forcer la fin</span>
+              &#9209;&#65039; <span data-i18n="gmod.force_end">Forcer la fin</span>
             </button>
           </div>
         </div>
@@ -55,7 +55,7 @@
                   <% if (p.isCaptain) { %><span class="badge badge-captain" title="Capitaine">&#128081;</span><% } %>
                   <% if (p.inLove) { %><span class="badge badge-love" title="Amoureux">&#128149;</span><% } %>
                   <% if (p.alive) { %>
-                    <button class="btn btn-xs btn-ghost" data-mod-action="kill-player" data-game-id="<%= g.gameId %>" data-player-id="<%= p.id %>" title="Éliminer">&#9760;</button>
+                    <button class="btn btn-xs btn-ghost" data-mod-action="kill-player" data-game-id="<%= g.gameId %>" data-player-id="<%= p.id %>" title="Éliminer">&#9760;&#65039;</button>
                   <% } %>
                 </div>
               </div>

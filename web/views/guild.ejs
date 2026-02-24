@@ -64,7 +64,7 @@
       </div>
     </div>
     <div class="guild-stat-card gstat-warning">
-      <div class="guild-stat-icon">&#9202;</div>
+      <div class="guild-stat-icon">&#9201;&#65039;</div>
       <div class="guild-stat-body">
         <% var avgMin = Math.floor(guildStats.avgDuration / 60); %>
         <span class="guild-stat-value"><%= avgMin %><small>min</small></span>
@@ -93,8 +93,8 @@
           </div>
           <div class="game-card-body">
             <div class="game-players">
-              <span class="alive-count"><%- '&#10084;' %> <%= g.players ? g.players.filter(function(p){ return p.alive; }).length : 0 %> <span data-i18n="goverview.alive">vivants</span></span>
-              <span class="dead-count"><%- '&#9760;' %> <%= g.players ? g.players.filter(function(p){ return !p.alive; }).length : 0 %> <span data-i18n="goverview.dead">morts</span></span>
+              <span class="alive-count"><%- '&#10084;&#65039;' %> <%= g.players ? g.players.filter(function(p){ return p.alive; }).length : 0 %> <span data-i18n="goverview.alive">vivants</span></span>
+              <span class="dead-count"><%- '&#9760;&#65039;' %> <%= g.players ? g.players.filter(function(p){ return !p.alive; }).length : 0 %> <span data-i18n="goverview.dead">morts</span></span>
             </div>
             <% if (g.players && g.players.length > 0) { %>
               <div class="game-card-player-list">
@@ -108,7 +108,7 @@
             <% } %>
           </div>
           <div class="game-card-footer">
-            <span class="spectate-btn">&#128065; <span data-i18n="goverview.spectate">Regarder</span></span>
+            <span class="spectate-btn">&#128065;&#65039; <span data-i18n="goverview.spectate">Regarder</span></span>
           </div>
         </a>
       <% }); } %>
@@ -182,7 +182,7 @@
                 <span>&#128101; <%= h.player_count || '?' %></span>
                 <span>&#128197; <%= h.day_count || 0 %>j</span>
                 <% if (h.duration_seconds) { %>
-                  <span>&#9202; <%= Math.floor(h.duration_seconds / 60) %>min</span>
+                  <span>&#9201;&#65039; <%= Math.floor(h.duration_seconds / 60) %>min</span>
                 <% } %>
               </div>
               <div class="guild-recent-date">
@@ -198,7 +198,7 @@
 
   <!-- Quick Navigation -->
   <section class="section">
-    <h2 class="section-title">&#9889; <span data-i18n="goverview.quick_nav">Navigation rapide</span></h2>
+    <h2 class="section-title">&#9889;&#65039; <span data-i18n="goverview.quick_nav">Navigation rapide</span></h2>
     <div class="guild-quick-nav">
       <a href="/guild/<%= guildId %>/leaderboard" class="guild-nav-card">
         <span class="guild-nav-icon">&#127942;</span>
@@ -211,12 +211,12 @@
         <span class="guild-nav-desc" data-i18n="goverview.nav_history_desc">Toutes les parties jouées</span>
       </a>
       <a href="/guild/<%= guildId %>/rules" class="guild-nav-card">
-        <span class="guild-nav-icon">&#9881;</span>
+        <span class="guild-nav-icon">&#9881;&#65039;</span>
         <span class="guild-nav-title" data-i18n="guild.rules">Règles du jeu</span>
         <span class="guild-nav-desc" data-i18n="goverview.nav_rules_desc">Rôles et paramètres</span>
       </a>
       <a href="/guild/<%= guildId %>/moderation" class="guild-nav-card">
-        <span class="guild-nav-icon">&#128737;</span>
+        <span class="guild-nav-icon">&#128737;&#65039;</span>
         <span class="guild-nav-title" data-i18n="gmod.title">Modération</span>
         <span class="guild-nav-desc" data-i18n="goverview.nav_mod_desc">Gérer les parties en cours</span>
       </a>

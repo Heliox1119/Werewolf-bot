@@ -3294,6 +3294,10 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 .sidebar-guild-nobot {
   opacity: 0.5;
   position: relative;
+  overflow: visible;
+}
+.sidebar-guild-nobot .sidebar-guild-img {
+  border-radius: 50%;
 }
 .sidebar-guild-nobot:hover {
   opacity: 0.85;
@@ -3306,20 +3310,23 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 }
 .sidebar-guild-badge {
   position: absolute;
-  bottom: -2px;
-  right: -2px;
-  width: 18px;
-  height: 18px;
+  bottom: -3px;
+  right: -3px;
+  width: 20px;
+  height: 20px;
   background: var(--color-success);
   color: #fff;
   border-radius: 50%;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 2px solid var(--bg-secondary);
   line-height: 1;
+  z-index: 10;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
 @media (max-width: 600px) {

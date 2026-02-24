@@ -67,15 +67,15 @@
             <div class="game-card-body">
               <div class="game-guild"><%= g.guildName || g.guildId %></div>
               <div class="game-players">
-                <span class="alive-count">&#10084; <%= g.players ? g.players.filter(function(p) { return p.alive; }).length : 0 %> vivants</span>
-                <span class="dead-count">&#9760; <%= g.dead ? g.dead.length : 0 %> morts</span>
+                <span class="alive-count">&#10084;&#65039; <%= g.players ? g.players.filter(function(p) { return p.alive; }).length : 0 %> vivants</span>
+                <span class="dead-count">&#9760;&#65039; <%= g.dead ? g.dead.length : 0 %> morts</span>
               </div>
               <% if (g.subPhase) { %>
                 <div class="game-subphase-tag"><%= g.subPhase %></div>
               <% } %>
             </div>
             <div class="game-card-footer">
-              <span class="spectate-btn">&#128065; Regarder en direct</span>
+              <span class="spectate-btn">&#128065;&#65039; Regarder en direct</span>
             </div>
           </a>
         <% }); %>
@@ -95,7 +95,7 @@
 
     <!-- Quick Links -->
     <div class="sidebar-panel">
-      <h3 class="panel-title">&#9889; Accès rapide</h3>
+      <h3 class="panel-title">&#9889;&#65039; Accès rapide</h3>
       <div class="quick-links">
         <a href="/roles" class="quick-link">
           <span class="quick-link-icon">&#128058;</span>
