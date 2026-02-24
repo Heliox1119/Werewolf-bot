@@ -5,12 +5,12 @@
 
 Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion vocale automatique, audio d'ambiance et lobby interactif.
 
-![Version](https://img.shields.io/badge/version-3.0.0-blue)
+![Version](https://img.shields.io/badge/version-3.1.0-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)
-![Tests](https://img.shields.io/badge/tests-191%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-200%20passed-brightgreen)
 
 ---
 
@@ -305,7 +305,7 @@ Werewolf-bot/
 │   ├── voiceManager.js     # Audio & connexions vocales
 │   ├── phases.js           # Constantes de phases
 │   └── roles.js            # Constantes de rôles
-├── web/                    # 🌐 Tableau de bord web (NEW v3.0)
+├── web/                    # 🌐 Tableau de bord web (v3.0+)
 │   ├── server.js           # Serveur Express + Socket.IO
 │   ├── routes/
 │   │   ├── auth.js         # Routes Discord OAuth2
@@ -357,7 +357,7 @@ npm run clear-commands      # Réinitialiser les commandes Discord
 ## 📊 Historique des versions
 
 | Version | Highlights |
-|---------|-----------|| **v3.0.0** | 🌐 Tableau de bord web (Express + EJS), Spectateur live (Socket.IO), API REST (15 endpoints), Discord OAuth2, Rôles personnalisés, Architecture EventEmitter || **v2.9.0** | 🏆 Succès (18), classement ELO (7 paliers), révélation rôle à la mort, notification DM de tour, `/leaderboard`, `/history`, timeline post-game, 4 bug fixes |
+|---------|-----------|| **v3.1.0** | 🛡️ Audit architecture 15 points, élimination XSS, rate limiting & debounce WebSocket, isolation multi-tenant, fixes critiques FSM, archivage parties, 200 tests || **v3.0.0** | 🌐 Tableau de bord web (Express + EJS), Spectateur live (Socket.IO), API REST (15 endpoints), Discord OAuth2, Rôles personnalisés, Architecture EventEmitter || **v2.9.0** | 🏆 Succès (18), classement ELO (7 paliers), révélation rôle à la mort, notification DM de tour, `/leaderboard`, `/history`, timeline post-game, 4 bug fixes |
 | **v2.8.0** | 🐳 Docker, backup SQLite auto (horaire), multi-guild (langue & config par serveur), système de revanche |
 | **v2.7.0** | Petite Fille relay temps réel en DM, indices ambigus intelligents, normalisation Unicode/zalgo, wolfwin serveur-wide, commandes guild-only |
 | **v2.6.0** | Équilibrage phases, vote capitaine auto, fix potion sorcière, victoire loups configurable, ping loups |
@@ -398,4 +398,4 @@ Détails complets : [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-**Version** : 3.0.0 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **Docker** : ready · **License** : ISC
+**Version** : 3.1.0 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **Docker** : ready · **License** : ISC

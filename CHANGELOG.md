@@ -1,5 +1,48 @@
 # 📝 Changelog - Werewolf Bot
 
+## [3.1.0] - 2026-02-24 - Architecture Audit, Security Hardening, Multi-Tenant Fixes
+
+### 🛡️ Security
+- **XSS eliminated** : all `innerHTML` with user data replaced by safe DOM API (`textContent`, `createElement`) in spectator.js and dashboard.js
+- **WebSocket rate limiting** : 30 events per 10 seconds per socket, automatic reset
+- **WebSocket input validation** : `gameId` type + length checks on `spectate`/`leaveSpectate`
+- **Scoped globalEvent** : WebSocket `globalEvent` no longer broadcasts full game data to all clients — only event metadata (event, gameId, guildId, timestamp)
+
+### 🏗️ Multi-Tenant Isolation
+- **requestGames filtered** : dashboard now shows only games from user's guilds (via session)
+- **Leaderboard guild filter** : `getLeaderboard()` guild-specific query now actually filters by guild via `players JOIN games` subquery
+- **`t()` per-guild locale** : translation function accepts optional `guildId` for per-server language resolution
+- **Game archiving** : `archiveOldGames()` automatically cleans ended games older than 7 days from active `games` table on startup
+
+### 🔧 Critical Bug Fixes
+- **CRITICAL** : `start()` now clears lobby timeout — previously, the 1-hour lobby auto-cleanup timer was never cleared when a game started, causing active games to be deleted mid-game
+- **CRITICAL** : `nextPhase()` guards against ENDED games — previously, calling `nextPhase()` on a finished game would toggle it back to NIGHT phase
+- **Timer re-arm** : lobby timeouts are now re-armed after `loadState()` for games still in lobby phase after bot restart
+
+### ⚡ Performance
+- **gameState debounce** : WebSocket game state emissions debounced at 200ms per game room (prevents burst flooding on rapid events)
+- **DB indexes added** : `games(guild_id)`, `games(guild_id, ended_at)`, `player_stats(username)` — both in schema.sql and auto-migration for existing databases
+- **Snapshot enriched** : `getGameSnapshot()` now includes 8 additional state fields: `wolfVotes`, `protectedPlayerId`, `witchKillTarget`, `witchSave`, `whiteWolfKillTarget`, `thiefExtraRoles`, `listenRelayUserId`, `disableVoiceMute`
+
+### 🧪 Tests
+- **9 new FSM tests** : lobby timeout cleared on start, startedAt set, double-start prevention, NIGHT→DAY toggle, DAY→NIGHT toggle, ENDED guard, vote/wolfVotes reset on new night
+- **2 new snapshot tests** : required fields validation, null game handling
+- **200 tests passing** (was 191)
+
+### 🔧 Files Modified
+- **game/gameManager.js** : `start()` clear lobby timeout, `nextPhase()` ENDED guard, `getGameSnapshot()` enriched
+- **web/server.js** : WS rate limiting, debounce, requestGames filter, globalEvent scoped, `_getSocketUserGuildIds()`
+- **web/public/js/spectator.js** : XSS fix — all innerHTML → DOM API
+- **web/public/js/dashboard.js** : XSS fix — all innerHTML → DOM API
+- **database/db.js** : `archiveOldGames()`, auto-migrate indexes
+- **database/schema.sql** : 2 new indexes
+- **game/achievements.js** : guild-filtered leaderboard query
+- **utils/i18n.js** : `t()` accepts guildId parameter
+- **index.js** : timer re-arm after loadState, archive on startup
+- **tests/game/gameManager.test.js** : 11 new tests
+
+---
+
 ## [3.0.0] - 2026-02-24 - Web Dashboard, Live Spectator, REST API, Custom Roles
 
 ### 🌐 Web Dashboard
@@ -856,7 +899,22 @@ const voiceChannel = guild.channels.cache.get(voiceChannelId) ||
 - [x] GameManager EventEmitter (7 types d'événements, snapshot sérialisable)
 - [x] Sécurité : helmet, CORS, CSP, session 7j
 
-### v3.1.0 (Planned)
+### v3.1.0 (✅ Terminé)
+- [x] Audit architecture 15 points (multi-tenant, FSM, sécurité, performance)
+- [x] Fix critique : lobby timeout nettoyé au start()
+- [x] Fix critique : nextPhase() bloque les parties ENDED
+- [x] Élimination XSS : innerHTML → DOM API safe
+- [x] Rate limiting WebSocket (30 events/10s/socket)
+- [x] Debounce émissions gameState (200ms/room)
+- [x] Filtrage requestGames par guild
+- [x] Leaderboard filtré par guild_id (sous-requête SQL)
+- [x] t() supporte locale per-guild
+- [x] Archivage automatique game_history (7 jours)
+- [x] Index DB : games(guild_id), games(guild_id, ended_at)
+- [x] Re-arm timers après loadState()
+- [x] 11 nouveaux tests FSM + snapshot (200 total)
+
+### v3.2.0 (Planned)
 - [ ] Support de langues communautaires
 - [ ] Tableau de bord avancé avec graphiques (Chart.js)
 - [ ] Système de tournois
