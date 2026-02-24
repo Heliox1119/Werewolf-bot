@@ -71,19 +71,29 @@
     const aliveCount = document.getElementById('alive-count');
     if (!list) return;
 
+    // Build player lookup for resolving IDs elsewhere
+    window._spectatorPlayers = {};
+    snapshot.players.forEach(p => { window._spectatorPlayers[p.id] = p; });
+
     list.innerHTML = '';
     let alive = 0;
     snapshot.players.forEach(p => {
       if (p.alive) alive++;
       const div = document.createElement('div');
-      div.className = `player-row ${p.alive ? 'alive' : 'dead'}`;
+      div.className = `player-row ${p.alive ? 'alive' : 'dead'} clickable-player`;
       div.dataset.playerId = p.id;
+      div.dataset.playerAvatar = p.avatar || '';
+      div.onclick = function() { if (window.openSpectatorPlayerModal) window.openSpectatorPlayerModal(this); };
+      const avatarHtml = p.avatar
+        ? `<img class="player-avatar" src="${p.avatar}" alt="" />`
+        : '<span class="player-avatar player-avatar-default">👤</span>';
       div.innerHTML = `
-        <span class="player-status">${p.alive ? '❤️' : '💀'}</span>
-        <span class="player-name">${p.username}</span>
+        ${avatarHtml}
+        <span class="player-name">${p.username || p.id}</span>
         ${!p.alive && p.role ? `<span class="player-role">${p.role}</span>` : ''}
         ${p.isCaptain ? '<span class="player-badge">👑</span>' : ''}
         ${p.inLove ? '<span class="player-badge">💕</span>' : ''}
+        <span class="player-arrow">›</span>
       `;
       list.appendChild(div);
     });

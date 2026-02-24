@@ -21,9 +21,13 @@
       <h3 class="panel-title">Joueurs (<span id="alive-count"><%= game.players ? game.players.filter(function(p) { return p.alive; }).length : 0 %></span> vivants)</h3>
       <div class="player-list" id="player-list">
         <% if (game.players) { game.players.forEach(function(p) { %>
-          <div class="player-row <%= p.alive ? 'alive' : 'dead' %> clickable-player" data-player-id="<%= p.id %>" onclick="openSpectatorPlayerModal(this)">
-            <span class="player-status"><%- p.alive ? '&#10084;&#65039;' : '&#9760;&#65039;' %></span>
-            <span class="player-name"><%= p.username %></span>
+          <div class="player-row <%= p.alive ? 'alive' : 'dead' %> clickable-player" data-player-id="<%= p.id %>" data-player-avatar="<%= p.avatar || '' %>" onclick="openSpectatorPlayerModal(this)">
+            <% if (p.avatar) { %>
+              <img class="player-avatar" src="<%= p.avatar %>" alt="" />
+            <% } else { %>
+              <span class="player-avatar player-avatar-default">&#128100;</span>
+            <% } %>
+            <span class="player-name"><%= p.username || p.id %></span>
             <% if (!p.alive && p.role) { %>
               <span class="player-role"><%= p.role %></span>
             <% } %>
@@ -38,7 +42,12 @@
         <h4 class="panel-subtitle">&#9760; Cimetière</h4>
         <div class="graveyard">
           <% game.dead.forEach(function(d) { %>
-            <div class="grave-entry clickable-player" data-player-id="<%= d.id %>" onclick="openSpectatorPlayerModal(this)">
+            <div class="grave-entry clickable-player" data-player-id="<%= d.id %>" data-player-avatar="<%= d.avatar || '' %>" onclick="openSpectatorPlayerModal(this)">
+              <% if (d.avatar) { %>
+                <img class="player-avatar player-avatar-sm" src="<%= d.avatar %>" alt="" />
+              <% } else { %>
+                <span class="player-avatar player-avatar-sm player-avatar-default">&#9760;&#65039;</span>
+              <% } %>
               <span class="grave-name"><%= d.username || d.id %></span>
               <span class="grave-role"><%= d.role || '?' %></span>
               <span class="player-arrow">&#8250;</span>
@@ -111,9 +120,13 @@
               var vCount = entry[1];
               var targetPlayer = (game.players || []).find(function(p) { return p.id === targetId; });
               var targetName = targetPlayer ? targetPlayer.username : targetId;
+              var targetAvatar = targetPlayer ? targetPlayer.avatar : null;
           %>
             <div class="vote-bar-row">
-              <span class="vote-target"><%= targetName %></span>
+              <span class="vote-target">
+                <% if (targetAvatar) { %><img class="player-avatar player-avatar-xs" src="<%= targetAvatar %>" alt="" /><% } %>
+                <%= targetName %>
+              </span>
               <div class="vote-bar-track">
                 <div class="vote-bar-fill" style="width: <%= Math.round((vCount / maxV) * 100) %>%"></div>
               </div>
@@ -131,7 +144,7 @@
   <div class="modal-card modal-card-sm">
     <button class="modal-close" onclick="closeSpectatorPlayerModal()">&times;</button>
     <div class="modal-header" id="sp-modal-header">
-      <div class="modal-player-avatar"><span>&#128100;</span></div>
+      <div class="modal-player-avatar" id="sp-modal-avatar"><span>&#128100;</span></div>
       <div>
         <h2 id="sp-modal-name">Player</h2>
         <div id="sp-modal-badges"></div>
@@ -152,6 +165,7 @@
 // Spectator player modal
 window.openSpectatorPlayerModal = async function(el) {
   var playerId = el.dataset.playerId;
+  var playerAvatar = el.dataset.playerAvatar;
   var nameEl = el.querySelector('.player-name') || el.querySelector('.grave-name');
   var name = nameEl ? nameEl.textContent : playerId;
   var modal = document.getElementById('spectator-player-modal');
@@ -160,6 +174,14 @@ window.openSpectatorPlayerModal = async function(el) {
   document.getElementById('sp-modal-link').href = '/player/' + playerId;
   document.getElementById('sp-modal-badges').innerHTML = '';
   document.getElementById('sp-modal-info').innerHTML = '<p class="text-muted" style="text-align:center">Chargement...</p>';
+  
+  // Set avatar
+  var avatarContainer = document.getElementById('sp-modal-avatar');
+  if (playerAvatar) {
+    avatarContainer.innerHTML = '<img class="modal-avatar-img" src="' + playerAvatar + '" alt="" />';
+  } else {
+    avatarContainer.innerHTML = '<span>&#128100;</span>';
+  }
   
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';

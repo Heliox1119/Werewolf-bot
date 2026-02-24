@@ -373,14 +373,17 @@ class GameManager extends EventEmitter {
       players: (game.players || []).map(p => ({
         id: p.id,
         username: p.username,
+        avatar: p.avatar || null,
         role: p.role,
         alive: p.alive,
         inLove: p.inLove || false,
+        isCaptain: p.id === game.captainId,
         idiotRevealed: p.idiotRevealed || false
       })),
       dead: (game.dead || []).map(p => ({
         id: p.id,
         username: p.username,
+        avatar: p.avatar || null,
         role: p.role
       })),
       lovers: game.lovers || [],
@@ -1262,6 +1265,7 @@ class GameManager extends EventEmitter {
     game.players.push({
       id: user.id,
       username: user.username,
+      avatar: (typeof user.displayAvatarURL === 'function') ? user.displayAvatarURL({ size: 64, extension: 'png' }) : null,
       role: null,
       alive: true
     });

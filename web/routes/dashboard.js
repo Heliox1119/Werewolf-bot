@@ -55,6 +55,26 @@ module.exports = function(webServer) {
       if (!game) return res.render('error', { title: 'Not Found', message: 'Game not found or has ended.' });
       
       const snapshot = gm.getGameSnapshot(game);
+
+      // Resolve guild name and player avatars from Discord cache
+      const client = webServer.client;
+      if (client) {
+        const guild = client.guilds.cache.get(snapshot.guildId);
+        if (guild) snapshot.guildName = guild.name;
+
+        const resolveAvatar = (p) => {
+          if (!p.avatar && p.id) {
+            const user = client.users.cache.get(p.id);
+            if (user) {
+              p.avatar = user.displayAvatarURL({ size: 64, extension: 'png' });
+              if (!p.username) p.username = user.username || user.displayName;
+            }
+          }
+        };
+        (snapshot.players || []).forEach(resolveAvatar);
+        (snapshot.dead || []).forEach(resolveAvatar);
+      }
+
       res.render('spectator', {
         title: `Game — ${snapshot.guildName || snapshot.guildId}`,
         game: snapshot,

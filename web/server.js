@@ -178,6 +178,25 @@ class WebServer {
 
   // ==================== SOCKET.IO ====================
 
+  /**
+   * Enrich a game snapshot with avatar URLs from the Discord client cache.
+   */
+  _enrichSnapshot(snapshot) {
+    if (!snapshot || !this.client) return snapshot;
+    const resolve = (p) => {
+      if (!p.avatar && p.id) {
+        const user = this.client.users.cache.get(p.id);
+        if (user) {
+          p.avatar = user.displayAvatarURL({ size: 64, extension: 'png' });
+          if (!p.username) p.username = user.username || user.displayName;
+        }
+      }
+    };
+    (snapshot.players || []).forEach(resolve);
+    (snapshot.dead || []).forEach(resolve);
+    return snapshot;
+  }
+
   _setupSocketIO() {
     this.io.on('connection', (socket) => {
       // Join a game spectator room
@@ -195,7 +214,7 @@ class WebServer {
         this.spectatorRooms.get(gameId).add(socket.id);
 
         // Send initial state
-        socket.emit('gameState', this.gameManager.getGameSnapshot(game));
+        socket.emit('gameState', this._enrichSnapshot(this.gameManager.getGameSnapshot(game)));
         
         // Notify spectator count
         this.io.to(`game:${gameId}`).emit('spectatorCount', { gameId, count: this.spectatorRooms.get(gameId).size });
@@ -212,7 +231,7 @@ class WebServer {
 
       // Request all active games (for dashboard)
       socket.on('requestGames', () => {
-        const games = this.gameManager.getAllGames().map(g => this.gameManager.getGameSnapshot(g));
+        const games = this.gameManager.getAllGames().map(g => this._enrichSnapshot(this.gameManager.getGameSnapshot(g)));
         socket.emit('activeGames', games);
       });
 
@@ -250,7 +269,7 @@ class WebServer {
       if (['gameStarted', 'phaseChanged', 'playerKilled', 'gameEnded'].includes(event)) {
         const game = this.gameManager.games.get(gameId);
         if (game) {
-          this.io.to(`game:${gameId}`).emit('gameState', this.gameManager.getGameSnapshot(game));
+          this.io.to(`game:${gameId}`).emit('gameState', this._enrichSnapshot(this.gameManager.getGameSnapshot(game)));
         }
       }
 

@@ -46,3 +46,4 @@ temp/
 run-one-test.js
 test-ratelimiter.ps1
 test_result.txt
+data/backups/
