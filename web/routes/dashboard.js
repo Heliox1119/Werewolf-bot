@@ -32,7 +32,16 @@ module.exports = function(webServer) {
   /** GET / — Main dashboard */
   router.get('/', (req, res) => {
     try {
-      const games = gm.getAllGames().map(g => gm.getGameSnapshot(g));
+      const client = webServer.client;
+      const games = gm.getAllGames().map(g => {
+        const snap = gm.getGameSnapshot(g);
+        // Resolve guild name from Discord cache if not already set
+        if (!snap.guildName && snap.guildId && client) {
+          const guild = client.guilds.cache.get(snap.guildId);
+          if (guild) snap.guildName = guild.name;
+        }
+        return snap;
+      });
       const stats = db.getGlobalStats ? db.getGlobalStats() : {};
       
       res.render('dashboard', {

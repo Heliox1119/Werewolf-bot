@@ -179,10 +179,16 @@ class WebServer {
   // ==================== SOCKET.IO ====================
 
   /**
-   * Enrich a game snapshot with avatar URLs from the Discord client cache.
+   * Enrich a game snapshot with avatar URLs and guild name from the Discord client cache.
    */
   _enrichSnapshot(snapshot) {
     if (!snapshot || !this.client) return snapshot;
+    // Resolve guild name
+    if (!snapshot.guildName && snapshot.guildId) {
+      const guild = this.client.guilds.cache.get(snapshot.guildId);
+      if (guild) snapshot.guildName = guild.name;
+    }
+    // Resolve player avatars
     const resolve = (p) => {
       if (!p.avatar && p.id) {
         const user = this.client.users.cache.get(p.id);

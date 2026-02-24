@@ -363,9 +363,19 @@ class GameManager extends EventEmitter {
    */
   getGameSnapshot(game) {
     if (!game) return null;
+    // Resolve guild name from Discord client cache if available
+    let guildName = null;
+    try {
+      if (this.client && game.guildId) {
+        const guild = this.client.guilds.cache.get(game.guildId);
+        if (guild) guildName = guild.name;
+      }
+    } catch (_) { /* ignore */ }
+
     return {
       gameId: game.mainChannelId,
       guildId: game.guildId,
+      guildName,
       phase: game.phase,
       subPhase: game.subPhase,
       dayCount: game.dayCount || 0,

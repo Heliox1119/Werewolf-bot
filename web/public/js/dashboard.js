@@ -103,7 +103,7 @@
         <span class="game-day"></span>
       </div>
       <div class="game-card-body">
-        <div class="game-guild">${data.guildId || 'Unknown'}</div>
+        <div class="game-guild">${data.guildName || data.guildId || 'Unknown'}</div>
         <div class="game-players">
           <span class="alive-count">❤ 0 vivants</span>
           <span class="dead-count">💀 0 morts</span>
@@ -139,9 +139,16 @@
       const day = card.querySelector('.game-day');
       if (day) day.textContent = 'Jour ' + data.dayCount;
     }
-    if (data.snapshot && data.snapshot.players) {
-      const alive = data.snapshot.players.filter(p => p.alive).length;
-      const dead = data.snapshot.dead ? data.snapshot.dead.length : 0;
+    // Resolve guild name if available
+    const guildName = data.guildName || (data.snapshot && data.snapshot.guildName);
+    if (guildName) {
+      const guildEl = card.querySelector('.game-guild');
+      if (guildEl) guildEl.textContent = guildName;
+    }
+    const snap = data.snapshot || data;
+    if (snap && snap.players) {
+      const alive = snap.players.filter(p => p.alive).length;
+      const dead = snap.dead ? snap.dead.length : 0;
       const aliveEl = card.querySelector('.alive-count');
       const deadEl = card.querySelector('.dead-count');
       if (aliveEl) aliveEl.textContent = `❤ ${alive} vivants`;
