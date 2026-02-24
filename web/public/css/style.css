@@ -1687,6 +1687,9 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--border-color);
 }
+.grules-section-header > div:nth-child(2) {
+  flex: 1; min-width: 0;
+}
 .grules-section-header h2 {
   font-family: var(--font-display); font-size: 1.1rem; font-weight: 800;
   margin: 0; text-transform: uppercase; letter-spacing: 0.3px;
@@ -1705,7 +1708,7 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   background: rgba(139, 92, 246, 0.1);
   overflow: hidden; line-height: 1;
 }
-.grules-section-icon.premium-icon {
+.grules-section-icon.grules-premium-icon {
   background: linear-gradient(135deg, rgba(255, 215, 0, 0.18), rgba(218, 165, 32, 0.12));
   font-size: 1.1rem;
   color: #ffd700;
