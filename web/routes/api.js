@@ -257,12 +257,16 @@ module.exports = function(webServer) {
         i18n.setLocale(updates.locale, null, req.params.guildId);
       }
       if (updates.minPlayers || updates.maxPlayers) {
-        const current = mgr.getDefaultGameRules(req.params.guildId);
-        mgr.setForGuild(req.params.guildId, 'game.default_rules', JSON.stringify({
+        let current = mgr.getDefaultGameRules(req.params.guildId);
+        // If stored as string (legacy), parse it back to object
+        if (typeof current === 'string') {
+          try { current = JSON.parse(current); } catch { current = {}; }
+        }
+        mgr.setForGuild(req.params.guildId, 'game.default_rules', {
           ...current,
           ...(updates.minPlayers ? { minPlayers: updates.minPlayers } : {}),
           ...(updates.maxPlayers ? { maxPlayers: updates.maxPlayers } : {})
-        }));
+        });
       }
       if (Array.isArray(updates.enabledRoles)) {
         // Ensure Loup-Garou and Villageois are always included
