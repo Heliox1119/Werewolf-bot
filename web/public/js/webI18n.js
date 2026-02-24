@@ -96,6 +96,16 @@
       'grules.role_mandatory': 'Rôle obligatoire',
       'grules.role_enabled': 'Activé',
       'grules.role_disabled': 'Désactivé',
+      'grules.classic_roles': 'Rôles Classiques',
+      'grules.classic_roles_desc': 'Rôles de base disponibles pour tous les serveurs',
+      'grules.premium_roles': 'Rôles Premium',
+      'grules.premium_roles_desc': 'Rôles exclusifs réservés aux membres Premium',
+      'grules.premium_lifetime': 'Premium Lifetime',
+      'grules.premium_active': 'Premium Actif',
+      'grules.premium_locked': 'Premium requis',
+      'grules.unlocked': 'Débloqué',
+      'grules.premium_required': 'Premium',
+      'grules.premium_cta': 'Passez en Premium pour débloquer tous les rôles exclusifs et fonctionnalités avancées.',
 
       // Guild Leaderboard
       'gleader.title': 'Classement',
@@ -567,6 +577,16 @@
       'grules.role_mandatory': 'Mandatory role',
       'grules.role_enabled': 'Enabled',
       'grules.role_disabled': 'Disabled',
+      'grules.classic_roles': 'Classic Roles',
+      'grules.classic_roles_desc': 'Basic roles available for all servers',
+      'grules.premium_roles': 'Premium Roles',
+      'grules.premium_roles_desc': 'Exclusive roles reserved for Premium members',
+      'grules.premium_lifetime': 'Premium Lifetime',
+      'grules.premium_active': 'Premium Active',
+      'grules.premium_locked': 'Premium required',
+      'grules.unlocked': 'Unlocked',
+      'grules.premium_required': 'Premium',
+      'grules.premium_cta': 'Upgrade to Premium to unlock all exclusive roles and advanced features.',
 
       // Guild Leaderboard
       'gleader.title': 'Leaderboard',

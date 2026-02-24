@@ -181,13 +181,32 @@ module.exports = function(webServer) {
 
       const allRoles = Object.values(ROLES);
 
+      // Premium check: is the current user premium?
+      let isPremium = false;
+      let premiumTier = null;
+      if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+        const premiumData = db.getPremiumUser(req.user.id);
+        if (premiumData) {
+          isPremium = true;
+          premiumTier = premiumData.tier;
+        }
+      }
+
+      // Role categories
+      const classicRoleNames = ['Loup-Garou', 'Villageois', 'Voyante', 'Sorcière', 'Chasseur'];
+      const premiumRoleNames = ['Loup Blanc', 'Petite Fille', 'Cupidon', 'Salvateur', 'Ancien', 'Idiot du Village', 'Voleur'];
+
       res.render('guild-rules', {
         title: guild ? guild.name : `Guild ${req.params.id}`,
         guild: guild ? { id: guild.id, name: guild.name, icon: guild.iconURL({ size: 128 }), memberCount: guild.memberCount } : null,
         guildId: req.params.id,
         guildPage: 'rules',
         config,
-        allRoles
+        allRoles,
+        isPremium,
+        premiumTier,
+        classicRoleNames,
+        premiumRoleNames
       });
     } catch (e) {
       res.render('error', { title: 'Error', message: e.message });

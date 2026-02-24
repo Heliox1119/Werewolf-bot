@@ -37,6 +37,9 @@ class GameDatabase {
     
     // Migration: ajouter les colonnes nightVictim/witchKillTarget/witchSave si absentes
     this.migrateSchema();
+
+    // Ensure bot owner always has lifetime premium
+    this.ensureOwnerPremium();
   }
 
   migrateSchema() {
@@ -88,6 +91,25 @@ class GameDatabase {
         this.db.exec('CREATE INDEX IF NOT EXISTS idx_history_guild ON game_history(guild_id)');
         this.db.exec('CREATE INDEX IF NOT EXISTS idx_history_ended ON game_history(ended_at)');
         logger.info('Migration: created game_history table');
+      }
+
+      // Migration: create premium_users table
+      const premiumTable = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='premium_users'").get();
+      if (!premiumTable) {
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS premium_users (
+            user_id TEXT PRIMARY KEY,
+            tier TEXT NOT NULL DEFAULT 'premium',
+            granted_by TEXT,
+            reason TEXT,
+            expires_at INTEGER,
+            created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+            updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+          )
+        `);
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_premium_tier ON premium_users(tier)');
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_premium_expires ON premium_users(expires_at)');
+        logger.info('Migration: created premium_users table');
       }
     } catch (err) {
       logger.error('Schema migration error', { error: err.message });
@@ -568,6 +590,100 @@ class GameDatabase {
       `).get();
     } catch (err) {
       return null;
+    }
+  }
+
+  // ===== PREMIUM USERS =====
+
+  /**
+   * Get premium status for a user
+   * Returns the premium row or null
+   */
+  getPremiumUser(userId) {
+    try {
+      const row = this.db.prepare('SELECT * FROM premium_users WHERE user_id = ?').get(userId);
+      if (!row) return null;
+      // Check expiration (null = lifetime)
+      if (row.expires_at && row.expires_at < Math.floor(Date.now() / 1000)) {
+        return null; // expired
+      }
+      return row;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  /**
+   * Check if user has premium (active, not expired)
+   */
+  isPremiumUser(userId) {
+    return this.getPremiumUser(userId) !== null;
+  }
+
+  /**
+   * Grant premium to a user
+   * @param {string} userId - Discord user ID
+   * @param {string} tier - 'lifetime' | 'premium' | 'monthly'
+   * @param {object} options - { grantedBy, reason, expiresAt }
+   */
+  grantPremium(userId, tier = 'premium', options = {}) {
+    try {
+      this.db.prepare(`
+        INSERT INTO premium_users (user_id, tier, granted_by, reason, expires_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, strftime('%s', 'now'))
+        ON CONFLICT(user_id) DO UPDATE SET
+          tier = excluded.tier,
+          granted_by = excluded.granted_by,
+          reason = excluded.reason,
+          expires_at = excluded.expires_at,
+          updated_at = strftime('%s', 'now')
+      `).run(userId, tier, options.grantedBy || null, options.reason || null, options.expiresAt || null);
+      logger.info('Premium granted', { userId, tier });
+      return true;
+    } catch (err) {
+      logger.error('Failed to grant premium', { userId, error: err.message });
+      return false;
+    }
+  }
+
+  /**
+   * Revoke premium from a user
+   */
+  revokePremium(userId) {
+    try {
+      this.db.prepare('DELETE FROM premium_users WHERE user_id = ?').run(userId);
+      logger.info('Premium revoked', { userId });
+      return true;
+    } catch (err) {
+      logger.error('Failed to revoke premium', { userId, error: err.message });
+      return false;
+    }
+  }
+
+  /**
+   * Get all premium users
+   */
+  getAllPremiumUsers() {
+    try {
+      return this.db.prepare('SELECT * FROM premium_users ORDER BY created_at DESC').all();
+    } catch (err) {
+      return [];
+    }
+  }
+
+  /**
+   * Ensure the bot owner has lifetime premium
+   */
+  ensureOwnerPremium() {
+    const ownerId = process.env.OWNER_ID;
+    if (!ownerId) return;
+    const existing = this.getPremiumUser(ownerId);
+    if (!existing || existing.tier !== 'lifetime') {
+      this.grantPremium(ownerId, 'lifetime', {
+        reason: 'Bot owner — automatic lifetime premium',
+        grantedBy: 'system'
+      });
+      logger.info('Owner premium ensured', { ownerId });
     }
   }
 

@@ -114,8 +114,9 @@
       </div>
       <div class="grules-card-body">
         <p class="text-muted grules-roles-desc" data-i18n="grules.roles_desc">Rôles qui peuvent apparaître dans les parties sur ce serveur</p>
-        <div class="grules-roles-grid">
-          <% var roleEmojis = {
+
+        <%
+          var roleEmojis = {
             'Loup-Garou': '🐺', 'Loup Blanc': '🐺', 'Villageois': '👨', 'Voyante': '🔮',
             'Sorcière': '🧙', 'Chasseur': '🎯', 'Petite Fille': '👧', 'Cupidon': '💘',
             'Salvateur': '🛡️', 'Ancien': '👴', 'Idiot du Village': '🃏', 'Voleur': '🎭'
@@ -127,29 +128,107 @@
           };
           var mandatoryRoles = ['Loup-Garou', 'Villageois'];
           var enabledRoles = (config && config.enabledRoles) || allRoles;
-          %>
-          <% allRoles.forEach(function(role) {
-            var isMandatory = mandatoryRoles.indexOf(role) !== -1;
-            var isEnabled = enabledRoles.indexOf(role) !== -1 || isMandatory;
-          %>
-            <div class="grules-role-item camp-<%= roleCamps[role] || 'village' %><%= isEnabled ? '' : ' grules-role-disabled' %>">
-              <span class="grules-role-emoji"><%= roleEmojis[role] || '❓' %></span>
-              <span class="grules-role-name"><%= role %></span>
-              <span class="grules-role-camp"><%= roleCamps[role] === 'wolf' ? '🐺' : roleCamps[role] === 'neutral' ? '⚖️' : '🏠' %></span>
-              <% if (isAdmin) { %>
-                <label class="grules-toggle<%= isMandatory ? ' grules-toggle-locked' : '' %>">
-                  <input type="checkbox" class="grules-role-toggle" data-role="<%= role %>"
-                    <%= isEnabled ? 'checked' : '' %>
-                    <%= isMandatory ? 'disabled' : '' %>>
-                  <span class="grules-toggle-slider"></span>
-                  <% if (isMandatory) { %><span class="grules-toggle-lock" title="Rôle obligatoire">&#128274;</span><% } %>
-                </label>
-              <% } else { %>
-                <span class="grules-role-status"><%= isEnabled ? '✅' : '❌' %></span>
-              <% } %>
+        %>
+
+        <!-- Classic Roles Section -->
+        <div class="grules-roles-category">
+          <div class="grules-category-header">
+            <span class="grules-category-badge classic">&#9813;</span>
+            <div>
+              <h3 class="grules-category-title" data-i18n="grules.classic_roles">Rôles Classiques</h3>
+              <p class="grules-category-desc" data-i18n="grules.classic_roles_desc">Rôles de base disponibles pour tous</p>
             </div>
-          <% }); %>
+          </div>
+          <div class="grules-roles-grid">
+            <% classicRoleNames.forEach(function(role) {
+              var isMandatory = mandatoryRoles.indexOf(role) !== -1;
+              var isEnabled = enabledRoles.indexOf(role) !== -1 || isMandatory;
+            %>
+              <div class="grules-role-item camp-<%= roleCamps[role] || 'village' %><%= isEnabled ? '' : ' grules-role-disabled' %>">
+                <span class="grules-role-emoji"><%= roleEmojis[role] || '❓' %></span>
+                <span class="grules-role-name"><%= role %></span>
+                <span class="grules-role-camp"><%= roleCamps[role] === 'wolf' ? '🐺' : roleCamps[role] === 'neutral' ? '⚖️' : '🏠' %></span>
+                <% if (isAdmin) { %>
+                  <label class="grules-toggle<%= isMandatory ? ' grules-toggle-locked' : '' %>">
+                    <input type="checkbox" class="grules-role-toggle" data-role="<%= role %>"
+                      <%= isEnabled ? 'checked' : '' %>
+                      <%= isMandatory ? 'disabled' : '' %>>
+                    <span class="grules-toggle-slider"></span>
+                    <% if (isMandatory) { %><span class="grules-toggle-lock" title="Rôle obligatoire">&#128274;</span><% } %>
+                  </label>
+                <% } else { %>
+                  <span class="grules-role-status"><%= isEnabled ? '✅' : '❌' %></span>
+                <% } %>
+              </div>
+            <% }); %>
+          </div>
         </div>
+
+        <!-- Premium Roles Section -->
+        <div class="grules-roles-category grules-roles-premium">
+          <div class="grules-category-header premium">
+            <span class="grules-category-badge premium-badge">&#11088;</span>
+            <div>
+              <h3 class="grules-category-title grules-premium-title" data-i18n="grules.premium_roles">Rôles Premium</h3>
+              <p class="grules-category-desc" data-i18n="grules.premium_roles_desc">Rôles spéciaux aux pouvoirs uniques</p>
+            </div>
+            <% if (isPremium) { %>
+              <span class="grules-premium-badge-status unlocked">
+                <% if (premiumTier === 'lifetime') { %>
+                  &#9734; <span data-i18n="grules.premium_lifetime">Premium Lifetime</span>
+                <% } else { %>
+                  &#11088; <span data-i18n="grules.premium_active">Premium Actif</span>
+                <% } %>
+              </span>
+            <% } else { %>
+              <span class="grules-premium-badge-status locked">
+                &#128274; <span data-i18n="grules.premium_locked">Premium requis</span>
+              </span>
+            <% } %>
+          </div>
+          <div class="grules-roles-grid">
+            <% premiumRoleNames.forEach(function(role) {
+              var isMandatory = mandatoryRoles.indexOf(role) !== -1;
+              var isEnabled = enabledRoles.indexOf(role) !== -1 || isMandatory;
+              var canToggle = isPremium && isAdmin;
+            %>
+              <div class="grules-role-item grules-role-premium camp-<%= roleCamps[role] || 'village' %><%= isEnabled ? '' : ' grules-role-disabled' %><%= !isPremium ? ' grules-role-locked' : '' %>">
+                <span class="grules-role-emoji"><%= roleEmojis[role] || '❓' %></span>
+                <span class="grules-role-name"><%= role %></span>
+                <span class="grules-role-camp"><%= roleCamps[role] === 'wolf' ? '🐺' : roleCamps[role] === 'neutral' ? '⚖️' : '🏠' %></span>
+                <% if (canToggle) { %>
+                  <label class="grules-toggle">
+                    <input type="checkbox" class="grules-role-toggle" data-role="<%= role %>"
+                      <%= isEnabled ? 'checked' : '' %>>
+                    <span class="grules-toggle-slider grules-toggle-premium"></span>
+                  </label>
+                <% } else if (isAdmin && !isPremium) { %>
+                  <label class="grules-toggle grules-toggle-locked">
+                    <input type="checkbox" class="grules-role-toggle" data-role="<%= role %>"
+                      disabled>
+                    <span class="grules-toggle-slider grules-toggle-premium"></span>
+                    <span class="grules-toggle-lock" title="Premium requis">&#128274;</span>
+                  </label>
+                <% } else { %>
+                  <span class="grules-role-status">
+                    <% if (!isPremium) { %>&#128274;<% } else { %><%= isEnabled ? '✅' : '❌' %><% } %>
+                  </span>
+                <% } %>
+                <% if (isPremium) { %>
+                  <span class="grules-role-premium-tag unlocked" data-i18n="grules.unlocked">Débloqué</span>
+                <% } else { %>
+                  <span class="grules-role-premium-tag locked" data-i18n="grules.premium_required">Premium</span>
+                <% } %>
+              </div>
+            <% }); %>
+          </div>
+          <% if (!isPremium) { %>
+            <div class="grules-premium-cta">
+              <p data-i18n="grules.premium_cta">Débloquez les rôles premium pour enrichir vos parties !</p>
+            </div>
+          <% } %>
+        </div>
+
       </div>
     </div>
 

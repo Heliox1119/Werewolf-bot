@@ -1827,6 +1827,125 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   opacity: 0.5;
 }
 
+/* Role Categories */
+.grules-roles-category {
+  margin-top: 1.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+.grules-category-header {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+.grules-category-badge {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; flex-shrink: 0;
+}
+.grules-category-badge.classic { background: rgba(148, 163, 184, 0.12); }
+.grules-category-badge.premium-badge {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(218, 165, 32, 0.15));
+}
+.grules-category-title {
+  font-size: 0.9rem; font-weight: 700; margin: 0;
+}
+.grules-premium-title { color: #ffd700; }
+.grules-category-desc {
+  font-size: 0.7rem; color: var(--text-muted); margin: 0;
+}
+.grules-roles-category .grules-roles-grid {
+  padding: 0.75rem;
+}
+
+/* Premium badge status in header */
+.grules-premium-badge-status {
+  margin-left: auto; font-size: 0.72rem; font-weight: 700;
+  padding: 0.25rem 0.75rem; border-radius: 999px;
+  white-space: nowrap;
+}
+.grules-premium-badge-status.unlocked {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(218, 165, 32, 0.1));
+  color: #ffd700;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+.grules-premium-badge-status.locked {
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+/* Premium role items */
+.grules-roles-premium {
+  border-color: rgba(255, 215, 0, 0.15);
+}
+.grules-roles-premium .grules-category-header.premium {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.05), var(--bg-secondary));
+  border-bottom-color: rgba(255, 215, 0, 0.15);
+}
+.grules-role-premium {
+  position: relative;
+}
+.grules-role-premium:not(.grules-role-locked) {
+  border-color: rgba(255, 215, 0, 0.2);
+}
+.grules-role-premium:not(.grules-role-locked):hover {
+  border-color: rgba(255, 215, 0, 0.4);
+}
+.grules-role-premium .grules-role-name {
+  color: #ffd700;
+}
+
+/* Premium tag on role items */
+.grules-role-premium-tag {
+  font-size: 0.55rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; padding: 0.1rem 0.4rem; border-radius: 4px;
+  flex-shrink: 0;
+}
+.grules-role-premium-tag.unlocked {
+  background: rgba(255, 215, 0, 0.12);
+  color: #ffd700;
+  border: 1px solid rgba(255, 215, 0, 0.2);
+}
+.grules-role-premium-tag.locked {
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+/* Locked state (non-premium users) */
+.grules-role-locked {
+  opacity: 0.45;
+  filter: grayscale(0.5);
+  cursor: not-allowed;
+}
+.grules-role-locked:hover {
+  opacity: 0.55;
+  border-color: var(--border-color);
+}
+.grules-role-locked .grules-role-name {
+  color: var(--text-muted);
+}
+
+/* Premium toggle slider (golden when checked) */
+.grules-toggle input:checked + .grules-toggle-premium {
+  background: linear-gradient(135deg, #ffd700, #daa520);
+  border-color: #daa520;
+}
+
+/* Premium CTA */
+.grules-premium-cta {
+  padding: 0.75rem 1rem;
+  text-align: center;
+  border-top: 1px solid rgba(255, 215, 0, 0.1);
+  background: rgba(255, 215, 0, 0.03);
+}
+.grules-premium-cta p {
+  font-size: 0.8rem; color: var(--text-muted); margin: 0;
+}
+
 .grules-actions {
   display: flex;
   align-items: center;
