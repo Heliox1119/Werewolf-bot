@@ -233,6 +233,12 @@ client.once("clientReady", async () => {
             );
             if (!isOwned) {
               try {
+                // Check bot permissions before attempting to delete
+                const botPerms = ch.permissionsFor(guild.members.me);
+                if (!botPerms || !botPerms.has('ManageChannels')) {
+                  logger.debug('Skipping orphan channel (no ManageChannels perm)', { name: ch.name, id: chId, guild: guild.name });
+                  continue;
+                }
                 await ch.delete('Orphan game channel cleanup');
                 logger.info('Deleted orphan channel', { name: ch.name, id: chId, guild: guild.name });
               } catch (e) { logger.error('Failed to delete orphan channel', e); }
