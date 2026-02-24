@@ -1,267 +1,343 @@
 <%- include('partials/header') %>
 
 <div class="guild-rules-page">
-  <div class="page-header">
-    <% if (guild && guild.icon) { %>
-      <img src="<%= guild.icon %>" alt="" class="guild-icon-lg">
-    <% } %>
-    <div>
-      <h1>&#9881; <span data-i18n="grules.title">Règles du jeu</span> — <%= guild ? guild.name : guildId %></h1>
-      <p class="text-muted" data-i18n="grules.subtitle">Configurez les paramètres des parties pour ce serveur</p>
-    </div>
-  </div>
 
   <% var isAdmin = typeof accessLevel !== 'undefined' && (accessLevel === 'owner' || accessLevel === 'admin'); %>
 
-  <div class="grules-grid">
-    <!-- Players Config -->
-    <div class="grules-card">
-      <div class="grules-card-header">
-        <span class="grules-card-icon">&#128101;</span>
-        <h2 data-i18n="grules.players_title">Joueurs</h2>
+  <%
+    var roleEmojis = {
+      'Loup-Garou': '🐺', 'Loup Blanc': '🐺', 'Villageois': '👨', 'Voyante': '🔮',
+      'Sorcière': '🧙', 'Chasseur': '🎯', 'Petite Fille': '👧', 'Cupidon': '💘',
+      'Salvateur': '🛡️', 'Ancien': '👴', 'Idiot du Village': '🃏', 'Voleur': '🎭'
+    };
+    var roleCamps = {
+      'Loup-Garou': 'wolf', 'Loup Blanc': 'wolf', 'Villageois': 'village', 'Voyante': 'village',
+      'Sorcière': 'village', 'Chasseur': 'village', 'Petite Fille': 'village', 'Cupidon': 'village',
+      'Salvateur': 'village', 'Ancien': 'village', 'Idiot du Village': 'village', 'Voleur': 'neutral'
+    };
+    var roleDescKeys = {
+      'Loup-Garou': 'role.desc.WEREWOLF', 'Loup Blanc': 'role.desc.WHITE_WOLF',
+      'Villageois': 'role.desc.VILLAGER', 'Voyante': 'role.desc.SEER',
+      'Sorcière': 'role.desc.WITCH', 'Chasseur': 'role.desc.HUNTER',
+      'Petite Fille': 'role.desc.PETITE_FILLE', 'Cupidon': 'role.desc.CUPID',
+      'Salvateur': 'role.desc.SALVATEUR', 'Ancien': 'role.desc.ANCIEN',
+      'Idiot du Village': 'role.desc.IDIOT', 'Voleur': 'role.desc.THIEF'
+    };
+    var roleDescs = {
+      'Loup-Garou': 'Dévore un villageois chaque nuit', 'Loup Blanc': 'Loup solitaire, dévore aussi les loups',
+      'Villageois': 'Démasque les loups par le vote', 'Voyante': 'Découvre le rôle d\'un joueur chaque nuit',
+      'Sorcière': 'Potion de vie et potion de mort', 'Chasseur': 'Emporte un joueur en mourant',
+      'Petite Fille': 'Espionne les loups la nuit', 'Cupidon': 'Lie deux amoureux au destin commun',
+      'Salvateur': 'Protège un joueur chaque nuit', 'Ancien': 'Résiste à la première attaque des loups',
+      'Idiot du Village': 'Révélé si voté, perd son vote', 'Voleur': 'Échange son rôle au début'
+    };
+    var campLabels = { wolf: 'Loup-Garou', village: 'Village', neutral: 'Neutre' };
+    var campColors = { wolf: 'danger', village: 'success', neutral: 'warning' };
+    var mandatoryRoles = ['Loup-Garou', 'Villageois'];
+    var enabledRoles = (config && config.enabledRoles) || allRoles;
+    var classicEnabled = classicRoleNames.filter(function(r) { return enabledRoles.indexOf(r) !== -1 || mandatoryRoles.indexOf(r) !== -1; }).length;
+    var premiumEnabled = premiumRoleNames.filter(function(r) { return enabledRoles.indexOf(r) !== -1; }).length;
+  %>
+
+  <!-- Page Banner -->
+  <div class="grules-banner">
+    <div class="grules-banner-bg"></div>
+    <div class="grules-banner-content">
+      <% if (guild && guild.icon) { %>
+        <img src="<%= guild.icon %>" alt="" class="grules-banner-icon">
+      <% } else { %>
+        <div class="grules-banner-icon grules-banner-icon-placeholder">&#9881;</div>
+      <% } %>
+      <div class="grules-banner-info">
+        <h1><span data-i18n="grules.title">Règles du jeu</span></h1>
+        <p class="grules-banner-sub"><%= guild ? guild.name : guildId %></p>
+        <div class="grules-banner-stats">
+          <span class="grules-banner-stat">
+            <span class="grules-banner-stat-value"><%= classicEnabled + premiumEnabled %></span>
+            <span data-i18n="grules.roles_active">rôles actifs</span>
+          </span>
+          <span class="grules-banner-stat-sep"></span>
+          <span class="grules-banner-stat">
+            <span class="grules-banner-stat-value"><%= config.defaultRules.minPlayers || 5 %>–<%= config.defaultRules.maxPlayers || 10 %></span>
+            <span data-i18n="grules.players_range">joueurs</span>
+          </span>
+          <span class="grules-banner-stat-sep"></span>
+          <span class="grules-banner-stat">
+            <span class="grules-banner-stat-value"><%= config.locale === 'fr' ? '🇫🇷' : '🇬🇧' %></span>
+            <span data-i18n="grules.current_lang">langue</span>
+          </span>
+          <% if (isPremium) { %>
+            <span class="grules-banner-stat-sep"></span>
+            <span class="grules-banner-stat grules-banner-stat-premium">
+              <span class="grules-banner-stat-value">&#11088;</span>
+              <span>Premium</span>
+            </span>
+          <% } %>
+        </div>
       </div>
-      <div class="grules-card-body">
-        <div class="grules-field">
-          <label data-i18n="grules.min_players">Minimum de joueurs</label>
-          <div class="grules-field-row">
+    </div>
+  </div>
+
+  <!-- Settings Section: 3 cards in a row -->
+  <div class="grules-section">
+    <div class="grules-section-header">
+      <div class="grules-section-icon">&#9881;</div>
+      <div>
+        <h2 data-i18n="grules.settings_title">Paramètres de partie</h2>
+        <p data-i18n="grules.settings_desc">Configuration générale des règles du jeu</p>
+      </div>
+    </div>
+    <div class="grules-settings-grid">
+
+      <!-- Players -->
+      <div class="grules-setting-card">
+        <div class="grules-setting-icon">&#128101;</div>
+        <h3 data-i18n="grules.players_title">Joueurs</h3>
+        <div class="grules-setting-fields">
+          <div class="grules-setting-field">
+            <label data-i18n="grules.min_players">Minimum</label>
             <% if (isAdmin) { %>
               <input type="number" id="rule-min" class="grules-input" min="3" max="6" value="<%= config.defaultRules.minPlayers || 5 %>">
             <% } else { %>
-              <span class="grules-value"><%= config.defaultRules.minPlayers || 5 %></span>
+              <span class="grules-setting-value"><%= config.defaultRules.minPlayers || 5 %></span>
             <% } %>
-            <span class="grules-hint" data-i18n="grules.min_hint">Entre 3 et 6</span>
+            <span class="grules-setting-hint" data-i18n="grules.min_hint">3 – 6</span>
           </div>
-        </div>
-        <div class="grules-field">
-          <label data-i18n="grules.max_players">Maximum de joueurs</label>
-          <div class="grules-field-row">
+          <div class="grules-setting-divider"></div>
+          <div class="grules-setting-field">
+            <label data-i18n="grules.max_players">Maximum</label>
             <% if (isAdmin) { %>
               <input type="number" id="rule-max" class="grules-input" min="5" max="20" value="<%= config.defaultRules.maxPlayers || 10 %>">
             <% } else { %>
-              <span class="grules-value"><%= config.defaultRules.maxPlayers || 10 %></span>
+              <span class="grules-setting-value"><%= config.defaultRules.maxPlayers || 10 %></span>
             <% } %>
-            <span class="grules-hint" data-i18n="grules.max_hint">Entre min et 20</span>
+            <span class="grules-setting-hint" data-i18n="grules.max_hint">min – 20</span>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Win Condition -->
-    <div class="grules-card">
-      <div class="grules-card-header">
-        <span class="grules-card-icon">&#127942;</span>
-        <h2 data-i18n="grules.win_title">Condition de victoire</h2>
-      </div>
-      <div class="grules-card-body">
-        <div class="grules-field">
-          <label data-i18n="grules.wolf_win">Victoire des loups</label>
+      <!-- Win Condition -->
+      <div class="grules-setting-card">
+        <div class="grules-setting-icon">&#127942;</div>
+        <h3 data-i18n="grules.win_title">Victoire des loups</h3>
+        <div class="grules-setting-fields">
           <% if (isAdmin) { %>
-            <div class="grules-radio-group">
-              <label class="grules-radio">
-                <input type="radio" name="wolfWin" value="majority" <%= config.wolfWinCondition === 'majority' ? 'checked' : '' %>>
-                <span class="grules-radio-label">
-                  <strong data-i18n="grules.majority">Majorité</strong>
-                  <small data-i18n="grules.majority_desc">Loups ≥ Villageois</small>
-                </span>
-              </label>
-              <label class="grules-radio">
-                <input type="radio" name="wolfWin" value="elimination" <%= config.wolfWinCondition === 'elimination' ? 'checked' : '' %>>
-                <span class="grules-radio-label">
-                  <strong data-i18n="grules.elimination">Élimination totale</strong>
-                  <small data-i18n="grules.elimination_desc">Tous les villageois morts</small>
-                </span>
-              </label>
-            </div>
-          <% } else { %>
-            <span class="grules-value"><%= config.wolfWinCondition === 'elimination' ? 'Élimination totale' : 'Majorité' %></span>
-          <% } %>
-        </div>
-      </div>
-    </div>
-
-    <!-- Language -->
-    <div class="grules-card">
-      <div class="grules-card-header">
-        <span class="grules-card-icon">&#127760;</span>
-        <h2 data-i18n="grules.lang_title">Langue du bot</h2>
-      </div>
-      <div class="grules-card-body">
-        <div class="grules-field">
-          <label data-i18n="grules.bot_locale">Langue des messages en jeu</label>
-          <% if (isAdmin) { %>
-            <div class="grules-radio-group grules-radio-inline">
-              <label class="grules-radio">
-                <input type="radio" name="locale" value="fr" <%= config.locale === 'fr' ? 'checked' : '' %>>
-                <span class="grules-radio-label">🇫🇷 Français</span>
-              </label>
-              <label class="grules-radio">
-                <input type="radio" name="locale" value="en" <%= config.locale === 'en' || !config.locale ? 'checked' : '' %>>
-                <span class="grules-radio-label">🇬🇧 English</span>
-              </label>
-            </div>
-          <% } else { %>
-            <span class="grules-value"><%= config.locale === 'fr' ? '🇫🇷 Français' : '🇬🇧 English' %></span>
-          <% } %>
-        </div>
-      </div>
-    </div>
-
-    <!-- Enabled Roles -->
-    <div class="grules-card grules-card-wide">
-      <div class="grules-card-header">
-        <span class="grules-card-icon">&#128058;</span>
-        <h2 data-i18n="grules.roles_title">Rôles disponibles</h2>
-      </div>
-      <div class="grules-card-body">
-        <p class="text-muted grules-roles-desc" data-i18n="grules.roles_desc">Rôles qui peuvent apparaître dans les parties sur ce serveur</p>
-
-        <%
-          var roleEmojis = {
-            'Loup-Garou': '🐺', 'Loup Blanc': '🐺', 'Villageois': '👨', 'Voyante': '🔮',
-            'Sorcière': '🧙', 'Chasseur': '🎯', 'Petite Fille': '👧', 'Cupidon': '💘',
-            'Salvateur': '🛡️', 'Ancien': '👴', 'Idiot du Village': '🃏', 'Voleur': '🎭'
-          };
-          var roleCamps = {
-            'Loup-Garou': 'wolf', 'Loup Blanc': 'wolf', 'Villageois': 'village', 'Voyante': 'village',
-            'Sorcière': 'village', 'Chasseur': 'village', 'Petite Fille': 'village', 'Cupidon': 'village',
-            'Salvateur': 'village', 'Ancien': 'village', 'Idiot du Village': 'village', 'Voleur': 'neutral'
-          };
-          var mandatoryRoles = ['Loup-Garou', 'Villageois'];
-          var enabledRoles = (config && config.enabledRoles) || allRoles;
-        %>
-
-        <!-- Classic Roles Section -->
-        <div class="grules-roles-category">
-          <div class="grules-category-header">
-            <span class="grules-category-badge classic">&#9813;</span>
-            <div>
-              <h3 class="grules-category-title" data-i18n="grules.classic_roles">Rôles Classiques</h3>
-              <p class="grules-category-desc" data-i18n="grules.classic_roles_desc">Rôles de base disponibles pour tous</p>
-            </div>
-          </div>
-          <div class="grules-roles-grid">
-            <% classicRoleNames.forEach(function(role) {
-              var isMandatory = mandatoryRoles.indexOf(role) !== -1;
-              var isEnabled = enabledRoles.indexOf(role) !== -1 || isMandatory;
-            %>
-              <div class="grules-role-item camp-<%= roleCamps[role] || 'village' %><%= isEnabled ? '' : ' grules-role-disabled' %>">
-                <span class="grules-role-emoji"><%= roleEmojis[role] || '❓' %></span>
-                <span class="grules-role-name"><%= role %></span>
-                <span class="grules-role-camp"><%= roleCamps[role] === 'wolf' ? '🐺' : roleCamps[role] === 'neutral' ? '⚖️' : '🏠' %></span>
-                <% if (isAdmin) { %>
-                  <label class="grules-toggle<%= isMandatory ? ' grules-toggle-locked' : '' %>">
-                    <input type="checkbox" class="grules-role-toggle" data-role="<%= role %>"
-                      <%= isEnabled ? 'checked' : '' %>
-                      <%= isMandatory ? 'disabled' : '' %>>
-                    <span class="grules-toggle-slider"></span>
-                    <% if (isMandatory) { %><span class="grules-toggle-lock" title="Rôle obligatoire">&#128274;</span><% } %>
-                  </label>
-                <% } else { %>
-                  <span class="grules-role-status"><%= isEnabled ? '✅' : '❌' %></span>
-                <% } %>
+            <label class="grules-option<%= config.wolfWinCondition === 'majority' || !config.wolfWinCondition ? ' active' : '' %>">
+              <input type="radio" name="wolfWin" value="majority" <%= config.wolfWinCondition === 'majority' || !config.wolfWinCondition ? 'checked' : '' %>>
+              <div class="grules-option-content">
+                <strong data-i18n="grules.majority">Majorité</strong>
+                <small data-i18n="grules.majority_desc">Loups ≥ Villageois</small>
               </div>
-            <% }); %>
-          </div>
-        </div>
-
-        <!-- Premium Roles Section -->
-        <div class="grules-roles-category grules-roles-premium">
-          <div class="grules-category-header premium">
-            <span class="grules-category-badge premium-badge">&#11088;</span>
-            <div>
-              <h3 class="grules-category-title grules-premium-title" data-i18n="grules.premium_roles">Rôles Premium</h3>
-              <p class="grules-category-desc" data-i18n="grules.premium_roles_desc">Rôles spéciaux aux pouvoirs uniques</p>
+            </label>
+            <label class="grules-option<%= config.wolfWinCondition === 'elimination' ? ' active' : '' %>">
+              <input type="radio" name="wolfWin" value="elimination" <%= config.wolfWinCondition === 'elimination' ? 'checked' : '' %>>
+              <div class="grules-option-content">
+                <strong data-i18n="grules.elimination">Élimination totale</strong>
+                <small data-i18n="grules.elimination_desc">Tous les villageois morts</small>
+              </div>
+            </label>
+          <% } else { %>
+            <div class="grules-option active readonly">
+              <div class="grules-option-content">
+                <strong><%= config.wolfWinCondition === 'elimination' ? 'Élimination totale' : 'Majorité' %></strong>
+              </div>
             </div>
-            <% if (isPremium) { %>
-              <span class="grules-premium-badge-status unlocked">
-                <% if (premiumTier === 'lifetime') { %>
-                  &#9734; <span data-i18n="grules.premium_lifetime">Premium Lifetime</span>
-                <% } else { %>
-                  &#11088; <span data-i18n="grules.premium_active">Premium Actif</span>
-                <% } %>
-              </span>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Language -->
+      <div class="grules-setting-card">
+        <div class="grules-setting-icon">&#127760;</div>
+        <h3 data-i18n="grules.lang_title">Langue du bot</h3>
+        <div class="grules-setting-fields">
+          <% if (isAdmin) { %>
+            <label class="grules-option grules-option-lang<%= config.locale === 'fr' ? ' active' : '' %>">
+              <input type="radio" name="locale" value="fr" <%= config.locale === 'fr' ? 'checked' : '' %>>
+              <div class="grules-option-content">
+                <span class="grules-lang-flag">🇫🇷</span>
+                <strong>Français</strong>
+              </div>
+            </label>
+            <label class="grules-option grules-option-lang<%= config.locale !== 'fr' ? ' active' : '' %>">
+              <input type="radio" name="locale" value="en" <%= config.locale !== 'fr' ? 'checked' : '' %>>
+              <div class="grules-option-content">
+                <span class="grules-lang-flag">🇬🇧</span>
+                <strong>English</strong>
+              </div>
+            </label>
+          <% } else { %>
+            <div class="grules-option active readonly">
+              <div class="grules-option-content">
+                <span class="grules-lang-flag"><%= config.locale === 'fr' ? '🇫🇷' : '🇬🇧' %></span>
+                <strong><%= config.locale === 'fr' ? 'Français' : 'English' %></strong>
+              </div>
+            </div>
+          <% } %>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Classic Roles Section -->
+  <div class="grules-section">
+    <div class="grules-section-header">
+      <div class="grules-section-icon">&#9813;</div>
+      <div>
+        <h2 data-i18n="grules.classic_roles">Rôles Classiques</h2>
+        <p data-i18n="grules.classic_roles_desc">Rôles de base disponibles pour tous les serveurs</p>
+      </div>
+      <span class="grules-section-counter"><%= classicEnabled %>/<%= classicRoleNames.length %></span>
+    </div>
+    <div class="grules-roles-grid">
+      <% classicRoleNames.forEach(function(role) {
+        var isMandatory = mandatoryRoles.indexOf(role) !== -1;
+        var isEnabled = enabledRoles.indexOf(role) !== -1 || isMandatory;
+        var camp = roleCamps[role] || 'village';
+      %>
+        <div class="grules-role-card camp-<%= camp %><%= isEnabled ? ' enabled' : '' %><%= isMandatory ? ' mandatory' : '' %>">
+          <div class="grules-role-card-top">
+            <span class="grules-role-emoji"><%= roleEmojis[role] || '❓' %></span>
+            <div class="grules-role-info">
+              <span class="grules-role-name"><%= role %></span>
+              <span class="grules-role-camp-badge camp-<%= camp %>"><%= campLabels[camp] || 'Village' %></span>
+            </div>
+            <% if (isAdmin) { %>
+              <label class="grules-toggle<%= isMandatory ? ' grules-toggle-locked' : '' %>">
+                <input type="checkbox" class="grules-role-toggle" data-role="<%= role %>"
+                  <%= isEnabled ? 'checked' : '' %>
+                  <%= isMandatory ? 'disabled' : '' %>>
+                <span class="grules-toggle-slider"></span>
+              </label>
             <% } else { %>
-              <span class="grules-premium-badge-status locked">
-                &#128274; <span data-i18n="grules.premium_locked">Premium requis</span>
-              </span>
+              <span class="grules-role-status-dot <%= isEnabled ? 'on' : 'off' %>"></span>
             <% } %>
           </div>
-          <div class="grules-roles-grid">
-            <% premiumRoleNames.forEach(function(role) {
-              var isMandatory = mandatoryRoles.indexOf(role) !== -1;
-              var isEnabled = enabledRoles.indexOf(role) !== -1 || isMandatory;
-              var canToggle = isPremium && isAdmin;
-            %>
-              <div class="grules-role-item grules-role-premium camp-<%= roleCamps[role] || 'village' %><%= isEnabled ? '' : ' grules-role-disabled' %><%= !isPremium ? ' grules-role-locked' : '' %>">
-                <span class="grules-role-emoji"><%= roleEmojis[role] || '❓' %></span>
-                <span class="grules-role-name"><%= role %></span>
-                <span class="grules-role-camp"><%= roleCamps[role] === 'wolf' ? '🐺' : roleCamps[role] === 'neutral' ? '⚖️' : '🏠' %></span>
-                <% if (canToggle) { %>
-                  <label class="grules-toggle">
-                    <input type="checkbox" class="grules-role-toggle" data-role="<%= role %>"
-                      <%= isEnabled ? 'checked' : '' %>>
-                    <span class="grules-toggle-slider grules-toggle-premium"></span>
-                  </label>
-                <% } else if (isAdmin && !isPremium) { %>
-                  <label class="grules-toggle grules-toggle-locked">
-                    <input type="checkbox" class="grules-role-toggle" data-role="<%= role %>"
-                      disabled>
-                    <span class="grules-toggle-slider grules-toggle-premium"></span>
-                    <span class="grules-toggle-lock" title="Premium requis">&#128274;</span>
-                  </label>
-                <% } else { %>
-                  <span class="grules-role-status">
-                    <% if (!isPremium) { %>&#128274;<% } else { %><%= isEnabled ? '✅' : '❌' %><% } %>
-                  </span>
-                <% } %>
-                <% if (isPremium) { %>
-                  <span class="grules-role-premium-tag unlocked" data-i18n="grules.unlocked">Débloqué</span>
-                <% } else { %>
-                  <span class="grules-role-premium-tag locked" data-i18n="grules.premium_required">Premium</span>
-                <% } %>
-              </div>
-            <% }); %>
-          </div>
-          <% if (!isPremium) { %>
-            <div class="grules-premium-cta">
-              <p data-i18n="grules.premium_cta">Débloquez les rôles premium pour enrichir vos parties !</p>
-            </div>
+          <p class="grules-role-desc" data-i18n="<%= roleDescKeys[role] || '' %>"><%= roleDescs[role] || '' %></p>
+          <% if (isMandatory) { %>
+            <span class="grules-role-badge mandatory" data-i18n="grules.role_mandatory">Obligatoire</span>
           <% } %>
         </div>
+      <% }); %>
+    </div>
+  </div>
 
+  <!-- Premium Roles Section -->
+  <div class="grules-section grules-section-premium">
+    <div class="grules-section-header premium">
+      <div class="grules-section-icon premium-icon">&#11088;</div>
+      <div>
+        <h2 class="grules-premium-title" data-i18n="grules.premium_roles">Rôles Premium</h2>
+        <p data-i18n="grules.premium_roles_desc">Rôles exclusifs réservés aux membres Premium</p>
+      </div>
+      <% if (isPremium) { %>
+        <span class="grules-premium-badge-status unlocked">
+          <% if (premiumTier === 'lifetime') { %>
+            &#9734; <span data-i18n="grules.premium_lifetime">Premium Lifetime</span>
+          <% } else { %>
+            &#11088; <span data-i18n="grules.premium_active">Premium Actif</span>
+          <% } %>
+        </span>
+      <% } else { %>
+        <span class="grules-premium-badge-status locked">
+          &#128274; <span data-i18n="grules.premium_locked">Premium requis</span>
+        </span>
+      <% } %>
+      <span class="grules-section-counter premium-counter"><%= premiumEnabled %>/<%= premiumRoleNames.length %></span>
+    </div>
+    <div class="grules-roles-grid">
+      <% premiumRoleNames.forEach(function(role) {
+        var isEnabled = enabledRoles.indexOf(role) !== -1;
+        var camp = roleCamps[role] || 'village';
+        var canToggle = isPremium && isAdmin;
+      %>
+        <div class="grules-role-card grules-role-premium camp-<%= camp %><%= isEnabled ? ' enabled' : '' %><%= !isPremium ? ' locked' : '' %>">
+          <% if (isPremium) { %>
+            <span class="grules-role-badge premium-unlocked">&#10003; <span data-i18n="grules.unlocked">Débloqué</span></span>
+          <% } else { %>
+            <span class="grules-role-badge premium-locked">&#128274; Premium</span>
+          <% } %>
+          <div class="grules-role-card-top">
+            <span class="grules-role-emoji"><%= roleEmojis[role] || '❓' %></span>
+            <div class="grules-role-info">
+              <span class="grules-role-name"><%= role %></span>
+              <span class="grules-role-camp-badge camp-<%= camp %>"><%= campLabels[camp] || 'Village' %></span>
+            </div>
+            <% if (canToggle) { %>
+              <label class="grules-toggle">
+                <input type="checkbox" class="grules-role-toggle" data-role="<%= role %>"
+                  <%= isEnabled ? 'checked' : '' %>>
+                <span class="grules-toggle-slider grules-toggle-premium"></span>
+              </label>
+            <% } else if (isAdmin && !isPremium) { %>
+              <label class="grules-toggle grules-toggle-locked">
+                <input type="checkbox" disabled>
+                <span class="grules-toggle-slider"></span>
+                <span class="grules-toggle-lock">&#128274;</span>
+              </label>
+            <% } else { %>
+              <span class="grules-role-status-dot <%= isEnabled ? 'on' : 'off' %>"></span>
+            <% } %>
+          </div>
+          <p class="grules-role-desc" data-i18n="<%= roleDescKeys[role] || '' %>"><%= roleDescs[role] || '' %></p>
+        </div>
+      <% }); %>
+    </div>
+    <% if (!isPremium) { %>
+      <div class="grules-premium-cta">
+        <div class="grules-premium-cta-icon">&#11088;</div>
+        <div>
+          <strong data-i18n="grules.premium_cta_title">Débloquer les rôles Premium</strong>
+          <p data-i18n="grules.premium_cta">Passez en Premium pour débloquer tous les rôles exclusifs et fonctionnalités avancées.</p>
+        </div>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Setup Status -->
+  <div class="grules-section">
+    <div class="grules-section-header">
+      <div class="grules-section-icon">&#128295;</div>
+      <div>
+        <h2 data-i18n="grules.setup_title">Configuration</h2>
+        <p data-i18n="grules.setup_desc">État du setup Discord pour ce serveur</p>
       </div>
     </div>
-
-    <!-- Setup Status -->
-    <div class="grules-card">
-      <div class="grules-card-header">
-        <span class="grules-card-icon">&#128295;</span>
-        <h2 data-i18n="grules.setup_title">Configuration</h2>
-      </div>
-      <div class="grules-card-body">
-        <div class="grules-field">
-          <label data-i18n="grules.category">Catégorie Discord</label>
-          <span class="grules-value grules-status-<%= config.categoryId ? 'ok' : 'warn' %>">
-            <%= config.categoryId ? '✅ Configurée' : '⚠️ Non configurée' %>
-          </span>
+    <div class="grules-setup-grid">
+      <div class="grules-setup-item">
+        <span class="grules-setup-status grules-status-<%= config.categoryId ? 'ok' : 'warn' %>">
+          <%= config.categoryId ? '✅' : '⚠️' %>
+        </span>
+        <div>
+          <strong data-i18n="grules.category">Catégorie Discord</strong>
+          <small><%= config.categoryId ? 'Configurée' : 'Non configurée' %></small>
         </div>
-        <div class="grules-field">
-          <label data-i18n="grules.setup_status">Statut du setup</label>
-          <span class="grules-value grules-status-<%= config.setupComplete ? 'ok' : 'warn' %>">
-            <%= config.setupComplete ? '✅ Complet' : '⚠️ Incomplet — utilisez /setup' %>
-          </span>
+      </div>
+      <div class="grules-setup-item">
+        <span class="grules-setup-status grules-status-<%= config.setupComplete ? 'ok' : 'warn' %>">
+          <%= config.setupComplete ? '✅' : '⚠️' %>
+        </span>
+        <div>
+          <strong data-i18n="grules.setup_status">Statut du setup</strong>
+          <small><%= config.setupComplete ? 'Complet' : 'Incomplet — utilisez /setup' %></small>
         </div>
       </div>
     </div>
   </div>
 
   <% if (isAdmin) { %>
-  <!-- Save Button -->
-  <div class="grules-actions">
-    <button class="btn btn-primary" id="grules-save" data-guild-id="<%= guildId %>">
-      &#128190; <span data-i18n="grules.save">Enregistrer les modifications</span>
-    </button>
-    <span class="grules-save-status" id="grules-save-status"></span>
+  <!-- Sticky Save Bar -->
+  <div class="grules-save-bar" id="grules-save-bar">
+    <div class="grules-save-bar-inner">
+      <span class="grules-save-hint" data-i18n="grules.unsaved">Modifications non enregistrées</span>
+      <div class="grules-save-actions">
+        <span class="grules-save-status" id="grules-save-status"></span>
+        <button class="btn btn-primary grules-save-btn" id="grules-save" data-guild-id="<%= guildId %>">
+          &#128190; <span data-i18n="grules.save">Enregistrer</span>
+        </button>
+      </div>
+    </div>
   </div>
   <% } %>
 </div>
@@ -271,17 +347,42 @@
 (function() {
   'use strict';
   var saveBtn = document.getElementById('grules-save');
+  var saveBar = document.getElementById('grules-save-bar');
   var statusEl = document.getElementById('grules-save-status');
   if (!saveBtn) return;
 
-  // Live toggle visual feedback
+  var hasChanges = false;
+  function markChanged() {
+    if (!hasChanges) {
+      hasChanges = true;
+      saveBar.classList.add('visible');
+    }
+  }
+
+  // Radio option visual feedback
+  document.querySelectorAll('.grules-option input[type="radio"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      var group = radio.closest('.grules-setting-fields');
+      group.querySelectorAll('.grules-option').forEach(function(opt) { opt.classList.remove('active'); });
+      radio.closest('.grules-option').classList.add('active');
+      markChanged();
+    });
+  });
+
+  // Toggle visual feedback
   document.querySelectorAll('.grules-role-toggle').forEach(function(cb) {
     cb.addEventListener('change', function() {
-      var card = cb.closest('.grules-role-item');
+      var card = cb.closest('.grules-role-card');
       if (card) {
-        card.classList.toggle('grules-role-disabled', !cb.checked);
+        card.classList.toggle('enabled', cb.checked);
       }
+      markChanged();
     });
+  });
+
+  // Number input changes
+  document.querySelectorAll('.grules-input').forEach(function(input) {
+    input.addEventListener('change', markChanged);
   });
 
   saveBtn.addEventListener('click', async function() {
@@ -299,7 +400,6 @@
     var localeRadio = document.querySelector('input[name="locale"]:checked');
     if (localeRadio) body.locale = localeRadio.value;
 
-    // Collect enabled roles from toggles
     var roleToggles = document.querySelectorAll('.grules-role-toggle');
     if (roleToggles.length > 0) {
       var enabledRoles = [];
@@ -309,7 +409,6 @@
       body.enabledRoles = enabledRoles;
     }
 
-    // Validation
     if (body.minPlayers && (body.minPlayers < 3 || body.minPlayers > 6)) {
       statusEl.textContent = '❌ Min doit être entre 3 et 6';
       statusEl.className = 'grules-save-status error';
@@ -341,6 +440,8 @@
 
       var result = await res.json();
       if (result.success) {
+        hasChanges = false;
+        saveBar.classList.remove('visible');
         statusEl.textContent = '✅ Enregistré !';
         statusEl.className = 'grules-save-status success';
         setTimeout(function() { statusEl.textContent = ''; }, 3000);
