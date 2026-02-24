@@ -169,7 +169,7 @@ module.exports = {
       await interaction.reply({ embeds: [embed], ephemeral: true });
 
       // Vérifier si le setup est complet
-      if (config.isSetupComplete()) {
+      if (config.isSetupComplete(interaction.guildId)) {
         await interaction.followUp({
           content: t('cmd.setup.setup_complete'),
           ephemeral: true
@@ -191,7 +191,7 @@ module.exports = {
 
     if (!url) {
       // Désactiver le webhook
-      config.setMonitoringWebhookUrl(null);
+      config.setMonitoringWebhookUrl(null, interaction.guildId);
       await interaction.reply({
         content: t('cmd.setup.webhook_disabled'),
         ephemeral: true
@@ -208,7 +208,7 @@ module.exports = {
       return;
     }
 
-    const success = config.setMonitoringWebhookUrl(url);
+    const success = config.setMonitoringWebhookUrl(url, interaction.guildId);
 
     if (success) {
       const embed = new EmbedBuilder()
@@ -362,7 +362,8 @@ module.exports = {
    * Affiche la configuration actuelle
    */
   async showStatus(interaction, config) {
-    const summary = config.getSummary();
+    const guildId = interaction.guildId;
+    const summary = config.getSummary(guildId);
     const setupComplete = summary.setupComplete;
 
     const embed = new EmbedBuilder()
@@ -422,7 +423,7 @@ module.exports = {
 
     // Ajouter les clés manquantes si setup incomplet
     if (!setupComplete) {
-      const missing = config.getMissingSetupKeys();
+      const missing = config.getMissingSetupKeys(guildId);
       embed.addFields({
         name: t('cmd.setup.missing_config'),
         value: missing.map(m => `• **${m.description}** (\`${m.key}\`)`).join('\n'),
@@ -440,13 +441,15 @@ module.exports = {
    */
   async runWizard(interaction, config) {
     // Vérifier si déjà configuré
-    if (config.isSetupComplete()) {
+    if (config.isSetupComplete(interaction.guildId)) {
       await interaction.reply({
         content: t('cmd.setup.already_configured'),
         ephemeral: true
       });
       return;
     }
+
+    const guildId = interaction.guildId;
 
     const embed = new EmbedBuilder()
       .setTitle(t('cmd.setup.wizard_title'))

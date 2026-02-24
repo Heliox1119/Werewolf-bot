@@ -368,22 +368,23 @@ class ConfigManager {
 
   /**
    * Récupère un résumé de la configuration
+   * @param {string} [guildId] - Guild ID for per-guild config
    */
-  getSummary() {
+  getSummary(guildId = null) {
     return {
-      setupComplete: this.isSetupComplete(),
+      setupComplete: this.isSetupComplete(guildId),
       discord: {
-        categoryId: this.getCategoryId(),
+        categoryId: this.getCategoryId(guildId),
         emojis: Object.keys(this.getEmojis()).length
       },
       monitoring: {
-        webhookUrl: this.getMonitoringWebhookUrl() ? t('cmd.setup.configured') : t('cmd.setup.not_configured'),
+        webhookUrl: this.getMonitoringWebhookUrl(guildId) ? t('cmd.setup.configured') : t('cmd.setup.not_configured'),
         alertsEnabled: this.isMonitoringAlertsEnabled(),
         metricsInterval: `${this.getMetricsInterval() / 1000}s`
       },
       game: {
-        defaultRules: this.getDefaultGameRules(),
-        enabledRoles: this.getEnabledRoles().length,
+        defaultRules: this.getDefaultGameRules(guildId),
+        enabledRoles: this.getEnabledRoles(guildId).length,
         lobbyTimeout: `${this.getLobbyTimeout() / 60000}min`
       },
       totalKeys: this.cache.size
