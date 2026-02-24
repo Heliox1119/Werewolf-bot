@@ -160,30 +160,37 @@ client.once("clientReady", async () => {
   }
 
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+  const commandsJson = client.commands.map(cmd => cmd.data.toJSON());
 
   try {
+    // Toujours enregistrer les commandes globalement (propagation ~1h pour les nouveaux serveurs)
+    await rest.put(
+      Routes.applicationCommands(process.env.CLIENT_ID),
+      { body: commandsJson }
+    );
+    logger.success("✅ Slash commands registered (global)", { count: client.commands.size });
+
+    // Si GUILD_ID défini, ajouter aussi en guild pour accès instantané (dev/test)
     if (process.env.GUILD_ID) {
-      // Enregistrement guild uniquement (accès instantané, pas de doublons)
       await rest.put(
         Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
-        { body: client.commands.map(cmd => cmd.data.toJSON()) }
+        { body: commandsJson }
       );
-      logger.success("✅ Slash commands registered (guild instant)", { guildId: process.env.GUILD_ID });
-
-      // Vider les commandes globales pour éviter les doublons
-      await rest.put(
-        Routes.applicationCommands(process.env.CLIENT_ID),
-        { body: [] }
-      );
-      logger.info("🧹 Global commands cleared (guild-only mode)");
-    } else {
-      // Pas de GUILD_ID → enregistrement global (propagation ~1h)
-      await rest.put(
-        Routes.applicationCommands(process.env.CLIENT_ID),
-        { body: client.commands.map(cmd => cmd.data.toJSON()) }
-      );
-      logger.success("✅ Slash commands registered (global)", { count: client.commands.size });
+      logger.success("✅ Slash commands also registered (guild instant)", { guildId: process.env.GUILD_ID });
     }
+
+    // Auto-enregistrer les commandes quand le bot rejoint un nouveau serveur
+    client.on('guildCreate', async (guild) => {
+      try {
+        await rest.put(
+          Routes.applicationGuildCommands(process.env.CLIENT_ID, guild.id),
+          { body: commandsJson }
+        );
+        logger.success(`✅ Slash commands registered for new guild`, { guildId: guild.id, guildName: guild.name });
+      } catch (err) {
+        logger.error(`Failed to register commands for new guild`, { guildId: guild.id, error: err.message });
+      }
+    });
 
       // ─── Permission check (all guilds) ────────────────────────────
       const REQUIRED_PERMS = [
