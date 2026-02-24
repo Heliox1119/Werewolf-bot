@@ -239,8 +239,56 @@ class GameManager extends EventEmitter {
       logger.warn('Invalid FSM transition attempted', { from, to: newSubPhase, channelId: game.mainChannelId });
       // Still allow it for backward compatibility, but log loudly
     }
+    // Persist first to avoid exposing in-memory mutation before DB commit.
+    this.db.updateGame(game.mainChannelId, { subPhase: newSubPhase });
     game.subPhase = newSubPhase;
     this.markDirty(game.mainChannelId);
+  }
+
+  _createStateSnapshot(game) {
+    return {
+      phase: game.phase,
+      subPhase: game.subPhase,
+      dayCount: game.dayCount,
+      nightVictim: game.nightVictim,
+      wolfVotes: game.wolfVotes instanceof Map
+        ? new Map(game.wolfVotes)
+        : (game.wolfVotes && typeof game.wolfVotes === 'object' ? { ...game.wolfVotes } : game.wolfVotes),
+      votes: game.votes ? new Map(game.votes) : new Map(),
+      voteVoters: game.voteVoters ? new Map(game.voteVoters) : new Map(),
+      voteIncrements: game._voteIncrements ? new Map(game._voteIncrements) : null,
+      witchKillTarget: game.witchKillTarget,
+      witchSave: game.witchSave,
+      whiteWolfKillTarget: game.whiteWolfKillTarget,
+      protectedPlayerId: game.protectedPlayerId,
+      lastProtectedPlayerId: game.lastProtectedPlayerId,
+      villageRolesPowerless: game.villageRolesPowerless,
+      endedAt: game.endedAt,
+      players: (game.players || []).map(p => ({ ...p })),
+      dead: (game.dead || []).map(p => ({ ...p }))
+    };
+  }
+
+  _restoreStateSnapshot(game, snapshot) {
+    game.phase = snapshot.phase;
+    game.subPhase = snapshot.subPhase;
+    game.dayCount = snapshot.dayCount;
+    game.nightVictim = snapshot.nightVictim;
+    game.wolfVotes = snapshot.wolfVotes instanceof Map
+      ? new Map(snapshot.wolfVotes)
+      : (snapshot.wolfVotes && typeof snapshot.wolfVotes === 'object' ? { ...snapshot.wolfVotes } : snapshot.wolfVotes);
+    game.votes = new Map(snapshot.votes || []);
+    game.voteVoters = new Map(snapshot.voteVoters || []);
+    game._voteIncrements = snapshot.voteIncrements ? new Map(snapshot.voteIncrements) : null;
+    game.witchKillTarget = snapshot.witchKillTarget;
+    game.witchSave = snapshot.witchSave;
+    game.whiteWolfKillTarget = snapshot.whiteWolfKillTarget;
+    game.protectedPlayerId = snapshot.protectedPlayerId;
+    game.lastProtectedPlayerId = snapshot.lastProtectedPlayerId;
+    game.villageRolesPowerless = snapshot.villageRolesPowerless;
+    game.endedAt = snapshot.endedAt;
+    game.players = (snapshot.players || []).map(p => ({ ...p }));
+    game.dead = (snapshot.dead || []).map(p => ({ ...p }));
   }
 
   // Retourne toutes les parties actives sous forme de tableau
@@ -581,6 +629,7 @@ class GameManager extends EventEmitter {
   async transitionToDay(guild, game) {
     if (game.phase !== PHASES.NIGHT) return;
     const release = await this.gameMutex.acquire(game.mainChannelId);
+    const snapshot = this._createStateSnapshot(game);
 
     try {
       // Re-check after acquiring lock
@@ -727,6 +776,11 @@ class GameManager extends EventEmitter {
         // Avancer vers VOTE_CAPITAINE ou DELIBERATION
         await this.advanceSubPhase(guild, game);
       }
+
+      this.syncGameToDb(game.mainChannelId, { throwOnError: true });
+    } catch (error) {
+      this._restoreStateSnapshot(game, snapshot);
+      throw error;
     } finally {
       release();
     }
@@ -735,6 +789,7 @@ class GameManager extends EventEmitter {
   async transitionToNight(guild, game) {
     if (game.phase !== PHASES.DAY) return;
     const release = await this.gameMutex.acquire(game.mainChannelId);
+    const snapshot = this._createStateSnapshot(game);
     this.clearDayTimeout(game);
 
     try {
@@ -835,6 +890,11 @@ class GameManager extends EventEmitter {
       // Lancer le timeout AFK pour les loups
       this.startNightAfkTimeout(guild, game);
 
+      this.syncGameToDb(game.mainChannelId, { throwOnError: true });
+
+    } catch (error) {
+      this._restoreStateSnapshot(game, snapshot);
+      throw error;
     } finally {
       release();
     }
@@ -844,6 +904,7 @@ class GameManager extends EventEmitter {
     if (game.phase === PHASES.ENDED) return;
     const victor = this.checkWinner(game);
     if (victor === null) return;
+    const snapshot = this._createStateSnapshot(game);
 
     // Traduire le résultat pour l'affichage
     const victorDisplay = t(`game.victory_${victor}_display`) || victor;
@@ -923,6 +984,13 @@ class GameManager extends EventEmitter {
       dayCount: game.dayCount,
       duration: game.endedAt - game.startedAt
     });
+
+    try {
+      this.syncGameToDb(game.mainChannelId, { throwOnError: true });
+    } catch (error) {
+      this._restoreStateSnapshot(game, snapshot);
+      throw error;
+    }
   }
 
   formatDurationMs(ms) {
@@ -2249,65 +2317,71 @@ class GameManager extends EventEmitter {
       return game.phase;
     }
 
-    // Passer de NIGHT à DAY ou DAY à NIGHT
-    game.phase = game.phase === PHASES.NIGHT ? PHASES.DAY : PHASES.NIGHT;
+    const snapshot = this._createStateSnapshot(game);
 
-    // Si on passe au jour, incrémenter le compteur de jours
-    if (game.phase === PHASES.DAY) {
-      game.dayCount = (game.dayCount || 0) + 1;
-    }
+    // Compute next state first (DB-first persistence)
+    const nextPhase = game.phase === PHASES.NIGHT ? PHASES.DAY : PHASES.NIGHT;
+    const nextDayCount = nextPhase === PHASES.DAY ? (game.dayCount || 0) + 1 : (game.dayCount || 0);
+    let nextSubPhase = game.subPhase;
 
-    // Synchroniser avec la DB
-    this.db.updateGame(game.mainChannelId, {
-      phase: game.phase,
-      subPhase: game.subPhase,
-      dayCount: game.dayCount
-    });
-
-    // Réinitialiser les votes
-    game.votes.clear();
-    if (game.voteVoters) {
-      game.voteVoters.clear();
-    }
-    if (game._voteIncrements) {
-      game._voteIncrements.clear();
-    }
-    // Effacer les votes du tour précédent dans la DB
-    this.db.clearVotes(game.mainChannelId, 'village', game.dayCount);
-
-    // Reset night victim only when a new night starts
-    if (game.phase === PHASES.NIGHT) {
-      game.nightVictim = null;
-      game.wolfVotes = null; // Reset wolf consensus votes
-      // Première nuit avec Cupidon vivant : sous-phase CUPIDON d'abord
-      const isFirstNight = (game.dayCount || 0) === 0;
+    if (nextPhase === PHASES.NIGHT) {
+      const isFirstNight = nextDayCount === 0;
       const cupidAlive = this.hasAliveRealRole(game, ROLES.CUPID);
       const cupidNotUsed = !game.lovers || game.lovers.length === 0;
       if (isFirstNight && cupidAlive && cupidNotUsed) {
-        this._setSubPhase(game, PHASES.CUPIDON);
+        nextSubPhase = PHASES.CUPIDON;
       } else {
-        // Si Salvateur en jeu et pas de perte de pouvoirs, sous-phase SALVATEUR
         const salvateurAlive = this.hasAliveRealRole(game, ROLES.SALVATEUR);
-        if (salvateurAlive && !game.villageRolesPowerless) {
-          this._setSubPhase(game, PHASES.SALVATEUR);
-        } else {
-          this._setSubPhase(game, PHASES.LOUPS);
-        }
+        nextSubPhase = (salvateurAlive && !game.villageRolesPowerless) ? PHASES.SALVATEUR : PHASES.LOUPS;
       }
     } else {
-      this._setSubPhase(game, PHASES.REVEIL);
+      nextSubPhase = PHASES.REVEIL;
     }
 
-    // Mettre à jour les permissions vocales
-    await this.updateVoicePerms(guild, game);
+    try {
+      // Persist first: no visible mutation before DB commit
+      this.db.updateGame(game.mainChannelId, {
+        phase: nextPhase,
+        subPhase: nextSubPhase,
+        dayCount: nextDayCount
+      });
 
-    this._emitGameEvent(game, 'phaseChanged', {
-      phase: game.phase,
-      subPhase: game.subPhase,
-      dayCount: game.dayCount
-    });
+      // Apply in-memory only after successful DB write
+      game.phase = nextPhase;
+      game.dayCount = nextDayCount;
+      game.subPhase = nextSubPhase;
 
-    return game.phase;
+      // Réinitialiser les votes
+      game.votes.clear();
+      if (game.voteVoters) {
+        game.voteVoters.clear();
+      }
+      if (game._voteIncrements) {
+        game._voteIncrements.clear();
+      }
+      // Effacer les votes du tour précédent dans la DB
+      this.db.clearVotes(game.mainChannelId, 'village', game.dayCount);
+
+      // Reset night victim only when a new night starts
+      if (game.phase === PHASES.NIGHT) {
+        game.nightVictim = null;
+        game.wolfVotes = null; // Reset wolf consensus votes
+      }
+
+      // Mettre à jour les permissions vocales
+      await this.updateVoicePerms(guild, game);
+
+      this._emitGameEvent(game, 'phaseChanged', {
+        phase: game.phase,
+        subPhase: game.subPhase,
+        dayCount: game.dayCount
+      });
+
+      return game.phase;
+    } catch (error) {
+      this._restoreStateSnapshot(game, snapshot);
+      throw error;
+    }
   }
 
   voteCaptain(channelId, voterId, targetId) {
@@ -2622,7 +2696,8 @@ class GameManager extends EventEmitter {
   }
 
   // Synchronise une partie du cache vers la base de données (wrapped in transaction)
-  syncGameToDb(channelId) {
+  syncGameToDb(channelId, options = {}) {
+    const { throwOnError = false } = options;
     const game = this.games.get(channelId);
     if (!game) return;
 
@@ -2689,6 +2764,7 @@ class GameManager extends EventEmitter {
       logger.debug('Game synced to DB (transaction)', { channelId });
     } catch (error) {
       logger.error('Failed to sync game to DB', error);
+      if (throwOnError) throw error;
     }
   }
 

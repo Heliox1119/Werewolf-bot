@@ -829,6 +829,39 @@ describe('GameManager', () => {
       expect(game.wolfVotes).toBeNull();
       expect(game.nightVictim).toBeNull();
     });
+
+    test('nextPhase() rolls back in-memory state when DB update fails', async () => {
+      gameManager.create('ch-fsm-db-fail');
+      const game = gameManager.games.get('ch-fsm-db-fail');
+      for (let i = 0; i < 5; i++) {
+        game.players.push(createMockPlayer({ id: `${710000000000000000 + i}`, username: `P${i}`, role: null }));
+      }
+      gameManager.start('ch-fsm-db-fail', [ROLES.WEREWOLF, ROLES.SEER, ROLES.WITCH, ROLES.HUNTER, ROLES.VILLAGER]);
+
+      game.votes.set('target-1', 2);
+      game.voteVoters.set('voter-1', 'target-1');
+
+      const beforePhase = game.phase;
+      const beforeSubPhase = game.subPhase;
+      const beforeDayCount = game.dayCount;
+      const beforeVotesSize = game.votes.size;
+      const beforeVoteVotersSize = game.voteVoters.size;
+
+      const updateGameSpy = jest.spyOn(gameManager.db, 'updateGame').mockImplementation(() => {
+        throw new Error('Simulated DB failure');
+      });
+
+      const mockGuild = createMockGuild();
+      await expect(gameManager.nextPhase(mockGuild, game)).rejects.toThrow('Simulated DB failure');
+
+      expect(game.phase).toBe(beforePhase);
+      expect(game.subPhase).toBe(beforeSubPhase);
+      expect(game.dayCount).toBe(beforeDayCount);
+      expect(game.votes.size).toBe(beforeVotesSize);
+      expect(game.voteVoters.size).toBe(beforeVoteVotersSize);
+
+      updateGameSpy.mockRestore();
+    });
   });
 
   describe('getGameSnapshot()', () => {

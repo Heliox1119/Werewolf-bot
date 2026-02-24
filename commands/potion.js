@@ -138,7 +138,7 @@ module.exports = {
 
     if (game.phase === PHASES.NIGHT) {
       if (gameManager.hasAliveRealRole(game, ROLES.SEER)) {
-        game.subPhase = PHASES.VOYANTE;
+        gameManager._setSubPhase(game, PHASES.VOYANTE);
         await gameManager.announcePhase(interaction.guild, game, t('phase.seer_wakes'));
         gameManager.startNightAfkTimeout(interaction.guild, game);
       } else {

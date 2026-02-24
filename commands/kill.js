@@ -145,7 +145,7 @@ module.exports = {
     // Vérifier si le Loup Blanc se réveille (nuits impaires, dayCount >= 1)
     const isOddNight = (game.dayCount || 0) % 2 === 1;
     if (isOddNight && gameManager.hasAliveRealRole(game, ROLES.WHITE_WOLF)) {
-      game.subPhase = PHASES.LOUP_BLANC;
+      gameManager._setSubPhase(game, PHASES.LOUP_BLANC);
       await gameManager.announcePhase(guild, game, t('phase.white_wolf_wakes'));
       gameManager.notifyTurn(guild, game, ROLES.WHITE_WOLF);
       gameManager.startNightAfkTimeout(guild, game);
@@ -153,7 +153,7 @@ module.exports = {
     }
 
     if (gameManager.hasAliveRealRole(game, ROLES.WITCH)) {
-      game.subPhase = PHASES.SORCIERE;
+      gameManager._setSubPhase(game, PHASES.SORCIERE);
       // Informer la sorcière de la victime dans son channel privé
       if (game.witchChannelId) {
         try {
@@ -167,7 +167,7 @@ module.exports = {
     }
 
     if (gameManager.hasAliveRealRole(game, ROLES.SEER)) {
-      game.subPhase = PHASES.VOYANTE;
+      gameManager._setSubPhase(game, PHASES.VOYANTE);
       await gameManager.announcePhase(guild, game, t('phase.seer_wakes'));
       gameManager.startNightAfkTimeout(guild, game);
       return;
@@ -215,7 +215,7 @@ module.exports = {
 
     // Avancer vers la sous-phase suivante (SORCIERE ou VOYANTE ou jour)
     if (gameManager.hasAliveRealRole(game, ROLES.WITCH)) {
-      game.subPhase = PHASES.SORCIERE;
+      gameManager._setSubPhase(game, PHASES.SORCIERE);
       if (game.witchChannelId && game.nightVictim) {
         try {
           const nightVictimPlayer = game.players.find(p => p.id === game.nightVictim);
@@ -229,7 +229,7 @@ module.exports = {
     }
 
     if (gameManager.hasAliveRealRole(game, ROLES.SEER)) {
-      game.subPhase = PHASES.VOYANTE;
+      gameManager._setSubPhase(game, PHASES.VOYANTE);
       await gameManager.announcePhase(interaction.guild, game, t('phase.seer_wakes'));
       gameManager.startNightAfkTimeout(interaction.guild, game);
       return;
