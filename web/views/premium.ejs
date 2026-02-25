@@ -1,50 +1,374 @@
 <%- include('partials/header') %>
 
-<div class="premium-page">
-  <div class="premium-hero">
-    <span class="premium-icon">👑</span>
-    <h1 data-i18n="premium.title">Werewolf Premium</h1>
-    <p data-i18n="premium.subtitle">Unlock exclusive features and enhance your Werewolf experience. Coming soon!</p>
-  </div>
+<!-- ═══ PREMIUM — GOLDEN PARTICLE CANVAS ═══ -->
+<canvas class="pm-particles" id="pm-particles"></canvas>
 
-  <div class="premium-features">
-    <div class="premium-feature-card">
-      <span class="premium-feature-icon">🎨</span>
-      <h3 data-i18n="premium.feature_themes">Custom Themes</h3>
-      <p data-i18n="premium.feature_themes_desc">Access exclusive visual themes and custom embed colors for your server.</p>
+<!-- ═══ HERO — CINEMATIC CROWN ═══ -->
+<section class="pm-hero">
+  <div class="pm-hero-bg">
+    <div class="pm-hero-gradient"></div>
+    <div class="pm-hero-rays"></div>
+    <div class="pm-hero-noise"></div>
+  </div>
+  <div class="pm-hero-inner">
+    <div class="pm-crown-wrap">
+      <div class="pm-crown-glow"></div>
+      <span class="pm-crown">👑</span>
+      <div class="pm-crown-ring"></div>
+      <div class="pm-crown-ring pm-crown-ring-2"></div>
     </div>
-    <div class="premium-feature-card">
-      <span class="premium-feature-icon">🐺</span>
+    <h1 class="pm-hero-title" data-i18n="premium.title">Werewolf <span>Premium</span></h1>
+    <p class="pm-hero-sub" data-i18n="premium.hero_sub">Elevate your Werewolf experience to legendary status</p>
+    <div class="pm-hero-stats">
+      <div class="pm-stat">
+        <span class="pm-stat-val" data-count="7">0</span>
+        <span class="pm-stat-label" data-i18n="premium.stat_roles">Exclusive Roles</span>
+      </div>
+      <div class="pm-stat-divider"></div>
+      <div class="pm-stat">
+        <span class="pm-stat-val" data-count="15">0</span>
+        <span class="pm-stat-label" data-i18n="premium.stat_themes">Custom Themes</span>
+      </div>
+      <div class="pm-stat-divider"></div>
+      <div class="pm-stat">
+        <span class="pm-stat-val" data-count="50">0</span>
+        <span class="pm-stat-label" data-i18n="premium.stat_sounds">Sound Effects</span>
+      </div>
+      <div class="pm-stat-divider"></div>
+      <div class="pm-stat">
+        <span class="pm-stat-val pm-stat-inf">∞</span>
+        <span class="pm-stat-label" data-i18n="premium.stat_fun">Fun</span>
+      </div>
+    </div>
+    <a href="#pm-plans" class="pm-hero-cta">
+      <span class="pm-cta-shimmer"></span>
+      <span class="pm-cta-text" data-i18n="premium.cta_explore">Discover Plans</span>
+      <span class="pm-cta-arrow">↓</span>
+    </a>
+  </div>
+</section>
+
+<!-- ═══ BEFORE / AFTER COMPARISON ═══ -->
+<section class="pm-compare" id="pm-compare">
+  <h2 class="pm-section-title" data-i18n="premium.compare_title">Free vs <span>Premium</span></h2>
+  <p class="pm-section-sub" data-i18n="premium.compare_sub">See the difference at a glance</p>
+  <div class="pm-compare-grid">
+    <!-- Free column -->
+    <div class="pm-compare-col pm-col-free">
+      <div class="pm-col-header">
+        <span class="pm-col-icon">🐺</span>
+        <span class="pm-col-name" data-i18n="premium.plan_free">Free</span>
+      </div>
+      <ul class="pm-compare-list">
+        <li class="pm-check">4 base roles</li>
+        <li class="pm-check">Basic game mechanics</li>
+        <li class="pm-check">Text channels</li>
+        <li class="pm-cross">No custom themes</li>
+        <li class="pm-cross">No sound effects</li>
+        <li class="pm-cross">Limited stats</li>
+        <li class="pm-cross">Community support</li>
+        <li class="pm-cross">No custom roles</li>
+      </ul>
+    </div>
+    <!-- Premium column -->
+    <div class="pm-compare-col pm-col-premium">
+      <div class="pm-col-badge" data-i18n="premium.popular">Most Popular</div>
+      <div class="pm-col-header">
+        <span class="pm-col-icon">👑</span>
+        <span class="pm-col-name" data-i18n="premium.plan_premium">Premium</span>
+      </div>
+      <ul class="pm-compare-list">
+        <li class="pm-check pm-gold">11+ roles including exclusives</li>
+        <li class="pm-check pm-gold">Advanced game mechanics</li>
+        <li class="pm-check pm-gold">Voice + text channels</li>
+        <li class="pm-check pm-gold">15 custom themes</li>
+        <li class="pm-check pm-gold">50+ sound effects</li>
+        <li class="pm-check pm-gold">Advanced analytics</li>
+        <li class="pm-check pm-gold">Priority support 24/7</li>
+        <li class="pm-check pm-gold">Create your own roles</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FEATURES SHOWCASE ═══ -->
+<section class="pm-features" id="pm-features">
+  <h2 class="pm-section-title" data-i18n="premium.features_title">Premium <span>Features</span></h2>
+  <p class="pm-section-sub" data-i18n="premium.features_sub">Everything you need for the ultimate Werewolf experience</p>
+  <div class="pm-features-grid">
+    <div class="pm-feat" style="--fi:0">
+      <div class="pm-feat-icon-wrap"><span class="pm-feat-icon">🐺</span><div class="pm-feat-glow"></div></div>
       <h3 data-i18n="premium.feature_roles">Exclusive Roles</h3>
-      <p data-i18n="premium.feature_roles_desc">Unlock additional premium roles like the Fox, the Blacksmith, and more.</p>
+      <p data-i18n="premium.feat_roles_desc">Unlock 7 premium roles: White Wolf, Fox, Cupid, Savior, Elder, Village Idiot, and Thief.</p>
     </div>
-    <div class="premium-feature-card">
-      <span class="premium-feature-icon">📊</span>
-      <h3 data-i18n="premium.feature_stats">Advanced Stats</h3>
-      <p data-i18n="premium.feature_stats_desc">Detailed analytics, advanced leaderboards and game history graphs.</p>
+    <div class="pm-feat" style="--fi:1">
+      <div class="pm-feat-icon-wrap"><span class="pm-feat-icon">🎨</span><div class="pm-feat-glow"></div></div>
+      <h3 data-i18n="premium.feature_themes">Custom Themes</h3>
+      <p data-i18n="premium.feat_themes_desc">Transform your game visuals with 15 handcrafted themes — from Blood Moon to Enchanted Forest.</p>
     </div>
-    <div class="premium-feature-card">
-      <span class="premium-feature-icon">⚡</span>
-      <h3 data-i18n="premium.feature_priority">Priority Support</h3>
-      <p data-i18n="premium.feature_priority_desc">Get priority access to help, bug fixes, and feature requests.</p>
-    </div>
-    <div class="premium-feature-card">
-      <span class="premium-feature-icon">🔊</span>
+    <div class="pm-feat" style="--fi:2">
+      <div class="pm-feat-icon-wrap"><span class="pm-feat-icon">🔊</span><div class="pm-feat-glow"></div></div>
       <h3 data-i18n="premium.feature_sounds">Sound Effects</h3>
-      <p data-i18n="premium.feature_sounds_desc">Custom audio cues for phase transitions, deaths, and victories.</p>
+      <p data-i18n="premium.feat_sounds_desc">Immersive audio: wolf howls at night, church bells at dawn, dramatic vote reveals.</p>
     </div>
-    <div class="premium-feature-card">
-      <span class="premium-feature-icon">🏅</span>
+    <div class="pm-feat" style="--fi:3">
+      <div class="pm-feat-icon-wrap"><span class="pm-feat-icon">📊</span><div class="pm-feat-glow"></div></div>
+      <h3 data-i18n="premium.feature_stats">Advanced Stats</h3>
+      <p data-i18n="premium.feat_stats_desc">Win rates per role, heat maps, kill chains, and exportable CSV reports.</p>
+    </div>
+    <div class="pm-feat" style="--fi:4">
+      <div class="pm-feat-icon-wrap"><span class="pm-feat-icon">⚡</span><div class="pm-feat-glow"></div></div>
+      <h3 data-i18n="premium.feature_priority">Priority Support</h3>
+      <p data-i18n="premium.feat_priority_desc">Direct line to our dev team. Bugs fixed in hours, not days.</p>
+    </div>
+    <div class="pm-feat" style="--fi:5">
+      <div class="pm-feat-icon-wrap"><span class="pm-feat-icon">🏅</span><div class="pm-feat-glow"></div></div>
       <h3 data-i18n="premium.feature_badges">Premium Badge</h3>
-      <p data-i18n="premium.feature_badges_desc">Show off your premium status with an exclusive profile badge.</p>
+      <p data-i18n="premium.feat_badges_desc">Golden crown badge on leaderboards, profile, and in-game mentions.</p>
+    </div>
+    <div class="pm-feat" style="--fi:6">
+      <div class="pm-feat-icon-wrap"><span class="pm-feat-icon">🛡️</span><div class="pm-feat-glow"></div></div>
+      <h3 data-i18n="premium.feat_custom_title">Custom Roles</h3>
+      <p data-i18n="premium.feat_custom_desc">Design entirely new roles with custom abilities, camps, and win conditions.</p>
+    </div>
+    <div class="pm-feat" style="--fi:7">
+      <div class="pm-feat-icon-wrap"><span class="pm-feat-icon">🎭</span><div class="pm-feat-glow"></div></div>
+      <h3 data-i18n="premium.feat_scenarios_title">Scenarios</h3>
+      <p data-i18n="premium.feat_scenarios_desc">Pre-built game scenarios with unique rules, twists, and win conditions.</p>
     </div>
   </div>
+</section>
 
-  <div style="text-align: center; margin-top: 3rem; padding: 2rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius);">
-    <span style="font-size: 2rem; display: block; margin-bottom: 0.75rem;">🚧</span>
-    <p style="font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem;" data-i18n="premium.coming_soon">Coming Soon</p>
-    <p style="color: var(--text-secondary); font-size: 0.85rem;" data-i18n="premium.coming_soon_desc">Premium features are currently under development. Stay tuned for updates!</p>
+<!-- ═══ ROLE SHOWCASE — HOLOGRAPHIC CAROUSEL ═══ -->
+<section class="pm-roles" id="pm-roles">
+  <h2 class="pm-section-title" data-i18n="premium.roles_title">Exclusive <span>Roles</span></h2>
+  <p class="pm-section-sub" data-i18n="premium.roles_sub">Unlock these powerful characters</p>
+  <div class="pm-roles-track" id="pm-roles-track">
+    <div class="pm-role-card" data-role="loupBlanc">
+      <div class="pm-role-holo"></div>
+      <img src="/static/img/roles/loupBlanc.webp" alt="Loup Blanc" class="pm-role-img">
+      <div class="pm-role-info">
+        <span class="pm-role-name">Loup Blanc</span>
+        <span class="pm-role-camp pm-camp-wolf">🐺 Loups-Garous</span>
+      </div>
+    </div>
+    <div class="pm-role-card" data-role="renard">
+      <div class="pm-role-holo"></div>
+      <img src="/static/img/roles/renard.webp" alt="Renard" class="pm-role-img">
+      <div class="pm-role-info">
+        <span class="pm-role-name">Renard</span>
+        <span class="pm-role-camp pm-camp-village">🏘️ Village</span>
+      </div>
+    </div>
+    <div class="pm-role-card" data-role="cupidon">
+      <div class="pm-role-holo"></div>
+      <img src="/static/img/roles/cupidon.webp" alt="Cupidon" class="pm-role-img">
+      <div class="pm-role-info">
+        <span class="pm-role-name">Cupidon</span>
+        <span class="pm-role-camp pm-camp-village">🏘️ Village</span>
+      </div>
+    </div>
+    <div class="pm-role-card" data-role="salvateur">
+      <div class="pm-role-holo"></div>
+      <img src="/static/img/roles/salvateur.webp" alt="Salvateur" class="pm-role-img">
+      <div class="pm-role-info">
+        <span class="pm-role-name">Salvateur</span>
+        <span class="pm-role-camp pm-camp-village">🏘️ Village</span>
+      </div>
+    </div>
+    <div class="pm-role-card" data-role="ancien">
+      <div class="pm-role-holo"></div>
+      <img src="/static/img/roles/ancien.webp" alt="Ancien" class="pm-role-img">
+      <div class="pm-role-info">
+        <span class="pm-role-name">Ancien</span>
+        <span class="pm-role-camp pm-camp-village">🏘️ Village</span>
+      </div>
+    </div>
+    <div class="pm-role-card" data-role="voleur">
+      <div class="pm-role-holo"></div>
+      <img src="/static/img/roles/voleur.webp" alt="Voleur" class="pm-role-img">
+      <div class="pm-role-info">
+        <span class="pm-role-name">Voleur</span>
+        <span class="pm-role-camp pm-camp-solo">🎭 Solo</span>
+      </div>
+    </div>
+    <div class="pm-role-card" data-role="petiteFille">
+      <div class="pm-role-holo"></div>
+      <img src="/static/img/roles/petiteFille.webp" alt="Petite Fille" class="pm-role-img">
+      <div class="pm-role-info">
+        <span class="pm-role-name">Petite Fille</span>
+        <span class="pm-role-camp pm-camp-village">🏘️ Village</span>
+      </div>
+    </div>
   </div>
-</div>
+</section>
 
+<!-- ═══ PRICING TIERS ═══ -->
+<section class="pm-pricing" id="pm-plans">
+  <h2 class="pm-section-title" data-i18n="premium.pricing_title">Choose Your <span>Plan</span></h2>
+  <p class="pm-section-sub" data-i18n="premium.pricing_sub">Flexible plans for every werewolf pack</p>
+
+  <!-- Billing toggle -->
+  <div class="pm-billing-toggle">
+    <span class="pm-billing-label pm-billing-active" id="pm-bill-monthly" data-i18n="premium.monthly">Monthly</span>
+    <button class="pm-toggle-track" id="pm-billing-switch" aria-label="Toggle billing period">
+      <span class="pm-toggle-thumb"></span>
+    </button>
+    <span class="pm-billing-label" id="pm-bill-yearly" data-i18n="premium.yearly">Yearly</span>
+    <span class="pm-save-badge" data-i18n="premium.save_badge">Save 25%</span>
+  </div>
+
+  <div class="pm-plans-grid">
+    <!-- Starter -->
+    <div class="pm-plan" style="--pi:0">
+      <div class="pm-plan-header">
+        <span class="pm-plan-icon">🌙</span>
+        <h3 class="pm-plan-name" data-i18n="premium.plan_starter">Starter</h3>
+        <p class="pm-plan-desc" data-i18n="premium.plan_starter_desc">Perfect for trying out premium</p>
+      </div>
+      <div class="pm-plan-price">
+        <span class="pm-price-currency">€</span>
+        <span class="pm-price-amount" data-monthly="2.99" data-yearly="2.25">2.99</span>
+        <span class="pm-price-period" data-i18n="premium.per_month">/month</span>
+      </div>
+      <ul class="pm-plan-features">
+        <li class="pm-pf-yes">3 premium roles</li>
+        <li class="pm-pf-yes">5 themes</li>
+        <li class="pm-pf-yes">Basic sound effects</li>
+        <li class="pm-pf-yes">Premium badge</li>
+        <li class="pm-pf-no">Custom roles</li>
+        <li class="pm-pf-no">Priority support</li>
+      </ul>
+      <button class="pm-plan-btn" data-i18n="premium.btn_get_started">Get Started</button>
+    </div>
+
+    <!-- Pro — FEATURED -->
+    <div class="pm-plan pm-plan-featured" style="--pi:1">
+      <div class="pm-plan-shine"></div>
+      <div class="pm-plan-popular" data-i18n="premium.popular">Most Popular</div>
+      <div class="pm-plan-header">
+        <span class="pm-plan-icon">🔥</span>
+        <h3 class="pm-plan-name" data-i18n="premium.plan_pro">Pro</h3>
+        <p class="pm-plan-desc" data-i18n="premium.plan_pro_desc">The ultimate experience</p>
+      </div>
+      <div class="pm-plan-price">
+        <span class="pm-price-currency">€</span>
+        <span class="pm-price-amount" data-monthly="4.99" data-yearly="3.75">4.99</span>
+        <span class="pm-price-period" data-i18n="premium.per_month">/month</span>
+      </div>
+      <ul class="pm-plan-features">
+        <li class="pm-pf-yes">All 7 premium roles</li>
+        <li class="pm-pf-yes">15 themes</li>
+        <li class="pm-pf-yes">50+ sound effects</li>
+        <li class="pm-pf-yes">Premium badge</li>
+        <li class="pm-pf-yes">Custom roles creator</li>
+        <li class="pm-pf-yes">Priority support 24/7</li>
+      </ul>
+      <button class="pm-plan-btn pm-plan-btn-gold" data-i18n="premium.btn_go_pro">Go Pro</button>
+    </div>
+
+    <!-- Lifetime -->
+    <div class="pm-plan" style="--pi:2">
+      <div class="pm-plan-header">
+        <span class="pm-plan-icon">💎</span>
+        <h3 class="pm-plan-name" data-i18n="premium.plan_lifetime">Lifetime</h3>
+        <p class="pm-plan-desc" data-i18n="premium.plan_lifetime_desc">One payment, forever yours</p>
+      </div>
+      <div class="pm-plan-price pm-price-once">
+        <span class="pm-price-currency">€</span>
+        <span class="pm-price-amount pm-price-lifetime">29.99</span>
+        <span class="pm-price-period" data-i18n="premium.one_time">one-time</span>
+      </div>
+      <ul class="pm-plan-features">
+        <li class="pm-pf-yes">Everything in Pro</li>
+        <li class="pm-pf-yes">Lifetime updates</li>
+        <li class="pm-pf-yes">Early access to new roles</li>
+        <li class="pm-pf-yes">Exclusive Lifetime badge</li>
+        <li class="pm-pf-yes">Scenario editor</li>
+        <li class="pm-pf-yes">Direct dev channel</li>
+      </ul>
+      <button class="pm-plan-btn" data-i18n="premium.btn_lifetime">Get Lifetime</button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SOCIAL PROOF ═══ -->
+<section class="pm-social">
+  <div class="pm-social-grid">
+    <div class="pm-testimonial" style="--ti:0">
+      <div class="pm-testi-stars">★★★★★</div>
+      <p class="pm-testi-text" data-i18n="premium.testi_1">"The premium roles completely changed our games. White Wolf creates amazing plot twists!"</p>
+      <div class="pm-testi-author">
+        <div class="pm-testi-avatar">A</div>
+        <div>
+          <span class="pm-testi-name">Alex</span>
+          <span class="pm-testi-server">Midnight Pack — 48 games</span>
+        </div>
+      </div>
+    </div>
+    <div class="pm-testimonial" style="--ti:1">
+      <div class="pm-testi-stars">★★★★★</div>
+      <p class="pm-testi-text" data-i18n="premium.testi_2">"Sound effects make it 10x more immersive. My friends can't stop playing."</p>
+      <div class="pm-testi-author">
+        <div class="pm-testi-avatar">M</div>
+        <div>
+          <span class="pm-testi-name">Marie</span>
+          <span class="pm-testi-server">Les Loups du Nord — 125 games</span>
+        </div>
+      </div>
+    </div>
+    <div class="pm-testimonial" style="--ti:2">
+      <div class="pm-testi-stars">★★★★★</div>
+      <p class="pm-testi-text" data-i18n="premium.testi_3">"Custom roles let us build scenarios we never thought possible. Worth every cent."</p>
+      <div class="pm-testi-author">
+        <div class="pm-testi-avatar">J</div>
+        <div>
+          <span class="pm-testi-name">Jules</span>
+          <span class="pm-testi-server">La Meute — 89 games</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FAQ ═══ -->
+<section class="pm-faq">
+  <h2 class="pm-section-title" data-i18n="premium.faq_title">Frequently <span>Asked</span></h2>
+  <div class="pm-faq-list">
+    <details class="pm-faq-item">
+      <summary data-i18n="premium.faq_q1">How do I activate Premium after payment?</summary>
+      <p data-i18n="premium.faq_a1">Once paid, your Discord account is instantly linked. Premium features activate within seconds.</p>
+    </details>
+    <details class="pm-faq-item">
+      <summary data-i18n="premium.faq_q2">Can I use Premium on multiple servers?</summary>
+      <p data-i18n="premium.faq_a2">Yes! Premium is tied to your Discord account and works on all servers where the bot is installed.</p>
+    </details>
+    <details class="pm-faq-item">
+      <summary data-i18n="premium.faq_q3">Can I cancel anytime?</summary>
+      <p data-i18n="premium.faq_a3">Absolutely. Cancel anytime with no questions asked. You keep access until the end of your billing period.</p>
+    </details>
+    <details class="pm-faq-item">
+      <summary data-i18n="premium.faq_q4">What payment methods do you accept?</summary>
+      <p data-i18n="premium.faq_a4">We accept credit cards, PayPal, and even crypto via our payment provider.</p>
+    </details>
+  </div>
+</section>
+
+<!-- ═══ FINAL CTA ═══ -->
+<section class="pm-final-cta">
+  <div class="pm-final-bg">
+    <div class="pm-final-glow"></div>
+  </div>
+  <div class="pm-final-inner">
+    <span class="pm-final-crown">👑</span>
+    <h2 data-i18n="premium.final_title">Ready to go Premium?</h2>
+    <p data-i18n="premium.final_sub">Join thousands of servers already enjoying the ultimate Werewolf experience.</p>
+    <a href="#pm-plans" class="pm-final-btn">
+      <span class="pm-cta-shimmer"></span>
+      <span data-i18n="premium.final_btn">Unlock Premium Now</span>
+    </a>
+  </div>
+</section>
+
+<script src="/static/js/premium.js"></script>
 <%- include('partials/footer') %>
