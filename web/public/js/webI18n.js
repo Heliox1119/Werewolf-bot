@@ -413,7 +413,7 @@
       'docs.when_odd': 'Nuits impaires (3, 5, 7...)',
 
       // Premium Page
-      'premium.title': 'Werewolf Premium',
+      'premium.title': 'Werewolf <span>Premium</span>',
       'premium.hero_sub': 'Élevez votre expérience Werewolf au rang de légende',
       'premium.stat_roles': 'Rôles exclusifs',
       'premium.stat_themes': 'Thèmes custom',
@@ -949,7 +949,7 @@
       'docs.when_odd': 'Odd nights (3, 5, 7...)',
 
       // Premium Page
-      'premium.title': 'Werewolf Premium',
+      'premium.title': 'Werewolf <span>Premium</span>',
       'premium.hero_sub': 'Elevate your Werewolf experience to legendary status',
       'premium.stat_roles': 'Exclusive Roles',
       'premium.stat_themes': 'Custom Themes',
@@ -1095,6 +1095,12 @@
       const key = el.getAttribute('data-i18n');
       const val = (translations[lang] && translations[lang][key]) || (translations.fr[key]);
       if (val) el.textContent = val;
+    });
+    // HTML-safe translations (preserves inner tags like <span>)
+    document.querySelectorAll('[data-i18n-html]').forEach(el => {
+      const key = el.getAttribute('data-i18n-html');
+      const val = (translations[lang] && translations[lang][key]) || (translations.fr[key]);
+      if (val) el.innerHTML = val;
     });
     // Also update placeholders
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
