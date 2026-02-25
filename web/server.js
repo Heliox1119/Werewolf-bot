@@ -1,5 +1,5 @@
 /**
- * Werewolf Bot — Web Dashboard Server v3.3.0
+ * Werewolf Bot — Web Dashboard Server v3.4.0
  * 
  * Express + Socket.IO server providing:
  * - Discord OAuth2 authentication
