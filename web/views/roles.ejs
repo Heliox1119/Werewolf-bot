@@ -1,55 +1,24 @@
 <%- include('partials/header') %>
 
 <%
-  // Role image map — maps role IDs (from game/roles.js) to image files
+  // ── Role data maps ──
   var roleImageMap = {
-    'WEREWOLF': 'loupSimple.webp',
-    'SEER': 'voyante.webp',
-    'WITCH': 'sorciere.png',
-    'HUNTER': 'chasseur.webp',
-    'CUPID': 'cupidon.webp',
-    'PETITE_FILLE': 'petiteFille.webp',
-    'VILLAGER': 'villageois.webp',
-    'IDIOT': 'idiot.webp',
-    'SALVATEUR': 'salvateur.webp',
-    'ANCIEN': 'ancien.webp',
-    'WHITE_WOLF': 'loupBlanc.webp',
-    'THIEF': 'voleur.webp'
+    'WEREWOLF': 'loupSimple.webp', 'SEER': 'voyante.webp', 'WITCH': 'sorciere.png',
+    'HUNTER': 'chasseur.webp', 'CUPID': 'cupidon.webp', 'PETITE_FILLE': 'petiteFille.webp',
+    'VILLAGER': 'villageois.webp', 'IDIOT': 'idiot.webp', 'SALVATEUR': 'salvateur.webp',
+    'ANCIEN': 'ancien.webp', 'WHITE_WOLF': 'loupBlanc.webp', 'THIEF': 'voleur.webp'
   };
-
-  // Camp classification
   var campMap = {
-    'WEREWOLF': 'wolves',
-    'SEER': 'village',
-    'WITCH': 'village',
-    'HUNTER': 'village',
-    'CUPID': 'village',
-    'PETITE_FILLE': 'village',
-    'VILLAGER': 'village',
-    'IDIOT': 'village',
-    'SALVATEUR': 'village',
-    'ANCIEN': 'village',
-    'WHITE_WOLF': 'solo',
-    'THIEF': 'village'
+    'WEREWOLF': 'wolves', 'SEER': 'village', 'WITCH': 'village', 'HUNTER': 'village',
+    'CUPID': 'village', 'PETITE_FILLE': 'village', 'VILLAGER': 'village', 'IDIOT': 'village',
+    'SALVATEUR': 'village', 'ANCIEN': 'village', 'WHITE_WOLF': 'solo', 'THIEF': 'village'
   };
-
-  // Role display names (French)
   var roleNameMap = {
-    'WEREWOLF': 'Loup-Garou',
-    'SEER': 'Voyante',
-    'WITCH': 'Sorci\u00e8re',
-    'HUNTER': 'Chasseur',
-    'CUPID': 'Cupidon',
-    'PETITE_FILLE': 'Petite Fille',
-    'VILLAGER': 'Villageois',
-    'IDIOT': 'Idiot du Village',
-    'SALVATEUR': 'Salvateur',
-    'ANCIEN': 'Ancien',
-    'WHITE_WOLF': 'Loup Blanc',
-    'THIEF': 'Voleur'
+    'WEREWOLF': 'Loup-Garou', 'SEER': 'Voyante', 'WITCH': 'Sorci\u00e8re', 'HUNTER': 'Chasseur',
+    'CUPID': 'Cupidon', 'PETITE_FILLE': 'Petite Fille', 'VILLAGER': 'Villageois',
+    'IDIOT': 'Idiot du Village', 'SALVATEUR': 'Salvateur', 'ANCIEN': 'Ancien',
+    'WHITE_WOLF': 'Loup Blanc', 'THIEF': 'Voleur'
   };
-
-  // Role descriptions (French)
   var roleDescMap = {
     'WEREWOLF': 'Chaque nuit, les loups-garous se r\u00e9unissent pour d\u00e9vorer un villageois.',
     'SEER': 'Chaque nuit, la voyante peut d\u00e9couvrir le r\u00f4le d\'un joueur.',
@@ -61,196 +30,280 @@
     'IDIOT': 'S\'il est vot\u00e9 par le village, il est r\u00e9v\u00e9l\u00e9 mais perd son droit de vote.',
     'SALVATEUR': 'Chaque nuit, il prot\u00e8ge un joueur de l\'attaque des loups-garous.',
     'ANCIEN': 'R\u00e9siste \u00e0 la premi\u00e8re attaque des loups-garous gr\u00e2ce \u00e0 sa robustesse.',
-    'WHITE_WOLF': 'Appartient au camp des loups mais joue en solitaire. Une nuit sur deux, il peut d\u00e9vorer un loup-garou. Il gagne s\u2019il est le dernier survivant.',
-    'THIEF': 'Au d\u00e9but de la nuit, le Voleur d\u00e9couvre 2 cartes et peut en choisir une pour \u00e9changer son r\u00f4le.'
+    'WHITE_WOLF': 'Joue en solitaire. Chasse avec la meute mais peut d\u00e9vorer un loup une nuit sur deux. Gagne s\u2019il est le dernier.',
+    'THIEF': 'D\u00e9couvre 2 cartes au d\u00e9but et peut \u00e9changer son r\u00f4le. Si les deux sont des loups, il doit en prendre une.'
   };
 
-  // Categories
+  // Ability phase
+  var phaseMap = {
+    'WEREWOLF': 'night', 'SEER': 'night', 'WITCH': 'night', 'HUNTER': 'death',
+    'CUPID': 'start', 'PETITE_FILLE': 'night', 'VILLAGER': 'day', 'IDIOT': 'day',
+    'SALVATEUR': 'night', 'ANCIEN': 'passive', 'WHITE_WOLF': 'night', 'THIEF': 'start'
+  };
+  var phaseIcons = { 'night': '\uD83C\uDF19', 'day': '\u2600\uFE0F', 'death': '\uD83D\uDC80', 'start': '\uD83C\uDF05', 'passive': '\uD83D\uDEE1\uFE0F' };
+  var phaseLabels = { 'night': 'Nuit', 'day': 'Jour', 'death': 'Mort', 'start': 'D\u00e9but', 'passive': 'Passif' };
+
   var classicRoleIds = ['WEREWOLF', 'VILLAGER', 'SEER', 'WITCH', 'HUNTER'];
   var premiumRoleIds = ['WHITE_WOLF', 'PETITE_FILLE', 'CUPID', 'SALVATEUR', 'ANCIEN', 'IDIOT', 'THIEF'];
+  var allRoleIds = classicRoleIds.concat(premiumRoleIds);
+  var totalRoles = allRoleIds.length;
+  var villageCount = allRoleIds.filter(function(id) { return campMap[id] === 'village'; }).length;
+  var wolfCount = allRoleIds.filter(function(id) { return campMap[id] === 'wolves'; }).length;
+  var soloCount = allRoleIds.filter(function(id) { return campMap[id] === 'solo'; }).length;
 %>
 
-<div class="roles-page">
-  <div class="page-header">
-    <div>
-      <h1 data-i18n="roles.title">R&ocirc;les du jeu</h1>
-      <p class="text-muted" data-i18n="roles.subtitle">D&eacute;couvrez tous les r&ocirc;les disponibles</p>
+<!-- ═══ HERO ═══ -->
+<section class="rl-hero">
+  <div class="rl-hero-bg">
+    <div class="rl-hero-gradient"></div>
+    <div class="rl-hero-grid"></div>
+    <div class="rl-hero-vignette"></div>
+  </div>
+  <div class="rl-hero-inner">
+    <div class="rl-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      <span data-i18n="roles.badge">Encyclop&eacute;die</span>
     </div>
-    <button class="btn btn-flip-all" id="btn-flip-all" type="button" title="Retourner toutes les cartes">
-      <span class="flip-all-icon">🃏</span>
-      <span data-i18n="roles.reveal">R&eacute;v&eacute;ler</span>
+    <h1 class="rl-hero-title" data-i18n-html="roles.title">D&eacute;couvrez les <span>R&ocirc;les</span></h1>
+    <p class="rl-hero-sub" data-i18n="roles.subtitle">Chaque r&ocirc;le poss&egrave;de des pouvoirs uniques. Ma&icirc;trisez-les tous pour dominer la partie.</p>
+    <div class="rl-hero-stats">
+      <div class="rl-stat">
+        <span class="rl-stat-val"><%= totalRoles %></span>
+        <span class="rl-stat-label" data-i18n="roles.stat_total">R&ocirc;les</span>
+      </div>
+      <div class="rl-stat-sep"></div>
+      <div class="rl-stat rl-stat--village">
+        <span class="rl-stat-val"><%= villageCount %></span>
+        <span class="rl-stat-label" data-i18n="roles.stat_village">Village</span>
+      </div>
+      <div class="rl-stat-sep"></div>
+      <div class="rl-stat rl-stat--wolves">
+        <span class="rl-stat-val"><%= wolfCount %></span>
+        <span class="rl-stat-label" data-i18n="roles.stat_wolves">Loups</span>
+      </div>
+      <div class="rl-stat-sep"></div>
+      <div class="rl-stat rl-stat--solo">
+        <span class="rl-stat-val"><%= soloCount %></span>
+        <span class="rl-stat-label" data-i18n="roles.stat_solo">Solo</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TOOLBAR ═══ -->
+<div class="rl-toolbar">
+  <div class="rl-filters" id="rl-filters">
+    <button class="rl-filter active" data-camp="all" data-i18n="roles.filter_all">Tous</button>
+    <button class="rl-filter" data-camp="village">
+      <span class="rl-filter-dot rl-dot-village"></span>
+      <span data-i18n="roles.filter_village">Village</span>
+    </button>
+    <button class="rl-filter" data-camp="wolves">
+      <span class="rl-filter-dot rl-dot-wolves"></span>
+      <span data-i18n="roles.filter_wolves">Loups</span>
+    </button>
+    <button class="rl-filter" data-camp="solo">
+      <span class="rl-filter-dot rl-dot-solo"></span>
+      <span data-i18n="roles.filter_solo">Solo</span>
     </button>
   </div>
+  <button class="rl-flip-btn" id="btn-flip-all" type="button">
+    <span class="rl-flip-icon">&#127183;</span>
+    <span data-i18n="roles.reveal">R&eacute;v&eacute;ler tout</span>
+  </button>
+</div>
 
-  <!-- Classic Roles -->
-  <section class="section roles-section roles-section-classic">
-    <div class="roles-section-header">
-      <div class="roles-section-badge classic-badge">🐺</div>
-      <div>
-        <h2 class="roles-section-title" data-i18n="roles.classic_title">R&ocirc;les Classiques</h2>
-        <p class="roles-section-desc" data-i18n="roles.classic_desc">Les r&ocirc;les essentiels du jeu de base</p>
-      </div>
-      <span class="roles-section-count"><%= classicRoleIds.length %> <span data-i18n="roles.roles_label">r&ocirc;les</span></span>
+<!-- ═══ CLASSIC ROLES ═══ -->
+<section class="rl-section" id="classic-roles">
+  <div class="rl-section-head">
+    <div class="rl-section-icon">&#128058;</div>
+    <div>
+      <h2 class="rl-section-title" data-i18n-html="roles.classic_title">R&ocirc;les <span>Classiques</span></h2>
+      <p class="rl-section-desc" data-i18n="roles.classic_desc">Les r&ocirc;les essentiels du jeu de base</p>
     </div>
-    <div class="roles-grid">
-      <% classicRoleIds.forEach(function(rid) {
-        var r = builtIn.find(function(b) { return b.id === rid; });
-        if (!r) return;
-        var imgFile = roleImageMap[r.id];
-        var camp = campMap[r.id] || 'village';
-        var displayName = roleNameMap[r.id] || r.name;
-        var desc = roleDescMap[r.id] || '';
-      %>
-        <div class="role-card role-card-<%= camp %>">
-          <div class="role-img-flip">
-            <div class="role-img-inner">
-              <div class="role-img-front">
-                <img src="/static/img/roles/loup-garou-dos.png" alt="Carte" class="role-card-back-img" loading="lazy">
+    <span class="rl-section-count"><%= classicRoleIds.length %> <span data-i18n="roles.roles_label">r&ocirc;les</span></span>
+  </div>
+  <div class="rl-grid">
+    <% classicRoleIds.forEach(function(rid, idx) {
+      var r = builtIn.find(function(b) { return b.id === rid; });
+      if (!r) return;
+      var imgFile = roleImageMap[r.id];
+      var camp = campMap[r.id] || 'village';
+      var displayName = roleNameMap[r.id] || r.name;
+      var desc = roleDescMap[r.id] || '';
+      var phase = phaseMap[r.id] || 'passive';
+    %>
+      <div class="rl-card rl-card--<%= camp %>" data-camp="<%= camp %>" style="--ci:<%= idx %>">
+        <div class="rl-card-accent"></div>
+        <div class="rl-card-img-wrap">
+          <div class="rl-flip">
+            <div class="rl-flip-inner">
+              <div class="rl-flip-front">
+                <img src="/static/img/roles/loup-garou-dos.png" alt="Carte" loading="lazy">
               </div>
-              <div class="role-img-back">
+              <div class="rl-flip-back">
                 <% if (imgFile) { %>
-                  <img src="/static/img/roles/<%= imgFile %>" alt="<%= displayName %>" class="role-img" loading="lazy">
+                  <img src="/static/img/roles/<%= imgFile %>" alt="<%= displayName %>" loading="lazy">
                 <% } else { %>
-                  <span class="role-emoji">&#128058;</span>
+                  <span class="rl-card-emoji">&#128058;</span>
                 <% } %>
               </div>
             </div>
           </div>
-          <span class="role-name" data-i18n="role.name.<%= r.id %>"><%= displayName %></span>
-          <span class="role-camp camp-<%= camp %>" data-i18n="role.camp.<%= camp %>"><%= camp === 'wolves' ? 'Loups' : camp === 'solo' ? 'Solo' : 'Village' %></span>
-          <% if (desc) { %><span class="role-desc" data-i18n="role.desc.<%= r.id %>"><%= desc %></span><% } %>
         </div>
-      <% }); %>
-    </div>
-  </section>
-
-  <!-- Premium Roles -->
-  <section class="section roles-section roles-section-premium">
-    <div class="roles-section-header premium-header">
-      <div class="roles-section-badge premium-badge">&#11088;</div>
-      <div>
-        <h2 class="roles-section-title premium-title" data-i18n="roles.premium_title">R&ocirc;les Premium</h2>
-        <p class="roles-section-desc" data-i18n="roles.premium_desc">Des r&ocirc;les sp&eacute;ciaux aux pouvoirs uniques</p>
+        <div class="rl-card-body">
+          <h3 class="rl-card-name" data-i18n="role.name.<%= r.id %>"><%= displayName %></h3>
+          <div class="rl-card-meta">
+            <span class="rl-camp camp-<%= camp %>" data-i18n="role.camp.<%= camp %>"><%= camp === 'wolves' ? 'Loups' : camp === 'solo' ? 'Solo' : 'Village' %></span>
+            <span class="rl-phase phase-<%= phase %>" data-i18n="roles.phase_<%= phase %>"><%= phaseIcons[phase] %> <%= phaseLabels[phase] %></span>
+          </div>
+          <p class="rl-card-desc" data-i18n="role.desc.<%= r.id %>"><%= desc %></p>
+        </div>
       </div>
-      <span class="roles-section-count premium-count"><%= premiumRoleIds.length %> <span data-i18n="roles.roles_label">r&ocirc;les</span></span>
+    <% }); %>
+  </div>
+</section>
+
+<!-- ═══ PREMIUM ROLES ═══ -->
+<section class="rl-section rl-section--premium" id="premium-roles">
+  <div class="rl-section-head rl-section-head--premium">
+    <div class="rl-section-icon rl-section-icon--premium">&#11088;</div>
+    <div>
+      <h2 class="rl-section-title rl-section-title--premium" data-i18n-html="roles.premium_title">R&ocirc;les <span>Premium</span></h2>
+      <p class="rl-section-desc" data-i18n="roles.premium_desc">Des r&ocirc;les sp&eacute;ciaux aux pouvoirs uniques</p>
     </div>
-    <div class="roles-grid">
-      <% premiumRoleIds.forEach(function(rid) {
-        var r = builtIn.find(function(b) { return b.id === rid; });
-        if (!r) return;
-        var imgFile = roleImageMap[r.id];
-        var camp = campMap[r.id] || 'village';
-        var displayName = roleNameMap[r.id] || r.name;
-        var desc = roleDescMap[r.id] || '';
-      %>
-        <div class="role-card role-card-premium role-card-<%= camp %>">
-          <div class="premium-glow"></div>
-          <div class="role-img-flip">
-            <div class="role-img-inner">
-              <div class="role-img-front role-img-front-premium">
-                <img src="/static/img/roles/loup-garou-dos.png" alt="Carte" class="role-card-back-img" loading="lazy">
+    <span class="rl-section-count rl-section-count--premium"><%= premiumRoleIds.length %> <span data-i18n="roles.roles_label">r&ocirc;les</span></span>
+  </div>
+  <div class="rl-grid">
+    <% premiumRoleIds.forEach(function(rid, idx) {
+      var r = builtIn.find(function(b) { return b.id === rid; });
+      if (!r) return;
+      var imgFile = roleImageMap[r.id];
+      var camp = campMap[r.id] || 'village';
+      var displayName = roleNameMap[r.id] || r.name;
+      var desc = roleDescMap[r.id] || '';
+      var phase = phaseMap[r.id] || 'passive';
+    %>
+      <div class="rl-card rl-card--premium rl-card--<%= camp %>" data-camp="<%= camp %>" style="--ci:<%= idx %>">
+        <div class="rl-card-accent rl-card-accent--premium"></div>
+        <div class="rl-card-shimmer"></div>
+        <div class="rl-card-img-wrap">
+          <div class="rl-flip">
+            <div class="rl-flip-inner">
+              <div class="rl-flip-front rl-flip-front--premium">
+                <img src="/static/img/roles/loup-garou-dos.png" alt="Carte" loading="lazy">
               </div>
-              <div class="role-img-back">
+              <div class="rl-flip-back">
                 <% if (imgFile) { %>
-                  <img src="/static/img/roles/<%= imgFile %>" alt="<%= displayName %>" class="role-img" loading="lazy">
+                  <img src="/static/img/roles/<%= imgFile %>" alt="<%= displayName %>" loading="lazy">
                 <% } else { %>
-                  <span class="role-emoji">&#128058;</span>
+                  <span class="rl-card-emoji">&#128058;</span>
                 <% } %>
               </div>
             </div>
           </div>
-          <span class="role-name" data-i18n="role.name.<%= r.id %>"><%= displayName %></span>
-          <span class="role-camp camp-<%= camp %>" data-i18n="role.camp.<%= camp %>"><%= camp === 'wolves' ? 'Loups' : camp === 'solo' ? 'Solo' : 'Village' %></span>
-          <% if (desc) { %><span class="role-desc" data-i18n="role.desc.<%= r.id %>"><%= desc %></span><% } %>
         </div>
-      <% }); %>
-    </div>
-  </section>
+        <div class="rl-card-body">
+          <h3 class="rl-card-name" data-i18n="role.name.<%= r.id %>"><%= displayName %></h3>
+          <div class="rl-card-meta">
+            <span class="rl-camp camp-<%= camp %>" data-i18n="role.camp.<%= camp %>"><%= camp === 'wolves' ? 'Loups' : camp === 'solo' ? 'Solo' : 'Village' %></span>
+            <span class="rl-phase phase-<%= phase %>" data-i18n="roles.phase_<%= phase %>"><%= phaseIcons[phase] %> <%= phaseLabels[phase] %></span>
+          </div>
+          <p class="rl-card-desc" data-i18n="role.desc.<%= r.id %>"><%= desc %></p>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+</section>
 
-  <!-- Custom Roles -->
-  <section class="section roles-section">
-    <div class="roles-section-header">
-      <div class="roles-section-badge custom-badge">&#127912;</div>
-      <div>
-        <h2 class="roles-section-title" data-i18n="roles.custom">R&ocirc;les Personnalis&eacute;s</h2>
-        <p class="roles-section-desc" data-i18n="roles.custom_desc">Cr&eacute;&eacute;s par les administrateurs</p>
-      </div>
+<!-- ═══ CUSTOM ROLES ═══ -->
+<section class="rl-section" id="custom-roles">
+  <div class="rl-section-head">
+    <div class="rl-section-icon">&#127912;</div>
+    <div>
+      <h2 class="rl-section-title" data-i18n-html="roles.custom">R&ocirc;les <span>Personnalis&eacute;s</span></h2>
+      <p class="rl-section-desc" data-i18n="roles.custom_desc">Cr&eacute;&eacute;s par les administrateurs</p>
     </div>
-    <% if (customRoles.length === 0) { %>
-      <div class="empty-state">
-        <span class="empty-icon">&#127912;</span>
-        <p data-i18n="roles.no_custom">Aucun r&ocirc;le personnalis&eacute;</p>
-        <% if (isAdmin) { %>
-          <p class="text-muted" data-i18n="roles.create_hint">Utilisez le formulaire ci-dessous pour en cr&eacute;er</p>
-        <% } else { %>
-          <p class="text-muted" data-i18n="roles.login_hint">Connectez-vous en admin pour cr&eacute;er des r&ocirc;les</p>
-        <% } %>
-      </div>
-    <% } else { %>
-      <div class="roles-grid">
-        <% customRoles.forEach(function(r) { %>
-          <div class="role-card role-card-<%= r.camp || 'village' %>">
-            <span class="role-emoji"><%= r.emoji || '&#10067;' %></span>
-            <span class="role-name"><%= r.name %></span>
-            <span class="role-camp camp-<%= r.camp %>"><%= r.camp %></span>
-            <% if (r.description) { %><span class="role-desc"><%= r.description %></span><% } %>
+  </div>
+  <% if (customRoles.length === 0) { %>
+    <div class="rl-empty">
+      <span class="rl-empty-icon">&#127912;</span>
+      <p data-i18n="roles.no_custom">Aucun r&ocirc;le personnalis&eacute;</p>
+      <% if (isAdmin) { %>
+        <p class="rl-empty-hint" data-i18n="roles.create_hint">Utilisez le formulaire ci-dessous pour en cr&eacute;er</p>
+      <% } else { %>
+        <p class="rl-empty-hint" data-i18n="roles.login_hint">Connectez-vous en admin pour cr&eacute;er des r&ocirc;les</p>
+      <% } %>
+    </div>
+  <% } else { %>
+    <div class="rl-grid">
+      <% customRoles.forEach(function(r) { %>
+        <div class="rl-card rl-card--<%= r.camp || 'village' %>" data-camp="<%= r.camp || 'village' %>">
+          <div class="rl-card-accent"></div>
+          <span class="rl-card-emoji-lg"><%= r.emoji || '&#10067;' %></span>
+          <div class="rl-card-body">
+            <h3 class="rl-card-name"><%= r.name %></h3>
+            <div class="rl-card-meta">
+              <span class="rl-camp camp-<%= r.camp %>"><%= r.camp %></span>
+            </div>
+            <% if (r.description) { %><p class="rl-card-desc"><%= r.description %></p><% } %>
             <% if (isAdmin) { %>
               <button class="btn btn-sm btn-danger delete-role" data-role-id="<%= r.id %>" style="margin-top: 0.75rem;">Delete</button>
             <% } %>
           </div>
-        <% }); %>
-      </div>
-    <% } %>
+        </div>
+      <% }); %>
+    </div>
+  <% } %>
 
-    <% if (isAdmin) { %>
-      <div class="panel create-role-panel">
-        <h3 class="panel-title" data-i18n="roles.create_title">Cr&eacute;er un r&ocirc;le</h3>
-        <form id="create-role-form" class="role-form">
-          <div class="form-row">
-            <div class="form-group">
-              <label data-i18n="roles.form_name">Nom</label>
-              <input type="text" name="name" required placeholder="ex. Forgeron" class="form-input" data-i18n-placeholder="roles.form_name_ph">
-            </div>
-            <div class="form-group">
-              <label data-i18n="roles.form_emoji">Emoji</label>
-              <input type="text" name="emoji" placeholder="&#9935;" maxlength="4" class="form-input form-input-sm">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label data-i18n="roles.form_camp">Camp</label>
-              <select name="camp" class="form-select">
-                <option value="village">Village</option>
-                <option value="wolves">Loups</option>
-                <option value="solo">Solo</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label data-i18n="roles.form_power">Pouvoir</label>
-              <select name="power" class="form-select">
-                <option value="none" data-i18n="roles.power_none">Aucun (Passif)</option>
-                <option value="see" data-i18n="roles.power_see">Vision (Voyante)</option>
-                <option value="protect" data-i18n="roles.power_protect">Protection (Salvateur)</option>
-                <option value="kill" data-i18n="roles.power_kill">Tuer (Chasseur)</option>
-                <option value="heal" data-i18n="roles.power_heal">Soin (Sorci&egrave;re)</option>
-                <option value="custom" data-i18n="roles.power_custom">Personnalis&eacute;</option>
-              </select>
-            </div>
+  <% if (isAdmin) { %>
+    <div class="rl-create-panel">
+      <h3 class="rl-create-title" data-i18n="roles.create_title">Cr&eacute;er un r&ocirc;le</h3>
+      <form id="create-role-form" class="role-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label data-i18n="roles.form_name">Nom</label>
+            <input type="text" name="name" required placeholder="ex. Forgeron" class="form-input" data-i18n-placeholder="roles.form_name_ph">
           </div>
           <div class="form-group">
-            <label data-i18n="roles.form_desc">Description</label>
-            <textarea name="description" placeholder="D&eacute;crivez les capacit&eacute;s du r&ocirc;le..." class="form-input" rows="2" data-i18n-placeholder="roles.form_desc_ph"></textarea>
+            <label data-i18n="roles.form_emoji">Emoji</label>
+            <input type="text" name="emoji" placeholder="&#9935;" maxlength="4" class="form-input form-input-sm">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label data-i18n="roles.form_camp">Camp</label>
+            <select name="camp" class="form-select">
+              <option value="village">Village</option>
+              <option value="wolves">Loups</option>
+              <option value="solo">Solo</option>
+            </select>
           </div>
           <div class="form-group">
-            <label data-i18n="roles.form_guild">Guild ID</label>
-            <input type="text" name="guildId" required placeholder="ID du serveur" class="form-input" data-i18n-placeholder="roles.form_guild_ph">
+            <label data-i18n="roles.form_power">Pouvoir</label>
+            <select name="power" class="form-select">
+              <option value="none" data-i18n="roles.power_none">Aucun (Passif)</option>
+              <option value="see" data-i18n="roles.power_see">Vision (Voyante)</option>
+              <option value="protect" data-i18n="roles.power_protect">Protection (Salvateur)</option>
+              <option value="kill" data-i18n="roles.power_kill">Tuer (Chasseur)</option>
+              <option value="heal" data-i18n="roles.power_heal">Soin (Sorci&egrave;re)</option>
+              <option value="custom" data-i18n="roles.power_custom">Personnalis&eacute;</option>
+            </select>
           </div>
-          <button type="submit" class="btn btn-primary" data-i18n="roles.create_btn">Cr&eacute;er le r&ocirc;le</button>
-        </form>
-      </div>
-    <% } %>
-  </section>
-</div>
+        </div>
+        <div class="form-group">
+          <label data-i18n="roles.form_desc">Description</label>
+          <textarea name="description" placeholder="D&eacute;crivez les capacit&eacute;s du r&ocirc;le..." class="form-input" rows="2" data-i18n-placeholder="roles.form_desc_ph"></textarea>
+        </div>
+        <div class="form-group">
+          <label data-i18n="roles.form_guild">Guild ID</label>
+          <input type="text" name="guildId" required placeholder="ID du serveur" class="form-input" data-i18n-placeholder="roles.form_guild_ph">
+        </div>
+        <button type="submit" class="btn btn-primary" data-i18n="roles.create_btn">Cr&eacute;er le r&ocirc;le</button>
+      </form>
+    </div>
+  <% } %>
+</section>
 
 <script src="/static/js/roles.js"></script>
 <%- include('partials/footer') %>

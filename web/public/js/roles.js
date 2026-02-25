@@ -1,8 +1,41 @@
 /**
- * 🐺 Roles Editor — Custom role management
+ * 🐺 Roles Page — Camp filtering, card flip, custom role management
  */
 (function() {
   'use strict';
+
+  // === Camp Filter ===
+  const filtersWrap = document.getElementById('rl-filters');
+  if (filtersWrap) {
+    const filterBtns = filtersWrap.querySelectorAll('.rl-filter');
+    const allCards = document.querySelectorAll('.rl-card[data-camp]');
+    const sections = document.querySelectorAll('.rl-section');
+
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const camp = btn.dataset.camp;
+
+        allCards.forEach(card => {
+          if (camp === 'all' || card.dataset.camp === camp) {
+            card.classList.remove('rl-hidden');
+          } else {
+            card.classList.add('rl-hidden');
+          }
+        });
+
+        // Hide sections where all cards are hidden (but not custom section)
+        sections.forEach(sec => {
+          if (sec.id === 'custom-roles') return;
+          const grid = sec.querySelector('.rl-grid');
+          if (!grid) return;
+          const visible = grid.querySelectorAll('.rl-card:not(.rl-hidden)');
+          sec.classList.toggle('rl-section-hidden', visible.length === 0);
+        });
+      });
+    });
+  }
 
   // === Flip All Cards ===
   const flipBtn = document.getElementById('btn-flip-all');
@@ -14,9 +47,9 @@
       if (animating) return;
       animating = true;
 
-      const cards = document.querySelectorAll('.role-img-inner');
-      const target = !isFlipped; // true = reveal, false = hide
-      const delay = 80; // ms between each card
+      const cards = document.querySelectorAll('.rl-flip-inner');
+      const target = !isFlipped;
+      const delay = 60;
 
       cards.forEach((card, i) => {
         setTimeout(() => {
@@ -26,13 +59,11 @@
           } else {
             card.classList.remove('flipped');
             card.classList.add('unflipped');
-            // Remove unflipped class after animation so hover works normally again
             card.addEventListener('transitionend', function handler() {
               card.classList.remove('unflipped');
               card.removeEventListener('transitionend', handler);
             });
           }
-          // Last card: update state
           if (i === cards.length - 1) {
             isFlipped = target;
             flipBtn.classList.toggle('flipped', isFlipped);
