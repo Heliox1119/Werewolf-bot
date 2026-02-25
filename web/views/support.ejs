@@ -1,121 +1,166 @@
 <%- include('partials/header') %>
 
-<div class="support-page">
-  <div class="support-hero">
-    <h1 data-i18n="support.title">🆘 Support & Resources</h1>
-    <p data-i18n="support.subtitle">Need help? Find all the resources you need to get started or resolve issues.</p>
+<!-- ═══ SUPPORT HERO ═══ -->
+<section class="sp-hero">
+  <div class="sp-hero-bg">
+    <div class="sp-hero-gradient"></div>
+    <div class="sp-hero-grid-lines"></div>
   </div>
+  <div class="sp-hero-inner">
+    <div class="sp-hero-badge">
+      <span class="sp-badge-dot"></span>
+      <span data-i18n="support.badge">Help Center</span>
+    </div>
+    <h1 class="sp-hero-title" data-i18n-html="support.title">Support & <span>Resources</span></h1>
+    <p class="sp-hero-sub" data-i18n="support.subtitle">Need help? We've got you covered. Find answers, contact us, or explore our resources.</p>
+  </div>
+</section>
 
-  <div class="support-grid">
+<!-- ═══ RESOURCE CARDS ═══ -->
+<section class="sp-resources">
+  <div class="sp-resources-grid">
     <!-- GitHub -->
-    <a href="https://github.com/Heliox1119/Werewolf-bot" target="_blank" rel="noopener" class="support-card support-card-github" id="github">
-      <span class="support-card-icon">💻</span>
+    <a href="https://github.com/Heliox1119/Werewolf-bot" target="_blank" rel="noopener" class="sp-card sp-card-github" style="--ci:0">
+      <div class="sp-card-glow"></div>
+      <div class="sp-card-icon-wrap">
+        <svg class="sp-card-svg" viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      </div>
       <h3>GitHub</h3>
-      <p data-i18n="support.github_desc">View the source code, report bugs, request features, and contribute to the project.</p>
-      <span class="btn btn-sm btn-outline" data-i18n="support.github_btn">View Repository →</span>
+      <p data-i18n="support.github_desc">Source code, bug reports, feature requests, and contributions.</p>
+      <span class="sp-card-action" data-i18n-html="support.github_btn">View Repository <span class="sp-arrow">→</span></span>
     </a>
 
     <!-- Discord -->
-    <a href="#" class="support-card support-card-discord" id="discord">
-      <span class="support-card-icon">💬</span>
+    <a href="#" class="sp-card sp-card-discord" style="--ci:1">
+      <div class="sp-card-glow"></div>
+      <div class="sp-card-icon-wrap">
+        <svg class="sp-card-svg" viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z"/></svg>
+      </div>
       <h3>Discord</h3>
-      <p data-i18n="support.discord_desc">Join our community server for live help, announcements, and discussion with other players.</p>
-      <span class="btn btn-sm btn-discord" data-i18n="support.discord_btn">Join Server →</span>
+      <p data-i18n="support.discord_desc">Community server for live help, announcements, and discussions.</p>
+      <span class="sp-card-action" data-i18n-html="support.discord_btn">Join Server <span class="sp-arrow">→</span></span>
     </a>
 
     <!-- Documentation -->
-    <a href="/docs" class="support-card support-card-docs">
-      <span class="support-card-icon">📚</span>
+    <a href="/docs" class="sp-card sp-card-docs" style="--ci:2">
+      <div class="sp-card-glow"></div>
+      <div class="sp-card-icon-wrap">
+        <svg class="sp-card-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><line x1="9" y1="7" x2="16" y2="7"/><line x1="9" y1="11" x2="14" y2="11"/></svg>
+      </div>
       <h3 data-i18n="support.docs_title">Documentation</h3>
-      <p data-i18n="support.docs_desc">Complete wiki with all roles, commands, mechanics and configuration options explained in detail.</p>
-      <span class="btn btn-sm btn-primary" data-i18n="support.docs_btn">Read the Wiki →</span>
+      <p data-i18n="support.docs_desc">Complete wiki with all roles, commands, mechanics, and configuration options.</p>
+      <span class="sp-card-action" data-i18n-html="support.docs_btn">Read the Wiki <span class="sp-arrow">→</span></span>
+    </a>
+
+    <!-- Premium -->
+    <a href="/premium" class="sp-card sp-card-premium" style="--ci:3">
+      <div class="sp-card-glow"></div>
+      <div class="sp-card-icon-wrap">
+        <svg class="sp-card-svg" viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      </div>
+      <h3 data-i18n="support.premium_title">Premium</h3>
+      <p data-i18n="support.premium_desc">Unlock exclusive roles, themes, sounds and advanced features.</p>
+      <span class="sp-card-action" data-i18n-html="support.premium_btn">Explore Premium <span class="sp-arrow">→</span></span>
     </a>
   </div>
+</section>
 
-  <!-- FAQ -->
-  <div class="support-faq" id="faq">
-    <h2>❓ <span data-i18n="support.faq_title">Frequently Asked Questions</span></h2>
-
-    <div class="doc-collapsible">
-      <div class="doc-collapsible-header" data-toggle="faq-1">
-        <span data-i18n="support.faq_q1">How do I invite the bot to my server?</span>
-        <span class="doc-collapsible-arrow">▸</span>
-      </div>
-      <div class="doc-collapsible-body">
-        <p data-i18n="support.faq_a1">Use the invite link from the GitHub repository or the bot's profile. The bot needs Administrator permissions to manage channels, roles, and voice muting.</p>
-      </div>
+<!-- ═══ QUICK HELP — COMMAND REFERENCE ═══ -->
+<section class="sp-commands">
+  <h2 class="sp-section-title" data-i18n-html="support.commands_title">Quick <span>Commands</span></h2>
+  <p class="sp-section-sub" data-i18n="support.commands_sub">Essential commands to get you started</p>
+  <div class="sp-cmd-grid">
+    <div class="sp-cmd" style="--cdi:0">
+      <code class="sp-cmd-name">/create</code>
+      <span class="sp-cmd-desc" data-i18n="support.cmd_create">Create a new game in the current server</span>
     </div>
-
-    <div class="doc-collapsible">
-      <div class="doc-collapsible-header" data-toggle="faq-2">
-        <span data-i18n="support.faq_q2">What is the minimum number of players?</span>
-        <span class="doc-collapsible-arrow">▸</span>
-      </div>
-      <div class="doc-collapsible-body">
-        <p data-i18n="support.faq_a2">You need at least 4 players to start a game. For the best experience with all roles, 8-12 players is recommended.</p>
-      </div>
+    <div class="sp-cmd" style="--cdi:1">
+      <code class="sp-cmd-name">/join</code>
+      <span class="sp-cmd-desc" data-i18n="support.cmd_join">Join the lobby of the current game</span>
     </div>
-
-    <div class="doc-collapsible">
-      <div class="doc-collapsible-header" data-toggle="faq-3">
-        <span data-i18n="support.faq_q3">How do I change the language?</span>
-        <span class="doc-collapsible-arrow">▸</span>
-      </div>
-      <div class="doc-collapsible-body">
-        <p data-i18n="support.faq_a3">Use the /lang command followed by "fr" for French or "en" for English. This changes the bot's language for the entire server.</p>
-      </div>
+    <div class="sp-cmd" style="--cdi:2">
+      <code class="sp-cmd-name">/start</code>
+      <span class="sp-cmd-desc" data-i18n="support.cmd_start">Start the game when enough players are ready</span>
     </div>
-
-    <div class="doc-collapsible">
-      <div class="doc-collapsible-header" data-toggle="faq-4">
-        <span data-i18n="support.faq_q4">Can I customize which roles are in the game?</span>
-        <span class="doc-collapsible-arrow">▸</span>
-      </div>
-      <div class="doc-collapsible-body">
-        <p data-i18n="support.faq_a4">Yes! Use /setrules to enable or disable specific roles, change wolf count, and configure other game options per server.</p>
-      </div>
+    <div class="sp-cmd" style="--cdi:3">
+      <code class="sp-cmd-name">/setup wizard</code>
+      <span class="sp-cmd-desc" data-i18n="support.cmd_setup">Interactive wizard to configure the bot</span>
     </div>
-
-    <div class="doc-collapsible">
-      <div class="doc-collapsible-header" data-toggle="faq-5">
-        <span data-i18n="support.faq_q5">Why are my players not being muted/unmuted?</span>
-        <span class="doc-collapsible-arrow">▸</span>
-      </div>
-      <div class="doc-collapsible-body">
-        <p data-i18n="support.faq_a5">Make sure the bot has the "Mute Members" permission. Players also need to be connected to the game's voice channel for voice management to work.</p>
-      </div>
+    <div class="sp-cmd" style="--cdi:4">
+      <code class="sp-cmd-name">/setrules</code>
+      <span class="sp-cmd-desc" data-i18n="support.cmd_setrules">Enable/disable specific roles and options</span>
     </div>
-
-    <div class="doc-collapsible">
-      <div class="doc-collapsible-header" data-toggle="faq-6">
-        <span data-i18n="support.faq_q6">The game is stuck, what do I do?</span>
-        <span class="doc-collapsible-arrow">▸</span>
-      </div>
-      <div class="doc-collapsible-body">
-        <p data-i18n="support.faq_a6">An admin can use /nextphase to force advance to the next phase, or /force-end to immediately end the game. Use /clear to clean up channels.</p>
-      </div>
+    <div class="sp-cmd" style="--cdi:5">
+      <code class="sp-cmd-name">/lang</code>
+      <span class="sp-cmd-desc" data-i18n="support.cmd_lang">Switch the bot language (fr/en)</span>
     </div>
-
-    <div class="doc-collapsible">
-      <div class="doc-collapsible-header" data-toggle="faq-7">
-        <span data-i18n="support.faq_q7">How does the ELO system work?</span>
-        <span class="doc-collapsible-arrow">▸</span>
-      </div>
-      <div class="doc-collapsible-body">
-        <p data-i18n="support.faq_a7">Every player starts at 1000 ELO. Winning increases your rating and losing decreases it. Your tier (Iron → Alpha Wolf) is determined by your ELO range. Use /stats to check your current rating.</p>
-      </div>
+    <div class="sp-cmd" style="--cdi:6">
+      <code class="sp-cmd-name">/stats</code>
+      <span class="sp-cmd-desc" data-i18n="support.cmd_stats">View your ELO rating and game stats</span>
+    </div>
+    <div class="sp-cmd" style="--cdi:7">
+      <code class="sp-cmd-name">/help</code>
+      <span class="sp-cmd-desc" data-i18n="support.cmd_help">List all available commands</span>
     </div>
   </div>
-</div>
+</section>
 
-<script>
-  // FAQ collapsible toggle via event delegation
-  document.addEventListener('click', function(e) {
-    var header = e.target.closest('.doc-collapsible-header');
-    if (!header) return;
-    var collapsible = header.parentElement;
-    if (collapsible) collapsible.classList.toggle('open');
-  });
-</script>
+<!-- ═══ FAQ ACCORDION ═══ -->
+<section class="sp-faq" id="faq">
+  <h2 class="sp-section-title" data-i18n-html="support.faq_heading">Frequently <span>Asked</span></h2>
+  <p class="sp-section-sub" data-i18n="support.faq_sub">Quick answers to common questions</p>
+  <div class="sp-faq-list">
+    <details class="sp-faq-item">
+      <summary data-i18n="support.faq_q1">How do I invite the bot to my server?</summary>
+      <p data-i18n="support.faq_a1">Use the invite link from the GitHub repository or the bot's profile. The bot needs Administrator permissions to manage channels, roles, and voice muting.</p>
+    </details>
+    <details class="sp-faq-item">
+      <summary data-i18n="support.faq_q2">What is the minimum number of players?</summary>
+      <p data-i18n="support.faq_a2">You need at least 4 players to start a game. For the best experience with all roles, 8-12 players is recommended.</p>
+    </details>
+    <details class="sp-faq-item">
+      <summary data-i18n="support.faq_q3">How do I change the language?</summary>
+      <p data-i18n="support.faq_a3">Use the /lang command followed by "fr" for French or "en" for English. This changes the bot's language for the entire server.</p>
+    </details>
+    <details class="sp-faq-item">
+      <summary data-i18n="support.faq_q4">Can I customize which roles are in the game?</summary>
+      <p data-i18n="support.faq_a4">Yes! Use /setrules to enable or disable specific roles, change wolf count, and configure other game options per server.</p>
+    </details>
+    <details class="sp-faq-item">
+      <summary data-i18n="support.faq_q5">Why are my players not being muted/unmuted?</summary>
+      <p data-i18n="support.faq_a5">Make sure the bot has the "Mute Members" permission. Players also need to be connected to the game's voice channel for voice management to work.</p>
+    </details>
+    <details class="sp-faq-item">
+      <summary data-i18n="support.faq_q6">The game is stuck, what do I do?</summary>
+      <p data-i18n="support.faq_a6">An admin can use /nextphase to force advance, or /force-end to end the game immediately. Use /clear to clean up channels.</p>
+    </details>
+    <details class="sp-faq-item">
+      <summary data-i18n="support.faq_q7">How does the ELO system work?</summary>
+      <p data-i18n="support.faq_a7">Every player starts at 1000 ELO. Winning increases your rating and losing decreases it. Your tier (Iron → Alpha Wolf) is determined by your range. Use /stats to check.</p>
+    </details>
+  </div>
+</section>
+
+<!-- ═══ CONTACT CTA ═══ -->
+<section class="sp-contact">
+  <div class="sp-contact-bg">
+    <div class="sp-contact-glow"></div>
+  </div>
+  <div class="sp-contact-inner">
+    <div class="sp-contact-icon">💬</div>
+    <h2 data-i18n-html="support.contact_title">Still need <span>help</span>?</h2>
+    <p data-i18n="support.contact_sub">Our community is always ready to help. Join our Discord server or open an issue on GitHub.</p>
+    <div class="sp-contact-actions">
+      <a href="#" class="sp-contact-btn sp-btn-discord">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z"/></svg>
+        <span data-i18n="support.btn_discord">Join Discord</span>
+      </a>
+      <a href="https://github.com/Heliox1119/Werewolf-bot/issues" target="_blank" rel="noopener" class="sp-contact-btn sp-btn-github">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        <span data-i18n="support.btn_github">Open Issue</span>
+      </a>
+    </div>
+  </div>
+</section>
 
 <%- include('partials/footer') %>
