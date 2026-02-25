@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ComponentType, MessageFlags } = require('discord.js');
 const logger = require('../utils/logger').app;
 const { t } = require('../utils/i18n');
 const { getColor } = require('../utils/theme');
@@ -111,7 +111,7 @@ module.exports = {
         default:
           await interaction.reply({
             content: t('error.unknown_subcommand'),
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
           });
       }
 
@@ -128,7 +128,7 @@ module.exports = {
 
       const reply = {
         content: t('error.setup_execution_error'),
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       };
 
       if (interaction.replied || interaction.deferred) {
@@ -148,7 +148,7 @@ module.exports = {
     if (!category || category.type !== ChannelType.GuildCategory) {
       await interaction.reply({
         content: t('error.invalid_category'),
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
       return;
     }
@@ -166,19 +166,19 @@ module.exports = {
         .setColor(getColor(interaction.guildId, 'success'))
         .setTimestamp();
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
 
       // Vérifier si le setup est complet
       if (config.isSetupComplete(interaction.guildId)) {
         await interaction.followUp({
           content: t('cmd.setup.setup_complete'),
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       }
     } else {
       await interaction.reply({
         content: t('error.category_config_failed'),
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
   },
@@ -194,7 +194,7 @@ module.exports = {
       config.setMonitoringWebhookUrl(null, interaction.guildId);
       await interaction.reply({
         content: t('cmd.setup.webhook_disabled'),
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
       return;
     }
@@ -203,7 +203,7 @@ module.exports = {
     if (!url.startsWith('https://discord.com/api/webhooks/')) {
       await interaction.reply({
         content: t('error.webhook_invalid'),
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
       return;
     }
@@ -221,7 +221,7 @@ module.exports = {
         .setColor(getColor(interaction.guildId, 'success'))
         .setTimestamp();
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
 
       // Envoyer une alerte de test
       try {
@@ -239,7 +239,7 @@ module.exports = {
     } else {
       await interaction.reply({
         content: t('error.webhook_config_failed'),
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
   },
@@ -254,7 +254,7 @@ module.exports = {
     if (!minPlayers && !maxPlayers) {
       await interaction.reply({
         content: t('error.specify_parameter'),
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
       return;
     }
@@ -271,7 +271,7 @@ module.exports = {
     if (newRules.minPlayers > newRules.maxPlayers) {
       await interaction.reply({
         content: t('error.min_greater_than_max'),
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
       return;
     }
@@ -289,11 +289,11 @@ module.exports = {
         .setColor(getColor(interaction.guildId, 'success'))
         .setTimestamp();
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     } else {
       await interaction.reply({
         content: t('error.rules_config_failed'),
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
   },
@@ -308,7 +308,7 @@ module.exports = {
     if (interval === null && alertsEnabled === null) {
       await interaction.reply({
         content: t('error.specify_parameter'),
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
       return;
     }
@@ -355,7 +355,7 @@ module.exports = {
       .setColor(getColor(interaction.guildId, 'success'))
       .setTimestamp();
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   },
 
   /**
@@ -433,18 +433,27 @@ module.exports = {
       embed.setFooter({ text: t('cmd.setup.status_footer') });
     }
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   },
 
   /**
-   * Assistant de configuration
+   * Assistant de configuration interactif
    */
   async runWizard(interaction, config) {
+    // Check Manage Guild permission
+    if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
+      await interaction.reply({
+        content: t('cmd.setup.wizard_permission_required'),
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+
     // Vérifier si déjà configuré
     if (config.isSetupComplete(interaction.guildId)) {
       await interaction.reply({
         content: t('cmd.setup.already_configured'),
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
       return;
     }
@@ -457,57 +466,222 @@ module.exports = {
       .setColor(getColor(interaction.guildId, 'info'))
       .setTimestamp();
 
-    // Étapes de configuration
-    const steps = [];
+    const buttons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('setup_wizard_auto')
+        .setLabel(t('cmd.setup.wizard_btn_auto'))
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('setup_wizard_choose')
+        .setLabel(t('cmd.setup.wizard_btn_choose'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('setup_wizard_cancel')
+        .setLabel(t('cmd.setup.wizard_btn_cancel'))
+        .setStyle(ButtonStyle.Danger)
+    );
 
-    // Catégorie (requis)
-    if (!config.getCategoryId(guildId)) {
-      steps.push({
-        name: t('cmd.setup.wizard_step1_title'),
-        value: [
-          t('cmd.setup.wizard_step1_action'),
-          t('cmd.setup.wizard_step1_cmd'),
-          t('cmd.setup.wizard_step1_info')
-        ].join('\n'),
-        inline: false
-      });
-    }
-
-    // Webhook (optionnel)
-    if (!config.getMonitoringWebhookUrl(guildId)) {
-      steps.push({
-        name: t('cmd.setup.wizard_step2_title'),
-        value: [
-          t('cmd.setup.wizard_step2_action'),
-          t('cmd.setup.wizard_step2_cmd'),
-          t('cmd.setup.wizard_step2_info')
-        ].join('\n'),
-        inline: false
-      });
-    }
-
-    // Règles (optionnel)
-    steps.push({
-      name: t('cmd.setup.wizard_step3_title'),
-      value: [
-        t('cmd.setup.wizard_step3_cmd'),
-        t('cmd.setup.wizard_step3_info'),
-        t('cmd.setup.wizard_step3_current', { range: `${config.getDefaultGameRules(guildId).minPlayers}-${config.getDefaultGameRules(guildId).maxPlayers}` })
-      ].join('\n'),
-      inline: false
+    const response = await interaction.reply({
+      embeds: [embed],
+      components: [buttons],
+      flags: MessageFlags.Ephemeral,
+      withResponse: true
     });
+    const replyMessage = response.resource.message;
 
-    if (steps.length > 0) {
-      embed.addFields(steps);
+    // Collect button interaction
+    let buttonInteraction;
+    try {
+      buttonInteraction = await replyMessage.awaitMessageComponent({
+        componentType: ComponentType.Button,
+        filter: (i) => i.user.id === interaction.user.id,
+        time: 60_000
+      });
+    } catch {
+      // Timeout
+      await interaction.editReply({
+        content: t('cmd.setup.wizard_timeout'),
+        embeds: [],
+        components: []
+      });
+      return;
     }
 
-    // Instructions finales
-    embed.addFields({
-      name: t('cmd.setup.wizard_verify_title'),
-      value: t('cmd.setup.wizard_verify_value'),
-      inline: false
-    });
+    // Acknowledge button IMMEDIATELY to avoid 3-second expiry (10062)
+    try { await buttonInteraction.deferUpdate(); } catch {}
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    const action = buttonInteraction.customId;
+
+    // ── Cancel ──
+    if (action === 'setup_wizard_cancel') {
+      await interaction.editReply({
+        content: t('cmd.setup.wizard_cancelled'),
+        embeds: [],
+        components: []
+      });
+      return;
+    }
+
+    // ── Automatic Setup ──
+    if (action === 'setup_wizard_auto') {
+      try {
+        const guild = interaction.guild;
+
+        // Check if a "🐺 Werewolf" category already exists
+        const existingCategory = guild.channels.cache.find(
+          ch => ch.type === ChannelType.GuildCategory && ch.name === '🐺 Werewolf'
+        );
+
+        let category;
+        let channelName = '🎮 start-game';
+        let startChannel;
+
+        if (existingCategory) {
+          category = existingCategory;
+          logger.info('Wizard: reusing existing Werewolf category', { id: category.id });
+        } else {
+          category = await guild.channels.create({
+            name: '🐺 Werewolf',
+            type: ChannelType.GuildCategory
+          });
+          logger.info('Wizard: created Werewolf category', { id: category.id });
+        }
+
+        // Create start-game channel inside the category if it doesn't exist
+        const existingChannel = guild.channels.cache.find(
+          ch => ch.parentId === category.id && ch.name === '🎮-start-game'
+        );
+
+        if (!existingChannel) {
+          startChannel = await guild.channels.create({
+            name: channelName,
+            type: ChannelType.GuildText,
+            parent: category.id
+          });
+          logger.info('Wizard: created start-game channel', { id: startChannel.id });
+        } else {
+          startChannel = existingChannel;
+        }
+
+        // Save category_id in guild config (idempotent)
+        const success = config.setCategoryId(category.id, guildId);
+        if (!success) {
+          await interaction.editReply({
+            content: t('cmd.setup.wizard_auto_error'),
+            embeds: [],
+            components: []
+          });
+          return;
+        }
+
+        const successEmbed = new EmbedBuilder()
+          .setTitle(t('cmd.setup.wizard_title'))
+          .setDescription(t('cmd.setup.wizard_auto_success', {
+            category: category.name,
+            channel: startChannel.name
+          }))
+          .setColor(getColor(guildId, 'success'))
+          .setTimestamp();
+
+        await interaction.editReply({
+          embeds: [successEmbed],
+          components: []
+        });
+
+      } catch (err) {
+        logger.error('Wizard auto setup failed', { error: err.message, stack: err.stack });
+        await interaction.editReply({
+          content: t('cmd.setup.wizard_auto_error'),
+          embeds: [],
+          components: []
+        });
+      }
+      return;
+    }
+
+    // ── Choose Category ──
+    if (action === 'setup_wizard_choose') {
+      const guild = interaction.guild;
+      const categories = guild.channels.cache
+        .filter(ch => ch.type === ChannelType.GuildCategory)
+        .first(25); // Discord SelectMenu limit
+
+      if (categories.length === 0) {
+        await interaction.editReply({
+          content: t('cmd.setup.wizard_no_categories'),
+          embeds: [],
+          components: []
+        });
+        return;
+      }
+
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('setup_wizard_category_select')
+        .setPlaceholder(t('cmd.setup.wizard_select_placeholder'))
+        .addOptions(
+          categories.map(cat => ({
+            label: cat.name.substring(0, 100),
+            value: cat.id,
+            description: `ID: ${cat.id}`
+          }))
+        );
+
+      const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+
+      await interaction.editReply({
+        content: t('cmd.setup.wizard_select_prompt'),
+        embeds: [],
+        components: [selectRow]
+      });
+
+      // Collect select menu interaction
+      let selectInteraction;
+      try {
+        selectInteraction = await replyMessage.awaitMessageComponent({
+          componentType: ComponentType.StringSelect,
+          filter: (i) => i.user.id === interaction.user.id,
+          time: 60_000
+        });
+      } catch {
+        await interaction.editReply({
+          content: t('cmd.setup.wizard_timeout'),
+          embeds: [],
+          components: []
+        });
+        return;
+      }
+
+      // Acknowledge select immediately
+      try { await selectInteraction.deferUpdate(); } catch {}
+
+      const selectedCategoryId = selectInteraction.values[0];
+      const selectedCategory = guild.channels.cache.get(selectedCategoryId);
+
+      const success = config.setCategoryId(selectedCategoryId, guildId);
+
+      if (success && selectedCategory) {
+        const successEmbed = new EmbedBuilder()
+          .setTitle(t('cmd.setup.wizard_title'))
+          .setDescription(t('cmd.setup.wizard_select_success', {
+            name: selectedCategory.name,
+            id: selectedCategoryId
+          }))
+          .setColor(getColor(guildId, 'success'))
+          .setTimestamp();
+
+        await interaction.editReply({
+          embeds: [successEmbed],
+          content: null,
+          components: []
+        });
+      } else {
+        await interaction.editReply({
+          content: t('cmd.setup.wizard_select_error'),
+          embeds: [],
+          components: []
+        });
+      }
+      return;
+    }
   }
 };

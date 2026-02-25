@@ -4,7 +4,7 @@
 (function() {
   'use strict';
 
-  const page = document.querySelector('.spectator-page');
+  const page = document.querySelector('.sp-page');
   if (!page) return;
   const gameId = page.dataset.gameId;
 
@@ -59,10 +59,10 @@
 
     if (phaseEl && phase) {
       phaseEl.textContent = phase;
-      phaseEl.className = `game-phase phase-${phase.toLowerCase()}`;
+      phaseEl.className = `sp-phase game-phase phase-${phase.toLowerCase()}`;
     }
     if (subEl) subEl.textContent = subPhase || '';
-    if (dayEl && dayCount) dayEl.textContent = 'Day ' + dayCount;
+    if (dayEl && dayCount) dayEl.textContent = 'Jour ' + dayCount;
   }
 
   function updatePlayers(snapshot) {
@@ -77,53 +77,68 @@
 
     list.innerHTML = '';
     let alive = 0;
-    snapshot.players.forEach(p => {
+    snapshot.players.forEach((p, i) => {
       if (p.alive) alive++;
       const div = document.createElement('div');
-      div.className = `player-row ${p.alive ? 'alive' : 'dead'} clickable-player`;
+      div.className = `sp-player ${p.alive ? 'sp-alive' : 'sp-dead'} clickable-player`;
       div.dataset.playerId = p.id;
       div.dataset.playerAvatar = p.avatar || '';
+      div.style.animationDelay = `${0.05 + i * 0.03}s`;
       div.onclick = function() { if (window.openSpectatorPlayerModal) window.openSpectatorPlayerModal(this); };
 
-      // Build player row using safe DOM methods (no innerHTML with user data)
+      // Avatar wrap
+      const avatarWrap = document.createElement('div');
+      avatarWrap.className = 'sp-player-avatar-wrap';
       if (p.avatar) {
         const img = document.createElement('img');
-        img.className = 'player-avatar';
+        img.className = 'sp-player-avatar';
         img.src = p.avatar;
         img.alt = '';
-        div.appendChild(img);
+        avatarWrap.appendChild(img);
       } else {
         const avatarSpan = document.createElement('span');
-        avatarSpan.className = 'player-avatar player-avatar-default';
+        avatarSpan.className = 'sp-player-avatar sp-player-avatar-default';
         avatarSpan.textContent = '👤';
-        div.appendChild(avatarSpan);
+        avatarWrap.appendChild(avatarSpan);
       }
+      const statusDot = document.createElement('span');
+      statusDot.className = `sp-avatar-status ${p.alive ? 'sp-status-alive' : 'sp-status-dead'}`;
+      avatarWrap.appendChild(statusDot);
+      div.appendChild(avatarWrap);
 
+      // Info
+      const info = document.createElement('div');
+      info.className = 'sp-player-info';
       const nameSpan = document.createElement('span');
-      nameSpan.className = 'player-name';
+      nameSpan.className = 'sp-player-name';
       nameSpan.textContent = p.username || p.id;
-      div.appendChild(nameSpan);
+      info.appendChild(nameSpan);
 
+      const tags = document.createElement('div');
+      tags.className = 'sp-player-tags';
       if (!p.alive && p.role) {
-        const roleSpan = document.createElement('span');
-        roleSpan.className = 'player-role';
-        roleSpan.textContent = p.role;
-        div.appendChild(roleSpan);
+        const roleTag = document.createElement('span');
+        roleTag.className = 'sp-role-tag';
+        roleTag.textContent = p.role;
+        tags.appendChild(roleTag);
       }
       if (p.isCaptain) {
         const badge = document.createElement('span');
-        badge.className = 'player-badge';
-        badge.textContent = '👑';
-        div.appendChild(badge);
+        badge.className = 'sp-badge-tag';
+        badge.textContent = '👑 Capitaine';
+        tags.appendChild(badge);
       }
       if (p.inLove) {
         const badge = document.createElement('span');
-        badge.className = 'player-badge';
+        badge.className = 'sp-badge-tag sp-badge-love';
         badge.textContent = '💕';
-        div.appendChild(badge);
+        tags.appendChild(badge);
       }
+      info.appendChild(tags);
+      div.appendChild(info);
+
       const arrow = document.createElement('span');
-      arrow.className = 'player-arrow';
+      arrow.className = 'sp-player-chevron';
       arrow.textContent = '›';
       div.appendChild(arrow);
       list.appendChild(div);
@@ -140,18 +155,20 @@
   }
 
   function markPlayerDead(identifier, role) {
-    const rows = document.querySelectorAll('.player-row');
+    const rows = document.querySelectorAll('.sp-player');
     rows.forEach(row => {
-      if (row.dataset.playerId === identifier || row.querySelector('.player-name')?.textContent === identifier) {
-        row.className = 'player-row dead';
-        row.querySelector('.player-status').textContent = '💀';
+      if (row.dataset.playerId === identifier || row.querySelector('.sp-player-name')?.textContent === identifier) {
+        row.classList.remove('sp-alive');
+        row.classList.add('sp-dead');
+        const statusDot = row.querySelector('.sp-avatar-status');
+        if (statusDot) { statusDot.classList.remove('sp-status-alive'); statusDot.classList.add('sp-status-dead'); }
         if (role) {
-          const existing = row.querySelector('.player-role');
-          if (!existing) {
+          const tags = row.querySelector('.sp-player-tags');
+          if (tags && !tags.querySelector('.sp-role-tag')) {
             const span = document.createElement('span');
-            span.className = 'player-role';
+            span.className = 'sp-role-tag';
             span.textContent = role;
-            row.appendChild(span);
+            tags.insertBefore(span, tags.firstChild);
           }
         }
         // Update alive count
@@ -169,8 +186,8 @@
     if (!feed) return;
 
     const div = document.createElement('div');
-    const className = data.className || `event-${data.event === 'playerKilled' ? 'kill' : data.event === 'phaseChanged' ? 'phase' : 'info'}`;
-    div.className = `event-item ${className}`;
+    const evType = data.event === 'playerKilled' ? 'kill' : data.event === 'phaseChanged' ? 'phase' : data.event === 'gameEnded' ? 'victory' : 'info';
+    div.className = `sp-event sp-ev-${evType}`;
 
     const time = new Date().toLocaleTimeString();
     let text = data.text || '';
@@ -187,12 +204,17 @@
     }
 
     const timeSpan = document.createElement('span');
-    timeSpan.className = 'event-time';
+    timeSpan.className = 'sp-ev-time';
     timeSpan.textContent = time;
     div.appendChild(timeSpan);
 
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'sp-ev-icon';
+    iconSpan.textContent = evType === 'kill' ? '💀' : evType === 'phase' ? '🌙' : evType === 'victory' ? '🏆' : '📝';
+    div.appendChild(iconSpan);
+
     const textSpan = document.createElement('span');
-    textSpan.className = 'event-text';
+    textSpan.className = 'sp-ev-text';
     textSpan.textContent = text;
     div.appendChild(textSpan);
     

@@ -21,6 +21,16 @@ module.exports = {
       return;
     }
 
+    // GUARD: Refuse if guild is not properly configured (no guild-scoped category)
+    const ConfigManager = require('../utils/config');
+    const config = ConfigManager.getInstance();
+    const guildId = interaction.guildId;
+    if (!config.isSetupComplete(guildId)) {
+      logger.warn('Guild not configured, refusing /create', { guildId });
+      await safeReply(interaction, { content: t('error.not_configured_run_setup'), flags: MessageFlags.Ephemeral });
+      return;
+    }
+
     // STEP 1: Try to respond ASAP to prevent Discord retries
     let deferSuccess = false;
     try {
@@ -56,40 +66,30 @@ module.exports = {
     });
 
     try {
-      // Get category ID from configuration
-      const ConfigManager = require('../utils/config');
-      const config = ConfigManager.getInstance();
-      const guildId = interaction.guildId;
-      let CATEGORY_ID = config.getCategoryId(guildId);
+      // Get category ID from guild-scoped configuration (no fallback)
+      let CATEGORY_ID = config.get(`guild.${guildId}.discord.category_id`);
       
       // Validate that the configured category actually exists on Discord
       if (CATEGORY_ID) {
         try {
           const cat = await interaction.guild.channels.fetch(CATEGORY_ID);
           if (!cat || cat.type !== 4) { // 4 = GuildCategory
-            logger.warn('Configured category does not exist or is not a category, falling back', { CATEGORY_ID });
+            logger.warn('Configured category does not exist or is not a category', { CATEGORY_ID });
             CATEGORY_ID = null;
           }
         } catch {
-          logger.warn('Configured category not found on Discord, falling back', { CATEGORY_ID });
+          logger.warn('Configured category not found on Discord', { CATEGORY_ID });
           CATEGORY_ID = null;
         }
       }
 
-      // Fallback: use the current channel's parent category
+      // No fallback — if category is invalid, refuse
       if (!CATEGORY_ID) {
-        const currentChannel = await interaction.guild.channels.fetch(interaction.channelId);
-        if (currentChannel && currentChannel.parentId) {
-          CATEGORY_ID = currentChannel.parentId;
-          logger.info('Using current channel parent as category', { CATEGORY_ID });
+        if (deferSuccess) {
+          await interaction.editReply({
+            content: t('error.not_configured_run_setup')
+          });
         }
-      }
-
-      if (!CATEGORY_ID) {
-        await interaction.editReply({
-          content: t('error.not_configured'),
-          flags: MessageFlags.Ephemeral
-        });
         return;
       }
 

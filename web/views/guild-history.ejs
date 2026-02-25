@@ -1,140 +1,227 @@
 <%- include('partials/header') %>
 
-<div class="guild-history-page">
-  <div class="page-header">
-    <% if (guild && guild.icon) { %>
-      <img src="<%= guild.icon %>" alt="" class="guild-icon-lg">
-    <% } %>
-    <div>
-      <h1>&#128218; <span data-i18n="ghistory.title">Historique</span> — <%= guild ? guild.name : guildId %></h1>
-      <p class="text-muted" data-i18n="ghistory.subtitle">Les dernières parties jouées sur ce serveur</p>
+<!-- Ambient floating orbs (blue) -->
+<div class="gh-ambient" aria-hidden="true">
+  <div class="gh-orb gh-orb-1"></div>
+  <div class="gh-orb gh-orb-2"></div>
+  <div class="gh-orb gh-orb-3"></div>
+</div>
+
+<!-- ═══ HERO ═══ -->
+<section class="gh-hero">
+  <div class="gh-hero-bg">
+    <div class="gh-hero-gradient"></div>
+    <div class="gh-hero-dots"></div>
+    <div class="gh-hero-scanline"></div>
+  </div>
+  <div class="gh-hero-inner">
+    <div class="gh-hero-left">
+      <div class="gh-hero-avatar-wrap">
+        <% if (guild && guild.icon) { %>
+          <img src="<%= guild.icon %>" alt="<%= guild.name %>" class="gh-hero-avatar">
+        <% } else { %>
+          <div class="gh-hero-avatar gh-hero-avatar-placeholder">📜</div>
+        <% } %>
+        <div class="gh-avatar-ring"></div>
+        <div class="gh-avatar-ring gh-avatar-ring-lg"></div>
+      </div>
+      <div class="gh-hero-info">
+        <h1 class="gh-hero-title"><%= guild ? guild.name : 'Guild ' + guildId %></h1>
+        <p class="gh-hero-subtitle" data-i18n="ghistory.subtitle">Historique &middot; Parties &amp; Résultats</p>
+        <div class="gh-hero-tags">
+          <div class="gh-hero-tag gh-tag-games">
+            <span>📜</span> <%= history.length %> parties
+          </div>
+          <% if (guild && guild.memberCount) { %>
+            <div class="gh-hero-tag gh-tag-members">
+              <span>👥</span> <%= guild.memberCount %> membres
+            </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<% if (history.length === 0) { %>
+  <div class="gh-empty">
+    <div class="gh-empty-icon">📜</div>
+    <p data-i18n="ghistory.empty">Aucune partie terminée pour le moment.</p>
+  </div>
+<% } else { %>
+
+  <%
+    var totalGames = history.length;
+    var villageWins = history.filter(function(h){ return h.winner === 'village'; }).length;
+    var wolfWins = history.filter(function(h){ return h.winner === 'wolves'; }).length;
+    var loversWins = history.filter(function(h){ return h.winner === 'lovers'; }).length;
+    var avgPlayers = totalGames > 0 ? Math.round(history.reduce(function(s, h){ return s + (h.player_count || 0); }, 0) / totalGames) : 0;
+    var avgDuration = totalGames > 0 ? Math.round(history.reduce(function(s, h){ return s + (h.duration_seconds || 0); }, 0) / totalGames) : 0;
+    var avgMins = Math.floor(avgDuration / 60);
+    var avgSecs = avgDuration % 60;
+  %>
+
+  <!-- ═══ STATS STRIP ═══ -->
+  <div class="gh-stats" style="animation: panelEnter 0.5s ease-out both; animation-delay: 0.1s;">
+    <div class="gh-stat" style="--i:0">
+      <div class="gh-stat-icon gh-si-total">🎮</div>
+      <div class="gh-stat-data">
+        <span class="gh-stat-val"><%= totalGames %></span>
+        <span class="gh-stat-label" data-i18n="ghistory.total_games">Parties jouées</span>
+      </div>
+    </div>
+    <div class="gh-stat" style="--i:1">
+      <div class="gh-stat-icon gh-si-village">🏡</div>
+      <div class="gh-stat-data">
+        <span class="gh-stat-val"><%= villageWins %></span>
+        <span class="gh-stat-label" data-i18n="ghistory.village_wins">Village</span>
+      </div>
+    </div>
+    <div class="gh-stat" style="--i:2">
+      <div class="gh-stat-icon gh-si-wolves">🐺</div>
+      <div class="gh-stat-data">
+        <span class="gh-stat-val"><%= wolfWins %></span>
+        <span class="gh-stat-label" data-i18n="ghistory.wolf_wins">Loups</span>
+      </div>
+    </div>
+    <div class="gh-stat" style="--i:3">
+      <div class="gh-stat-icon gh-si-lovers">💕</div>
+      <div class="gh-stat-data">
+        <span class="gh-stat-val"><%= loversWins %></span>
+        <span class="gh-stat-label" data-i18n="ghistory.lovers_wins">Amoureux</span>
+      </div>
+    </div>
+    <div class="gh-stat" style="--i:4">
+      <div class="gh-stat-icon gh-si-players">👥</div>
+      <div class="gh-stat-data">
+        <span class="gh-stat-val"><%= avgPlayers %></span>
+        <span class="gh-stat-label" data-i18n="ghistory.avg_players">Joueurs / partie</span>
+      </div>
+    </div>
+    <div class="gh-stat" style="--i:5">
+      <div class="gh-stat-icon gh-si-time">⏱️</div>
+      <div class="gh-stat-data">
+        <span class="gh-stat-val"><%= avgMins %>:<%= avgSecs < 10 ? '0' + avgSecs : avgSecs %></span>
+        <span class="gh-stat-label" data-i18n="ghistory.avg_duration">Durée moy.</span>
+      </div>
     </div>
   </div>
 
-  <% if (history.length === 0) { %>
-    <div class="empty-state">
-      <span class="empty-icon">&#128218;</span>
-      <p data-i18n="ghistory.empty">Aucune partie terminée pour le moment.</p>
+  <!-- ═══ HISTORY TABLE ═══ -->
+  <section class="gh-table-panel" style="animation: panelEnter 0.5s ease-out both; animation-delay: 0.25s;">
+    <div class="gh-table-header">
+      <h2 class="gh-table-title">📋 <span data-i18n="ghistory.recent_games">Parties récentes</span></h2>
+      <span class="gh-table-count"><%= totalGames %> parties</span>
     </div>
-  <% } else { %>
-
-    <!-- Stats Summary -->
-    <div class="ghistory-stats">
-      <%
-        var totalGames = history.length;
-        var villageWins = history.filter(function(h){ return h.winner === 'village'; }).length;
-        var wolfWins = history.filter(function(h){ return h.winner === 'wolves'; }).length;
-        var loversWins = history.filter(function(h){ return h.winner === 'lovers'; }).length;
-        var otherWins = totalGames - villageWins - wolfWins - loversWins;
-        var avgPlayers = totalGames > 0 ? Math.round(history.reduce(function(s, h){ return s + (h.player_count || 0); }, 0) / totalGames) : 0;
-        var avgDuration = totalGames > 0 ? Math.round(history.reduce(function(s, h){ return s + (h.duration_seconds || 0); }, 0) / totalGames) : 0;
-        var avgMins = Math.floor(avgDuration / 60);
-        var avgSecs = avgDuration % 60;
-      %>
-      <div class="ghistory-stat-card">
-        <span class="ghistory-stat-value"><%= totalGames %></span>
-        <span class="ghistory-stat-label" data-i18n="ghistory.total_games">Parties jouées</span>
-      </div>
-      <div class="ghistory-stat-card">
-        <span class="ghistory-stat-value"><%= villageWins %></span>
-        <span class="ghistory-stat-label">&#127969; <span data-i18n="ghistory.village_wins">Victoires Village</span></span>
-      </div>
-      <div class="ghistory-stat-card">
-        <span class="ghistory-stat-value"><%= wolfWins %></span>
-        <span class="ghistory-stat-label">&#128058; <span data-i18n="ghistory.wolf_wins">Victoires Loups</span></span>
-      </div>
-      <div class="ghistory-stat-card">
-        <span class="ghistory-stat-value"><%= loversWins %></span>
-        <span class="ghistory-stat-label">&#128149; <span data-i18n="ghistory.lovers_wins">Victoires Amoureux</span></span>
-      </div>
-      <div class="ghistory-stat-card">
-        <span class="ghistory-stat-value"><%= avgPlayers %></span>
-        <span class="ghistory-stat-label" data-i18n="ghistory.avg_players">Joueurs / partie</span>
-      </div>
-      <div class="ghistory-stat-card">
-        <span class="ghistory-stat-value"><%= avgMins %>:<%= avgSecs < 10 ? '0' + avgSecs : avgSecs %></span>
-        <span class="ghistory-stat-label" data-i18n="ghistory.avg_duration">Durée moyenne</span>
-      </div>
-    </div>
-
-    <!-- History Table -->
-    <div class="ghistory-section">
-      <h2 class="section-title" data-i18n="ghistory.recent_games">Parties récentes</h2>
-      <div class="ghistory-table-wrap">
-        <table class="ghistory-table">
-          <thead>
-            <tr>
-              <th data-i18n="ghistory.col_date">Date</th>
-              <th data-i18n="ghistory.col_winner">Vainqueur</th>
-              <th data-i18n="ghistory.col_players">Joueurs</th>
-              <th data-i18n="ghistory.col_days">Jours</th>
-              <th data-i18n="ghistory.col_duration">Durée</th>
-              <th data-i18n="ghistory.col_details">Détails</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% history.forEach(function(h) {
-              var dur = h.duration_seconds || 0;
-              var mins = Math.floor(dur / 60);
-              var secs = dur % 60;
-              var players = [];
-              try { players = JSON.parse(h.players_json || '[]'); } catch(e) {}
-              var winnerLabel = h.winner === 'village' ? '🏡 Village' : h.winner === 'wolves' ? '🐺 Loups-Garous' : h.winner === 'lovers' ? '💕 Amoureux' : (h.winner || '?');
-              var winnerClass = h.winner === 'village' ? 'winner-village' : h.winner === 'wolves' ? 'winner-wolves' : h.winner === 'lovers' ? 'winner-lovers' : '';
-            %>
-              <tr class="ghistory-row">
-                <td class="ghistory-date">
-                  <% if (h.ended_at) { %>
-                    <span class="ghistory-date-main"><%= new Date(h.ended_at).toLocaleDateString() %></span>
-                    <span class="ghistory-date-time"><%= new Date(h.ended_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) %></span>
-                  <% } else { %>
-                    —
-                  <% } %>
-                </td>
-                <td><span class="ghistory-winner <%= winnerClass %>"><%= winnerLabel %></span></td>
-                <td><%= h.player_count || 0 %></td>
-                <td><%= h.day_count || 0 %></td>
-                <td><%= mins %>:<%= secs < 10 ? '0' + secs : secs %></td>
-                <td>
-                  <button class="btn btn-xs btn-ghost ghistory-detail-btn" data-game-idx="<%= history.indexOf(h) %>">
-                    &#128065;&#65039; <span data-i18n="ghistory.btn_details">Voir</span>
+    <div class="gh-table-wrap">
+      <table class="gh-table">
+        <thead>
+          <tr>
+            <th data-i18n="ghistory.col_date">Date</th>
+            <th data-i18n="ghistory.col_winner">Vainqueur</th>
+            <th data-i18n="ghistory.col_players">Joueurs</th>
+            <th data-i18n="ghistory.col_days">Jours</th>
+            <th data-i18n="ghistory.col_duration">Durée</th>
+            <th data-i18n="ghistory.col_details">Détails</th>
+            <% if (accessLevel === 'owner') { %>
+              <th class="gh-col-actions"></th>
+            <% } %>
+          </tr>
+        </thead>
+        <tbody>
+          <% history.forEach(function(h, i) {
+            var dur = h.duration_seconds || 0;
+            var mins = Math.floor(dur / 60);
+            var secs = dur % 60;
+            var players = [];
+            try { players = JSON.parse(h.players_json || '[]'); } catch(e) {}
+            var winnerLabel = h.winner === 'village' ? '🏡 Village' : h.winner === 'wolves' ? '🐺 Loups-Garous' : h.winner === 'lovers' ? '💕 Amoureux' : (h.winner || '?');
+            var winnerClass = h.winner === 'village' ? 'gh-w-village' : h.winner === 'wolves' ? 'gh-w-wolves' : h.winner === 'lovers' ? 'gh-w-lovers' : '';
+          %>
+            <tr class="gh-row" style="animation-delay:<%= 0.3 + i * 0.03 %>s">
+              <td class="gh-cell-date">
+                <% if (h.ended_at) { %>
+                  <span class="gh-date-main"><%= new Date(h.ended_at).toLocaleDateString() %></span>
+                  <span class="gh-date-time"><%= new Date(h.ended_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) %></span>
+                <% } else { %>
+                  —
+                <% } %>
+              </td>
+              <td><span class="gh-winner <%= winnerClass %>"><%- winnerLabel %></span></td>
+              <td class="gh-cell-num"><%= h.player_count || 0 %></td>
+              <td class="gh-cell-num"><%= h.day_count || 0 %></td>
+              <td class="gh-cell-num"><%= mins %>:<%= secs < 10 ? '0' + secs : secs %></td>
+              <td>
+                <button class="gh-detail-btn" data-game-idx="<%= i %>">
+                  👁️ <span data-i18n="ghistory.btn_details">Voir</span>
+                </button>
+              </td>
+              <% if (accessLevel === 'owner') { %>
+                <td class="gh-cell-actions">
+                  <button class="gh-delete-btn" data-game-id="<%= h.id %>" title="Supprimer cette partie">
+                    🗑️ <span>Suppr.</span>
                   </button>
                 </td>
-              </tr>
-              <tr class="ghistory-detail-row" id="ghistory-detail-<%= history.indexOf(h) %>" style="display:none;">
-                <td colspan="6">
-                  <div class="ghistory-detail-content">
-                    <h4 data-i18n="ghistory.player_list">Liste des joueurs</h4>
-                    <div class="ghistory-player-grid">
-                      <% players.forEach(function(p) { %>
-                        <div class="ghistory-player <%= p.alive ? 'survived' : 'died' %>">
-                          <span class="ghistory-player-status"><%- p.alive ? '&#10084;&#65039;' : '&#9760;&#65039;' %></span>
-                          <span class="ghistory-player-name"><%= p.username || p.id %></span>
-                          <span class="ghistory-player-role role-tag role-<%= (p.role || '').toLowerCase().replace(/[^a-z]/g, '') %>"><%= p.role || '?' %></span>
-                        </div>
-                      <% }); %>
-                    </div>
+              <% } %>
+            </tr>
+            <tr class="gh-detail-row" id="gh-detail-<%= i %>" style="display:none;">
+              <td colspan="<%= accessLevel === 'owner' ? 7 : 6 %>">
+                <div class="gh-detail-content">
+                  <h4 data-i18n="ghistory.player_list">Liste des joueurs</h4>
+                  <div class="gh-player-grid">
+                    <% players.forEach(function(p) { %>
+                      <div class="gh-player <%= p.alive ? 'gh-survived' : 'gh-died' %>">
+                        <span class="gh-player-status"><%- p.alive ? '❤️' : '☠️' %></span>
+                        <span class="gh-player-name"><%= p.username || p.id %></span>
+                        <span class="gh-player-role"><%= p.role || '?' %></span>
+                      </div>
+                    <% }); %>
                   </div>
-                </td>
-              </tr>
-            <% }); %>
-          </tbody>
-        </table>
-      </div>
+                </div>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
     </div>
+  </section>
 
-  <% } %>
-</div>
+<% } %>
 
 <script>
-// Toggle game detail rows
-document.querySelectorAll('.ghistory-detail-btn').forEach(function(btn) {
+document.querySelectorAll('.gh-detail-btn').forEach(function(btn) {
   btn.addEventListener('click', function() {
     var idx = this.getAttribute('data-game-idx');
-    var row = document.getElementById('ghistory-detail-' + idx);
+    var row = document.getElementById('gh-detail-' + idx);
     if (row) {
-      row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+      var isOpen = row.style.display !== 'none';
+      row.style.display = isOpen ? 'none' : 'table-row';
+      this.classList.toggle('gh-btn-active', !isOpen);
     }
+  });
+});
+
+/* Owner: delete history entry */
+document.querySelectorAll('.gh-delete-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var id = this.getAttribute('data-game-id');
+    if (!confirm('Supprimer définitivement cette partie de l\'historique ?')) return;
+    var row = this.closest('tr');
+    var detailRow = row.nextElementSibling;
+    fetch('/api/history/' + id, { method: 'DELETE', credentials: 'same-origin' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success) {
+          if (detailRow && detailRow.classList.contains('gh-detail-row')) detailRow.remove();
+          row.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+          row.style.opacity = '0';
+          row.style.transform = 'translateX(20px)';
+          setTimeout(function() { row.remove(); }, 300);
+        } else {
+          alert('Erreur : ' + (data.error || 'Échec de la suppression'));
+        }
+      })
+      .catch(function() { alert('Erreur réseau'); });
   });
 });
 </script>

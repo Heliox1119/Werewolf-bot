@@ -168,11 +168,50 @@ class GameDatabase {
         logger.info('Migration: created premium_users table');
       }
 
+      // Migration: create player_guilds junction table (permanent player↔guild mapping)
+      const pgTable = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='player_guilds'").get();
+      if (!pgTable) {
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS player_guilds (
+            player_id TEXT NOT NULL,
+            guild_id TEXT NOT NULL,
+            PRIMARY KEY (player_id, guild_id)
+          )
+        `);
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_player_guilds_guild ON player_guilds(guild_id)');
+        logger.info('Migration: created player_guilds table');
+
+        // Back-fill from game_history
+        try {
+          const rows = this.db.prepare('SELECT guild_id, players_json FROM game_history WHERE guild_id IS NOT NULL AND players_json IS NOT NULL').all();
+          const insert = this.db.prepare('INSERT OR IGNORE INTO player_guilds (player_id, guild_id) VALUES (?, ?)');
+          const tx = this.db.transaction(() => {
+            for (const row of rows) {
+              try {
+                const players = JSON.parse(row.players_json);
+                for (const p of players) {
+                  if (p.id) insert.run(p.id, row.guild_id);
+                }
+              } catch {}
+            }
+          });
+          tx();
+          logger.info('Migration: back-filled player_guilds from game_history');
+        } catch (e) {
+          logger.warn('Migration: failed to back-fill player_guilds', { error: e.message });
+        }
+      }
+
       // Migration: add missing indexes for performance
       this.db.exec('CREATE INDEX IF NOT EXISTS idx_games_guild ON games(guild_id)');
       this.db.exec('CREATE INDEX IF NOT EXISTS idx_games_guild_ended ON games(guild_id, ended_at)');
       this.db.exec('CREATE INDEX IF NOT EXISTS idx_games_guild_phase ON games(guild_id, phase)');
       this.db.exec('CREATE INDEX IF NOT EXISTS idx_player_stats_username ON player_stats(username)');
+
+      // Cleanup: remove fake debug players from stats
+      this.db.exec("DELETE FROM player_stats WHERE player_id LIKE 'fake_%'");
+      this.db.exec("DELETE FROM player_extended_stats WHERE player_id LIKE 'fake_%'");
+      this.db.exec("DELETE FROM player_guilds WHERE player_id LIKE 'fake_%'");
     } catch (err) {
       logger.error('Schema migration error', { error: err.message });
     }
@@ -670,6 +709,9 @@ class GameDatabase {
 
   updatePlayerStats(playerId, username, updates, guildId = null) {
     try {
+      // Skip fake/debug players
+      if (playerId && playerId.startsWith('fake_')) return true;
+
       // Upsert: insérer ou mettre à jour
       const existing = this.db.prepare('SELECT * FROM player_stats WHERE player_id = ?').get(playerId);
       if (!existing) {
@@ -703,6 +745,13 @@ class GameDatabase {
           playerId
         );
       }
+      // Record player↔guild association permanently
+      if (guildId) {
+        try {
+          this.db.prepare('INSERT OR IGNORE INTO player_guilds (player_id, guild_id) VALUES (?, ?)').run(playerId, guildId);
+        } catch {}
+      }
+
       return true;
     } catch (err) {
       logger.error('Failed to update player stats', { error: err.message });
@@ -770,6 +819,16 @@ class GameDatabase {
       ).all(limit, offset);
     } catch (err) {
       return [];
+    }
+  }
+
+  deleteGameHistory(id) {
+    try {
+      const result = this.db.prepare('DELETE FROM game_history WHERE id = ?').run(id);
+      return result.changes > 0;
+    } catch (err) {
+      logger.error('Failed to delete game history entry', { error: err.message, id });
+      return false;
     }
   }
 

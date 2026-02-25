@@ -149,6 +149,203 @@
     updateWsStatus(false);
   }
 
+  // ── PJAX Navigation System (persistent header) ──
+  (function initPjaxNavigation() {
+    const loader = document.getElementById('page-loader');
+    const appMain = document.getElementById('app-main');
+    if (!appMain) return;
+
+    let navigating = false;
+
+    function shouldIntercept(el) {
+      if (!el || !el.href) return false;
+      if (el.target === '_blank') return false;
+      if (el.hasAttribute('download')) return false;
+      if (el.origin !== location.origin) return false;
+      if (el.pathname === location.pathname && el.search === location.search) return false;
+      if (el.pathname === location.pathname && el.hash) return false;
+      if (el.pathname.startsWith('/auth/')) return false;
+      return true;
+    }
+
+    function showLoader() {
+      if (loader) {
+        loader.classList.remove('done');
+        loader.style.animation = 'none';
+        loader.offsetHeight; // reset animation
+        loader.style.animation = '';
+        loader.classList.add('active');
+      }
+    }
+    function hideLoader() {
+      if (loader) {
+        loader.classList.remove('active');
+        loader.classList.add('done');
+        setTimeout(() => {
+          loader.classList.remove('done');
+          loader.style.width = '';
+        }, 500);
+      }
+    }
+
+    // Update nav-tab active states
+    function updateNavTabs(pathname) {
+      document.querySelectorAll('.nav-tab').forEach(tab => {
+        const href = tab.getAttribute('href');
+        if (!href) return;
+        tab.classList.toggle('active', href === pathname || (href !== '/' && pathname.startsWith(href)));
+      });
+      // Special case: '/' is only active on exact match
+      const homeTab = document.querySelector('.nav-tab[href="/"]');
+      if (homeTab) homeTab.classList.toggle('active', pathname === '/');
+    }
+
+    // Core pjax navigation
+    async function pjaxNavigate(href, pushState) {
+      if (navigating) return;
+      navigating = true;
+
+      const main = appMain.querySelector('.main-content');
+      showLoader();
+
+      // Exit animation on current content
+      if (main) {
+        main.classList.add('page-exit');
+        await new Promise(r => setTimeout(r, 250));
+      }
+
+      try {
+        const resp = await fetch(href, { headers: { 'X-Requested-With': 'pjax' } });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+        // If the server redirected (e.g. guild without bot → invite), use the final URL
+        const finalUrl = resp.redirected ? resp.url : href;
+
+        const html = await resp.text();
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        // Extract new page elements
+        const newAppMain = doc.getElementById('app-main');
+        const newTitle = doc.querySelector('title');
+        const newBody = doc.body;
+
+        if (!newAppMain) throw new Error('No app-main in response');
+
+        // Update document title
+        if (newTitle) document.title = newTitle.textContent;
+
+        // Update body data-page attribute
+        document.body.setAttribute('data-page', newBody.getAttribute('data-page') || 'full');
+
+        // Update guild sidebar if it changed
+        const oldGuildSidebar = document.getElementById('guild-sidebar');
+        const newGuildSidebar = doc.getElementById('guild-sidebar');
+        if (newGuildSidebar && !oldGuildSidebar) {
+          // Insert guild sidebar before app-main
+          appMain.insertAdjacentElement('beforebegin', newGuildSidebar);
+        } else if (!newGuildSidebar && oldGuildSidebar) {
+          oldGuildSidebar.remove();
+        } else if (newGuildSidebar && oldGuildSidebar) {
+          oldGuildSidebar.outerHTML = newGuildSidebar.outerHTML;
+        }
+
+        // Update guild panel if it changed
+        const oldGuildPanel = document.getElementById('guild-panel');
+        const newGuildPanel = doc.getElementById('guild-panel');
+        if (newGuildPanel && !oldGuildPanel) {
+          appMain.insertAdjacentElement('beforebegin', newGuildPanel);
+        } else if (!newGuildPanel && oldGuildPanel) {
+          oldGuildPanel.remove();
+        } else if (newGuildPanel && oldGuildPanel) {
+          oldGuildPanel.outerHTML = newGuildPanel.outerHTML;
+        }
+
+        // Swap app-main content and class
+        appMain.className = newAppMain.className;
+        appMain.innerHTML = newAppMain.innerHTML;
+
+        // Update nav active states
+        const url = new URL(finalUrl, location.origin);
+        updateNavTabs(url.pathname);
+
+        // Push to browser history (use final URL after any redirect)
+        if (pushState !== false) {
+          history.pushState({ pjax: true }, document.title, finalUrl);
+        }
+
+        // Remove old page-specific scripts from body (cleanup)
+        document.querySelectorAll('script[data-pjax]').forEach(s => s.remove());
+
+        // Load new page-specific scripts
+        // Mark them so we can clean up on next navigation
+        const newScripts = doc.querySelectorAll('script');
+        const commonScripts = ['/static/js/app.js', '/static/js/webI18n.js', 'socket.io'];
+        newScripts.forEach(s => {
+          if (s.src && commonScripts.some(c => s.src.includes(c))) return;
+          const ns = document.createElement('script');
+          ns.setAttribute('data-pjax', 'true');
+          if (s.src) {
+            ns.src = s.src;
+          } else if (s.textContent.trim()) {
+            ns.textContent = s.textContent;
+          } else {
+            return;
+          }
+          document.body.appendChild(ns);
+        });
+
+        // Re-apply i18n translations
+        if (typeof applyTranslations === 'function') {
+          setTimeout(() => applyTranslations(), 10);
+        }
+
+        // Re-sync WS status indicator on new footer element
+        updateWsStatus(socket && socket.connected);
+
+        // Trigger enter animation on new content
+        const newMain = appMain.querySelector('.main-content');
+        if (newMain) {
+          newMain.style.animation = 'none';
+          newMain.offsetHeight; // force reflow
+          newMain.style.animation = '';
+        }
+
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'instant' });
+
+      } catch (err) {
+        console.warn('[PJAX] Navigation failed, falling back:', err);
+        window.location.href = href;
+        return;
+      } finally {
+        hideLoader();
+        navigating = false;
+      }
+    }
+
+    // Intercept link clicks
+    document.addEventListener('click', (e) => {
+      const link = e.target.closest('a');
+      if (!link || !shouldIntercept(link)) return;
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+      if (navigating) { e.preventDefault(); return; }
+
+      e.preventDefault();
+      pjaxNavigate(link.href, true);
+    });
+
+    // Handle browser back/forward
+    window.addEventListener('popstate', (e) => {
+      if (navigating) return;
+      pjaxNavigate(location.href, false);
+    });
+
+    // Store initial state for back navigation
+    history.replaceState({ pjax: true }, document.title, location.href);
+  })();
+
   // Utilities
   window.werewolfUtils = {
     formatNumber(n) {

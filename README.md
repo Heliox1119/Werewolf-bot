@@ -5,12 +5,12 @@
 
 A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice management, ambient audio and interactive lobby.
 
-![Version](https://img.shields.io/badge/version-3.3.0-blue)
+![Version](https://img.shields.io/badge/version-3.4.0-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)
-![Tests](https://img.shields.io/badge/tests-251%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-268%20passed-brightgreen)
 
 ---
 
@@ -81,10 +81,16 @@ A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice ma
 - **Extensible** — Adding a language = creating a `locales/xx.js` file
 
 ### 🌐 Web Dashboard & API
-- **Web Dashboard** — Express.js + EJS dark theme interface at `http://localhost:3000`
-- **Live Spectator** — Watch games in real-time via Socket.IO WebSocket
-- **REST API** — 15 endpoints for games, leaderboard, stats, roles, config
-- **Discord OAuth2** — Login with Discord, admin features per-guild
+- **Redesigned Web Dashboard** — Command center UI with ambient orbs, animated counters, PJAX SPA-like navigation
+- **Discord-style sidebar** — Dual sidebar: guild icon bar + guild management panel
+- **Interactive "Draw a Role"** — Card deck mini-game on dashboard with flip animations
+- **Guild overview** — Win distribution charts, top players, recent games, animated metrics
+- **Leaderboard podium** — Top 3 visual cards with gold/silver/bronze glow, full ranking table
+- **Documentation wiki** — Full in-app wiki with sticky sidebar navigation
+- **Invite landing page** — Feature showcase, role carousel, permissions section, scroll-reveal
+- **Live Spectator** — 3-column layout with player quick modal, vote chart, real-time feed
+- **REST API** — 20+ endpoints for games, leaderboard, stats, roles, config, moderation
+- **Discord OAuth2** — Login with Discord, per-guild admin features, access-level filtering
 - **Custom Roles** — Create and manage custom roles via web editor
 
 ### 🗄️ Technical
@@ -102,7 +108,9 @@ A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice ma
 - **Centralized i18n** — `I18n` singleton, `{{variable}}` interpolation, automatic fallback
 - **EventEmitter architecture** — GameManager emits real-time events to web layer
 - **Robust error handling** — safeReply, graceful shutdown, zero crash in production
-- **251 automated tests** — 21 suites, 0 failures
+- **Guild reconciliation** — Auto-purge stale guild data on startup when bot leaves a server
+- **Bot permission safety** — Bot retains ViewChannel + ManageChannels on all hidden game channels
+- **268 automated tests** — 23 suites, 0 failures
 - **Embed themes** — 4 color palettes, `/theme` command, 12 semantic colors
 
 ---
@@ -365,6 +373,7 @@ npm run clear-commands      # Reset Discord commands
 
 | Version | Highlights |
 |---------|-----------|
+| **v3.4.0** | 🎨 Complete web interface redesign (PJAX navigation, command center dashboard, guild overview, podium leaderboard, wiki docs, invite landing page), interactive `/setup wizard`, `/create` setup guard, multi-guild channel cleanup fix, guild reconciliation, 268 tests |
 | **v3.3.0** | 🚀 Production-readiness hardening: crash simulation matrix, WebSocket isolation/anti-abuse tests, GameMutex observability metrics, startup split-brain lock, stuck game liveness detection (`stuck_games_count`) |
 | **v3.2.0** | 🛡️ 6-axis architecture hardening: GameMutex, FSM transitions, transaction sync, dirty flag, 7 new DB columns, isRecentDuplicate on 12 commands, express-rate-limit, CORS, guild-scoped WS, Prometheus /metrics, /health, 223 tests |
 | **v3.1.0** | 🛡️ 15-point architecture audit, XSS elimination, WebSocket rate limiting & debounce, multi-tenant isolation, critical FSM fixes, game archiving, 200 tests || **v3.0.0** | 🌐 Web Dashboard (Express + EJS), Live Spectator (Socket.IO), REST API (15 endpoints), Discord OAuth2, Custom Roles system, EventEmitter architecture || **v2.9.0** | 🏆 Achievements (18), ELO ranking (7 tiers), death reveal embeds, DM turn notifications, `/leaderboard`, `/history`, post-game timeline, 4 bug fixes |
@@ -408,4 +417,4 @@ Full details: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-**Version**: 3.1.0 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **Docker**: ready · **License**: ISC
+**Version**: 3.4.0 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **Docker**: ready · **License**: ISC

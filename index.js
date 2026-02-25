@@ -241,6 +241,18 @@ client.once("clientReady", async () => {
         logger.error('❌ Game state load failed', err);
       }
 
+      // ─── Guild reconciliation: purge data for guilds bot left ─────
+      try {
+        const { reconcileGuildsOnStartup } = require('./game/guildReconciler');
+        const result = reconcileGuildsOnStartup(client, gameManager.db, gameManager);
+        if (result.removed.length > 0) {
+          logger.info('Guild reconciliation done', { removed: result.removed.length, kept: result.kept.length });
+        }
+      } catch (err) {
+        logger.error('Guild reconciliation failed', { error: err.message });
+      }
+      // ──────────────────────────────────────────────────────────────
+
       // ─── Orphan channel cleanup ───────────────────────────────────
       try {
         logger.info('Checking for orphan game channels...');

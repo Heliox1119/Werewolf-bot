@@ -1,5 +1,143 @@
 # 📝 Changelog - Werewolf Bot
 
+## [3.4.0] - 2026-02-25 - Web Interface Redesign & Multi-Guild Hardening
+
+### 🎨 Web Interface — Complete Redesign
+- **New design system** across all pages: ambient floating orbs, gradient hero sections, dot/scanline patterns, animated counters (easeOutExpo), staggered card entrance animations
+- **PJAX navigation** — SPA-like page transitions: AJAX content swap with exit/enter CSS animations, browser history support, header/sidebar preserved across navigations
+- **Discord-style dual sidebar** — Left guild icon bar (with `+` badge for invite), right guild management panel (Overview, Leaderboard, History, Moderation, Rules)
+- **User dropdown redesign** — Discord avatar with decoration ring, display name, access badge (👑 Owner / 🛡️ Admin / 👤 Member), language toggle
+- **Page transition loader bar** at top of page
+- **i18n FOUC prevention** — `[data-i18n]` attributes hide text until translations apply
+
+### 🖥️ Dashboard — Command Center
+- **Hero section** with werewolf avatar, animated KPI metrics (active games, players, guilds, total games), live status beacon
+- **"Draw a Role" card deck** — interactive mini-game: click to draw, card flip animation revealing random role with image, name, camp, description
+- **Activity feed sidebar** — real-time Socket.IO event stream (game created/started/ended, phase changes)
+- **Live games grid** — game cards with phase badge, day count, alive/dead counts, HP bar, spectate link
+
+### 🏰 Guild Overview — Redesigned
+- **Guild hero** with server icon, member count, live game indicator
+- **4 animated metric cards** + secondary stats bar (avg players, avg duration, win rates)
+- **Win distribution bar** — horizontal stacked bar chart (village/wolves/lovers with color-coded segments + legend)
+- **Top players panel** — top 5 with ELO, tier badge, win/loss
+- **Recent games panel** — last 5 games with winner badge, player count, duration
+
+### 🏆 Leaderboard — Podium & Rankings
+- **Podium top 3** — large visual cards (gold/silver/bronze glow) with medals 🥇🥈🥉, animated win rate bar
+- **Full ranking table** with sortable columns, tier chips, top-3 highlighted rows
+
+### 📜 History — Enhanced
+- **Stats strip** — 6 animated stat cards (total games, village/wolf/lovers wins, avg players, avg duration)
+- **Expandable row detail** — click to reveal full player list with role + alive/dead status
+- **Owner-only delete** with animated row removal and confirmation
+
+### 📋 Rules Configuration — Redesigned
+- **Hero** with active roles count, player range, current language flag
+- **Settings cards** — player stepper (min/max), win condition radio, language radio
+- **Classic roles grid** — role cards with emoji, camp badge, toggle switch (admin-only), mandatory roles locked
+- **Premium roles section** — gold styling, lock icons, premium CTA banner
+- **Setup status** — green/warning indicators for Discord category and setup completion
+- **Save bar** with AJAX PATCH to API, toast notifications
+
+### 🎭 Spectator — Redesigned
+- **3-column layout** — Players (left), Live event feed + vote chart (center), Game info (right)
+- **Player quick modal** — click any player to see stats loaded from API (ELO, tier, games, wins)
+- **Vote display** — horizontal bar chart of vote tallies with percentage bars
+- **Top bar** — pulsing LIVE indicator, phase badge, sub-phase, day count, viewer count
+
+### 📖 Documentation / Wiki — Complete Rewrite
+- **Sticky sidebar navigation** with 6 sections: Getting Started, Roles, Gameplay, Commands, Progression, Configuration
+- **Hero stats chips** (12 Roles, 30+ Commands, 16 Achievements, 8 Tiers)
+- Full coverage: game flow, setup, all roles, phases, actions, victory conditions, commands, achievements, ELO tiers, rules, timeouts
+
+### 📬 Invite Page — Landing Page
+- **Full landing page** with moon visual in hero, guild-specific name/icon
+- **Features showcase** — 6 feature cards
+- **Role carousel** — auto-scrolling infinite horizontal strip of 12 role cards with images
+- **Permissions section** — 6 cards explaining each required bot permission
+- **Bottom CTA** with wolf emoji and invite button
+- **Scroll-reveal animations** via IntersectionObserver
+
+### 📊 Monitoring — Enhanced
+- **Access-level filtering** (public → member → admin → owner see progressively more)
+- **Health ring** — circular SVG uptime indicator
+- **Owner-only**: latency/memory 24h sparkline charts, system panel (RSS, heap, CPU, RAM), commands/errors panels
+- Auto-refresh 30s + manual refresh button
+
+### 🔒 `/setup wizard` — Interactive Setup
+- **Replaced** static text wizard with interactive buttons UI (Auto Setup, Choose Category, Cancel)
+- **Auto Setup** — creates `🐺 Werewolf` category + `🎮 start-game` channel in one click, saves config
+- **Choose Category** — select menu listing existing categories, saves selection
+- **Discord.js v14.15+ compliance** — `withResponse: true` (replaces deprecated `fetchReply`), `MessageFlags.Ephemeral` (replaces deprecated `ephemeral: true`), resilient `deferUpdate()` with try-catch
+- **16 new i18n keys** (FR + EN) for all wizard states
+
+### 🛡️ `/create` — Setup Guard
+- **Refuses** `/create` if guild has not run `/setup wizard` (no `category_id` configured)
+- **No fallback** to first category — explicit setup required per guild
+- **Defensive layer** in `createInitialChannels()` — throws if no categoryId
+
+### 🐛 Multi-Guild Channel Cleanup Fix
+- **Root cause**: `permissionOverwrites.set()` in `updateChannelPermissions()` was destructive — replaced ALL overwrites with only `@everyone` + player, stripping the bot's `ViewChannel` + `ManageChannels`. First guild worked (bot had Admin role), second guild failed (no Admin → locked out of own channels)
+- **Fix**: Added `botOverwrite` (`ViewChannel + ManageChannels + SendMessages`) to all 7 `permissionOverwrites.set()` calls (wolves, whiteWolf, thief, seer, witch, cupid, salvateur)
+- **Channel creation**: `createInitialChannels()` now adds bot to `hiddenPerms` on all 8 hidden channels at creation time
+- **Cleanup resilience**: `cleanupChannels()` force-fetches from API (`{ force: true }`), attempts best-effort `permissionOverwrites.edit()` before deletion
+- **Error logging fix**: `logger.error()` now receives actual `Error` object (was receiving plain `{}` metadata)
+
+### 🔄 Guild Reconciliation System
+- **New `guildReconciler.js`** — on startup, compares bot's actual guild membership against DB-stored guild IDs
+- **Purges stale guild data** in a single SQLite transaction: config keys, games, history, player stats, player-guild junctions
+- **Evicts in-memory games** + clears timers for guilds the bot has left
+- Does NOT touch user-based premium data or global stats
+
+### 🗄️ Database
+- **`player_guilds` junction table** — tracks which players belong to which guilds
+- **`custom_roles` table** — support for web-based custom role creation
+- **Config guild isolation fix** — `getCategoryId()` now correctly scopes to guild
+
+### 🧪 Tests
+- **12 new tests** for `/setup wizard` (8 wizard + 4 `/create` guard) in `setup-wizard.test.js`
+- **Guild reconciler tests** in `guildReconciler.test.js`
+- Mock updates: `MockGuild.members.me`, `withResponse` in `MockInteraction.reply()`, `MockCollection`, `StringSelectMenuBuilder`, `PermissionFlagsBits`, `ChannelType`, `ComponentType`
+- **268 tests passing** (23 suites, 0 failures)
+
+### 📦 Files Modified (36 files, ~13,000 lines changed)
+- **game/guildReconciler.js** *(new)* — Guild reconciliation on startup
+- **tests/commands/setup-wizard.test.js** *(new)* — 12 wizard + guard tests
+- **tests/game/guildReconciler.test.js** *(new)* — Reconciler tests
+- **commands/setup.js** — Interactive wizard, deprecated API fixes
+- **commands/create.js** — Setup guard
+- **game/gameManager.js** — Bot permission overwrites, channel cleanup fixes, error logging
+- **game/achievements.js** — Minor fixes
+- **database/db.js** — player_guilds table, custom_roles, config isolation
+- **database/schema.sql** — New tables
+- **index.js** — Guild reconciler integration
+- **locales/en.js** + **locales/fr.js** — 16 wizard keys + error keys
+- **utils/config.js** — Guild isolation fix
+- **web/** — 23 files redesigned (views, routes, CSS, JS)
+
+---
+
+## 🗺️ Roadmap
+
+### v3.5.0 — Premium & Custom Content
+- 🎨 Premium theme packs (custom card backs, ambient sounds, embed colors)
+- 🐺 Custom roles: full gameplay integration (web editor → game engine)
+- 🏆 Season system with monthly resets and rewards
+- 📊 Advanced analytics: role win rates, player heatmaps, game duration trends
+
+### v3.6.0 — Social & Community
+- 🎙️ In-game voice effects (distortion, reverb per role)
+- 🏅 Tournaments mode with brackets and seeding
+- 📱 Mobile-optimized web interface
+- 🔗 Cross-guild leaderboard and global rankings
+
+### v4.0.0 — Next Generation
+- 🤖 AI-powered game balancing (role distribution based on player skill)
+- 🎮 New game modes: Speed Werewolf, One Night, Custom Scenarios
+- 🌐 Full localization: ES, DE, PT, IT, JA
+- 📦 Plugin system for community-made roles and mechanics
+
 ## [3.3.0] - 2026-02-24 - Production Readiness & Stability Hardening
 
 ### ✅ Reliability & Determinism

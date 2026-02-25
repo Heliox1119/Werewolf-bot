@@ -7,10 +7,10 @@
 
   // === Tab Switching ===
   function switchModGame(gameId) {
-    document.querySelectorAll('.mod-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.mod-game-panel').forEach(p => p.classList.remove('active'));
-    const tab = document.querySelector(`.mod-tab[data-game="${gameId}"]`);
-    const panel = document.getElementById(`mod-game-${gameId}`);
+    document.querySelectorAll('.gm-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.gm-game').forEach(p => p.classList.remove('active'));
+    const tab = document.querySelector(`.gm-tab[data-game="${gameId}"]`);
+    const panel = document.getElementById(`gm-game-${gameId}`);
     if (tab) tab.classList.add('active');
     if (panel) panel.classList.add('active');
   }
@@ -29,8 +29,8 @@
         url = `/api/mod/skip-phase/${gameId}`;
         break;
       case 'kill-player':
-        const card = document.querySelector(`.mod-player-card[data-player-id="${playerId}"][data-game-id="${gameId}"]`);
-        const name = card ? card.querySelector('.mod-player-name').textContent : playerId;
+        const card = document.querySelector(`.gm-player[data-player-id="${playerId}"][data-game-id="${gameId}"]`);
+        const name = card ? card.querySelector('.gm-player-name').textContent : playerId;
         confirmMsg = `Éliminer ${name} ?`;
         url = `/api/mod/kill-player/${gameId}/${playerId}`;
         break;
@@ -75,11 +75,11 @@
     const playerId = cardEl.dataset.playerId;
     const gameId = cardEl.dataset.gameId;
     const modal = document.getElementById('player-modal');
-    const name = cardEl.querySelector('.mod-player-name').textContent;
-    const role = cardEl.querySelector('.mod-player-role')?.textContent || '—';
-    const isAlive = !cardEl.classList.contains('dead');
-    const isCaptain = !!cardEl.querySelector('.badge-captain');
-    const isLover = !!cardEl.querySelector('.badge-love');
+    const name = cardEl.querySelector('.gm-player-name').textContent;
+    const role = cardEl.querySelector('.gm-player-role')?.textContent || '—';
+    const isAlive = !cardEl.classList.contains('gm-p-dead');
+    const isCaptain = !!cardEl.querySelector('.gm-badge-captain');
+    const isLover = !!cardEl.querySelector('.gm-badge-love');
 
     document.getElementById('modal-player-name').textContent = name;
     document.getElementById('modal-profile-link').href = `/player/${playerId}`;
@@ -169,14 +169,14 @@
     }
 
     // --- Tab switching ---
-    const tab = e.target.closest('.mod-tab');
+    const tab = e.target.closest('.gm-tab');
     if (tab && tab.dataset.game) {
       switchModGame(tab.dataset.game);
       return;
     }
 
     // --- Player card click → open modal ---
-    const card = e.target.closest('.mod-player-card');
+    const card = e.target.closest('.gm-player');
     if (card) {
       openPlayerModal(card);
       return;
@@ -208,14 +208,14 @@
   // === Real-time updates ===
   function initSocket(socket) {
     socket.on('gameEvent', (data) => {
-      const panel = document.getElementById(`mod-game-${data.gameId}`);
+      const panel = document.getElementById(`gm-game-${data.gameId}`);
       if (!panel) return;
 
       // Add to log
-      const log = document.getElementById(`mod-log-${data.gameId}`);
+      const log = document.getElementById(`gm-log-${data.gameId}`);
       if (log) {
         const entry = document.createElement('div');
-        entry.className = 'mod-log-entry mod-log-new';
+        entry.className = 'gm-log-entry gm-log-new';
         const time = new Date().toLocaleTimeString();
         let text = '';
         switch (data.event) {
@@ -225,7 +225,7 @@
           case 'gameEnded': text = `🏆 Fin — ${data.victor || '?'}`; break;
           default: text = data.event;
         }
-        entry.innerHTML = `<span class="mod-log-time">${time}</span><span class="mod-log-text">${text}</span>`;
+        entry.innerHTML = `<span class="gm-log-time">${time}</span><span class="gm-log-text">${text}</span>`;
         log.insertBefore(entry, log.firstChild);
       }
 

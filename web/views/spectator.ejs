@@ -1,114 +1,124 @@
 <%- include('partials/header') %>
 
-<div class="spectator-page" data-game-id="<%= gameId %>">
-  <!-- Header -->
-  <div class="spectator-header">
-    <div class="spectator-title">
-      <h1><%= game.guildName || game.guildId %></h1>
-      <div class="spectator-meta">
-        <span class="game-phase phase-<%= (game.phase || 'lobby').toLowerCase() %>" id="game-phase"><%= game.phase || 'Lobby' %></span>
-        <% if (game.subPhase) { %><span class="game-subphase" id="game-subphase"><%= game.subPhase %></span><% } else { %><span class="game-subphase" id="game-subphase"></span><% } %>
-        <span class="game-day" id="game-day"><%= game.dayCount ? 'Jour ' + game.dayCount : '' %></span>
-        <span class="spectator-count" id="spectator-count">&#128065; <span>0</span> spectateurs</span>
-      </div>
-    </div>
-    <a href="/" class="btn btn-outline">&larr; Retour</a>
+<div class="sp-page" data-game-id="<%= gameId %>">
+
+  <!-- Ambient orbs (red/crimson live feel) -->
+  <div class="sp-ambient" aria-hidden="true">
+    <div class="sp-orb sp-orb-1"></div>
+    <div class="sp-orb sp-orb-2"></div>
+    <div class="sp-orb sp-orb-3"></div>
   </div>
 
-  <div class="spectator-grid">
-    <!-- Players -->
-    <div class="spectator-panel">
-      <h3 class="panel-title">Joueurs (<span id="alive-count"><%= game.players ? game.players.filter(function(p) { return p.alive; }).length : 0 %></span> vivants)</h3>
-      <div class="player-list" id="player-list">
-        <% if (game.players) { game.players.forEach(function(p) { %>
-          <div class="player-row <%= p.alive ? 'alive' : 'dead' %> clickable-player" data-player-id="<%= p.id %>" data-player-avatar="<%= p.avatar || '' %>" onclick="openSpectatorPlayerModal(this)">
-            <% if (p.avatar) { %>
-              <img class="player-avatar" src="<%= p.avatar %>" alt="" />
-            <% } else { %>
-              <span class="player-avatar player-avatar-default">&#128100;</span>
-            <% } %>
-            <span class="player-name"><%= p.username || p.id %></span>
-            <% if (!p.alive && p.role) { %>
-              <span class="player-role"><%= p.role %></span>
-            <% } %>
-            <% if (p.isCaptain) { %><span class="player-badge">&#128081;</span><% } %>
-            <% if (p.inLove) { %><span class="player-badge">&#128149;</span><% } %>
-            <span class="player-arrow">&#8250;</span>
-          </div>
-        <% }); } %>
+  <!-- ═══ TOP BAR ═══ -->
+  <div class="sp-topbar">
+    <div class="sp-topbar-left">
+      <a href="<%= game.guildId ? '/guild/' + game.guildId : '/' %>" class="sp-back-btn">← Retour</a>
+      <div class="sp-live-indicator">
+        <span class="sp-live-dot"></span>
+        <span>LIVE</span>
       </div>
+    </div>
+    <div class="sp-topbar-center">
+      <h1 class="sp-title"><%= game.guildName || game.guildId %></h1>
+    </div>
+    <div class="sp-topbar-right">
+      <div class="sp-phase-container">
+        <span class="sp-phase game-phase phase-<%= (game.phase || 'lobby').toLowerCase() %>" id="game-phase"><%= game.phase || 'Lobby' %></span>
+        <% if (game.subPhase) { %><span class="sp-subphase" id="game-subphase"><%= game.subPhase %></span><% } else { %><span class="sp-subphase" id="game-subphase"></span><% } %>
+      </div>
+      <span class="sp-day" id="game-day"><%= game.dayCount ? 'Jour ' + game.dayCount : '' %></span>
+      <span class="sp-viewers" id="spectator-count">👁 <span>0</span></span>
+    </div>
+  </div>
 
-      <% if (game.dead && game.dead.length > 0) { %>
-        <h4 class="panel-subtitle">&#9760; Cimetière</h4>
-        <div class="graveyard">
-          <% game.dead.forEach(function(d) { %>
-            <div class="grave-entry clickable-player" data-player-id="<%= d.id %>" data-player-avatar="<%= d.avatar || '' %>" onclick="openSpectatorPlayerModal(this)">
-              <% if (d.avatar) { %>
-                <img class="player-avatar player-avatar-sm" src="<%= d.avatar %>" alt="" />
-              <% } else { %>
-                <span class="player-avatar player-avatar-sm player-avatar-default">&#9760;&#65039;</span>
-              <% } %>
-              <span class="grave-name"><%= d.username || d.id %></span>
-              <span class="grave-role"><%= d.role || '?' %></span>
-              <span class="player-arrow">&#8250;</span>
+  <!-- ═══ MAIN GRID ═══ -->
+  <div class="sp-grid">
+
+    <!-- LEFT — Players & Graveyard -->
+    <div class="sp-col-left">
+      <div class="sp-panel sp-panel-players" style="animation: panelEnter 0.5s ease-out both; animation-delay: 0.1s;">
+        <div class="sp-panel-header">
+          <h3 class="sp-panel-title">⚔️ Joueurs</h3>
+          <span class="sp-alive-badge" id="alive-count-badge"><span id="alive-count"><%= game.players ? game.players.filter(function(p) { return p.alive; }).length : 0 %></span> vivants</span>
+        </div>
+        <div class="sp-player-list" id="player-list">
+          <% if (game.players) { game.players.forEach(function(p, i) { %>
+            <div class="sp-player <%= p.alive ? 'sp-alive' : 'sp-dead' %> clickable-player" data-player-id="<%= p.id %>" data-player-avatar="<%= p.avatar || '' %>" onclick="openSpectatorPlayerModal(this)" style="animation-delay:<%= 0.15 + i * 0.04 %>s">
+              <div class="sp-player-avatar-wrap">
+                <% if (p.avatar) { %>
+                  <img class="sp-player-avatar" src="<%= p.avatar %>" alt="" />
+                <% } else { %>
+                  <span class="sp-player-avatar sp-player-avatar-default">👤</span>
+                <% } %>
+                <% if (p.alive) { %><span class="sp-avatar-status sp-status-alive"></span><% } else { %><span class="sp-avatar-status sp-status-dead"></span><% } %>
+              </div>
+              <div class="sp-player-info">
+                <span class="sp-player-name"><%= p.username || p.id %></span>
+                <div class="sp-player-tags">
+                  <% if (!p.alive && p.role) { %><span class="sp-role-tag"><%= p.role %></span><% } %>
+                  <% if (p.isCaptain) { %><span class="sp-badge-tag">👑 Capitaine</span><% } %>
+                  <% if (p.inLove) { %><span class="sp-badge-tag sp-badge-love">💕</span><% } %>
+                </div>
+              </div>
+              <span class="sp-player-chevron">›</span>
             </div>
-          <% }); %>
+          <% }); } %>
         </div>
-      <% } %>
-    </div>
 
-    <!-- Event Feed -->
-    <div class="spectator-panel spectator-feed">
-      <h3 class="panel-title">&#128172; Événements en direct</h3>
-      <div class="event-feed" id="event-feed">
-        <div class="event-item event-info">
-          <span class="event-time"><%= new Date().toLocaleTimeString() %></span>
-          <span class="event-text">Connecté au flux spectateur en temps réel</span>
-        </div>
-        <% if (game.actionLog) { game.actionLog.slice(-10).forEach(function(log) { %>
-          <div class="event-item">
-            <span class="event-time"><%= log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : '' %></span>
-            <span class="event-text"><%= log.action %></span>
+        <% if (game.dead && game.dead.length > 0) { %>
+          <div class="sp-graveyard-divider">
+            <span>☠️ Cimetière (<%= game.dead.length %>)</span>
           </div>
-        <% }); } %>
-      </div>
-    </div>
-
-    <!-- Game Info -->
-    <div class="spectator-panel">
-      <h3 class="panel-title">&#9881; Infos</h3>
-      <div class="info-grid">
-        <div class="info-row">
-          <span class="info-label">Game ID</span>
-          <span class="info-value" style="font-size:0.75rem; font-family: monospace; opacity:0.7;"><%= gameId %></span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Démarré</span>
-          <span class="info-value" id="game-started"><%= game.startedAt ? new Date(game.startedAt).toLocaleTimeString() : '&mdash;' %></span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Joueurs</span>
-          <span class="info-value"><%= game.players ? game.players.length : 0 %></span>
-        </div>
-        <% if (game.votes && Object.keys(game.votes).length > 0) { %>
-          <div class="info-row">
-            <span class="info-label">Votes</span>
-            <span class="info-value"><%= Object.keys(game.votes).length %> exprimés</span>
-          </div>
-        <% } %>
-        <% if (game.rules) { %>
-          <div class="info-row">
-            <span class="info-label">Règles</span>
-            <span class="info-value"><%= game.rules.minPlayers %>-<%= game.rules.maxPlayers %> joueurs</span>
+          <div class="sp-graveyard" id="graveyard">
+            <% game.dead.forEach(function(d, i) { %>
+              <div class="sp-grave clickable-player" data-player-id="<%= d.id %>" data-player-avatar="<%= d.avatar || '' %>" onclick="openSpectatorPlayerModal(this)" style="animation-delay:<%= 0.3 + i * 0.04 %>s">
+                <% if (d.avatar) { %>
+                  <img class="sp-grave-avatar" src="<%= d.avatar %>" alt="" />
+                <% } else { %>
+                  <span class="sp-grave-avatar sp-grave-avatar-default">☠️</span>
+                <% } %>
+                <span class="sp-grave-name"><%= d.username || d.id %></span>
+                <span class="sp-grave-role"><%= d.role || '?' %></span>
+                <span class="sp-player-chevron">›</span>
+              </div>
+            <% }); %>
           </div>
         <% } %>
       </div>
+    </div>
 
-      <!-- Votes visualization -->
+    <!-- CENTER — Event Feed -->
+    <div class="sp-col-center">
+      <div class="sp-panel sp-panel-feed" style="animation: panelEnter 0.5s ease-out both; animation-delay: 0.2s;">
+        <div class="sp-panel-header">
+          <h3 class="sp-panel-title">📡 Événements en direct</h3>
+          <span class="sp-feed-pulse"></span>
+        </div>
+        <div class="sp-feed" id="event-feed">
+          <div class="sp-event sp-ev-info">
+            <span class="sp-ev-time"><%= new Date().toLocaleTimeString() %></span>
+            <span class="sp-ev-icon">📡</span>
+            <span class="sp-ev-text">Connecté au flux spectateur en temps réel</span>
+          </div>
+          <% if (game.actionLog) { game.actionLog.slice(-10).forEach(function(log) { %>
+            <div class="sp-event sp-ev-action">
+              <span class="sp-ev-time"><%= log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : '' %></span>
+              <span class="sp-ev-icon">📝</span>
+              <span class="sp-ev-text"><%= log.action %></span>
+            </div>
+          <% }); } %>
+        </div>
+      </div>
+
+      <!-- Votes (if any) -->
       <% if (game.votes && Object.keys(game.votes).length > 0) { %>
-        <h4 class="panel-subtitle">&#9997; Votes en cours</h4>
-        <div class="vote-display">
-          <% 
+      <div class="sp-panel sp-panel-votes" style="animation: panelEnter 0.5s ease-out both; animation-delay: 0.3s;">
+        <div class="sp-panel-header">
+          <h3 class="sp-panel-title">🗳️ Votes en cours</h3>
+          <span class="sp-vote-count"><%= Object.keys(game.votes).length %> exprimés</span>
+        </div>
+        <div class="sp-votes" id="vote-display">
+          <%
             var voteCounts = {};
             Object.values(game.votes).forEach(function(target) {
               voteCounts[target] = (voteCounts[target] || 0) + 1;
@@ -121,21 +131,78 @@
               var targetPlayer = (game.players || []).find(function(p) { return p.id === targetId; });
               var targetName = targetPlayer ? targetPlayer.username : targetId;
               var targetAvatar = targetPlayer ? targetPlayer.avatar : null;
+              var pct = Math.round((vCount / maxV) * 100);
           %>
-            <div class="vote-bar-row">
-              <span class="vote-target">
-                <% if (targetAvatar) { %><img class="player-avatar player-avatar-xs" src="<%= targetAvatar %>" alt="" /><% } %>
-                <%= targetName %>
-              </span>
-              <div class="vote-bar-track">
-                <div class="vote-bar-fill" style="width: <%= Math.round((vCount / maxV) * 100) %>%"></div>
+            <div class="sp-vote-row">
+              <div class="sp-vote-target">
+                <% if (targetAvatar) { %><img class="sp-vote-avatar" src="<%= targetAvatar %>" alt="" /><% } %>
+                <span><%= targetName %></span>
               </div>
-              <span class="vote-count"><%= vCount %></span>
+              <div class="sp-vote-bar">
+                <div class="sp-vote-bar-fill" style="width:<%= pct %>%"></div>
+              </div>
+              <span class="sp-vote-num"><%= vCount %></span>
             </div>
           <% }); %>
         </div>
+      </div>
       <% } %>
     </div>
+
+    <!-- RIGHT — Game Info -->
+    <div class="sp-col-right">
+      <div class="sp-panel sp-panel-info" style="animation: panelEnter 0.5s ease-out both; animation-delay: 0.25s;">
+        <div class="sp-panel-header">
+          <h3 class="sp-panel-title">📊 Infos</h3>
+        </div>
+        <div class="sp-info-grid">
+          <div class="sp-info-card">
+            <span class="sp-info-icon">🎮</span>
+            <div class="sp-info-data">
+              <span class="sp-info-val"><%= game.players ? game.players.length : 0 %></span>
+              <span class="sp-info-label">Joueurs</span>
+            </div>
+          </div>
+          <div class="sp-info-card">
+            <span class="sp-info-icon">💚</span>
+            <div class="sp-info-data">
+              <span class="sp-info-val" id="info-alive"><%= game.players ? game.players.filter(function(p) { return p.alive; }).length : 0 %></span>
+              <span class="sp-info-label">Vivants</span>
+            </div>
+          </div>
+          <div class="sp-info-card">
+            <span class="sp-info-icon">💀</span>
+            <div class="sp-info-data">
+              <span class="sp-info-val"><%= game.dead ? game.dead.length : 0 %></span>
+              <span class="sp-info-label">Morts</span>
+            </div>
+          </div>
+          <div class="sp-info-card">
+            <span class="sp-info-icon">📅</span>
+            <div class="sp-info-data">
+              <span class="sp-info-val" id="game-started"><%= game.startedAt ? new Date(game.startedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—' %></span>
+              <span class="sp-info-label">Démarré</span>
+            </div>
+          </div>
+        </div>
+
+        <% if (game.rules) { %>
+        <div class="sp-rules-section">
+          <div class="sp-rules-title">⚙️ Règles</div>
+          <div class="sp-rules-row">
+            <span>Joueurs</span>
+            <span><%= game.rules.minPlayers %>–<%= game.rules.maxPlayers %></span>
+          </div>
+        </div>
+        <% } %>
+
+        <div class="sp-gameid-section">
+          <span class="sp-gameid-label">Game ID</span>
+          <span class="sp-gameid-val"><%= gameId %></span>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -144,7 +211,7 @@
   <div class="modal-card modal-card-sm">
     <button class="modal-close" onclick="closeSpectatorPlayerModal()">&times;</button>
     <div class="modal-header" id="sp-modal-header">
-      <div class="modal-player-avatar" id="sp-modal-avatar"><span>&#128100;</span></div>
+      <div class="modal-player-avatar" id="sp-modal-avatar"><span>👤</span></div>
       <div>
         <h2 id="sp-modal-name">Player</h2>
         <div id="sp-modal-badges"></div>
@@ -156,7 +223,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <a id="sp-modal-link" href="#" class="btn btn-sm btn-primary">&#128200; Voir le profil complet</a>
+      <a id="sp-modal-link" href="#" class="btn btn-sm btn-primary">📈 Voir le profil complet</a>
     </div>
   </div>
 </div>
@@ -166,7 +233,7 @@
 window.openSpectatorPlayerModal = async function(el) {
   var playerId = el.dataset.playerId;
   var playerAvatar = el.dataset.playerAvatar;
-  var nameEl = el.querySelector('.player-name') || el.querySelector('.grave-name');
+  var nameEl = el.querySelector('.sp-player-name') || el.querySelector('.sp-grave-name');
   var name = nameEl ? nameEl.textContent : playerId;
   var modal = document.getElementById('spectator-player-modal');
   
@@ -175,12 +242,11 @@ window.openSpectatorPlayerModal = async function(el) {
   document.getElementById('sp-modal-badges').innerHTML = '';
   document.getElementById('sp-modal-info').innerHTML = '<p class="text-muted" style="text-align:center">Chargement...</p>';
   
-  // Set avatar
   var avatarContainer = document.getElementById('sp-modal-avatar');
   if (playerAvatar) {
     avatarContainer.innerHTML = '<img class="modal-avatar-img" src="' + playerAvatar + '" alt="" />';
   } else {
-    avatarContainer.innerHTML = '<span>&#128100;</span>';
+    avatarContainer.innerHTML = '<span>👤</span>';
   }
   
   modal.classList.add('open');

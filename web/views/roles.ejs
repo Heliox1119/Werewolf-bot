@@ -76,12 +76,16 @@
       <h1 data-i18n="roles.title">R&ocirc;les du jeu</h1>
       <p class="text-muted" data-i18n="roles.subtitle">D&eacute;couvrez tous les r&ocirc;les disponibles</p>
     </div>
+    <button class="btn btn-flip-all" id="btn-flip-all" type="button" title="Retourner toutes les cartes">
+      <span class="flip-all-icon">🃏</span>
+      <span data-i18n="roles.reveal">R&eacute;v&eacute;ler</span>
+    </button>
   </div>
 
   <!-- Classic Roles -->
   <section class="section roles-section roles-section-classic">
     <div class="roles-section-header">
-      <div class="roles-section-badge classic-badge">&#9813;</div>
+      <div class="roles-section-badge classic-badge">🐺</div>
       <div>
         <h2 class="roles-section-title" data-i18n="roles.classic_title">R&ocirc;les Classiques</h2>
         <p class="roles-section-desc" data-i18n="roles.classic_desc">Les r&ocirc;les essentiels du jeu de base</p>
@@ -98,11 +102,20 @@
         var desc = roleDescMap[r.id] || '';
       %>
         <div class="role-card role-card-<%= camp %>">
-          <% if (imgFile) { %>
-            <img src="/static/img/roles/<%= imgFile %>" alt="<%= displayName %>" class="role-img" loading="lazy">
-          <% } else { %>
-            <span class="role-emoji">&#128058;</span>
-          <% } %>
+          <div class="role-img-flip">
+            <div class="role-img-inner">
+              <div class="role-img-front">
+                <img src="/static/img/roles/loup-garou-dos.png" alt="Carte" class="role-card-back-img" loading="lazy">
+              </div>
+              <div class="role-img-back">
+                <% if (imgFile) { %>
+                  <img src="/static/img/roles/<%= imgFile %>" alt="<%= displayName %>" class="role-img" loading="lazy">
+                <% } else { %>
+                  <span class="role-emoji">&#128058;</span>
+                <% } %>
+              </div>
+            </div>
+          </div>
           <span class="role-name" data-i18n="role.name.<%= r.id %>"><%= displayName %></span>
           <span class="role-camp camp-<%= camp %>" data-i18n="role.camp.<%= camp %>"><%= camp === 'wolves' ? 'Loups' : camp === 'solo' ? 'Solo' : 'Village' %></span>
           <% if (desc) { %><span class="role-desc" data-i18n="role.desc.<%= r.id %>"><%= desc %></span><% } %>
@@ -132,11 +145,20 @@
       %>
         <div class="role-card role-card-premium role-card-<%= camp %>">
           <div class="premium-glow"></div>
-          <% if (imgFile) { %>
-            <img src="/static/img/roles/<%= imgFile %>" alt="<%= displayName %>" class="role-img" loading="lazy">
-          <% } else { %>
-            <span class="role-emoji">&#128058;</span>
-          <% } %>
+          <div class="role-img-flip">
+            <div class="role-img-inner">
+              <div class="role-img-front role-img-front-premium">
+                <img src="/static/img/roles/loup-garou-dos.png" alt="Carte" class="role-card-back-img" loading="lazy">
+              </div>
+              <div class="role-img-back">
+                <% if (imgFile) { %>
+                  <img src="/static/img/roles/<%= imgFile %>" alt="<%= displayName %>" class="role-img" loading="lazy">
+                <% } else { %>
+                  <span class="role-emoji">&#128058;</span>
+                <% } %>
+              </div>
+            </div>
+          </div>
           <span class="role-name" data-i18n="role.name.<%= r.id %>"><%= displayName %></span>
           <span class="role-camp camp-<%= camp %>" data-i18n="role.camp.<%= camp %>"><%= camp === 'wolves' ? 'Loups' : camp === 'solo' ? 'Solo' : 'Village' %></span>
           <% if (desc) { %><span class="role-desc" data-i18n="role.desc.<%= r.id %>"><%= desc %></span><% } %>

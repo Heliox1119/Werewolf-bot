@@ -99,6 +99,7 @@ module.exports = function(webServer) {
     try {
       const client = webServer.client;
       const guild = client ? client.guilds.cache.get(req.params.id) : null;
+      if (!guild) return res.redirect('/invite/' + req.params.id);
       const games = gm.getAllGames().filter(g => g.guildId === req.params.id).map(g => {
         const snap = gm.getGameSnapshot(g);
         snap.players = (g.players || []).map(p => ({
@@ -152,6 +153,10 @@ module.exports = function(webServer) {
   /** GET /guild/:id/moderation — Per-guild moderation panel */
   router.get('/guild/:id/moderation', (req, res) => {
     try {
+      const client = webServer.client;
+      const guild = client ? client.guilds.cache.get(req.params.id) : null;
+      if (!guild) return res.redirect('/invite/' + req.params.id);
+
       if (!req.isAuthenticated || !req.isAuthenticated()) {
         return res.redirect('/login');
       }
@@ -162,9 +167,6 @@ module.exports = function(webServer) {
       if (level !== 'owner' && !webServer.isGuildAdmin(req.user, req.params.id)) {
         return res.render('error', { title: 'Forbidden', message: 'You are not admin of this server.' });
       }
-
-      const client = webServer.client;
-      const guild = client ? client.guilds.cache.get(req.params.id) : null;
       const games = gm.getAllGames()
         .filter(g => g.guildId === req.params.id)
         .map(g => {
@@ -193,18 +195,20 @@ module.exports = function(webServer) {
     try {
       const client = webServer.client;
       const guild = client ? client.guilds.cache.get(req.params.id) : null;
+      if (!guild) return res.redirect('/invite/' + req.params.id);
       const ConfigManager = require('../../utils/config');
       const configMgr = ConfigManager.getInstance();
       const ROLES = require('../../game/roles');
       const i18n = require('../../utils/i18n');
 
       const enabledRoles = configMgr.getEnabledRoles(req.params.id);
+      const guildId = req.params.id;
       const config = {
-        defaultRules: configMgr.getDefaultGameRules(req.params.id),
-        wolfWinCondition: configMgr.getWolfWinCondition(req.params.id),
-        locale: i18n.getLocaleForGuild ? i18n.getLocaleForGuild(req.params.id) : 'fr',
-        categoryId: configMgr.getCategoryId(req.params.id),
-        setupComplete: configMgr.isSetupComplete(req.params.id),
+        defaultRules: configMgr.getDefaultGameRules(guildId),
+        wolfWinCondition: configMgr.getWolfWinCondition(guildId),
+        locale: i18n.getLocaleForGuild ? i18n.getLocaleForGuild(guildId) : 'fr',
+        categoryId: configMgr.get(`guild.${guildId}.discord.category_id`) || null,
+        setupComplete: configMgr.isSetupComplete(guildId),
         enabledRoles
       };
 
@@ -247,6 +251,7 @@ module.exports = function(webServer) {
     try {
       const client = webServer.client;
       const guild = client ? client.guilds.cache.get(req.params.id) : null;
+      if (!guild) return res.redirect('/invite/' + req.params.id);
 
       let leaderboard = [];
       if (gm.achievements) {
@@ -275,6 +280,7 @@ module.exports = function(webServer) {
     try {
       const client = webServer.client;
       const guild = client ? client.guilds.cache.get(req.params.id) : null;
+      if (!guild) return res.redirect('/invite/' + req.params.id);
 
       let history = [];
       try { history = db.getGuildHistory(req.params.id, 50); } catch {}

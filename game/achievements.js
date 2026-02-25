@@ -511,10 +511,9 @@ class AchievementEngine {
           FROM player_stats ps
           LEFT JOIN player_extended_stats pes ON ps.player_id = pes.player_id
           WHERE ps.games_played > 0
+            AND ps.player_id NOT LIKE 'fake_%'
             AND ps.player_id IN (
-              SELECT DISTINCT p.user_id FROM players p
-              JOIN games g ON p.game_id = g.id
-              WHERE g.guild_id = ?
+              SELECT player_id FROM player_guilds WHERE guild_id = ?
             )
           ORDER BY COALESCE(pes.elo_rating, 1000) DESC
           LIMIT ?
@@ -530,6 +529,7 @@ class AchievementEngine {
         FROM player_stats ps
         LEFT JOIN player_extended_stats pes ON ps.player_id = pes.player_id
         WHERE ps.games_played > 0
+          AND ps.player_id NOT LIKE 'fake_%'
         ORDER BY COALESCE(pes.elo_rating, 1000) DESC
         LIMIT ?
       `).all(limit);

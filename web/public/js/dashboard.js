@@ -1,6 +1,39 @@
 /**
  * Dashboard — Real-time game updates + activity feed
  */
+
+/* ── Animated number counters ── */
+(function() {
+  'use strict';
+  const counters = document.querySelectorAll('.counter[data-target]');
+  if (!counters.length) return;
+
+  const duration = 1400; // ms
+  const fps = 60;
+  const totalFrames = Math.round(duration / (1000 / fps));
+
+  function easeOutExpo(t) {
+    return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+  }
+
+  counters.forEach(el => {
+    const target = parseInt(el.getAttribute('data-target')) || 0;
+    if (target === 0) { el.textContent = '0'; return; }
+    let frame = 0;
+    const step = () => {
+      frame++;
+      const progress = easeOutExpo(frame / totalFrames);
+      el.textContent = Math.round(target * progress);
+      if (frame < totalFrames) requestAnimationFrame(step);
+      else el.textContent = target;
+    };
+    // Delay based on --i CSS variable (staggered)
+    const delay = parseInt(el.closest('[style*="--i"]')?.style.getPropertyValue('--i') || '0') * 100 + 300;
+    setTimeout(() => requestAnimationFrame(step), delay);
+  });
+})();
+
+/* ── Real-time socket updates ── */
 (function() {
   'use strict';
 
@@ -213,4 +246,108 @@
   } else {
     window.addEventListener('werewolf:socket-ready', (e) => init(e.detail.socket));
   }
+})();
+
+/**
+ * Card Deck Draw — shuffle & reveal a random role
+ */
+(function() {
+  'use strict';
+
+  const ROLES = [
+    { id: 'WEREWOLF', name: 'Loup-Garou', camp: 'wolves', campLabel: 'Loups', img: 'loupSimple.webp', cmd: '/kill @joueur', desc: 'Chaque nuit, les loups-garous se réunissent pour dévorer un villageois.' },
+    { id: 'VILLAGER', name: 'Villageois', camp: 'village', campLabel: 'Village', img: 'villageois.webp', cmd: '/vote @joueur', desc: 'Un simple villageois sans pouvoir spécial. Il doit démasquer les loups.' },
+    { id: 'SEER', name: 'Voyante', camp: 'village', campLabel: 'Village', img: 'voyante.webp', cmd: '/see @joueur', desc: 'Chaque nuit, la voyante peut découvrir le rôle d\'un joueur.' },
+    { id: 'WITCH', name: 'Sorcière', camp: 'village', campLabel: 'Village', img: 'sorciere.png', cmd: '/potion vie|mort @joueur', desc: 'Possède une potion de vie et une potion de mort, utilisable une fois chacune.' },
+    { id: 'HUNTER', name: 'Chasseur', camp: 'village', campLabel: 'Village', img: 'chasseur.webp', cmd: '/shoot @joueur', desc: 'En mourant, le chasseur peut emporter un autre joueur avec lui.' },
+    { id: 'WHITE_WOLF', name: 'Loup Blanc', camp: 'solo', campLabel: 'Solo', img: 'loupBlanc.webp', cmd: '/kill @joueur', desc: 'Joue en solitaire. Une nuit sur deux, il peut dévorer un loup-garou.' },
+    { id: 'PETITE_FILLE', name: 'Petite Fille', camp: 'village', campLabel: 'Village', img: 'petiteFille.webp', cmd: '/listen', desc: 'Peut espionner les loups-garous pendant la nuit.' },
+    { id: 'CUPID', name: 'Cupidon', camp: 'village', campLabel: 'Village', img: 'cupidon.webp', cmd: '/love @joueur1 @joueur2', desc: 'Désigne deux amoureux au début de la partie.' },
+    { id: 'SALVATEUR', name: 'Salvateur', camp: 'village', campLabel: 'Village', img: 'salvateur.webp', cmd: '/protect @joueur', desc: 'Chaque nuit, il protège un joueur de l\'attaque des loups-garous.' },
+    { id: 'ANCIEN', name: 'Ancien', camp: 'village', campLabel: 'Village', img: 'ancien.webp', cmd: '/vote @joueur', desc: 'Résiste à la première attaque des loups-garous.' },
+    { id: 'IDIOT', name: 'Idiot du Village', camp: 'village', campLabel: 'Village', img: 'idiot.webp', cmd: '/vote @joueur', desc: 'S\'il est voté par le village, il est révélé mais perd son droit de vote.' },
+    { id: 'THIEF', name: 'Voleur', camp: 'village', campLabel: 'Village', img: 'voleur.webp', cmd: '/steal @carte', desc: 'Découvre 2 cartes et peut en choisir une pour échanger son rôle.' }
+  ];
+
+  const CAMP_CLASSES = {
+    wolves: 'camp-wolves',
+    village: 'camp-village',
+    solo: 'camp-solo'
+  };
+
+  const btn = document.getElementById('btn-draw');
+  const deckStack = document.getElementById('deck-stack');
+  const drawnZone = document.getElementById('drawn-card-zone');
+  const drawnInner = document.getElementById('drawn-card-inner');
+  const roleImg = document.getElementById('drawn-role-img');
+  const roleName = document.getElementById('drawn-role-name');
+  const roleCamp = document.getElementById('drawn-role-camp');
+  const roleDesc = document.getElementById('drawn-role-desc');
+  const roleCmd = document.getElementById('drawn-role-cmd');
+  const roleInfo = document.getElementById('drawn-role-info');
+
+  if (!btn || !deckStack) return;
+
+  let busy = false;
+  let lastRoleIndex = -1;
+
+  btn.addEventListener('click', () => {
+    if (busy) return;
+    busy = true;
+    btn.disabled = true;
+
+    const isRedraw = roleInfo.classList.contains('visible');
+
+    const performDraw = () => {
+      // Reset previous draw
+      drawnZone.classList.remove('visible');
+      drawnInner.classList.remove('flipped');
+      roleInfo.classList.remove('visible');
+      roleInfo.classList.remove('fade-out');
+
+      // Pick a random role (avoid repeat)
+      let idx;
+      do { idx = Math.floor(Math.random() * ROLES.length); } while (idx === lastRoleIndex && ROLES.length > 1);
+      lastRoleIndex = idx;
+      const role = ROLES[idx];
+
+      // Phase 1: Shuffle animation (0.7s)
+      deckStack.classList.add('shuffling');
+
+      setTimeout(() => {
+        deckStack.classList.remove('shuffling');
+
+        // Phase 2: Card slides out from deck (0.4s)
+        drawnZone.classList.add('visible');
+
+        // Populate card back content
+        roleImg.src = '/static/img/roles/' + role.img;
+        roleImg.alt = role.name;
+        roleName.textContent = role.name;
+        roleCamp.textContent = role.campLabel;
+        roleCamp.className = 'drawn-role-camp ' + (CAMP_CLASSES[role.camp] || '');
+        roleDesc.textContent = role.desc;
+        roleCmd.textContent = role.cmd;
+
+        // Phase 3: Flip to reveal (after slide-in)
+        setTimeout(() => {
+          drawnInner.classList.add('flipped');
+          // Phase 4: Show role info below after flip completes
+          setTimeout(() => {
+            roleInfo.classList.add('visible');
+            busy = false;
+            btn.disabled = false;
+          }, 600);
+        }, 500);
+      }, 750);
+    };
+
+    // If re-drawing, fade out description smoothly first
+    if (isRedraw) {
+      roleInfo.classList.add('fade-out');
+      setTimeout(performDraw, 350);
+    } else {
+      performDraw();
+    }
+  });
 })();

@@ -41,11 +41,15 @@ jest.mock('../../utils/logger', () => ({
 jest.mock('../../utils/config', () => {
   const mockConfig = {
     initialized: true,
-    get: jest.fn((key, defaultValue) => defaultValue),
+    get: jest.fn((key, defaultValue) => {
+      if (key === 'guild.guild-test.discord.category_id') return '1469976287790633146';
+      return defaultValue;
+    }),
     getCategoryId: jest.fn(() => '1469976287790633146'),
     getDefaultGameRules: jest.fn(() => ({ minPlayers: 5, maxPlayers: 10 })),
     getWolfWinCondition: jest.fn(() => 'majority'),
     setWolfWinCondition: jest.fn(),
+    isSetupComplete: jest.fn((guildId) => true),
     getInstance: jest.fn()
   };
   mockConfig.getInstance = jest.fn(() => mockConfig);
@@ -83,6 +87,10 @@ describe('Commande /create', () => {
     gameManager.playAmbience = jest.fn(async () => true);
     gameManager.cleanupChannels = jest.fn(async () => 0);
     gameManager.join = jest.fn(() => true);
+    gameManager.runAtomic = jest.fn(async (channelId, mutator) => {
+      const game = gameManager.games.get(channelId);
+      if (game) mutator(game);
+    });
 
     // Créer une interaction mock
     mockInteraction = createMockInteraction({

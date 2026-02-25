@@ -1,94 +1,158 @@
 <%- include('partials/header') %>
 
-<div class="guild-leaderboard-page">
-  <div class="page-header">
-    <% if (guild && guild.icon) { %>
-      <img src="<%= guild.icon %>" alt="" class="guild-icon-lg">
-    <% } %>
-    <div>
-      <h1>&#127942; <span data-i18n="gleader.title">Classement</span> — <%= guild ? guild.name : guildId %></h1>
-      <p class="text-muted" data-i18n="gleader.subtitle">Les meilleurs joueurs de ce serveur</p>
+<!-- Ambient floating orbs (gold) -->
+<div class="gl-ambient" aria-hidden="true">
+  <div class="gl-orb gl-orb-1"></div>
+  <div class="gl-orb gl-orb-2"></div>
+  <div class="gl-orb gl-orb-3"></div>
+</div>
+
+<!-- ═══ HERO ═══ -->
+<section class="gl-hero">
+  <div class="gl-hero-bg">
+    <div class="gl-hero-gradient"></div>
+    <div class="gl-hero-dots"></div>
+    <div class="gl-hero-scanline"></div>
+  </div>
+  <div class="gl-hero-inner">
+    <div class="gl-hero-left">
+      <div class="gl-hero-avatar-wrap">
+        <% if (guild && guild.icon) { %>
+          <img src="<%= guild.icon %>" alt="<%= guild.name %>" class="gl-hero-avatar">
+        <% } else { %>
+          <div class="gl-hero-avatar gl-hero-avatar-placeholder">🏆</div>
+        <% } %>
+        <div class="gl-avatar-ring"></div>
+        <div class="gl-avatar-ring gl-avatar-ring-lg"></div>
+      </div>
+      <div class="gl-hero-info">
+        <h1 class="gl-hero-title"><%= guild ? guild.name : 'Guild ' + guildId %></h1>
+        <p class="gl-hero-subtitle" data-i18n="gleader.subtitle">Classement &middot; ELO &amp; Performances</p>
+        <div class="gl-hero-tags">
+          <div class="gl-hero-tag gl-tag-players">
+            <span>🏆</span> <%= leaderboard.length %> joueurs classés
+          </div>
+          <% if (guild && guild.memberCount) { %>
+            <div class="gl-hero-tag gl-tag-members">
+              <span>👥</span> <%= guild.memberCount %> membres
+            </div>
+          <% } %>
+          <% if (leaderboard.length > 0) { %>
+            <div class="gl-hero-tag gl-tag-top">
+              <span>👑</span> Top ELO : <%= leaderboard[0].elo_rating || 1000 %>
+            </div>
+          <% } %>
+        </div>
+      </div>
     </div>
   </div>
+</section>
 
-  <% if (leaderboard.length === 0) { %>
-    <div class="empty-state">
-      <span class="empty-icon">&#127942;</span>
-      <p data-i18n="gleader.empty">Aucun joueur classé pour le moment. Jouez des parties pour voir le classement !</p>
-    </div>
-  <% } else { %>
+<% if (leaderboard.length === 0) { %>
+  <div class="gl-empty">
+    <div class="gl-empty-icon">🏆</div>
+    <p data-i18n="gleader.empty">Aucun joueur classé pour le moment. Jouez des parties pour voir le classement !</p>
+  </div>
+<% } else { %>
 
-    <!-- Podium (top 3) -->
-    <% if (leaderboard.length >= 3) { %>
-    <div class="gleader-podium">
-      <% var medals = ['&#129351;', '&#129352;', '&#129353;']; %>
-      <% [1, 0, 2].forEach(function(idx) { var p = leaderboard[idx]; if (!p) return; %>
-        <div class="gleader-podium-card podium-<%= idx + 1 %>">
-          <div class="gleader-podium-medal"><%- medals[idx] %></div>
-          <div class="gleader-podium-rank">#<%= p.rank %></div>
-          <div class="gleader-podium-name"><%= p.username || p.player_id %></div>
-          <div class="gleader-podium-elo"><%= p.elo_rating || 1000 %> ELO</div>
-          <div class="gleader-podium-tier"><%= (p.tier || {}).emoji || '' %> <%= (p.tier || {}).name || '' %></div>
-          <div class="gleader-podium-stats">
-            <span><%= p.games_won || 0 %>W</span>
-            <span class="text-muted">/ <%= p.games_played || 0 %>G</span>
+  <% var medals = ['🥇','🥈','🥉']; %>
+
+  <!-- ═══ PODIUM ═══ -->
+  <% if (leaderboard.length >= 3) { %>
+  <section class="gl-podium-section">
+    <div class="gl-podium">
+      <% var podiumOrder = [1, 0, 2]; %>
+      <% podiumOrder.forEach(function(idx) { var p = leaderboard[idx]; if (!p) return; var wr = p.games_played > 0 ? Math.round((p.games_won / p.games_played) * 100) : 0; %>
+        <div class="gl-podium-card gl-podium-<%= idx + 1 %>" style="--i:<%= idx %>">
+          <div class="gl-podium-glow"></div>
+          <div class="gl-podium-medal"><%- medals[idx] %></div>
+          <div class="gl-podium-rank">#<%= p.rank %></div>
+          <a href="/player/<%= p.player_id %>" class="gl-podium-name"><%= p.username || p.player_id %></a>
+          <div class="gl-podium-elo">
+            <span class="gl-elo-val"><%= p.elo_rating || 1000 %></span>
+            <span class="gl-elo-label">ELO</span>
+          </div>
+          <div class="gl-podium-tier"><%= (p.tier || {}).emoji || '' %> <%= (p.tier || {}).name || '' %></div>
+          <div class="gl-podium-bar">
+            <div class="gl-podium-bar-fill" style="width:<%= wr %>%"></div>
+          </div>
+          <div class="gl-podium-stats">
+            <div class="gl-podium-stat">
+              <span class="gl-podium-stat-val"><%= p.games_won || 0 %></span>
+              <span class="gl-podium-stat-label">Wins</span>
+            </div>
+            <div class="gl-podium-stat">
+              <span class="gl-podium-stat-val"><%= p.games_played || 0 %></span>
+              <span class="gl-podium-stat-label">Games</span>
+            </div>
+            <div class="gl-podium-stat">
+              <span class="gl-podium-stat-val"><%= wr %>%</span>
+              <span class="gl-podium-stat-label">Win%</span>
+            </div>
           </div>
         </div>
       <% }); %>
     </div>
-    <% } %>
-
-    <!-- Full Table -->
-    <div class="gleader-section">
-      <h2 class="section-title" data-i18n="gleader.full_ranking">Classement complet</h2>
-      <div class="leaderboard-table">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th data-i18n="gleader.col_player">Joueur</th>
-              <th>ELO</th>
-              <th data-i18n="gleader.col_tier">Rang</th>
-              <th data-i18n="gleader.col_games">Parties</th>
-              <th data-i18n="gleader.col_wins">Victoires</th>
-              <th data-i18n="gleader.col_winrate">Win%</th>
-              <th data-i18n="gleader.col_wolf_wins">&#128058; Loups</th>
-              <th data-i18n="gleader.col_village_wins">&#127969; Village</th>
-              <th data-i18n="gleader.col_streak">Série</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% leaderboard.forEach(function(p) { %>
-              <tr class="<%= p.rank <= 3 ? 'top-rank rank-' + p.rank : '' %>">
-                <td class="rank-col"><%= p.rank %></td>
-                <td>
-                  <a href="/player/<%= p.player_id %>" class="gleader-player-link">
-                    <%= p.username || p.player_id %>
-                  </a>
-                </td>
-                <td><strong><%= p.elo_rating || 1000 %></strong></td>
-                <td>
-                  <span class="tier tier-<%= (p.tier || {}).id || 'bronze' %>">
-                    <%= (p.tier || {}).emoji || '' %> <%= (p.tier || {}).name || 'Bronze' %>
-                  </span>
-                </td>
-                <td><%= p.games_played || 0 %></td>
-                <td><%= p.games_won || 0 %></td>
-                <td>
-                  <% var wr = p.games_played > 0 ? Math.round((p.games_won / p.games_played) * 100) : 0; %>
-                  <span class="gleader-winrate <%= wr >= 60 ? 'high' : wr >= 40 ? 'mid' : 'low' %>"><%= wr %>%</span>
-                </td>
-                <td><%= p.wolf_wins || 0 %></td>
-                <td><%= p.village_wins || 0 %></td>
-                <td><%= p.best_win_streak || 0 %> &#128293;</td>
-              </tr>
-            <% }); %>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
+  </section>
   <% } %>
-</div>
+
+  <!-- ═══ FULL TABLE ═══ -->
+  <section class="gl-table-panel" style="animation: panelEnter 0.5s ease-out both; animation-delay: 0.35s;">
+    <div class="gl-table-header">
+      <h2 class="gl-table-title">📋 <span data-i18n="gleader.full_ranking">Classement complet</span></h2>
+      <span class="gl-table-count"><%= leaderboard.length %> joueurs</span>
+    </div>
+    <div class="gl-table-wrap">
+      <table class="gl-table">
+        <thead>
+          <tr>
+            <th class="gl-th-rank">#</th>
+            <th class="gl-th-player" data-i18n="gleader.col_player">Joueur</th>
+            <th class="gl-th-elo">ELO</th>
+            <th class="gl-th-tier" data-i18n="gleader.col_tier">Rang</th>
+            <th data-i18n="gleader.col_games">Parties</th>
+            <th data-i18n="gleader.col_wins">Victoires</th>
+            <th data-i18n="gleader.col_winrate">Win%</th>
+            <th data-i18n="gleader.col_wolf_wins">🐺 Loups</th>
+            <th data-i18n="gleader.col_village_wins">🏡 Village</th>
+            <th data-i18n="gleader.col_streak">Série</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% leaderboard.forEach(function(p, i) { %>
+            <% var wr = p.games_played > 0 ? Math.round((p.games_won / p.games_played) * 100) : 0; %>
+            <tr class="gl-row<%= p.rank <= 3 ? ' gl-row-top gl-row-' + p.rank : '' %>" style="animation-delay:<%= 0.4 + i * 0.03 %>s">
+              <td class="gl-cell-rank">
+                <% if (p.rank <= 3) { %>
+                  <span class="gl-rank-badge gl-rank-<%= p.rank %>"><%- medals[p.rank - 1] %></span>
+                <% } else { %>
+                  <span class="gl-rank-num"><%= p.rank %></span>
+                <% } %>
+              </td>
+              <td class="gl-cell-player">
+                <a href="/player/<%= p.player_id %>" class="gl-player-link"><%= p.username || p.player_id %></a>
+              </td>
+              <td class="gl-cell-elo"><%= p.elo_rating || 1000 %></td>
+              <td class="gl-cell-tier">
+                <span class="gl-tier-chip gl-tier-<%= (p.tier || {}).nameEn ? (p.tier.nameEn || 'Bronze').toLowerCase().replace(' ', '-') : 'bronze' %>">
+                  <%= (p.tier || {}).emoji || '' %> <%= (p.tier || {}).name || 'Bronze' %>
+                </span>
+              </td>
+              <td><%= p.games_played || 0 %></td>
+              <td><%= p.games_won || 0 %></td>
+              <td>
+                <span class="gl-wr <%= wr >= 60 ? 'gl-wr-high' : wr >= 40 ? 'gl-wr-mid' : 'gl-wr-low' %>"><%= wr %>%</span>
+              </td>
+              <td><%= p.wolf_wins || 0 %></td>
+              <td><%= p.village_wins || 0 %></td>
+              <td class="gl-cell-streak"><%= p.best_win_streak || 0 %> 🔥</td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+<% } %>
 
 <%- include('partials/footer') %>

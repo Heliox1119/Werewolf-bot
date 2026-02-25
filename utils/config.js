@@ -349,9 +349,13 @@ class ConfigManager {
    * @param {string} [guildId] - Guild ID
    */
   isSetupComplete(guildId = null) {
-    // Check guild-scoped first, then global
-    const categoryId = this.getCategoryId(guildId);
-    return !!categoryId;
+    if (guildId) {
+      // Only check guild-scoped key — do NOT fall back to global
+      const guildKey = `guild.${guildId}.discord.category_id`;
+      return !!this.get(guildKey);
+    }
+    // Global fallback (no guild specified)
+    return !!this.get('discord.category_id');
   }
 
   /**
@@ -360,8 +364,16 @@ class ConfigManager {
    */
   getMissingSetupKeys(guildId = null) {
     const missing = [];
-    if (!this.getCategoryId(guildId)) {
-      missing.push({ key: 'discord.category_id', description: t('cmd.setup.config_category_desc') });
+    if (guildId) {
+      // Only check guild-scoped key
+      const guildKey = `guild.${guildId}.discord.category_id`;
+      if (!this.get(guildKey)) {
+        missing.push({ key: 'discord.category_id', description: t('cmd.setup.config_category_desc') });
+      }
+    } else {
+      if (!this.getCategoryId()) {
+        missing.push({ key: 'discord.category_id', description: t('cmd.setup.config_category_desc') });
+      }
     }
     return missing;
   }
@@ -371,10 +383,14 @@ class ConfigManager {
    * @param {string} [guildId] - Guild ID for per-guild config
    */
   getSummary(guildId = null) {
+    // For guild-specific summary, use guild-only category (no global fallback)
+    const categoryId = guildId
+      ? this.get(`guild.${guildId}.discord.category_id`)
+      : this.getCategoryId();
     return {
       setupComplete: this.isSetupComplete(guildId),
       discord: {
-        categoryId: this.getCategoryId(guildId),
+        categoryId: categoryId || null,
         emojis: Object.keys(this.getEmojis()).length
       },
       monitoring: {

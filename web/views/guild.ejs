@@ -1,228 +1,398 @@
 <%- include('partials/header') %>
 
-<div class="guild-overview-page">
+<!-- Ambient floating orbs -->
+<div class="go-ambient" aria-hidden="true">
+  <div class="go-orb go-orb-1"></div>
+  <div class="go-orb go-orb-2"></div>
+  <div class="go-orb go-orb-3"></div>
+</div>
 
-  <!-- Guild Banner -->
-  <div class="guild-banner">
-    <div class="guild-banner-bg"></div>
-    <div class="guild-banner-content">
-      <% if (guild && guild.icon) { %>
-        <img src="<%= guild.icon %>" alt="" class="guild-banner-icon">
-      <% } else { %>
-        <div class="guild-banner-icon guild-banner-icon-placeholder">&#127968;</div>
-      <% } %>
-      <div class="guild-banner-info">
-        <h1><%= guild ? guild.name : 'Guild ' + guildId %></h1>
-        <div class="guild-banner-meta">
+<!-- ═══ GUILD HERO ═══ -->
+<section class="go-hero">
+  <div class="go-hero-bg">
+    <div class="go-hero-gradient"></div>
+    <div class="go-hero-dots"></div>
+    <div class="go-hero-scanline"></div>
+  </div>
+  <div class="go-hero-inner">
+    <div class="go-hero-left">
+      <div class="go-hero-avatar-wrap">
+        <% if (guild && guild.icon) { %>
+          <img src="<%= guild.icon %>" alt="<%= guild.name %>" class="go-hero-avatar">
+        <% } else { %>
+          <div class="go-hero-avatar go-hero-avatar-placeholder">🏰</div>
+        <% } %>
+        <div class="go-avatar-ring"></div>
+        <div class="go-avatar-ring go-avatar-ring-lg"></div>
+      </div>
+      <div class="go-hero-info">
+        <h1 class="go-hero-title"><%= guild ? guild.name : 'Guild ' + guildId %></h1>
+        <p class="go-hero-subtitle">Vue d'ensemble · Statistiques & Activité</p>
+        <div class="go-hero-tags">
           <% if (guild && guild.memberCount) { %>
-            <span class="guild-meta-item">&#128101; <span data-i18n="goverview.members"><%= guild.memberCount %> membres</span></span>
-          <% } %>
-          <span class="guild-meta-item">&#127918; <span data-i18n="goverview.total_played"><%= guildStats.totalGames %> parties jouées</span></span>
-          <% if (guildStats.activeGames > 0) { %>
-            <span class="guild-meta-item guild-meta-live"><span class="pulse-dot"></span> <%= guildStats.activeGames %> <span data-i18n="goverview.active_now">en cours</span></span>
-          <% } %>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Stats Cards -->
-  <div class="guild-stats-row">
-    <div class="guild-stat-card gstat-primary">
-      <div class="guild-stat-icon">&#127918;</div>
-      <div class="guild-stat-body">
-        <span class="guild-stat-value"><%= guildStats.totalGames %></span>
-        <span class="guild-stat-label" data-i18n="goverview.stat_games">Parties jouées</span>
-      </div>
-    </div>
-    <div class="guild-stat-card gstat-success">
-      <div class="guild-stat-icon">&#127969;</div>
-      <div class="guild-stat-body">
-        <span class="guild-stat-value"><%= guildStats.villageWins %></span>
-        <span class="guild-stat-label" data-i18n="goverview.stat_village">Victoires Village</span>
-      </div>
-    </div>
-    <div class="guild-stat-card gstat-danger">
-      <div class="guild-stat-icon">&#128058;</div>
-      <div class="guild-stat-body">
-        <span class="guild-stat-value"><%= guildStats.wolfWins %></span>
-        <span class="guild-stat-label" data-i18n="goverview.stat_wolves">Victoires Loups</span>
-      </div>
-    </div>
-    <div class="guild-stat-card gstat-pink">
-      <div class="guild-stat-icon">&#128149;</div>
-      <div class="guild-stat-body">
-        <span class="guild-stat-value"><%= guildStats.loversWins %></span>
-        <span class="guild-stat-label" data-i18n="goverview.stat_lovers">Victoires Amoureux</span>
-      </div>
-    </div>
-    <div class="guild-stat-card gstat-info">
-      <div class="guild-stat-icon">&#128101;</div>
-      <div class="guild-stat-body">
-        <span class="guild-stat-value"><%= guildStats.avgPlayers %></span>
-        <span class="guild-stat-label" data-i18n="goverview.stat_avg_players">Joueurs / partie</span>
-      </div>
-    </div>
-    <div class="guild-stat-card gstat-warning">
-      <div class="guild-stat-icon">&#9201;&#65039;</div>
-      <div class="guild-stat-body">
-        <% var avgMin = Math.floor(guildStats.avgDuration / 60); %>
-        <span class="guild-stat-value"><%= avgMin %><small>min</small></span>
-        <span class="guild-stat-label" data-i18n="goverview.stat_avg_duration">Durée moyenne</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Active Games -->
-  <section class="section">
-    <div class="section-header">
-      <h2 class="section-title"><span class="pulse-dot"></span> <span data-i18n="goverview.active_games">Parties en cours</span></h2>
-    </div>
-    <div class="games-grid">
-      <% if (games.length === 0) { %>
-        <div class="empty-state">
-          <span class="empty-icon">&#127769;</span>
-          <p data-i18n="goverview.no_games">Aucune partie en cours</p>
-          <p class="text-muted" data-i18n="goverview.no_games_hint">Les parties apparaîtront ici en temps réel</p>
-        </div>
-      <% } else { games.forEach(function(g) { %>
-        <a href="/game/<%= g.gameId %>" class="game-card" data-game="<%= g.gameId %>">
-          <div class="game-card-header">
-            <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>"><%= g.phase || 'Lobby' %></span>
-            <span class="game-day"><%= g.dayCount ? 'Jour ' + g.dayCount : '' %></span>
-          </div>
-          <div class="game-card-body">
-            <div class="game-players">
-              <span class="alive-count"><%- '&#10084;&#65039;' %> <%= g.players ? g.players.filter(function(p){ return p.alive; }).length : 0 %> <span data-i18n="goverview.alive">vivants</span></span>
-              <span class="dead-count"><%- '&#9760;&#65039;' %> <%= g.players ? g.players.filter(function(p){ return !p.alive; }).length : 0 %> <span data-i18n="goverview.dead">morts</span></span>
+            <div class="go-hero-tag go-tag-members">
+              <span>👥</span> <%= guild.memberCount %> membres
             </div>
-            <% if (g.players && g.players.length > 0) { %>
-              <div class="game-card-player-list">
-                <% g.players.slice(0, 6).forEach(function(p) { %>
-                  <span class="game-mini-player <%= p.alive ? '' : 'dead' %>" title="<%= p.username %>"><%= p.username %></span>
-                <% }); %>
-                <% if (g.players.length > 6) { %>
-                  <span class="game-mini-more">+<%= g.players.length - 6 %></span>
-                <% } %>
-              </div>
-            <% } %>
+          <% } %>
+          <div class="go-hero-tag go-tag-games">
+            <span>🎮</span> <%= guildStats.totalGames %> parties jouées
           </div>
-          <div class="game-card-footer">
-            <span class="spectate-btn">&#128065;&#65039; <span data-i18n="goverview.spectate">Regarder</span></span>
-          </div>
-        </a>
-      <% }); } %>
+          <% if (guildStats.activeGames > 0) { %>
+            <div class="go-hero-tag go-tag-live">
+              <span class="status-beacon"></span> <%= guildStats.activeGames %> en cours
+            </div>
+          <% } %>
+        </div>
+      </div>
     </div>
-  </section>
+    <div class="go-hero-metrics">
+      <div class="go-metric" style="--i:0">
+        <div class="go-metric-icon gm-purple">🏆</div>
+        <div class="go-metric-data">
+          <span class="go-metric-val counter" data-target="<%= guildStats.totalGames %>">0</span>
+          <span class="go-metric-label">Total parties</span>
+        </div>
+      </div>
+      <div class="go-metric" style="--i:1">
+        <div class="go-metric-icon gm-green">🏡</div>
+        <div class="go-metric-data">
+          <span class="go-metric-val counter" data-target="<%= guildStats.villageWins %>">0</span>
+          <span class="go-metric-label">Victoires Village</span>
+        </div>
+      </div>
+      <div class="go-metric" style="--i:2">
+        <div class="go-metric-icon gm-red">🐺</div>
+        <div class="go-metric-data">
+          <span class="go-metric-val counter" data-target="<%= guildStats.wolfWins %>">0</span>
+          <span class="go-metric-label">Victoires Loups</span>
+        </div>
+      </div>
+      <div class="go-metric" style="--i:3">
+        <div class="go-metric-icon gm-pink">💕</div>
+        <div class="go-metric-data">
+          <span class="go-metric-val counter" data-target="<%= guildStats.loversWins %>">0</span>
+          <span class="go-metric-label">Victoires Amoureux</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-  <!-- Two-Column Layout: Leaderboard Preview + Recent History -->
-  <div class="guild-overview-grid">
+<!-- ═══ SECONDARY STATS BAR ═══ -->
+<div class="go-stats-bar">
+  <div class="go-stat-chip">
+    <span class="go-stat-chip-icon">👥</span>
+    <div class="go-stat-chip-data">
+      <span class="go-stat-chip-val counter" data-target="<%= guildStats.avgPlayers %>">0</span>
+      <span class="go-stat-chip-label">Joueurs / partie</span>
+    </div>
+  </div>
+  <div class="go-stat-chip">
+    <span class="go-stat-chip-icon">⏱️</span>
+    <div class="go-stat-chip-data">
+      <% var avgMin = Math.floor(guildStats.avgDuration / 60); %>
+      <span class="go-stat-chip-val counter" data-target="<%= avgMin %>">0</span>
+      <span class="go-stat-chip-label">min en moyenne</span>
+    </div>
+  </div>
+  <div class="go-stat-chip">
+    <span class="go-stat-chip-icon">📊</span>
+    <div class="go-stat-chip-data">
+      <%
+        var total = guildStats.villageWins + guildStats.wolfWins + guildStats.loversWins;
+        var winRate = total > 0 ? Math.round(guildStats.villageWins / total * 100) : 0;
+      %>
+      <span class="go-stat-chip-val"><%= winRate %><small>%</small></span>
+      <span class="go-stat-chip-label">Taux village</span>
+    </div>
+  </div>
+  <% if (guildStats.totalGames > 0) { %>
+  <div class="go-stat-chip">
+    <span class="go-stat-chip-icon">📈</span>
+    <div class="go-stat-chip-data">
+      <span class="go-stat-chip-val"><%= Math.round(guildStats.wolfWins / (total || 1) * 100) %><small>%</small></span>
+      <span class="go-stat-chip-label">Taux loups</span>
+    </div>
+  </div>
+  <% } %>
+</div>
 
-    <!-- Top Players Preview -->
-    <section class="section guild-overview-panel">
-      <div class="section-header">
-        <h2 class="section-title">&#127942; <span data-i18n="goverview.top_players">Meilleurs joueurs</span></h2>
-        <a href="/guild/<%= guildId %>/leaderboard" class="section-link" data-i18n="goverview.see_all">Voir tout &#8594;</a>
+<!-- ═══ WIN DISTRIBUTION BAR ═══ -->
+<% if (guildStats.totalGames > 0) { %>
+<div class="go-winbar-panel" style="--enter:0">
+  <div class="go-winbar-head">
+    <span class="go-winbar-title">🏁 Répartition des victoires</span>
+  </div>
+  <div class="go-winbar">
+    <%
+      var vPct = total > 0 ? (guildStats.villageWins / total * 100).toFixed(1) : 0;
+      var wPct = total > 0 ? (guildStats.wolfWins / total * 100).toFixed(1) : 0;
+      var lPct = total > 0 ? (guildStats.loversWins / total * 100).toFixed(1) : 0;
+    %>
+    <div class="go-winbar-seg go-winbar-village" style="width:<%= vPct %>%" title="Village <%= vPct %>%">
+      <span>🏡 <%= vPct %>%</span>
+    </div>
+    <div class="go-winbar-seg go-winbar-wolves" style="width:<%= wPct %>%" title="Loups <%= wPct %>%">
+      <span>🐺 <%= wPct %>%</span>
+    </div>
+    <% if (parseFloat(lPct) > 0) { %>
+    <div class="go-winbar-seg go-winbar-lovers" style="width:<%= lPct %>%" title="Amoureux <%= lPct %>%">
+      <span>💕 <%= lPct %>%</span>
+    </div>
+    <% } %>
+  </div>
+  <div class="go-winbar-legend">
+    <span class="go-legend-item"><span class="go-legend-dot go-legend-village"></span> Village</span>
+    <span class="go-legend-item"><span class="go-legend-dot go-legend-wolves"></span> Loups-Garous</span>
+    <span class="go-legend-item"><span class="go-legend-dot go-legend-lovers"></span> Amoureux</span>
+  </div>
+</div>
+<% } %>
+
+<!-- ═══ MAIN GRID ═══ -->
+<div class="go-grid">
+  <div class="go-main">
+
+    <!-- Live Games Panel -->
+    <div class="dash-panel go-panel" style="--enter:0">
+      <div class="dash-panel-head">
+        <div class="dash-panel-title"><span class="pulse-dot"></span> Parties en cours</div>
+        <span class="badge-count"><%= games.length %></span>
+      </div>
+      <div class="games-grid">
+        <% if (games.length === 0) { %>
+          <div class="empty-state">
+            <div class="empty-visual">
+              <span class="empty-icon-lg">🌙</span>
+              <div class="empty-glow-ring"></div>
+            </div>
+            <p class="empty-title">Le village dort paisiblement</p>
+            <p class="empty-sub text-muted">Les parties apparaîtront ici en temps réel</p>
+          </div>
+        <% } else { games.forEach(function(g) {
+            var alive = g.players ? g.players.filter(function(p) { return p.alive; }).length : 0;
+            var dead = g.dead ? g.dead.length : (g.players ? g.players.filter(function(p) { return !p.alive; }).length : 0);
+            var gtotal = alive + dead;
+            var pct = gtotal > 0 ? Math.round(alive / gtotal * 100) : 100;
+        %>
+          <a href="/game/<%= g.gameId %>" class="game-card" data-game="<%= g.gameId %>">
+            <div class="game-card-header">
+              <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>"><%= g.phase || 'Lobby' %></span>
+              <span class="game-day"><%= g.dayCount ? 'Jour ' + g.dayCount : '' %></span>
+            </div>
+            <div class="game-card-body">
+              <div class="game-players">
+                <span class="alive-count">❤️ <%= alive %> vivants</span>
+                <span class="dead-count">☠️ <%= dead %> morts</span>
+              </div>
+              <div class="game-hp-bar">
+                <div class="game-hp-fill" style="width: <%= pct %>%"></div>
+              </div>
+              <% if (g.players && g.players.length > 0) { %>
+                <div class="game-card-player-list">
+                  <% g.players.slice(0, 6).forEach(function(p) { %>
+                    <span class="game-mini-player <%= p.alive ? '' : 'dead' %>" title="<%= p.username %>"><%= p.username %></span>
+                  <% }); %>
+                  <% if (g.players.length > 6) { %>
+                    <span class="game-mini-more">+<%= g.players.length - 6 %></span>
+                  <% } %>
+                </div>
+              <% } %>
+              <% if (g.subPhase) { %>
+                <div class="game-subphase-tag"><%= g.subPhase %></div>
+              <% } %>
+            </div>
+            <div class="game-card-footer">
+              <span class="spectate-btn">👁️ Regarder en direct</span>
+            </div>
+          </a>
+        <% }); } %>
+      </div>
+    </div>
+
+    <!-- Top Players Panel -->
+    <div class="dash-panel go-panel" style="--enter:1">
+      <div class="dash-panel-head">
+        <div class="dash-panel-title">🏆 Meilleurs joueurs</div>
+        <a href="/guild/<%= guildId %>/leaderboard" class="go-see-all">Voir tout →</a>
       </div>
       <% if (leaderboard.length === 0) { %>
-        <div class="empty-state empty-state-sm">
-          <span class="empty-icon">&#127942;</span>
-          <p class="text-muted" data-i18n="goverview.no_players">Aucun joueur classé</p>
+        <div class="empty-state">
+          <div class="empty-visual">
+            <span class="empty-icon-lg">🏆</span>
+            <div class="empty-glow-ring"></div>
+          </div>
+          <p class="empty-title">Aucun joueur classé</p>
+          <p class="empty-sub text-muted">Les classements apparaîtront après la première partie</p>
         </div>
       <% } else { %>
-        <div class="guild-top-players">
-          <% leaderboard.forEach(function(p) { %>
-            <a href="/player/<%= p.player_id %>" class="guild-top-player-row">
-              <div class="guild-top-rank rank-<%= p.rank %>">#<%= p.rank %></div>
-              <div class="guild-top-info">
-                <span class="guild-top-name"><%= p.username || p.player_id %></span>
-                <span class="guild-top-tier tier tier-<%= (p.tier || {}).id || 'bronze' %>"><%= (p.tier || {}).emoji || '' %> <%= (p.tier || {}).name || 'Bronze' %></span>
+        <div class="go-leaderboard">
+          <% leaderboard.forEach(function(p, i) { %>
+            <a href="/player/<%= p.player_id %>" class="go-player-row" style="--delay:<%= i * 0.06 %>s">
+              <div class="go-player-rank rank-<%= p.rank %>">#<%= p.rank %></div>
+              <div class="go-player-info">
+                <span class="go-player-name"><%= p.username || p.player_id %></span>
+                <span class="go-player-tier tier tier-<%= (p.tier || {}).id || 'bronze' %>"><%= (p.tier || {}).emoji || '' %> <%= (p.tier || {}).name || 'Bronze' %></span>
               </div>
-              <div class="guild-top-elo">
-                <span class="guild-top-elo-value"><%= p.elo_rating || 1000 %></span>
-                <span class="guild-top-elo-label">ELO</span>
+              <div class="go-player-elo">
+                <span class="go-player-elo-val"><%= p.elo_rating || 1000 %></span>
+                <span class="go-player-elo-label">ELO</span>
               </div>
-              <div class="guild-top-record">
-                <span class="guild-top-wins"><%= p.games_won || 0 %>W</span>
-                <span class="guild-top-games">/ <%= p.games_played || 0 %>G</span>
+              <div class="go-player-record">
+                <span class="go-player-wins"><%= p.games_won || 0 %>W</span>
+                <span class="go-player-total">/ <%= p.games_played || 0 %></span>
               </div>
+              <span class="go-player-arrow">›</span>
             </a>
           <% }); %>
         </div>
       <% } %>
-    </section>
+    </div>
 
-    <!-- Recent Games Preview -->
-    <section class="section guild-overview-panel">
-      <div class="section-header">
-        <h2 class="section-title">&#128218; <span data-i18n="goverview.recent_games">Parties récentes</span></h2>
-        <a href="/guild/<%= guildId %>/history" class="section-link" data-i18n="goverview.see_all_history">Voir tout &#8594;</a>
+    <!-- Recent Games Panel -->
+    <div class="dash-panel go-panel" style="--enter:2">
+      <div class="dash-panel-head">
+        <div class="dash-panel-title">📜 Parties récentes</div>
+        <a href="/guild/<%= guildId %>/history" class="go-see-all">Voir tout →</a>
       </div>
       <% if (history.length === 0) { %>
-        <div class="empty-state empty-state-sm">
-          <span class="empty-icon">&#128218;</span>
-          <p class="text-muted" data-i18n="goverview.no_history">Aucune partie terminée</p>
+        <div class="empty-state">
+          <div class="empty-visual">
+            <span class="empty-icon-lg">📜</span>
+            <div class="empty-glow-ring"></div>
+          </div>
+          <p class="empty-title">Aucune partie terminée</p>
+          <p class="empty-sub text-muted">L'historique s'affichera ici</p>
         </div>
       <% } else { %>
-        <div class="guild-recent-games">
-          <% history.forEach(function(h) { %>
-            <div class="guild-recent-row">
-              <div class="guild-recent-winner">
+        <div class="go-history">
+          <% history.forEach(function(h, i) { %>
+            <div class="go-history-row" style="--delay:<%= i * 0.06 %>s">
+              <div class="go-history-winner">
                 <% if (h.winner === 'village') { %>
-                  <span class="ghistory-winner winner-village">&#127969; Village</span>
+                  <span class="go-winner-badge go-winner-village">🏡 Village</span>
                 <% } else if (h.winner === 'wolves') { %>
-                  <span class="ghistory-winner winner-wolves">&#128058; Loups</span>
+                  <span class="go-winner-badge go-winner-wolves">🐺 Loups</span>
                 <% } else if (h.winner === 'lovers') { %>
-                  <span class="ghistory-winner winner-lovers">&#128149; Amoureux</span>
+                  <span class="go-winner-badge go-winner-lovers">💕 Amoureux</span>
                 <% } else { %>
-                  <span class="ghistory-winner"><%= h.winner || '?' %></span>
+                  <span class="go-winner-badge"><%= h.winner || '?' %></span>
                 <% } %>
               </div>
-              <div class="guild-recent-meta">
-                <span>&#128101; <%= h.player_count || '?' %></span>
-                <span>&#128197; <%= h.day_count || 0 %>j</span>
+              <div class="go-history-stats">
+                <span class="go-history-stat">👥 <%= h.player_count || '?' %></span>
+                <span class="go-history-stat">📅 <%= h.day_count || 0 %>j</span>
                 <% if (h.duration_seconds) { %>
-                  <span>&#9201;&#65039; <%= Math.floor(h.duration_seconds / 60) %>min</span>
+                  <span class="go-history-stat">⏱️ <%= Math.floor(h.duration_seconds / 60) %>min</span>
                 <% } %>
               </div>
-              <div class="guild-recent-date">
-                <%= h.ended_at ? new Date(h.ended_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '' %>
+              <div class="go-history-date">
+                <%= h.ended_at ? new Date(h.ended_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '' %>
               </div>
             </div>
           <% }); %>
         </div>
       <% } %>
-    </section>
-
+    </div>
   </div>
 
-  <!-- Quick Navigation -->
-  <section class="section">
-    <h2 class="section-title">&#9889;&#65039; <span data-i18n="goverview.quick_nav">Navigation rapide</span></h2>
-    <div class="guild-quick-nav">
-      <a href="/guild/<%= guildId %>/leaderboard" class="guild-nav-card">
-        <span class="guild-nav-icon">&#127942;</span>
-        <span class="guild-nav-title" data-i18n="guild.leaderboard">Classement</span>
-        <span class="guild-nav-desc" data-i18n="goverview.nav_leaderboard_desc">Classement complet et ELO</span>
-      </a>
-      <a href="/guild/<%= guildId %>/history" class="guild-nav-card">
-        <span class="guild-nav-icon">&#128218;</span>
-        <span class="guild-nav-title" data-i18n="guild.history">Historique</span>
-        <span class="guild-nav-desc" data-i18n="goverview.nav_history_desc">Toutes les parties jouées</span>
-      </a>
-      <a href="/guild/<%= guildId %>/rules" class="guild-nav-card">
-        <span class="guild-nav-icon">&#9881;&#65039;</span>
-        <span class="guild-nav-title" data-i18n="guild.rules">Règles du jeu</span>
-        <span class="guild-nav-desc" data-i18n="goverview.nav_rules_desc">Rôles et paramètres</span>
-      </a>
-      <a href="/guild/<%= guildId %>/moderation" class="guild-nav-card">
-        <span class="guild-nav-icon">&#128737;&#65039;</span>
-        <span class="guild-nav-title" data-i18n="gmod.title">Modération</span>
-        <span class="guild-nav-desc" data-i18n="goverview.nav_mod_desc">Gérer les parties en cours</span>
-      </a>
+  <!-- Sidebar -->
+  <aside class="go-sidebar">
+    <!-- Quick Navigation -->
+    <div class="sidebar-panel go-panel" style="--enter:1">
+      <h3 class="panel-title">⚡ Navigation</h3>
+      <div class="go-nav-links">
+        <a href="/guild/<%= guildId %>/leaderboard" class="go-nav-link">
+          <span class="go-nav-link-icon" style="background:rgba(245,158,11,0.12)">🏆</span>
+          <div class="go-nav-link-body">
+            <span class="go-nav-link-title">Classement</span>
+            <span class="go-nav-link-desc">Classement complet et ELO</span>
+          </div>
+          <span class="go-nav-link-arrow">›</span>
+        </a>
+        <a href="/guild/<%= guildId %>/history" class="go-nav-link">
+          <span class="go-nav-link-icon" style="background:rgba(59,130,246,0.12)">📜</span>
+          <div class="go-nav-link-body">
+            <span class="go-nav-link-title">Historique</span>
+            <span class="go-nav-link-desc">Toutes les parties jouées</span>
+          </div>
+          <span class="go-nav-link-arrow">›</span>
+        </a>
+        <a href="/guild/<%= guildId %>/rules" class="go-nav-link">
+          <span class="go-nav-link-icon" style="background:rgba(139,92,246,0.12)">⚙️</span>
+          <div class="go-nav-link-body">
+            <span class="go-nav-link-title">Règles du jeu</span>
+            <span class="go-nav-link-desc">Rôles et paramètres</span>
+          </div>
+          <span class="go-nav-link-arrow">›</span>
+        </a>
+        <a href="/guild/<%= guildId %>/moderation" class="go-nav-link">
+          <span class="go-nav-link-icon" style="background:rgba(239,68,68,0.12)">🛡️</span>
+          <div class="go-nav-link-body">
+            <span class="go-nav-link-title">Modération</span>
+            <span class="go-nav-link-desc">Gérer les parties en cours</span>
+          </div>
+          <span class="go-nav-link-arrow">›</span>
+        </a>
+      </div>
     </div>
-  </section>
 
+    <!-- Server Info -->
+    <div class="sidebar-panel go-panel" style="--enter:2">
+      <h3 class="panel-title">🔮 Informations</h3>
+      <div class="go-info-grid">
+        <div class="go-info-row">
+          <span class="go-info-label">Parties totales</span>
+          <span class="go-info-value"><%= guildStats.totalGames %></span>
+        </div>
+        <div class="go-info-row">
+          <span class="go-info-label">En cours</span>
+          <span class="go-info-value go-info-live"><%= guildStats.activeGames %></span>
+        </div>
+        <div class="go-info-row">
+          <span class="go-info-label">Joueurs moyens</span>
+          <span class="go-info-value"><%= guildStats.avgPlayers %></span>
+        </div>
+        <div class="go-info-row">
+          <span class="go-info-label">Durée moyenne</span>
+          <span class="go-info-value"><%= avgMin %> min</span>
+        </div>
+        <% if (guild && guild.memberCount) { %>
+        <div class="go-info-row">
+          <span class="go-info-label">Membres</span>
+          <span class="go-info-value"><%= guild.memberCount %></span>
+        </div>
+        <% } %>
+      </div>
+    </div>
+  </aside>
 </div>
+
+<script>
+// Counter animation for guild overview
+(function() {
+  const counters = document.querySelectorAll('.go-hero .counter, .go-stats-bar .counter');
+  if (!counters.length) return;
+  function easeOutExpo(t) { return t === 1 ? 1 : 1 - Math.pow(2, -10 * t); }
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const el = entry.target;
+      observer.unobserve(el);
+      const target = parseInt(el.dataset.target, 10) || 0;
+      if (target === 0) { el.textContent = '0'; return; }
+      const duration = 1800;
+      const start = performance.now();
+      function tick(now) {
+        const t = Math.min((now - start) / duration, 1);
+        el.textContent = Math.round(easeOutExpo(t) * target).toLocaleString('fr-FR');
+        if (t < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    });
+  }, { threshold: 0.3 });
+  counters.forEach(c => observer.observe(c));
+})();
+</script>
 
 <%- include('partials/footer') %>

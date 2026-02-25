@@ -1,92 +1,173 @@
 <%- include('partials/header') %>
 
-<!-- Hero Banner -->
-<div class="dashboard-hero">
-  <div class="dashboard-hero-content">
-    <img src="/static/img/roles/LG.jpg" alt="Werewolf" class="dashboard-hero-img">
-    <div>
-      <h1>Werewolf Dashboard</h1>
-      <p>Surveillance temps réel de toutes les parties sur vos serveurs</p>
-    </div>
-  </div>
+<!-- Ambient floating orbs -->
+<div class="dash-ambient" aria-hidden="true">
+  <div class="dash-orb dash-orb-1"></div>
+  <div class="dash-orb dash-orb-2"></div>
+  <div class="dash-orb dash-orb-3"></div>
 </div>
 
-<!-- Stats -->
-<section class="hero-stats">
-  <div class="stat-card stat-primary">
-    <div class="stat-icon">&#127918;</div>
-    <div class="stat-body">
-      <span class="stat-value" id="active-games"><%= activeGames %></span>
-      <span class="stat-label">Parties actives</span>
-    </div>
+<!-- ═══ HERO COMMAND CENTER ═══ -->
+<section class="dash-hero">
+  <div class="dash-hero-bg">
+    <div class="dash-hero-gradient"></div>
+    <div class="dash-hero-dots"></div>
+    <div class="dash-hero-scanline"></div>
   </div>
-  <div class="stat-card stat-success">
-    <div class="stat-icon">&#128101;</div>
-    <div class="stat-body">
-      <span class="stat-value" id="active-players"><%= activePlayers %></span>
-      <span class="stat-label">Joueurs en jeu</span>
+  <div class="dash-hero-inner">
+    <div class="dash-hero-left">
+      <div class="dash-hero-avatar-wrap">
+        <img src="/static/img/roles/LG.jpg" alt="Werewolf" class="dash-hero-avatar">
+        <div class="dash-avatar-ring"></div>
+        <div class="dash-avatar-ring dash-avatar-ring-lg"></div>
+      </div>
+      <div class="dash-hero-info">
+        <h1 class="dash-hero-title">Werewolf <span>Dashboard</span></h1>
+        <p class="dash-hero-subtitle">Centre de commandement · Surveillance temps réel</p>
+        <div class="dash-hero-status">
+          <span class="status-beacon"></span>
+          <span class="status-text">Système opérationnel</span>
+        </div>
+      </div>
     </div>
-  </div>
-  <div class="stat-card stat-info">
-    <div class="stat-icon">&#127984;</div>
-    <div class="stat-body">
-      <span class="stat-value"><%= guilds %></span>
-      <span class="stat-label">Serveurs</span>
-    </div>
-  </div>
-  <div class="stat-card stat-warning">
-    <div class="stat-icon">&#128200;</div>
-    <div class="stat-body">
-      <span class="stat-value"><%= stats.total_games || 0 %></span>
-      <span class="stat-label">Total parties</span>
+    <div class="dash-hero-metrics">
+      <div class="dash-metric" style="--i:0">
+        <div class="dash-metric-icon dm-green">🎮</div>
+        <div class="dash-metric-data">
+          <span class="dash-metric-val counter" data-target="<%= activeGames %>" id="active-games">0</span>
+          <span class="dash-metric-label">Parties actives</span>
+        </div>
+      </div>
+      <div class="dash-metric" style="--i:1">
+        <div class="dash-metric-icon dm-blue">👥</div>
+        <div class="dash-metric-data">
+          <span class="dash-metric-val counter" data-target="<%= activePlayers %>" id="active-players">0</span>
+          <span class="dash-metric-label">Joueurs en jeu</span>
+        </div>
+      </div>
+      <div class="dash-metric" style="--i:2">
+        <div class="dash-metric-icon dm-purple">🏰</div>
+        <div class="dash-metric-data">
+          <span class="dash-metric-val counter" data-target="<%= guilds %>">0</span>
+          <span class="dash-metric-label">Serveurs</span>
+        </div>
+      </div>
+      <div class="dash-metric" style="--i:3">
+        <div class="dash-metric-icon dm-amber">📊</div>
+        <div class="dash-metric-data">
+          <span class="dash-metric-val counter" data-target="<%= stats.total_games || 0 %>">0</span>
+          <span class="dash-metric-label">Total parties</span>
+        </div>
+      </div>
     </div>
   </div>
 </section>
 
+<!-- ═══ MAIN GRID ═══ -->
 <div class="dashboard-grid">
-  <!-- Live Games -->
-  <section class="section dashboard-main">
-    <h2 class="section-title">
-      <span class="pulse-dot"></span>
-      Parties en direct
-    </h2>
-    <div class="games-grid" id="games-grid">
-      <% if (games.length === 0) { %>
-        <div class="empty-state">
-          <span class="empty-icon">&#127769;</span>
-          <p>Aucune partie en cours</p>
-          <p class="text-muted">Les parties apparaîtront ici en temps réel</p>
-        </div>
-      <% } else { %>
-        <% games.forEach(function(g) { %>
-          <a href="/game/<%= g.gameId %>" class="game-card" data-game="<%= g.gameId %>">
-            <div class="game-card-header">
-              <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>"><%= g.phase || 'Lobby' %></span>
-              <span class="game-day"><%= g.dayCount ? 'Jour ' + g.dayCount : '' %></span>
+  <div class="dashboard-main">
+    <!-- Live Games Panel -->
+    <div class="dash-panel" style="--enter:0">
+      <div class="dash-panel-head">
+        <div class="dash-panel-title"><span class="pulse-dot"></span> Parties en direct</div>
+        <span class="badge-count"><%= games.length %></span>
+      </div>
+      <div class="games-grid" id="games-grid">
+        <% if (games.length === 0) { %>
+          <div class="empty-state">
+            <div class="empty-visual">
+              <span class="empty-icon-lg">🌙</span>
+              <div class="empty-glow-ring"></div>
             </div>
-            <div class="game-card-body">
-              <div class="game-guild"><%= g.guildName || g.guildId %></div>
-              <div class="game-players">
-                <span class="alive-count">&#10084;&#65039; <%= g.players ? g.players.filter(function(p) { return p.alive; }).length : 0 %> vivants</span>
-                <span class="dead-count">&#9760;&#65039; <%= g.dead ? g.dead.length : 0 %> morts</span>
+            <p class="empty-title">Le village dort paisiblement</p>
+            <p class="empty-sub text-muted">Les parties apparaîtront ici en temps réel</p>
+          </div>
+        <% } else { %>
+          <% games.forEach(function(g) {
+            var alive = g.players ? g.players.filter(function(p) { return p.alive; }).length : 0;
+            var dead = g.dead ? g.dead.length : 0;
+            var total = alive + dead;
+            var pct = total > 0 ? Math.round(alive / total * 100) : 100;
+          %>
+            <a href="/game/<%= g.gameId %>" class="game-card" data-game="<%= g.gameId %>">
+              <div class="game-card-header">
+                <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>"><%= g.phase || 'Lobby' %></span>
+                <span class="game-day"><%= g.dayCount ? 'Jour ' + g.dayCount : '' %></span>
               </div>
-              <% if (g.subPhase) { %>
-                <div class="game-subphase-tag"><%= g.subPhase %></div>
-              <% } %>
-            </div>
-            <div class="game-card-footer">
-              <span class="spectate-btn">&#128065;&#65039; Regarder en direct</span>
-            </div>
-          </a>
-        <% }); %>
-      <% } %>
+              <div class="game-card-body">
+                <div class="game-guild"><%= g.guildName || g.guildId %></div>
+                <div class="game-players">
+                  <span class="alive-count">❤️ <%= alive %> vivants</span>
+                  <span class="dead-count">☠️ <%= dead %> morts</span>
+                </div>
+                <div class="game-hp-bar">
+                  <div class="game-hp-fill" style="width: <%= pct %>%"></div>
+                </div>
+                <% if (g.subPhase) { %>
+                  <div class="game-subphase-tag"><%= g.subPhase %></div>
+                <% } %>
+              </div>
+              <div class="game-card-footer">
+                <span class="spectate-btn">👁️ Regarder en direct</span>
+              </div>
+            </a>
+          <% }); %>
+        <% } %>
+      </div>
     </div>
-  </section>
 
-  <!-- Sidebar: Activity Feed + Quick Links -->
+    <!-- Card Deck Draw — Wide layout -->
+    <div class="dash-panel deck-panel deck-panel-wide" style="--enter:1">
+      <div class="dash-panel-head">
+        <div class="dash-panel-title">🃏 Piocher un rôle</div>
+      </div>
+      <div class="deck-wide-layout">
+        <div class="deck-wide-left">
+          <div class="deck-area">
+            <div class="deck-stack" id="deck-stack">
+              <div class="deck-card dc-1"></div>
+              <div class="deck-card dc-2"></div>
+              <div class="deck-card dc-3"></div>
+              <div class="deck-card dc-4"></div>
+              <div class="deck-card dc-top"></div>
+            </div>
+            <div class="drawn-card-zone" id="drawn-card-zone">
+              <div class="drawn-card" id="drawn-card">
+                <div class="drawn-card-inner" id="drawn-card-inner">
+                  <div class="drawn-card-front">
+                    <img src="/static/img/roles/loup-garou-dos.png" alt="Dos" class="drawn-card-img">
+                  </div>
+                  <div class="drawn-card-back" id="drawn-card-back">
+                    <img src="" alt="" class="drawn-role-img" id="drawn-role-img">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-draw" id="btn-draw" type="button">
+            <span class="draw-icon">🎴</span> Piocher une carte
+          </button>
+        </div>
+        <div class="deck-wide-right" id="drawn-role-info">
+          <div class="drawn-role-placeholder" id="drawn-role-placeholder">
+            <span class="drawn-role-placeholder-icon">🎴</span>
+            <span class="drawn-role-placeholder-text">Piochez une carte pour découvrir un rôle</span>
+          </div>
+          <div class="drawn-role-detail" id="drawn-role-detail">
+            <span class="drawn-role-name" id="drawn-role-name"></span>
+            <span class="drawn-role-camp" id="drawn-role-camp"></span>
+            <p class="drawn-role-desc" id="drawn-role-desc"></p>
+            <span class="drawn-role-cmd" id="drawn-role-cmd"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
   <aside class="dashboard-sidebar">
     <!-- Activity Feed -->
-    <div class="sidebar-panel">
+    <div class="sidebar-panel" style="--enter:2">
       <h3 class="panel-title"><span class="pulse-dot"></span> Activité récente</h3>
       <div class="activity-feed" id="activity-feed">
         <div class="activity-empty text-muted">En attente d'événements...</div>
@@ -94,23 +175,24 @@
     </div>
 
     <!-- Quick Links -->
-    <div class="sidebar-panel">
-      <h3 class="panel-title">&#9889;&#65039; Accès rapide</h3>
+    <div class="sidebar-panel" style="--enter:3">
+      <h3 class="panel-title">⚡ Accès rapide</h3>
       <div class="quick-links">
         <a href="/roles" class="quick-link">
-          <span class="quick-link-icon">&#128058;</span>
-          <div>
+          <span class="quick-link-icon">🐺</span>
+          <div class="quick-link-body">
             <span class="quick-link-title">Rôles</span>
-            <span class="quick-link-desc">Voir tous les rôles du jeu</span>
+            <span class="quick-link-desc">Découvrir tous les rôles du jeu</span>
           </div>
+          <span class="quick-link-arrow">›</span>
         </a>
-
         <a href="https://github.com/Heliox1119/Werewolf-bot" target="_blank" class="quick-link">
-          <span class="quick-link-icon">&#128187;</span>
-          <div>
+          <span class="quick-link-icon">💻</span>
+          <div class="quick-link-body">
             <span class="quick-link-title">GitHub</span>
             <span class="quick-link-desc">Code source du bot</span>
           </div>
+          <span class="quick-link-arrow">›</span>
         </a>
       </div>
     </div>

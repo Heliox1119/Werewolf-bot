@@ -133,6 +133,27 @@ module.exports = function(webServer) {
     }
   });
 
+  /** DELETE /api/history/:id — Delete a game history entry (owner only) */
+  router.delete('/history/:id', (req, res) => {
+    try {
+      const level = webServer.getUserAccessLevel(req);
+      if (level !== 'owner') {
+        return res.status(403).json({ success: false, error: 'Owner access required' });
+      }
+      const id = parseInt(req.params.id);
+      if (!id || isNaN(id)) {
+        return res.status(400).json({ success: false, error: 'Invalid id' });
+      }
+      const deleted = db.deleteGameHistory(id);
+      if (!deleted) {
+        return res.status(404).json({ success: false, error: 'Entry not found' });
+      }
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
   // ==================== GLOBAL STATS ====================
 
   /** GET /api/stats — Global stats */
@@ -248,12 +269,13 @@ module.exports = function(webServer) {
       }
       const config = require('../../utils/config');
       const mgr = config.getInstance();
+      const guildId = req.params.guildId;
       const summary = {
-        categoryId: mgr.getCategoryId(req.params.guildId),
-        wolfWinCondition: mgr.getWolfWinCondition(req.params.guildId),
-        defaultRules: mgr.getDefaultGameRules(req.params.guildId),
-        locale: require('../../utils/i18n').getLocaleForGuild(req.params.guildId),
-        enabledRoles: mgr.getEnabledRoles(req.params.guildId)
+        categoryId: mgr.get(`guild.${guildId}.discord.category_id`) || null,
+        wolfWinCondition: mgr.getWolfWinCondition(guildId),
+        defaultRules: mgr.getDefaultGameRules(guildId),
+        locale: require('../../utils/i18n').getLocaleForGuild(guildId),
+        enabledRoles: mgr.getEnabledRoles(guildId)
       };
       res.json({ success: true, data: summary });
     } catch (e) {

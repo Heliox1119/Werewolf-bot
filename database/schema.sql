@@ -180,6 +180,15 @@ CREATE TABLE IF NOT EXISTS player_stats (
 
 CREATE INDEX IF NOT EXISTS idx_player_stats_games ON player_stats(games_played);
 
+-- Table de liaison joueur↔guilde (permanente, survit à la suppression des parties)
+CREATE TABLE IF NOT EXISTS player_guilds (
+  player_id TEXT NOT NULL,
+  guild_id TEXT NOT NULL,
+  PRIMARY KEY (player_id, guild_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_player_guilds_guild ON player_guilds(guild_id);
+
 -- Table des métriques de monitoring
 CREATE TABLE IF NOT EXISTS metrics (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -7,167 +7,243 @@
   var isMember = level !== 'public';
 %>
 
-<div class="monitoring-page">
-  <div class="page-header">
-    <div>
-      <h1 data-i18n="mon.title">&#128202; Monitoring</h1>
-      <p class="text-muted" data-i18n="mon.subtitle">Surveillance en temps réel du bot — Métriques système, Discord et jeu</p>
-    </div>
-    <div class="monitoring-controls">
-      <% if (isMember) { %>
-        <span class="access-badge access-<%= level %>"><%= level === 'owner' ? '👑 Owner' : level === 'admin' ? '🛡️ Admin' : '👤 Member' %></span>
-      <% } %>
-      <span class="monitoring-auto-refresh text-muted" data-i18n="mon.auto_refresh">Actualisation auto toutes les 30s</span>
-      <button class="btn btn-sm btn-outline" id="mon-refresh-btn" data-i18n="mon.refresh">Actualiser</button>
+<div class="st-page">
+  <!-- Ambient orbs -->
+  <div class="st-orb st-orb--1"></div>
+  <div class="st-orb st-orb--2"></div>
+  <div class="st-orb st-orb--3"></div>
+
+  <!-- Hero header -->
+  <div class="st-hero">
+    <div class="st-hero-glow"></div>
+    <div class="st-hero-content">
+      <div class="st-hero-left">
+        <div class="st-hero-ring" id="st-health-ring">
+          <svg viewBox="0 0 120 120" class="st-ring-svg">
+            <circle cx="60" cy="60" r="52" class="st-ring-track"/>
+            <circle cx="60" cy="60" r="52" class="st-ring-fill" id="st-uptime-ring"
+                    stroke-dasharray="326.7" stroke-dashoffset="326.7"/>
+          </svg>
+          <div class="st-ring-inner">
+            <span class="st-ring-icon" id="st-health-icon">⏳</span>
+            <span class="st-ring-label" id="st-health-text">Connexion…</span>
+          </div>
+        </div>
+        <div class="st-hero-info">
+          <h1 class="st-hero-title" data-i18n="mon.title">System Status</h1>
+          <p class="st-hero-sub" data-i18n="mon.subtitle">Surveillance en temps réel du bot — Métriques système, Discord et jeu</p>
+          <div class="st-hero-chips">
+            <% if (isMember) { %>
+              <span class="access-badge access-<%= level %>"><%= level === 'owner' ? '👑 Owner' : level === 'admin' ? '🛡️ Admin' : '👤 Member' %></span>
+            <% } %>
+            <span class="st-chip st-chip--auto" id="st-auto-chip">
+              <span class="st-chip-dot"></span>
+              <span data-i18n="mon.auto_refresh">Auto-refresh 30s</span>
+            </span>
+            <button class="st-chip st-chip--btn" id="mon-refresh-btn">
+              ↻ <span data-i18n="mon.refresh">Actualiser</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Health Overview (visible to ALL) -->
-  <section class="hero-stats" id="mon-hero">
-    <div class="stat-card stat-health" id="mon-health-card">
-      <div class="stat-icon" id="mon-health-icon">&#9889;</div>
-      <div class="stat-body">
-        <span class="stat-value" id="mon-health-status"><span data-i18n="mon.connecting">Connexion...</span></span>
-        <span class="stat-label" data-i18n="mon.health">Santé</span>
+  <!-- Top KPI strip -->
+  <div class="st-kpi-strip">
+    <div class="st-kpi" data-color="green">
+      <div class="st-kpi-icon">⚡</div>
+      <div class="st-kpi-body">
+        <span class="st-kpi-value" id="mon-uptime">—</span>
+        <span class="st-kpi-label" data-i18n="mon.uptime">Uptime</span>
       </div>
     </div>
-    <div class="stat-card stat-info">
-      <div class="stat-icon">&#9200;</div>
-      <div class="stat-body">
-        <span class="stat-value" id="mon-uptime">—</span>
-        <span class="stat-label" data-i18n="mon.uptime">Uptime</span>
+    <div class="st-kpi" data-color="blue">
+      <div class="st-kpi-icon">📡</div>
+      <div class="st-kpi-body">
+        <span class="st-kpi-value" id="mon-latency">—</span>
+        <span class="st-kpi-label" data-i18n="mon.latency">Latence Discord</span>
+      </div>
+    </div>
+    <div class="st-kpi" data-color="violet">
+      <div class="st-kpi-icon">🎮</div>
+      <div class="st-kpi-body">
+        <span class="st-kpi-value" id="mon-gm-active">—</span>
+        <span class="st-kpi-label" data-i18n="mon.active_games">Parties actives</span>
+      </div>
+    </div>
+    <div class="st-kpi" data-color="amber">
+      <div class="st-kpi-icon">👥</div>
+      <div class="st-kpi-body">
+        <span class="st-kpi-value" id="mon-gm-players">—</span>
+        <span class="st-kpi-label" data-i18n="mon.total_players">Joueurs en jeu</span>
       </div>
     </div>
     <% if (isAdmin) { %>
-    <div class="stat-card stat-warning">
-      <div class="stat-icon">&#128190;</div>
-      <div class="stat-body">
-        <span class="stat-value" id="mon-memory">—</span>
-        <span class="stat-label" data-i18n="mon.memory">Mémoire (RSS)</span>
+    <div class="st-kpi" data-color="rose">
+      <div class="st-kpi-icon">💾</div>
+      <div class="st-kpi-body">
+        <span class="st-kpi-value" id="mon-memory">—</span>
+        <span class="st-kpi-label" data-i18n="mon.memory">Mémoire (RSS)</span>
       </div>
     </div>
     <% } %>
-    <div class="stat-card stat-primary">
-      <div class="stat-icon">&#128225;</div>
-      <div class="stat-body">
-        <span class="stat-value" id="mon-latency">—</span>
-        <span class="stat-label" data-i18n="mon.latency">Latence Discord</span>
-      </div>
-    </div>
-  </section>
+  </div>
 
-  <!-- Detailed Metrics Grid -->
-  <div class="monitoring-grid">
+  <!-- Panel grid -->
+  <div class="st-grid">
 
     <% if (isOwner) { %>
-    <!-- System (OWNER ONLY) -->
-    <div class="mon-panel">
-      <h3 class="panel-title" data-i18n="mon.system">&#128421; Système</h3>
-      <div class="mon-metrics">
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.memory">Mémoire (RSS)</span><span class="mon-value" id="mon-sys-rss">—</span></div>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.heap">Heap V8</span><span class="mon-value" id="mon-sys-heap">—</span></div>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.cpu">CPU</span><span class="mon-value" id="mon-sys-cpu">—</span></div>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.ram_free">RAM libre</span><span class="mon-value" id="mon-sys-ram-free">—</span></div>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.ram_total">RAM totale</span><span class="mon-value" id="mon-sys-ram-total">—</span></div>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.process_uptime">Uptime process</span><span class="mon-value" id="mon-sys-uptime">—</span></div>
+    <!-- Latency sparkline chart -->
+    <div class="st-panel st-panel--wide st-panel--chart st-panel--collapsed">
+      <div class="st-panel-head">
+        <h3 class="st-panel-title">📈 <span data-i18n="mon.latency_chart">Latence Discord (24h)</span></h3>
+        <div class="st-panel-head-right">
+          <span class="st-panel-badge" id="st-lat-avg">— ms avg</span>
+          <div class="st-chart-toggle" role="button" tabindex="0" aria-label="Expand chart" title="Expand">
+            <span class="st-chart-chevron"></span>
+          </div>
+        </div>
       </div>
-      <!-- Memory bar -->
-      <div class="mon-bar-container">
-        <div class="mon-bar" id="mon-mem-bar" style="width:0%"></div>
+      <div class="st-chart-body">
+        <div class="st-chart-wrap">
+          <canvas id="st-chart-latency" height="180"></canvas>
+          <div class="st-chart-crosshair"></div>
+          <div class="st-chart-tooltip">
+            <span class="st-chart-tooltip-time"></span>
+            <span class="st-chart-tooltip-val"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Memory sparkline chart -->
+    <div class="st-panel st-panel--wide st-panel--chart st-panel--collapsed">
+      <div class="st-panel-head">
+        <h3 class="st-panel-title">📊 <span data-i18n="mon.memory_chart">Mémoire (24h)</span></h3>
+        <div class="st-panel-head-right">
+          <span class="st-panel-badge st-badge--mem" id="st-mem-avg">— MB avg</span>
+          <div class="st-chart-toggle" role="button" tabindex="0" aria-label="Expand chart" title="Expand">
+            <span class="st-chart-chevron"></span>
+          </div>
+        </div>
+      </div>
+      <div class="st-chart-body">
+        <div class="st-chart-wrap">
+          <canvas id="st-chart-memory" height="180"></canvas>
+          <div class="st-chart-crosshair"></div>
+          <div class="st-chart-tooltip">
+            <span class="st-chart-tooltip-time"></span>
+            <span class="st-chart-tooltip-val"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <% } %>
+
+    <% if (isOwner) { %>
+    <!-- System panel -->
+    <div class="st-panel">
+      <div class="st-panel-head">
+        <h3 class="st-panel-title">🖥️ <span data-i18n="mon.system">Système</span></h3>
+      </div>
+      <div class="st-metrics">
+        <div class="st-row"><span class="st-label" data-i18n="mon.memory">Mémoire (RSS)</span><span class="st-val" id="mon-sys-rss">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.heap">Heap V8</span><span class="st-val" id="mon-sys-heap">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.cpu">CPU</span><span class="st-val" id="mon-sys-cpu">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.ram_free">RAM libre</span><span class="st-val" id="mon-sys-ram-free">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.ram_total">RAM totale</span><span class="st-val" id="mon-sys-ram-total">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.process_uptime">Uptime process</span><span class="st-val" id="mon-sys-uptime">—</span></div>
+      </div>
+      <div class="st-bar-group">
+        <div class="st-bar-label">RAM <span id="st-mem-pct">0%</span></div>
+        <div class="st-bar-track"><div class="st-bar-fill" id="mon-mem-bar"></div></div>
       </div>
     </div>
     <% } %>
 
     <% if (isAdmin) { %>
-    <!-- Discord (ADMIN+) -->
-    <div class="mon-panel">
-      <h3 class="panel-title" data-i18n="mon.discord">&#129302; Discord</h3>
-      <div class="mon-metrics">
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.guilds">Serveurs</span><span class="mon-value" id="mon-dc-guilds">—</span></div>
+    <!-- Discord panel -->
+    <div class="st-panel">
+      <div class="st-panel-head">
+        <h3 class="st-panel-title">🤖 <span data-i18n="mon.discord">Discord</span></h3>
+      </div>
+      <div class="st-metrics">
+        <div class="st-row"><span class="st-label" data-i18n="mon.guilds">Serveurs</span><span class="st-val" id="mon-dc-guilds">—</span></div>
         <% if (isOwner) { %>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.users_cached">Utilisateurs (cache)</span><span class="mon-value" id="mon-dc-users">—</span></div>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.channels">Channels</span><span class="mon-value" id="mon-dc-channels">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.users_cached">Utilisateurs</span><span class="st-val" id="mon-dc-users">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.channels">Channels</span><span class="st-val" id="mon-dc-channels">—</span></div>
         <% } %>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.ws_status">Statut WS</span><span class="mon-value" id="mon-dc-ws-status">—</span></div>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.ws_latency">Latence WS</span><span class="mon-value" id="mon-dc-latency">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.ws_status">Statut WS</span><span class="st-val" id="mon-dc-ws-status">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.ws_latency">Latence WS</span><span class="st-val" id="mon-dc-latency">—</span></div>
       </div>
-      <!-- Latency bar -->
-      <div class="mon-bar-container">
-        <div class="mon-bar mon-bar-latency" id="mon-latency-bar" style="width:0%"></div>
+      <div class="st-bar-group">
+        <div class="st-bar-label">Latency <span id="st-lat-pct">0ms</span></div>
+        <div class="st-bar-track"><div class="st-bar-fill st-bar--blue" id="mon-latency-bar"></div></div>
       </div>
     </div>
     <% } %>
 
-    <!-- Game (visible to ALL) -->
-    <div class="mon-panel">
-      <h3 class="panel-title" data-i18n="mon.game">&#127918; Jeu</h3>
-      <div class="mon-metrics">
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.active_games">Parties actives</span><span class="mon-value" id="mon-gm-active">—</span></div>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.total_players">Joueurs en jeu</span><span class="mon-value" id="mon-gm-players">—</span></div>
+    <!-- Game panel (all levels) -->
+    <div class="st-panel">
+      <div class="st-panel-head">
+        <h3 class="st-panel-title">🎲 <span data-i18n="mon.game">Jeu</span></h3>
+      </div>
+      <div class="st-metrics">
+        <div class="st-row"><span class="st-label" data-i18n="mon.active_games">Parties actives</span><span class="st-val" id="mon-gm-active2">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.total_players">Joueurs en jeu</span><span class="st-val" id="mon-gm-players2">—</span></div>
         <% if (isAdmin) { %>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.games_24h">Parties (24h)</span><span class="mon-value" id="mon-gm-created24">—</span></div>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.completed_24h">Terminées (24h)</span><span class="mon-value" id="mon-gm-completed24">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.games_24h">Parties (24h)</span><span class="st-val" id="mon-gm-created24">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.completed_24h">Terminées (24h)</span><span class="st-val" id="mon-gm-completed24">—</span></div>
         <% } %>
       </div>
     </div>
 
     <% if (isOwner) { %>
-    <!-- Commands (OWNER ONLY) -->
-    <div class="mon-panel">
-      <h3 class="panel-title" data-i18n="mon.commands">&#9889; Commandes</h3>
-      <div class="mon-metrics">
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.cmd_total">Total exécutées</span><span class="mon-value" id="mon-cmd-total">—</span></div>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.cmd_errors">Erreurs</span><span class="mon-value" id="mon-cmd-errors">—</span></div>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.cmd_ratelimited">Rate limited</span><span class="mon-value" id="mon-cmd-rl">—</span></div>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.cmd_avg">Temps moyen</span><span class="mon-value" id="mon-cmd-avg">—</span></div>
+    <!-- Commands panel -->
+    <div class="st-panel">
+      <div class="st-panel-head">
+        <h3 class="st-panel-title">⚡ <span data-i18n="mon.commands">Commandes</span></h3>
+      </div>
+      <div class="st-metrics">
+        <div class="st-row"><span class="st-label" data-i18n="mon.cmd_total">Total exécutées</span><span class="st-val" id="mon-cmd-total">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.cmd_errors">Erreurs</span><span class="st-val st-val--danger" id="mon-cmd-errors">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.cmd_ratelimited">Rate limited</span><span class="st-val st-val--warn" id="mon-cmd-rl">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.cmd_avg">Temps moyen</span><span class="st-val" id="mon-cmd-avg">—</span></div>
       </div>
     </div>
 
-    <!-- Errors (OWNER ONLY) -->
-    <div class="mon-panel">
-      <h3 class="panel-title" data-i18n="mon.errors">&#9888; Erreurs</h3>
-      <div class="mon-metrics">
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.err_total">Total</span><span class="mon-value" id="mon-err-total">—</span></div>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.err_critical">Critiques</span><span class="mon-value mon-value-danger" id="mon-err-critical">—</span></div>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.err_warnings">Avertissements</span><span class="mon-value mon-value-warning" id="mon-err-warnings">—</span></div>
-        <div class="mon-row"><span class="mon-label" data-i18n="mon.err_24h">Dernières 24h</span><span class="mon-value" id="mon-err-24h">—</span></div>
+    <!-- Errors panel -->
+    <div class="st-panel">
+      <div class="st-panel-head">
+        <h3 class="st-panel-title">⚠️ <span data-i18n="mon.errors">Erreurs</span></h3>
       </div>
-    </div>
-
-    <!-- History / mini chart (OWNER ONLY) -->
-    <div class="mon-panel mon-panel-wide">
-      <h3 class="panel-title" data-i18n="mon.history">&#128200; Historique (24h)</h3>
-      <div class="mon-history" id="mon-history">
-        <div class="mon-history-chart" id="mon-chart-memory">
-          <div class="mon-chart-label" data-i18n="mon.memory">Mémoire</div>
-          <div class="mon-chart-bars" id="mon-chart-mem-bars"></div>
-        </div>
-        <div class="mon-history-chart" id="mon-chart-latency">
-          <div class="mon-chart-label" data-i18n="mon.latency">Latence</div>
-          <div class="mon-chart-bars" id="mon-chart-lat-bars"></div>
-        </div>
+      <div class="st-metrics">
+        <div class="st-row"><span class="st-label" data-i18n="mon.err_total">Total</span><span class="st-val" id="mon-err-total">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.err_critical">Critiques</span><span class="st-val st-val--danger" id="mon-err-critical">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.err_warnings">Avertissements</span><span class="st-val st-val--warn" id="mon-err-warnings">—</span></div>
+        <div class="st-row"><span class="st-label" data-i18n="mon.err_24h">Dernières 24h</span><span class="st-val" id="mon-err-24h">—</span></div>
       </div>
     </div>
     <% } %>
 
     <% if (!isMember) { %>
-    <!-- Login prompt for non-logged-in users -->
-    <div class="mon-panel mon-panel-wide mon-panel-restricted">
-      <div class="mon-restricted-msg">
-        <span class="mon-restricted-icon">&#128274;</span>
+    <!-- Login prompt -->
+    <div class="st-panel st-panel--wide st-panel--locked">
+      <div class="st-locked-content">
+        <span class="st-locked-icon">🔒</span>
         <h3 data-i18n="mon.login_required">Connectez-vous pour voir plus de détails</h3>
         <p data-i18n="mon.login_desc">Les métriques détaillées sont réservées aux membres connectés et administrateurs.</p>
         <a href="/auth/discord" class="btn btn-discord">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286z"/></svg>
+          <svg width="16" height="16" viewBox="0 -28.5 256 256" fill="currentColor"><path d="M216.856 16.597A208.502 208.502 0 00164.042 0c-2.275 4.113-4.933 9.645-6.766 14.046-19.692-2.961-39.203-2.961-58.533 0-1.832-4.4-4.55-9.933-6.846-14.046a207.809 207.809 0 00-52.855 16.638C5.618 67.147-3.443 116.4 1.087 164.956c22.169 16.555 43.653 26.612 64.775 33.193a161.094 161.094 0 0013.96-22.765 136.2 136.2 0 01-21.958-10.632c1.839-1.36 3.637-2.78 5.38-4.252 42.371 19.702 88.344 19.702 130.169 0 1.764 1.472 3.562 2.893 5.38 4.252-6.992 4.2-14.4 7.7-21.998 10.652 3.832 7.533 8.408 14.792 13.981 22.745 21.142-6.58 42.646-16.637 64.815-33.213 5.316-56.288-9.08-105.09-38.056-148.36zM85.474 135.095c-12.645 0-23.015-11.805-23.015-26.18s10.149-26.2 23.015-26.2c12.867 0 23.236 11.823 23.015 26.2.02 14.375-10.148 26.18-23.015 26.18zm85.051 0c-12.645 0-23.014-11.805-23.014-26.18s10.148-26.2 23.014-26.2c12.867 0 23.236 11.823 23.015 26.2 0 14.375-10.148 26.18-23.015 26.18z"/></svg>
           <span data-i18n="nav.login">Login</span>
         </a>
       </div>
     </div>
     <% } else if (!isOwner && isMember) { %>
-    <!-- Restricted notice for non-owner users -->
-    <div class="mon-panel mon-panel-wide mon-panel-restricted">
-      <div class="mon-restricted-msg">
-        <span class="mon-restricted-icon">&#128274;</span>
+    <div class="st-panel st-panel--wide st-panel--locked">
+      <div class="st-locked-content">
+        <span class="st-locked-icon">🔒</span>
         <p data-i18n="mon.restricted_notice">Certaines métriques avancées sont réservées aux administrateurs du bot.</p>
       </div>
     </div>

@@ -1,110 +1,275 @@
 <%- include('partials/header') %>
 
-<div class="invite-page">
-  <div class="invite-hero">
-    <div class="invite-guild-icon">
-      <% if (guildIcon) { %>
-        <img src="<%= guildIcon %>" alt="<%= guildName %>" class="invite-guild-img">
-      <% } else { %>
-        <span class="invite-guild-initial"><%= guildName ? guildName.charAt(0).toUpperCase() : '?' %></span>
-      <% } %>
-    </div>
-    <h1 data-i18n="invite.title">Add Werewolf Bot</h1>
-    <p class="invite-subtitle">
-      <span data-i18n="invite.subtitle">The bot is not yet on</span>
-      <strong><%= guildName %></strong>
-    </p>
-  </div>
+<!-- Ambient floating orbs (purple + indigo) -->
+<div class="iv-ambient" aria-hidden="true">
+  <div class="iv-orb iv-orb-1"></div>
+  <div class="iv-orb iv-orb-2"></div>
+  <div class="iv-orb iv-orb-3"></div>
+  <div class="iv-orb iv-orb-4"></div>
+</div>
 
-  <div class="invite-card">
-    <div class="invite-card-icon">🐺</div>
-    <h2 data-i18n="invite.card_title">Invite Werewolf Bot</h2>
-    <p class="invite-card-desc" data-i18n="invite.card_desc">
-      Add the bot to your server to start playing Werewolf with your community. The bot includes slash commands, role management, voice mute, and a full game experience.
+<!-- ═══ HERO ═══ -->
+<section class="iv-hero">
+  <div class="iv-hero-bg">
+    <div class="iv-hero-gradient"></div>
+    <div class="iv-hero-dots"></div>
+    <div class="iv-hero-scanline"></div>
+    <div class="iv-hero-moon"></div>
+  </div>
+  <div class="iv-hero-inner">
+    <div class="iv-hero-badge">🐺 WEREWOLF BOT</div>
+    <h1 class="iv-hero-title">
+      <span class="iv-title-line" data-i18n="invite.hero_line1">La nuit tombe sur</span>
+      <span class="iv-title-guild"><%= guildName %></span>
+    </h1>
+    <p class="iv-hero-desc" data-i18n="invite.hero_desc">
+      Plongez votre serveur dans l'univers du Loup-Garou. Trahisons, stratégie, et fous rires garantis.
     </p>
-    <div class="invite-features">
-      <div class="invite-feature">
-        <span class="invite-feature-icon">🎮</span>
-        <span data-i18n="invite.feature_game">Complete Werewolf game</span>
+    <div class="iv-hero-cta">
+      <a href="<%= inviteUrl %>" target="_blank" rel="noopener" class="iv-btn-invite">
+        <svg width="22" height="22" viewBox="0 -28.5 256 256" fill="currentColor"><path d="M216.856 16.597A208.502 208.502 0 00164.042 0c-2.275 4.113-4.933 9.645-6.766 14.046-19.692-2.961-39.203-2.961-58.533 0-1.832-4.4-4.55-9.933-6.846-14.046a207.809 207.809 0 00-52.855 16.638C5.618 67.147-3.443 116.4 1.087 164.956c22.169 16.555 43.653 26.612 64.775 33.193a161.094 161.094 0 0013.96-22.765 136.2 136.2 0 01-21.958-10.632c1.839-1.36 3.637-2.78 5.38-4.252 42.371 19.702 88.344 19.702 130.169 0 1.764 1.472 3.562 2.893 5.38 4.252-6.992 4.2-14.4 7.7-21.998 10.652 3.832 7.533 8.408 14.792 13.981 22.745 21.142-6.58 42.646-16.637 64.815-33.213 5.316-56.288-9.08-105.09-38.056-148.36zM85.474 135.095c-12.645 0-23.015-11.805-23.015-26.18s10.149-26.2 23.015-26.2c12.867 0 23.236 11.823 23.015 26.2.02 14.375-10.148 26.18-23.015 26.18zm85.051 0c-12.645 0-23.014-11.805-23.014-26.18s10.148-26.2 23.014-26.2c12.867 0 23.236 11.823 23.015 26.2 0 14.375-10.148 26.18-23.015 26.18z"/></svg>
+        <span data-i18n="invite.btn_invite">Installer sur le serveur</span>
+      </a>
+      <span class="iv-hero-hint" data-i18n="invite.hint_free">100% gratuit &middot; Aucune carte requise</span>
+    </div>
+    <% if (guildIcon) { %>
+      <div class="iv-hero-guild-preview">
+        <div class="iv-guild-avatar-wrap">
+          <img src="<%= guildIcon %>" alt="<%= guildName %>" class="iv-guild-avatar">
+          <div class="iv-guild-ring"></div>
+          <div class="iv-guild-ring iv-guild-ring-lg"></div>
+        </div>
+        <span class="iv-guild-name"><%= guildName %></span>
       </div>
-      <div class="invite-feature">
-        <span class="invite-feature-icon">🎭</span>
-        <span data-i18n="invite.feature_roles">12+ unique roles</span>
-      </div>
-      <div class="invite-feature">
-        <span class="invite-feature-icon">🔊</span>
-        <span data-i18n="invite.feature_voice">Voice channel management</span>
-      </div>
-      <div class="invite-feature">
-        <span class="invite-feature-icon">📊</span>
-        <span data-i18n="invite.feature_stats">Stats, ELO & achievements</span>
-      </div>
-      <div class="invite-feature">
-        <span class="invite-feature-icon">🌐</span>
-        <span data-i18n="invite.feature_lang">French & English support</span>
-      </div>
-      <div class="invite-feature">
-        <span class="invite-feature-icon">🖥️</span>
-        <span data-i18n="invite.feature_dashboard">Web dashboard included</span>
+    <% } %>
+  </div>
+</section>
+
+<!-- ═══ FEATURES SHOWCASE ═══ -->
+<section class="iv-features">
+  <div class="iv-section-head">
+    <span class="iv-section-tag">✨ Fonctionnalités</span>
+    <h2 class="iv-section-title" data-i18n="invite.features_title">Tout pour une expérience parfaite</h2>
+    <p class="iv-section-sub" data-i18n="invite.features_sub">Un bot complet, pensé pour le fun et la compétition.</p>
+  </div>
+  <div class="iv-features-grid">
+    <div class="iv-feat" style="--i:0">
+      <div class="iv-feat-icon iv-fi-game">🎮</div>
+      <div class="iv-feat-body">
+        <h3 data-i18n="invite.feat_game">Partie complète</h3>
+        <p data-i18n="invite.feat_game_d">Phases jour/nuit automatisées, votes, actions nocturnes et gestion du capitaine.</p>
       </div>
     </div>
-    <a href="<%= inviteUrl %>" target="_blank" rel="noopener" class="btn btn-invite">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286z"/></svg>
-      <span data-i18n="invite.btn_invite">Add to Server</span>
+    <div class="iv-feat" style="--i:1">
+      <div class="iv-feat-icon iv-fi-roles">🎭</div>
+      <div class="iv-feat-body">
+        <h3 data-i18n="invite.feat_roles">12+ rôles uniques</h3>
+        <p data-i18n="invite.feat_roles_d">Voyante, Sorcière, Chasseur, Cupidon, Loup Blanc, Voleur, et bien d'autres.</p>
+      </div>
+    </div>
+    <div class="iv-feat" style="--i:2">
+      <div class="iv-feat-icon iv-fi-voice">🔊</div>
+      <div class="iv-feat-body">
+        <h3 data-i18n="invite.feat_voice">Gestion vocale</h3>
+        <p data-i18n="invite.feat_voice_d">Mute/unmute automatique des joueurs la nuit. Immersion totale garantie.</p>
+      </div>
+    </div>
+    <div class="iv-feat" style="--i:3">
+      <div class="iv-feat-icon iv-fi-stats">📊</div>
+      <div class="iv-feat-body">
+        <h3 data-i18n="invite.feat_stats">Stats & ELO</h3>
+        <p data-i18n="invite.feat_stats_d">Classement compétitif, historique, achievements et statistiques détaillées.</p>
+      </div>
+    </div>
+    <div class="iv-feat" style="--i:4">
+      <div class="iv-feat-icon iv-fi-lang">🌐</div>
+      <div class="iv-feat-body">
+        <h3 data-i18n="invite.feat_lang">Multilingue</h3>
+        <p data-i18n="invite.feat_lang_d">Support complet Français et Anglais. Changez la langue avec /lang.</p>
+      </div>
+    </div>
+    <div class="iv-feat" style="--i:5">
+      <div class="iv-feat-icon iv-fi-dash">🖥️</div>
+      <div class="iv-feat-body">
+        <h3 data-i18n="invite.feat_dash">Dashboard web</h3>
+        <p data-i18n="invite.feat_dash_d">Interface web complète pour gérer vos parties, stats et configuration du bot.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ ROLE CAROUSEL ═══ -->
+<section class="iv-roles">
+  <div class="iv-section-head">
+    <span class="iv-section-tag">🎭 Les rôles</span>
+    <h2 class="iv-section-title" data-i18n="invite.roles_title">Qui serez-vous cette nuit ?</h2>
+  </div>
+  <div class="iv-roles-track">
+    <div class="iv-roles-slider" id="iv-roles-slider">
+      <div class="iv-role-card" style="--i:0">
+        <img src="/static/img/roles/loupSimple.webp" alt="Loup-Garou" class="iv-role-img" loading="lazy">
+        <span class="iv-role-name">Loup-Garou</span>
+        <span class="iv-role-camp iv-camp-wolves">🐺 Loups</span>
+      </div>
+      <div class="iv-role-card" style="--i:1">
+        <img src="/static/img/roles/voyante.webp" alt="Voyante" class="iv-role-img" loading="lazy">
+        <span class="iv-role-name">Voyante</span>
+        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
+      </div>
+      <div class="iv-role-card" style="--i:2">
+        <img src="/static/img/roles/sorciere.png" alt="Sorcière" class="iv-role-img" loading="lazy">
+        <span class="iv-role-name">Sorcière</span>
+        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
+      </div>
+      <div class="iv-role-card" style="--i:3">
+        <img src="/static/img/roles/chasseur.webp" alt="Chasseur" class="iv-role-img" loading="lazy">
+        <span class="iv-role-name">Chasseur</span>
+        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
+      </div>
+      <div class="iv-role-card" style="--i:4">
+        <img src="/static/img/roles/cupidon.webp" alt="Cupidon" class="iv-role-img" loading="lazy">
+        <span class="iv-role-name">Cupidon</span>
+        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
+      </div>
+      <div class="iv-role-card" style="--i:5">
+        <img src="/static/img/roles/loupBlanc.webp" alt="Loup Blanc" class="iv-role-img" loading="lazy">
+        <span class="iv-role-name">Loup Blanc</span>
+        <span class="iv-role-camp iv-camp-wolves">🐺 Loups</span>
+      </div>
+      <div class="iv-role-card" style="--i:6">
+        <img src="/static/img/roles/salvateur.webp" alt="Salvateur" class="iv-role-img" loading="lazy">
+        <span class="iv-role-name">Salvateur</span>
+        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
+      </div>
+      <div class="iv-role-card" style="--i:7">
+        <img src="/static/img/roles/voleur.webp" alt="Voleur" class="iv-role-img" loading="lazy">
+        <span class="iv-role-name">Voleur</span>
+        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
+      </div>
+      <div class="iv-role-card" style="--i:8">
+        <img src="/static/img/roles/villageois.webp" alt="Villageois" class="iv-role-img" loading="lazy">
+        <span class="iv-role-name">Villageois</span>
+        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
+      </div>
+      <div class="iv-role-card" style="--i:9">
+        <img src="/static/img/roles/petiteFille.webp" alt="Petite Fille" class="iv-role-img" loading="lazy">
+        <span class="iv-role-name">Petite Fille</span>
+        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
+      </div>
+      <div class="iv-role-card" style="--i:10">
+        <img src="/static/img/roles/ancien.webp" alt="Ancien" class="iv-role-img" loading="lazy">
+        <span class="iv-role-name">Ancien</span>
+        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
+      </div>
+      <div class="iv-role-card" style="--i:11">
+        <img src="/static/img/roles/idiot.webp" alt="Idiot du Village" class="iv-role-img" loading="lazy">
+        <span class="iv-role-name">Idiot du Village</span>
+        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PERMISSIONS ═══ -->
+<section class="iv-perms">
+  <div class="iv-section-head">
+    <span class="iv-section-tag">🔒 Permissions</span>
+    <h2 class="iv-section-title" data-i18n="invite.perms_title">Droits requis</h2>
+    <p class="iv-section-sub" data-i18n="invite.perms_sub">Le bot ne demande que les permissions strictement nécessaires au jeu.</p>
+  </div>
+  <div class="iv-perms-grid">
+    <div class="iv-perm" style="--i:0">
+      <span class="iv-perm-check">✓</span>
+      <div>
+        <strong data-i18n="invite.perm_commands">Slash Commands</strong>
+        <p data-i18n="invite.perm_commands_desc">Enregistrer et répondre aux commandes /</p>
+      </div>
+    </div>
+    <div class="iv-perm" style="--i:1">
+      <span class="iv-perm-check">✓</span>
+      <div>
+        <strong data-i18n="invite.perm_messages">Envoyer des messages</strong>
+        <p data-i18n="invite.perm_messages_desc">Annonces de jeu et mises à jour</p>
+      </div>
+    </div>
+    <div class="iv-perm" style="--i:2">
+      <span class="iv-perm-check">✓</span>
+      <div>
+        <strong data-i18n="invite.perm_manage_channels">Gérer les salons</strong>
+        <p data-i18n="invite.perm_manage_channels_desc">Créer les salons privés du jeu</p>
+      </div>
+    </div>
+    <div class="iv-perm" style="--i:3">
+      <span class="iv-perm-check">✓</span>
+      <div>
+        <strong data-i18n="invite.perm_voice">Rendre muet</strong>
+        <p data-i18n="invite.perm_voice_desc">Gérer le vocal pendant les phases de nuit</p>
+      </div>
+    </div>
+    <div class="iv-perm" style="--i:4">
+      <span class="iv-perm-check">✓</span>
+      <div>
+        <strong data-i18n="invite.perm_embed">Intégrer des liens</strong>
+        <p data-i18n="invite.perm_embed_desc">Embeds riches pour l'interface de jeu</p>
+      </div>
+    </div>
+    <div class="iv-perm" style="--i:5">
+      <span class="iv-perm-check">✓</span>
+      <div>
+        <strong data-i18n="invite.perm_roles">Gérer les rôles</strong>
+        <p data-i18n="invite.perm_roles_desc">Attribution des rôles et permissions de jeu</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FINAL CTA ═══ -->
+<section class="iv-cta">
+  <div class="iv-cta-glow"></div>
+  <div class="iv-cta-inner">
+    <span class="iv-cta-wolf">🐺</span>
+    <h2 class="iv-cta-title" data-i18n="invite.cta_title">Prêt à jouer ?</h2>
+    <p class="iv-cta-desc" data-i18n="invite.cta_desc">Installez le bot en un clic et lancez votre première partie en quelques secondes.</p>
+    <a href="<%= inviteUrl %>" target="_blank" rel="noopener" class="iv-btn-invite iv-btn-invite-lg">
+      <svg width="22" height="22" viewBox="0 -28.5 256 256" fill="currentColor"><path d="M216.856 16.597A208.502 208.502 0 00164.042 0c-2.275 4.113-4.933 9.645-6.766 14.046-19.692-2.961-39.203-2.961-58.533 0-1.832-4.4-4.55-9.933-6.846-14.046a207.809 207.809 0 00-52.855 16.638C5.618 67.147-3.443 116.4 1.087 164.956c22.169 16.555 43.653 26.612 64.775 33.193a161.094 161.094 0 0013.96-22.765 136.2 136.2 0 01-21.958-10.632c1.839-1.36 3.637-2.78 5.38-4.252 42.371 19.702 88.344 19.702 130.169 0 1.764 1.472 3.562 2.893 5.38 4.252-6.992 4.2-14.4 7.7-21.998 10.652 3.832 7.533 8.408 14.792 13.981 22.745 21.142-6.58 42.646-16.637 64.815-33.213 5.316-56.288-9.08-105.09-38.056-148.36zM85.474 135.095c-12.645 0-23.015-11.805-23.015-26.18s10.149-26.2 23.015-26.2c12.867 0 23.236 11.823 23.015 26.2.02 14.375-10.148 26.18-23.015 26.18zm85.051 0c-12.645 0-23.014-11.805-23.014-26.18s10.148-26.2 23.014-26.2c12.867 0 23.236 11.823 23.015 26.2 0 14.375-10.148 26.18-23.015 26.18z"/></svg>
+      <span data-i18n="invite.btn_invite">Installer sur le serveur</span>
     </a>
   </div>
+</section>
 
-  <div class="invite-permissions">
-    <h3 data-i18n="invite.perms_title">Required Permissions</h3>
-    <div class="invite-perms-grid">
-      <div class="invite-perm">
-        <span class="invite-perm-icon">✅</span>
-        <div>
-          <strong data-i18n="invite.perm_commands">Slash Commands</strong>
-          <p data-i18n="invite.perm_commands_desc">Register and respond to / commands</p>
-        </div>
-      </div>
-      <div class="invite-perm">
-        <span class="invite-perm-icon">✅</span>
-        <div>
-          <strong data-i18n="invite.perm_messages">Send Messages</strong>
-          <p data-i18n="invite.perm_messages_desc">Send game announcements and updates</p>
-        </div>
-      </div>
-      <div class="invite-perm">
-        <span class="invite-perm-icon">✅</span>
-        <div>
-          <strong data-i18n="invite.perm_manage_channels">Manage Channels</strong>
-          <p data-i18n="invite.perm_manage_channels_desc">Create and manage game channels</p>
-        </div>
-      </div>
-      <div class="invite-perm">
-        <span class="invite-perm-icon">✅</span>
-        <div>
-          <strong data-i18n="invite.perm_voice">Mute Members</strong>
-          <p data-i18n="invite.perm_voice_desc">Manage voice during night phases</p>
-        </div>
-      </div>
-      <div class="invite-perm">
-        <span class="invite-perm-icon">✅</span>
-        <div>
-          <strong data-i18n="invite.perm_embed">Embed Links</strong>
-          <p data-i18n="invite.perm_embed_desc">Rich embeds for game interface</p>
-        </div>
-      </div>
-      <div class="invite-perm">
-        <span class="invite-perm-icon">✅</span>
-        <div>
-          <strong data-i18n="invite.perm_dm">Direct Messages</strong>
-          <p data-i18n="invite.perm_dm_desc">Send private role assignments</p>
-        </div>
-      </div>
-    </div>
-  </div>
+<a href="/" class="iv-back-link" data-i18n="invite.back">← Retour au Dashboard</a>
 
-  <div class="invite-back">
-    <a href="/" class="btn btn-outline" data-i18n="invite.back">Back to Dashboard</a>
-  </div>
-</div>
+<!-- Role carousel auto-scroll -->
+<script>
+(function() {
+  var slider = document.getElementById('iv-roles-slider');
+  if (!slider) return;
+  var speed = 0.4;
+  var pos = 0;
+  var paused = false;
+  slider.addEventListener('mouseenter', function() { paused = true; });
+  slider.addEventListener('mouseleave', function() { paused = false; });
+  function tick() {
+    if (!paused) {
+      pos += speed;
+      if (pos >= slider.scrollWidth / 2) pos = 0;
+      slider.style.transform = 'translateX(-' + pos + 'px)';
+    }
+    requestAnimationFrame(tick);
+  }
+  // Duplicate cards for infinite scroll
+  slider.innerHTML += slider.innerHTML;
+  requestAnimationFrame(tick);
+
+  // Scroll-reveal for sections
+  var sections = document.querySelectorAll('.iv-features, .iv-roles, .iv-perms, .iv-cta');
+  var obs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) { e.target.classList.add('iv-visible'); obs.unobserve(e.target); }
+    });
+  }, { threshold: 0.15 });
+  sections.forEach(function(s) { obs.observe(s); });
+})();
+</script>
 
 <%- include('partials/footer') %>

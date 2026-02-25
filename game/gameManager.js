@@ -2082,21 +2082,34 @@ class GameManager extends EventEmitter {
   async createInitialChannels(guild, mainChannelId, game, categoryId = null) {
     const timer = logger.startTimer('createInitialChannels');
     try {
+      // DEFENSIVE: categoryId is required — refuse to create channels without it
+      if (!categoryId) {
+        logger.error('createInitialChannels called without categoryId — guild not configured', { mainChannelId });
+        throw new Error('Guild not configured: missing category_id');
+      }
+
       // Validate category exists before using it
-      if (categoryId) {
-        try {
-          const cat = await guild.channels.fetch(categoryId);
-          if (!cat || cat.type !== 4) {
-            logger.warn('Category invalid, creating channels without parent', { categoryId });
-            categoryId = null;
-          }
-        } catch {
-          logger.warn('Category not found, creating channels without parent', { categoryId });
-          categoryId = null;
+      try {
+        const cat = await guild.channels.fetch(categoryId);
+        if (!cat || cat.type !== 4) {
+          logger.error('Category invalid or not found', { categoryId });
+          throw new Error('Guild not configured: category_id is invalid');
         }
+      } catch (err) {
+        if (err.message.startsWith('Guild not configured')) throw err;
+        logger.error('Category not found on Discord', { categoryId });
+        throw new Error('Guild not configured: category not found');
       }
 
       logger.info("Creating initial game channels...", { mainChannelId, categoryId });
+
+      // Bot permission overwrite — ensures the bot retains ViewChannel + ManageChannels
+      // on hidden channels so that cleanup/deletion always works.
+      const botId = guild.members.me?.id || guild.client.user.id;
+      const hiddenPerms = [
+        { id: guild.id, deny: ["ViewChannel"] },
+        { id: botId, allow: ["ViewChannel", "ManageChannels", "SendMessages"] }
+      ];
       
       // Créer le channel village (visible de tous) pour les messages système
       logger.debug("Creating village channel...");
@@ -2114,12 +2127,7 @@ class GameManager extends EventEmitter {
         name: t('channel.wolves'),
         type: 0, // GUILD_TEXT
         parent: categoryId || undefined,
-        permissionOverwrites: [
-          {
-            id: guild.id,
-            deny: ["ViewChannel"]
-          }
-        ]
+        permissionOverwrites: hiddenPerms
       });
       game.wolvesChannelId = wolvesChannel.id;
       logger.success("✅ Wolves channel created", { id: wolvesChannel.id });
@@ -2130,12 +2138,7 @@ class GameManager extends EventEmitter {
         name: t('channel.seer'),
         type: 0, // GUILD_TEXT
         parent: categoryId || undefined,
-        permissionOverwrites: [
-          {
-            id: guild.id,
-            deny: ["ViewChannel"]
-          }
-        ]
+        permissionOverwrites: hiddenPerms
       });
       game.seerChannelId = seerChannel.id;
       logger.success("✅ Seer channel created", { id: seerChannel.id });
@@ -2146,12 +2149,7 @@ class GameManager extends EventEmitter {
         name: t('channel.witch'),
         type: 0, // GUILD_TEXT
         parent: categoryId || undefined,
-        permissionOverwrites: [
-          {
-            id: guild.id,
-            deny: ["ViewChannel"]
-          }
-        ]
+        permissionOverwrites: hiddenPerms
       });
       game.witchChannelId = witchChannel.id;
       logger.success("✅ Witch channel created", { id: witchChannel.id });
@@ -2162,12 +2160,7 @@ class GameManager extends EventEmitter {
         name: t('channel.cupid'),
         type: 0, // GUILD_TEXT
         parent: categoryId || undefined,
-        permissionOverwrites: [
-          {
-            id: guild.id,
-            deny: ["ViewChannel"]
-          }
-        ]
+        permissionOverwrites: hiddenPerms
       });
       game.cupidChannelId = cupidChannel.id;
       logger.success("✅ Cupid channel created", { id: cupidChannel.id });
@@ -2178,12 +2171,7 @@ class GameManager extends EventEmitter {
         name: t('channel.salvateur'),
         type: 0, // GUILD_TEXT
         parent: categoryId || undefined,
-        permissionOverwrites: [
-          {
-            id: guild.id,
-            deny: ["ViewChannel"]
-          }
-        ]
+        permissionOverwrites: hiddenPerms
       });
       game.salvateurChannelId = salvateurChannel.id;
       logger.success("✅ Salvateur channel created", { id: salvateurChannel.id });
@@ -2194,12 +2182,7 @@ class GameManager extends EventEmitter {
         name: t('channel.white_wolf'),
         type: 0, // GUILD_TEXT
         parent: categoryId || undefined,
-        permissionOverwrites: [
-          {
-            id: guild.id,
-            deny: ["ViewChannel"]
-          }
-        ]
+        permissionOverwrites: hiddenPerms
       });
       game.whiteWolfChannelId = whiteWolfChannel.id;
       logger.success("✅ White Wolf channel created", { id: whiteWolfChannel.id });
@@ -2210,12 +2193,7 @@ class GameManager extends EventEmitter {
         name: t('channel.thief'),
         type: 0, // GUILD_TEXT
         parent: categoryId || undefined,
-        permissionOverwrites: [
-          {
-            id: guild.id,
-            deny: ["ViewChannel"]
-          }
-        ]
+        permissionOverwrites: hiddenPerms
       });
       game.thiefChannelId = thiefChannel.id;
       logger.success("✅ Thief channel created", { id: thiefChannel.id });
@@ -2226,12 +2204,7 @@ class GameManager extends EventEmitter {
         name: t('channel.spectator'),
         type: 0, // GUILD_TEXT
         parent: categoryId || undefined,
-        permissionOverwrites: [
-          {
-            id: guild.id,
-            deny: ["ViewChannel"]
-          }
-        ]
+        permissionOverwrites: hiddenPerms
       });
       game.spectatorChannelId = spectatorChannel.id;
       logger.success("✅ Spectator channel created", { id: spectatorChannel.id });
@@ -2280,11 +2253,19 @@ class GameManager extends EventEmitter {
       const wolvesChannel = await guild.channels.fetch(game.wolvesChannelId);
       const { PermissionsBitField } = require('discord.js');
 
+      // Bot overwrite — always included so the bot retains access to hidden channels
+      const botId = guild.members.me?.id || guild.client.user.id;
+      const botOverwrite = {
+        id: botId,
+        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.ManageChannels, PermissionsBitField.Flags.SendMessages]
+      };
+
       const wolvesPerms = [
         {
           id: guild.id,
           deny: [PermissionsBitField.Flags.ViewChannel]
-        }
+        },
+        botOverwrite
       ];
 
       // Ajouter uniquement les joueurs valides (membres du serveur)
@@ -2309,7 +2290,8 @@ class GameManager extends EventEmitter {
           const whiteWolfChannel = await guild.channels.fetch(game.whiteWolfChannelId);
           const whiteWolfPlayer = game.players.find(p => p.role === ROLES.WHITE_WOLF && p.alive);
           const whiteWolfPerms = [
-            { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }
+            { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+            botOverwrite
           ];
           if (whiteWolfPlayer) {
             try {
@@ -2333,7 +2315,8 @@ class GameManager extends EventEmitter {
           const thiefChannel = await guild.channels.fetch(game.thiefChannelId);
           const thiefPlayer = game.players.find(p => p.role === ROLES.THIEF && p.alive);
           const thiefPerms = [
-            { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }
+            { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+            botOverwrite
           ];
           if (thiefPlayer) {
             try {
@@ -2355,7 +2338,8 @@ class GameManager extends EventEmitter {
       const seerChannel = await guild.channels.fetch(game.seerChannelId);
       const seerPlayer = game.players.find(p => p.role === ROLES.SEER && p.alive);
       const seerPerms = [
-        { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }
+        { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+        botOverwrite
       ];
       if (seerPlayer) {
         try {
@@ -2374,7 +2358,7 @@ class GameManager extends EventEmitter {
       // Mettre à jour le channel de la sorcière
       const witchChannel = await guild.channels.fetch(game.witchChannelId);
       const witchPlayer = game.players.find(p => p.role === ROLES.WITCH && p.alive);
-      const witchPerms = [ { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] } ];
+      const witchPerms = [ { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }, botOverwrite ];
       if (witchPlayer) {
         try {
           await guild.members.fetch(witchPlayer.id);
@@ -2393,7 +2377,7 @@ class GameManager extends EventEmitter {
       if (game.cupidChannelId) {
         const cupidChannel = await guild.channels.fetch(game.cupidChannelId);
         const cupidPlayer = game.players.find(p => p.role === ROLES.CUPID && p.alive);
-        const cupidPerms = [ { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] } ];
+        const cupidPerms = [ { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }, botOverwrite ];
         if (cupidPlayer) {
           try {
             await guild.members.fetch(cupidPlayer.id);
@@ -2413,7 +2397,7 @@ class GameManager extends EventEmitter {
       if (game.salvateurChannelId) {
         const salvateurChannel = await guild.channels.fetch(game.salvateurChannelId);
         const salvateurPlayer = game.players.find(p => p.role === ROLES.SALVATEUR && p.alive);
-        const salvateurPerms = [ { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] } ];
+        const salvateurPerms = [ { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }, botOverwrite ];
         if (salvateurPlayer) {
           try {
             await guild.members.fetch(salvateurPlayer.id);
@@ -2463,7 +2447,8 @@ class GameManager extends EventEmitter {
     for (const entry of ids) {
       if (!entry.id) continue;
       try {
-        const ch = await guild.channels.fetch(entry.id).catch(() => null);
+        // Force-fetch from API to avoid stale cache
+        const ch = await guild.channels.fetch(entry.id, { force: true }).catch(() => null);
         if (!ch) {
           logger.warn(`Channel not found, skipping`, { name: entry.name, id: entry.id });
           continue;
@@ -2481,11 +2466,17 @@ class GameManager extends EventEmitter {
           // ignore
         }
 
+        // Ensure bot has permission to delete (re-grant ViewChannel if needed)
+        try {
+          const botId = guild.members.me?.id || guild.client.user.id;
+          await ch.permissionOverwrites.edit(botId, { ViewChannel: true, ManageChannels: true }).catch(() => {});
+        } catch (e) { /* best-effort */ }
+
         await ch.delete({ reason: 'Cleanup partie Loup-Garou' });
         deleted++;
         logger.success(`🗑️ Channel deleted`, { name: entry.name, id: entry.id });
       } catch (err) {
-        logger.error(`Failed to delete channel`, { name: entry.name, id: entry.id, error: err.message });
+        logger.error(`Failed to delete channel ${entry.name} (${entry.id})`, err);
       }
     }
 
@@ -2585,11 +2576,16 @@ class GameManager extends EventEmitter {
           if (isOrphan) {
             logger.info('Deleting orphan channel...', { name: channel.name, id: channel.id });
             try {
+              // Ensure bot has permission to delete
+              try {
+                const botId = guild.members.me?.id || guild.client.user.id;
+                await channel.permissionOverwrites.edit(botId, { ViewChannel: true, ManageChannels: true }).catch(() => {});
+              } catch (e) { /* best-effort */ }
               await channel.delete({ reason: 'Cleanup orphan Loup-Garou channel' });
               deleted++;
               logger.success('🗑️ Orphan channel deleted', { name: channel.name, id: channel.id });
             } catch (err) {
-              logger.error('Failed to delete orphan channel', { name: channel.name, id: channel.id, error: err.message });
+              logger.error(`Failed to delete orphan channel ${channel.name} (${channel.id})`, err);
             }
           } else {
             logger.debug('Channel is part of active game, keeping', { name: channel.name, id: channel.id });
@@ -2627,14 +2623,15 @@ class GameManager extends EventEmitter {
 
       for (const channel of channels.values()) {
         try {
+          // Ensure bot has permission to delete
+          try {
+            const botId = guild.members.me?.id || guild.client.user.id;
+            await channel.permissionOverwrites.edit(botId, { ViewChannel: true, ManageChannels: true }).catch(() => {});
+          } catch (e) { /* best-effort */ }
           await channel.delete({ reason: 'Cleanup duplicate Loup-Garou channels' });
           deleted++;
         } catch (err) {
-          logger.error('Failed to delete channel during category cleanup', {
-            name: channel.name,
-            id: channel.id,
-            error: err.message
-          });
+          logger.error(`Failed to delete channel during category cleanup ${channel.name} (${channel.id})`, err);
         }
       }
     } catch (err) {
