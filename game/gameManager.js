@@ -3115,7 +3115,11 @@ class GameManager extends EventEmitter {
         lastProtectedPlayerId: game.lastProtectedPlayerId || null,
         villageRolesPowerless: game.villageRolesPowerless ? 1 : 0,
         listenHintsGiven: JSON.stringify(game.listenHintsGiven || []),
-        thiefExtraRoles: JSON.stringify(game.thiefExtraRoles || [])
+        thiefExtraRoles: JSON.stringify(game.thiefExtraRoles || []),
+        // v3.5 — ability engine runtime state
+        abilityStateJson: game._abilityState
+          ? require('./abilities').serializeAbilityState(game)
+          : '{}'
       });
 
       // Mettre à jour les lovers (in-memory: [[id1, id2]], DB: flat pair)
@@ -3249,6 +3253,23 @@ class GameManager extends EventEmitter {
           stuckStatus: 'OK'
         };
 
+        // v3.5 — Restore ability engine runtime state
+        if (dbGame.ability_state_json) {
+          try {
+            const { restoreAbilityState } = require('./abilities');
+            restoreAbilityState(game, dbGame.ability_state_json);
+          } catch (e) {
+            logger.warn('Failed to restore ability state', { channelId, error: e.message });
+          }
+        }
+
+        // v3.5 — Rehydrate custom role definitions onto players
+        try {
+          this._rehydrateCustomRoles(game);
+        } catch (e) {
+          logger.warn('Failed to rehydrate custom roles', { channelId, error: e.message });
+        }
+
         // Fallback: restore villageRolesPowerless from logs if column was 0 but logs say otherwise
         if (!game.villageRolesPowerless && actionLog.some(a => a.text && a.text.includes('pouvoirs perdus'))) {
           game.villageRolesPowerless = true;
@@ -3267,6 +3288,69 @@ class GameManager extends EventEmitter {
       logger.success('Game state loaded from DB', { gameCount: this.games.size });
     } catch (err) {
       logger.error('❌ Failed to load game state from DB', err);
+    }
+  }
+
+  /**
+   * Rehydrate custom role definitions onto players after loadState.
+   * Reads from custom_roles table via guild_id, validates abilities,
+   * and attaches _customRole to matching players.
+   * 
+   * @param {Object} game - In-memory game object
+   */
+  _rehydrateCustomRoles(game) {
+    if (!game.guildId) return;
+
+    // Check if custom_roles table exists
+    const tableExists = this.db.db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='custom_roles'"
+    ).get();
+    if (!tableExists) return;
+
+    const customRoles = this.db.db.prepare(
+      'SELECT * FROM custom_roles WHERE guild_id = ?'
+    ).all(game.guildId);
+
+    if (!customRoles || customRoles.length === 0) return;
+
+    const { validateRoleDefinition, normalizeRoleDefinition } = require('./abilities');
+
+    // Build a map of custom role name -> definition
+    const roleMap = new Map();
+    for (const cr of customRoles) {
+      let abilities = [];
+      try {
+        abilities = JSON.parse(cr.abilities_json || '[]');
+      } catch {
+        logger.warn('Invalid abilities_json for custom role', { roleId: cr.id, name: cr.name });
+        continue;
+      }
+
+      const roleDef = {
+        name: cr.name,
+        camp: cr.camp || 'village',
+        winCondition: cr.win_condition || 'village_wins',
+        abilities,
+      };
+
+      const validation = validateRoleDefinition(roleDef);
+      if (!validation.valid) {
+        logger.warn('Custom role failed validation on rehydrate', {
+          roleId: cr.id,
+          name: cr.name,
+          errors: validation.errors,
+        });
+        continue;
+      }
+
+      roleMap.set(cr.name, normalizeRoleDefinition(roleDef));
+    }
+
+    // Attach _customRole to players whose role matches a custom role name
+    for (const player of game.players) {
+      if (player.role && roleMap.has(player.role)) {
+        player._customRole = roleMap.get(player.role);
+      }
     }
   }
 }

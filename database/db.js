@@ -208,6 +208,47 @@ class GameDatabase {
       this.db.exec('CREATE INDEX IF NOT EXISTS idx_games_guild_phase ON games(guild_id, phase)');
       this.db.exec('CREATE INDEX IF NOT EXISTS idx_player_stats_username ON player_stats(username)');
 
+      // ─── v3.5 — Ability Engine migrations ─────────────────────────────────
+
+      // Add ability_state_json to games table for persisting ability runtime state
+      if (!columns.includes('ability_state_json')) {
+        this.db.exec("ALTER TABLE games ADD COLUMN ability_state_json TEXT DEFAULT '{}'");
+        logger.info('Migration: added ability_state_json column to games');
+      }
+
+      // Upgrade custom_roles table: add abilities_json and win_condition columns
+      const crTable = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='custom_roles'").get();
+      if (crTable) {
+        const crColumns = this.db.pragma('table_info(custom_roles)').map(c => c.name);
+        if (!crColumns.includes('abilities_json')) {
+          this.db.exec("ALTER TABLE custom_roles ADD COLUMN abilities_json TEXT DEFAULT '[]'");
+          logger.info('Migration: added abilities_json column to custom_roles');
+        }
+        if (!crColumns.includes('win_condition')) {
+          this.db.exec("ALTER TABLE custom_roles ADD COLUMN win_condition TEXT DEFAULT 'village_wins'");
+          logger.info('Migration: added win_condition column to custom_roles');
+        }
+      } else {
+        // Create the full custom_roles table with ability support
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS custom_roles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            emoji TEXT DEFAULT '❓',
+            camp TEXT NOT NULL DEFAULT 'village',
+            power TEXT DEFAULT 'none',
+            description TEXT DEFAULT '',
+            abilities_json TEXT DEFAULT '[]',
+            win_condition TEXT DEFAULT 'village_wins',
+            created_by TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_custom_roles_guild ON custom_roles(guild_id)');
+        logger.info('Migration: created custom_roles table with ability support');
+      }
+
       // Cleanup: remove fake debug players from stats
       this.db.exec("DELETE FROM player_stats WHERE player_id LIKE 'fake_%'");
       this.db.exec("DELETE FROM player_extended_stats WHERE player_id LIKE 'fake_%'");
@@ -311,7 +352,9 @@ class GameDatabase {
       lastProtectedPlayerId: 'last_protected_player_id',
       villageRolesPowerless: 'village_roles_powerless',
       listenHintsGiven: 'listen_hints_given',
-      thiefExtraRoles: 'thief_extra_roles'
+      thiefExtraRoles: 'thief_extra_roles',
+      // v3.5 — ability engine state
+      abilityStateJson: 'ability_state_json'
     };
 
     for (const [jsKey, dbKey] of Object.entries(mapping)) {
