@@ -202,20 +202,55 @@ module.exports = function(webServer) {
 
   // ==================== CUSTOM ROLES ====================
 
+  // Lazy-init RoleBuilderService
+  let _roleBuilder = null;
+  function getRoleBuilder() {
+    if (!_roleBuilder) {
+      const RoleBuilderService = require('../../game/abilities/roleBuilderService');
+      _roleBuilder = new RoleBuilderService(db);
+    }
+    return _roleBuilder;
+  }
+
+  /** GET /api/roles/schema — Ability schema for UI rendering */
+  router.get('/roles/schema', (req, res) => {
+    try {
+      const builder = getRoleBuilder();
+      res.json({ success: true, data: builder.getSchema() });
+    } catch (e) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
   /** GET /api/roles — All available roles (built-in + custom) */
   router.get('/roles', (req, res) => {
     try {
       const ROLES = require('../../game/roles');
-      const customRoles = getCustomRoles(db);
-      
+      const builder = getRoleBuilder();
+      const guildId = req.query.guildId || null;
+
       const builtIn = Object.entries(ROLES).map(([key, value]) => ({
         id: key,
         name: value,
         type: 'builtin',
-        camp: key === 'WEREWOLF' ? 'wolves' : 'village'
+        camp: key === 'WEREWOLF' || key === 'WHITE_WOLF' ? 'wolves' : 'village'
       }));
 
-      res.json({ success: true, data: { builtIn, custom: customRoles } });
+      const custom = guildId ? builder.getRolesForGuild(guildId) : [];
+      res.json({ success: true, data: { builtIn, custom } });
+    } catch (e) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  /** POST /api/roles/validate — Validate a role definition without saving */
+  router.post('/roles/validate', requireAuth, (req, res) => {
+    try {
+      const { roleDefinition } = req.body;
+      if (!roleDefinition) return res.status(400).json({ success: false, error: 'roleDefinition is required' });
+      const builder = getRoleBuilder();
+      const result = builder.validateRole(roleDefinition);
+      res.json({ success: true, data: result });
     } catch (e) {
       res.status(500).json({ success: false, error: e.message });
     }
@@ -224,20 +259,42 @@ module.exports = function(webServer) {
   /** POST /api/roles — Create a custom role (requires auth + admin) */
   router.post('/roles', requireAuth, (req, res) => {
     try {
-      const { name, emoji, camp, power, description, guildId } = req.body;
-      if (!name || !camp) return res.status(400).json({ success: false, error: 'name and camp are required' });
+      const { guildId, roleDefinition } = req.body;
+      if (!guildId || !roleDefinition) {
+        return res.status(400).json({ success: false, error: 'guildId and roleDefinition are required' });
+      }
       if (!webServer.isGuildAdmin(req.user, guildId)) {
         return res.status(403).json({ success: false, error: 'Admin permission required' });
       }
 
-      ensureCustomRolesTable(db);
-      
-      db.db.prepare(`
-        INSERT INTO custom_roles (guild_id, name, emoji, camp, power, description, created_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(guildId, name, emoji || '❓', camp, power || 'none', description || '', req.user.id);
+      const builder = getRoleBuilder();
+      const result = builder.createRole(guildId, roleDefinition, req.user.id);
+      if (!result.ok) {
+        return res.status(400).json({ success: false, errors: result.errors });
+      }
+      res.json({ success: true, message: 'Role created', id: result.id });
+    } catch (e) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
 
-      res.json({ success: true, message: 'Role created' });
+  /** PUT /api/roles/:id — Update a custom role */
+  router.put('/roles/:id', requireAuth, (req, res) => {
+    try {
+      const { guildId, roleDefinition } = req.body;
+      if (!guildId || !roleDefinition) {
+        return res.status(400).json({ success: false, error: 'guildId and roleDefinition are required' });
+      }
+      if (!webServer.isGuildAdmin(req.user, guildId)) {
+        return res.status(403).json({ success: false, error: 'Admin permission required' });
+      }
+
+      const builder = getRoleBuilder();
+      const result = builder.updateRole(parseInt(req.params.id, 10), guildId, roleDefinition);
+      if (!result.ok) {
+        return res.status(400).json({ success: false, errors: result.errors });
+      }
+      res.json({ success: true, message: 'Role updated' });
     } catch (e) {
       res.status(500).json({ success: false, error: e.message });
     }
@@ -246,13 +303,30 @@ module.exports = function(webServer) {
   /** DELETE /api/roles/:id — Delete a custom role */
   router.delete('/roles/:id', requireAuth, (req, res) => {
     try {
-      ensureCustomRolesTable(db);
-      const role = db.db.prepare('SELECT * FROM custom_roles WHERE id = ?').get(req.params.id);
-      if (!role) return res.status(404).json({ success: false, error: 'Role not found' });
-      if (!webServer.isGuildAdmin(req.user, role.guild_id)) {
+      const { guildId } = req.body || {};
+      if (!guildId) {
+        // Also accept query param
+        const qGuild = req.query.guildId;
+        if (!qGuild) return res.status(400).json({ success: false, error: 'guildId is required' });
+        if (!webServer.isGuildAdmin(req.user, qGuild)) {
+          return res.status(403).json({ success: false, error: 'Admin permission required' });
+        }
+        const builder = getRoleBuilder();
+        const result = builder.deleteRole(parseInt(req.params.id, 10), qGuild);
+        if (!result.ok) {
+          return res.status(400).json({ success: false, errors: result.errors });
+        }
+        return res.json({ success: true, message: 'Role deleted' });
+      }
+
+      if (!webServer.isGuildAdmin(req.user, guildId)) {
         return res.status(403).json({ success: false, error: 'Admin permission required' });
       }
-      db.db.prepare('DELETE FROM custom_roles WHERE id = ?').run(req.params.id);
+      const builder = getRoleBuilder();
+      const result = builder.deleteRole(parseInt(req.params.id, 10), guildId);
+      if (!result.ok) {
+        return res.status(400).json({ success: false, errors: result.errors });
+      }
       res.json({ success: true, message: 'Role deleted' });
     } catch (e) {
       res.status(500).json({ success: false, error: e.message });

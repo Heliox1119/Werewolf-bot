@@ -1,88 +1,327 @@
 <%- include('partials/header') %>
+<%
+  /* ── Helpers ── */
+  const elo        = player.elo_rating || 1000;
+  const eloPeak    = player.elo_peak || elo;
+  const gamesPlayed = player.games_played || 0;
+  const gamesWon   = player.games_won || 0;
+  const winRate    = gamesPlayed > 0 ? Math.round((gamesWon / gamesPlayed) * 100) : 0;
+  const tierSlug   = player.tier ? player.tier.nameEn.toLowerCase().replace(/\s+/g, '-') : 'iron';
+  const tierName   = player.tier ? player.tier.name : 'Fer';
+  const tierEmoji  = player.tier ? player.tier.emoji : '⚙️';
 
-<div class="player-page">
-  <div class="page-header">
-    <div class="player-avatar-lg">
-      <span class="avatar-placeholder">&#128100;</span>
+  /* Achievement names (fr) */
+  const achNames = {
+    first_win: 'Première Victoire', veteran: 'Vétéran', legend: 'Légende',
+    winning_streak_3: 'Inarrêtable', winning_streak_5: 'Invincible',
+    first_blood: 'Premier Sang', alpha_wolf: 'Loup Alpha', serial_killer: 'Tueur en Série',
+    village_hero: 'Héros du Village', sherlock: 'Sherlock', guardian_angel: 'Ange Gardien',
+    witch_master: 'Maître Alchimiste', sharpshooter: "Tireur d'Élite",
+    romeo_juliet: 'Roméo & Juliette', survivor: 'Survivant', immortal: 'Immortel',
+    popular: 'Populaire', clown_prince: 'Prince Clown', elder_wisdom: "Sagesse de l'Ancien",
+  };
+
+  const achDescs = {
+    first_win: 'Remporter votre première partie',
+    veteran: 'Jouer 10 parties', legend: 'Jouer 50 parties',
+    winning_streak_3: '3 victoires consécutives',
+    winning_streak_5: '5 victoires consécutives',
+    first_blood: 'Première élimination en tant que loup',
+    alpha_wolf: '10 victoires en tant que loup',
+    serial_killer: '25 joueurs éliminés en tant que loup',
+    village_hero: '5 victoires avec le village',
+    sherlock: '5 loups trouvés avec la voyante',
+    guardian_angel: '3 joueurs sauvés avec le salvateur',
+    witch_master: '5 joueurs sauvés avec la sorcière',
+    sharpshooter: '3 loups tués avec le chasseur',
+    romeo_juliet: "Victoire en tant qu'amoureux",
+    survivor: '5 parties sans mourir', immortal: '10 survies d\'affilée',
+    popular: 'Élu capitaine 3 fois',
+    clown_prince: "Survivre au vote en tant qu'idiot",
+    elder_wisdom: "Utiliser la vie supplémentaire de l'ancien",
+  };
+
+  /* Category color map */
+  const catColors = {
+    victory: '#fbbf24', general: '#a78bfa', wolf: '#ef4444',
+    village: '#10b981', special: '#f472b6', social: '#38bdf8',
+  };
+
+  const achievements = player.achievements || [];
+%>
+
+<!-- ═══ HERO BANNER ═══ -->
+<section class="pp-hero">
+  <div class="pp-hero-bg">
+    <div class="pp-hero-gradient"></div>
+    <div class="pp-hero-dots"></div>
+    <div class="pp-hero-scanline"></div>
+  </div>
+  <div class="pp-hero-inner">
+    <!-- Left: Avatar + Identity -->
+    <div class="pp-hero-left">
+      <div class="pp-avatar-wrap">
+        <% if (player.avatarUrl) { %>
+          <img src="<%= player.avatarUrl %>" alt="<%= player.username %>" class="pp-avatar-img pp-avatar-<%= tierSlug %>">
+        <% } else { %>
+          <div class="pp-avatar pp-avatar-<%= tierSlug %>">
+            <span class="pp-avatar-letter"><%= (player.username || 'P').charAt(0).toUpperCase() %></span>
+          </div>
+        <% } %>
+        <div class="pp-avatar-ring"></div>
+        <div class="pp-avatar-ring pp-avatar-ring-lg"></div>
+        <% if (player.rank && player.rank <= 3) { %>
+          <span class="pp-rank-crown"><%= player.rank === 1 ? '👑' : player.rank === 2 ? '🥈' : '🥉' %></span>
+        <% } %>
+      </div>
+      <div class="pp-hero-info">
+        <h1 class="pp-hero-name"><%= player.username || 'Joueur ' + playerId %></h1>
+        <div class="pp-hero-badges">
+          <span class="pp-tier-badge pp-tier-<%= tierSlug %>">
+            <span class="pp-tier-emoji"><%= tierEmoji %></span>
+            <span class="pp-tier-name"><%= tierName %></span>
+          </span>
+          <% if (player.rank) { %>
+            <span class="pp-rank-badge">Rang #<%= player.rank %></span>
+          <% } %>
+          <% if (player.achievements && player.achievements.length > 0) { %>
+            <span class="pp-ach-count-badge"><%= player.achievements.length %> succès</span>
+          <% } %>
+        </div>
+        <div class="pp-hero-sub">
+          <span class="pp-sub-item">Membre depuis <%= player.created_at ? new Date(player.created_at * 1000).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '—' %></span>
+        </div>
+      </div>
     </div>
-    <div>
-      <h1><%= player.username || 'Player ' + playerId %></h1>
-      <% if (player.tier) { %>
-        <span class="tier tier-<%= player.tier.id %>"><%= player.tier.emoji %> <%= player.tier.name %></span>
-      <% } %>
-      <% if (player.rank) { %>
-        <span class="player-rank">#<%= player.rank %></span>
+
+    <!-- Right: Key Metrics -->
+    <div class="pp-hero-metrics">
+      <div class="pp-metric" style="--i:0">
+        <div class="pp-metric-icon dm-green">🎮</div>
+        <div class="pp-metric-data">
+          <span class="pp-metric-val" data-target="<%= gamesPlayed %>">0</span>
+          <span class="pp-metric-label">Parties jouées</span>
+        </div>
+      </div>
+      <div class="pp-metric" style="--i:1">
+        <div class="pp-metric-icon dm-blue">🏆</div>
+        <div class="pp-metric-data">
+          <span class="pp-metric-val" data-target="<%= gamesWon %>">0</span>
+          <span class="pp-metric-label">Victoires</span>
+        </div>
+      </div>
+      <div class="pp-metric" style="--i:2">
+        <div class="pp-metric-icon dm-purple">📊</div>
+        <div class="pp-metric-data">
+          <span class="pp-metric-val" data-target="<%= elo %>">0</span>
+          <span class="pp-metric-label">Points classement</span>
+        </div>
+      </div>
+      <div class="pp-metric" style="--i:3">
+        <div class="pp-metric-icon dm-amber">⚡</div>
+        <div class="pp-metric-data">
+          <span class="pp-metric-val pp-metric-pct" data-target="<%= winRate %>">0</span>
+          <span class="pp-metric-label">Taux de victoire</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ELO Progress Bar -->
+  <div class="pp-elo-wrap">
+    <div class="pp-elo-bar">
+      <div class="pp-elo-fill pp-elo-fill-<%= tierSlug %>" style="width:<%= Math.min(100, Math.max(0, ((elo - 100) / 1900) * 100)) %>%"></div>
+      <div class="pp-elo-markers">
+        <span class="pp-elo-mk" style="left:0%" title="Fer 100">⚙️</span>
+        <span class="pp-elo-mk" style="left:<%= ((800-100)/1900*100).toFixed(1) %>%" title="Bronze 800">🥉</span>
+        <span class="pp-elo-mk" style="left:<%= ((1000-100)/1900*100).toFixed(1) %>%" title="Argent 1000">🥈</span>
+        <span class="pp-elo-mk" style="left:<%= ((1200-100)/1900*100).toFixed(1) %>%" title="Or 1200">🥇</span>
+        <span class="pp-elo-mk" style="left:<%= ((1400-100)/1900*100).toFixed(1) %>%" title="Platine 1400">⚜️</span>
+        <span class="pp-elo-mk" style="left:<%= ((1700-100)/1900*100).toFixed(1) %>%" title="Diamant 1700">💎</span>
+        <span class="pp-elo-mk" style="left:100%" title="Alpha 2000">🐺</span>
+      </div>
+    </div>
+    <div class="pp-elo-info">Points <strong><%= elo %></strong> · Record <strong><%= eloPeak %></strong></div>
+  </div>
+</section>
+
+<!-- ═══ MAIN GRID ═══ -->
+<div class="pp-grid">
+  <!-- ── Detailed Stats Panel ── -->
+  <div class="pp-panel" style="--enter:0">
+    <div class="pp-panel-head">
+      <div class="pp-panel-title">📈 Statistiques détaillées</div>
+    </div>
+    <div class="pp-stats-list">
+      <div class="pp-stat-row">
+        <span class="pp-stat-label">Record de points</span>
+        <span class="pp-stat-value pp-stat-accent"><%= eloPeak %></span>
+      </div>
+      <div class="pp-stat-row">
+        <span class="pp-stat-label">Victoires consécutives</span>
+        <span class="pp-stat-value"><%= player.current_streak || player.win_streak || 0 %></span>
+      </div>
+      <div class="pp-stat-row">
+        <span class="pp-stat-label">Meilleure série</span>
+        <span class="pp-stat-value"><%= player.best_streak || player.best_win_streak || 0 %></span>
+      </div>
+      <div class="pp-stat-row">
+        <span class="pp-stat-label">Éliminé nuit 1</span>
+        <span class="pp-stat-value"><%= player.killed_night_one || 0 %></span>
+      </div>
+      <div class="pp-stat-row">
+        <span class="pp-stat-label">Kills totaux (Loup)</span>
+        <span class="pp-stat-value"><%= player.total_kills || player.wolf_kills || 0 %></span>
+      </div>
+      <div class="pp-stat-row">
+        <span class="pp-stat-label">Survivances</span>
+        <span class="pp-stat-value"><%= player.times_survived || 0 %></span>
+      </div>
+      <div class="pp-stat-row">
+        <span class="pp-stat-label">Éliminations subies</span>
+        <span class="pp-stat-value"><%= player.times_killed || 0 %></span>
+      </div>
+      <% if (player.favorite_role) { %>
+      <div class="pp-stat-row">
+        <span class="pp-stat-label">Rôle favori</span>
+        <span class="pp-stat-value pp-stat-accent"><%= player.favorite_role %></span>
+      </div>
       <% } %>
     </div>
   </div>
 
-  <!-- Stats -->
-  <section class="hero-stats">
-    <div class="stat-card stat-primary">
-      <div class="stat-icon">&#127918;</div>
-      <div class="stat-body">
-        <span class="stat-value"><%= player.games_played || 0 %></span>
-        <span class="stat-label">Games</span>
-      </div>
+  <!-- ── Role Distribution Panel ── -->
+  <div class="pp-panel" style="--enter:1">
+    <div class="pp-panel-head">
+      <div class="pp-panel-title">🎭 Répartition des rôles</div>
     </div>
-    <div class="stat-card stat-success">
-      <div class="stat-icon">&#127942;</div>
-      <div class="stat-body">
-        <span class="stat-value"><%= player.games_won || 0 %></span>
-        <span class="stat-label">Wins</span>
-      </div>
-    </div>
-    <div class="stat-card stat-info">
-      <div class="stat-icon">&#128200;</div>
-      <div class="stat-body">
-        <span class="stat-value"><%= player.elo_rating || 1000 %></span>
-        <span class="stat-label">ELO Rating</span>
-      </div>
-    </div>
-    <div class="stat-card stat-warning">
-      <div class="stat-icon">&#9889;</div>
-      <div class="stat-body">
-        <span class="stat-value"><%= player.games_played > 0 ? Math.round((player.games_won / player.games_played) * 100) : 0 %>%</span>
-        <span class="stat-label">Win Rate</span>
-      </div>
-    </div>
-  </section>
-
-  <div class="player-grid">
-    <!-- Detailed Stats -->
-    <div class="panel">
-      <h3 class="panel-title">Detailed Stats</h3>
-      <div class="info-grid">
-        <div class="info-row"><span class="info-label">ELO Peak</span><span class="info-value"><%= player.elo_peak || player.elo_rating || 1000 %></span></div>
-        <div class="info-row"><span class="info-label">Wolf Games</span><span class="info-value"><%= player.times_werewolf || 0 %></span></div>
-        <div class="info-row"><span class="info-label">Villager Games</span><span class="info-value"><%= player.times_villager || 0 %></span></div>
-        <div class="info-row"><span class="info-label">Seer Games</span><span class="info-value"><%= player.times_seer || 0 %></span></div>
-        <div class="info-row"><span class="info-label">Witch Games</span><span class="info-value"><%= player.times_witch || 0 %></span></div>
-        <div class="info-row"><span class="info-label">Killed Night 1</span><span class="info-value"><%= player.killed_night_one || 0 %></span></div>
-        <div class="info-row"><span class="info-label">Total Kills</span><span class="info-value"><%= player.total_kills || 0 %></span></div>
-        <div class="info-row"><span class="info-label">Win Streak</span><span class="info-value"><%= player.current_streak || 0 %></span></div>
-        <div class="info-row"><span class="info-label">Best Streak</span><span class="info-value"><%= player.best_streak || 0 %></span></div>
-      </div>
-    </div>
-
-    <!-- Achievements -->
-    <div class="panel">
-      <h3 class="panel-title">Achievements (<%= player.achievements ? player.achievements.length : 0 %>)</h3>
-      <% if (player.achievements && player.achievements.length > 0) { %>
-        <div class="achievements-grid">
-          <% player.achievements.forEach(function(a) { %>
-            <div class="achievement-card" title="<%= a.description || '' %>">
-              <span class="achievement-emoji"><%= a.emoji || '&#127941;' %></span>
-              <span class="achievement-name"><%= a.name || a.achievement_id %></span>
-              <span class="achievement-date"><%= a.unlocked_at ? new Date(a.unlocked_at).toLocaleDateString() : '' %></span>
-            </div>
-          <% }); %>
+    <%
+      const wolfGames    = player.times_werewolf || player.wolf_wins || 0;
+      const villageGames = player.times_villager || player.village_wins || 0;
+      const seerGames    = player.times_seer || player.seer_correct || 0;
+      const witchGames   = player.times_witch || player.witch_saves || 0;
+      const roleMax      = Math.max(wolfGames, villageGames, seerGames, witchGames, 1);
+    %>
+    <div class="pp-role-bars">
+      <div class="pp-role-bar-item">
+        <div class="pp-role-bar-head">
+          <span class="pp-role-bar-icon">🐺</span>
+          <span class="pp-role-bar-name">Loup-Garou</span>
+          <span class="pp-role-bar-count"><%= wolfGames %></span>
         </div>
-      <% } else { %>
-        <p class="text-muted">No achievements unlocked yet.</p>
-      <% } %>
+        <div class="pp-role-bar-track">
+          <div class="pp-role-bar-fill pp-bar-wolf" style="width:<%= roleMax > 0 ? (wolfGames / roleMax * 100) : 0 %>%"></div>
+        </div>
+      </div>
+      <div class="pp-role-bar-item">
+        <div class="pp-role-bar-head">
+          <span class="pp-role-bar-icon">👤</span>
+          <span class="pp-role-bar-name">Villageois</span>
+          <span class="pp-role-bar-count"><%= villageGames %></span>
+        </div>
+        <div class="pp-role-bar-track">
+          <div class="pp-role-bar-fill pp-bar-village" style="width:<%= roleMax > 0 ? (villageGames / roleMax * 100) : 0 %>%"></div>
+        </div>
+      </div>
+      <div class="pp-role-bar-item">
+        <div class="pp-role-bar-head">
+          <span class="pp-role-bar-icon">🔮</span>
+          <span class="pp-role-bar-name">Voyante</span>
+          <span class="pp-role-bar-count"><%= seerGames %></span>
+        </div>
+        <div class="pp-role-bar-track">
+          <div class="pp-role-bar-fill pp-bar-seer" style="width:<%= roleMax > 0 ? (seerGames / roleMax * 100) : 0 %>%"></div>
+        </div>
+      </div>
+      <div class="pp-role-bar-item">
+        <div class="pp-role-bar-head">
+          <span class="pp-role-bar-icon">🧪</span>
+          <span class="pp-role-bar-name">Sorcière</span>
+          <span class="pp-role-bar-count"><%= witchGames %></span>
+        </div>
+        <div class="pp-role-bar-track">
+          <div class="pp-role-bar-fill pp-bar-witch" style="width:<%= roleMax > 0 ? (witchGames / roleMax * 100) : 0 %>%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Win comparison -->
+    <div class="pp-win-compare">
+      <div class="pp-win-side pp-win-wolves">
+        <span class="pp-win-val"><%= player.wolf_wins || 0 %></span>
+        <span class="pp-win-lbl">🐺 Victoires Loup</span>
+      </div>
+      <div class="pp-win-vs">VS</div>
+      <div class="pp-win-side pp-win-village">
+        <span class="pp-win-val"><%= player.village_wins || 0 %></span>
+        <span class="pp-win-lbl">🛡️ Victoires Village</span>
+      </div>
     </div>
   </div>
 </div>
 
+<!-- ═══ ACHIEVEMENTS ═══ -->
+<section class="pp-ach-section">
+  <div class="pp-panel pp-panel-wide" style="--enter:2">
+    <div class="pp-panel-head">
+      <div class="pp-panel-title">🏅 Succès</div>
+      <span class="pp-badge-count"><%= achievements.length %> / <%= Object.keys(typeof allAchievements !== 'undefined' ? allAchievements : {}).length %></span>
+    </div>
+
+    <%
+      const allAch = typeof allAchievements !== 'undefined' ? allAchievements : {};
+      const unlockedSet = new Set(achievements.map(a => a.achievement_id));
+      const unlockedMap = {};
+      achievements.forEach(a => { unlockedMap[a.achievement_id] = a; });
+
+      /* Build merged list: unlocked first, then locked */
+      const achList = [];
+      Object.entries(allAch).forEach(function([key, def]) {
+        const unlocked = unlockedMap[key];
+        if (unlocked) {
+          achList.unshift({ ...def, unlocked: true, unlocked_at: unlocked.unlocked_at });
+        } else {
+          /* Compute progress from player stats */
+          let current = 0;
+          const stat = def.stat;
+          if (stat === 'games_won') current = player.games_won || 0;
+          else if (stat === 'games_played') current = player.games_played || 0;
+          else if (stat === 'times_survived') current = player.times_survived || 0;
+          else if (player[stat] !== undefined) current = player[stat];
+          achList.push({ ...def, unlocked: false, current: current });
+        }
+      });
+    %>
+
+    <div class="pp-ach-grid">
+      <% achList.forEach(function(a) {
+        const color = catColors[a.category] || '#a78bfa';
+        const pct = !a.unlocked && a.threshold > 1 ? Math.min(100, Math.round((a.current / a.threshold) * 100)) : 0;
+      %>
+        <div class="pp-ach-card <%= a.unlocked ? 'pp-ach-unlocked' : 'pp-ach-locked' %>" style="--ach-color:<%= color %>">
+          <% if (a.unlocked) { %><div class="pp-ach-card-glow"></div><% } %>
+          <div class="pp-ach-emoji <%= a.unlocked ? '' : 'pp-ach-emoji-locked' %>"><%= a.emoji || '🏅' %><% if (!a.unlocked) { %><span class="pp-ach-lock">🔒</span><% } %></div>
+          <div class="pp-ach-body">
+            <span class="pp-ach-name"><%= achNames[a.id] || a.id %></span>
+            <span class="pp-ach-desc"><%= achDescs[a.id] || '' %></span>
+            <% if (a.unlocked) { %>
+              <span class="pp-ach-date">Débloqué le <%= a.unlocked_at ? new Date(a.unlocked_at * 1000).toLocaleDateString('fr-FR') : '' %></span>
+            <% } else if (a.threshold > 1) { %>
+              <div class="pp-ach-bar-wrap">
+                <div class="pp-ach-bar">
+                  <div class="pp-ach-bar-fill" style="width:<%= pct %>%"></div>
+                </div>
+                <span class="pp-ach-bar-text"><%= a.current %>/<%= a.threshold %></span>
+              </div>
+            <% } else { %>
+              <span class="pp-ach-locked-hint">🔒 Non débloqué</span>
+            <% } %>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+  </div>
+</section>
+
+<script src="/static/js/player.js"></script>
 <%- include('partials/footer') %>

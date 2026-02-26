@@ -52,9 +52,22 @@ class RoleBuilderService {
           abilities_json TEXT DEFAULT '[]',
           win_condition TEXT DEFAULT 'village_wins',
           created_by TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
+      // Migrate: add updated_at if missing
+      try {
+        this.db.db.exec(`ALTER TABLE custom_roles ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`);
+      } catch { /* column already exists */ }
+      // Migrate: add abilities_json if missing (upgrade from old schema)
+      try {
+        this.db.db.exec(`ALTER TABLE custom_roles ADD COLUMN abilities_json TEXT DEFAULT '[]'`);
+      } catch { /* column already exists */ }
+      // Migrate: add win_condition if missing
+      try {
+        this.db.db.exec(`ALTER TABLE custom_roles ADD COLUMN win_condition TEXT DEFAULT 'village_wins'`);
+      } catch { /* column already exists */ }
     } catch (err) {
       logger.warn('RoleBuilderService: Failed to ensure custom_roles table', { error: err.message });
     }
@@ -181,7 +194,7 @@ class RoleBuilderService {
       this.db.db.prepare(`
         UPDATE custom_roles
         SET name = ?, camp = ?, description = ?, abilities_json = ?, win_condition = ?,
-            emoji = ?
+            emoji = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ? AND guild_id = ?
       `).run(
         normalized.name,

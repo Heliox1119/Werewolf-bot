@@ -1,5 +1,5 @@
 /**
- * Werewolf Bot — Web Dashboard Server v3.4.0
+ * Werewolf Bot — Web Dashboard Server v3.4.1
  * 
  * Express + Socket.IO server providing:
  * - Discord OAuth2 authentication
@@ -30,6 +30,7 @@ class WebServer {
     this.server = null;
     this.io = null;
     this.spectatorRooms = new Map(); // gameId -> Set of socket IDs
+    this.gameEventBuffers = new Map(); // gameId -> Array of event objects
     this.sessionMiddleware = null;
     this._wsRateLimits = new Map();
     this._guildBroadcastThrottle = new Map();
@@ -264,13 +265,16 @@ class WebServer {
 
       // Join a game spectator room
       socket.on('spectate', (gameId) => {
-        if (checkRateLimit()) return reject('Rate limited');
-        if (typeof gameId !== 'string' || gameId.length > 30) return reject('Invalid game id');
+        console.log(`[spectate] Received spectate request: gameId=${gameId} socketId=${socket.id}`);
+        if (checkRateLimit()) { console.log('[spectate] REJECTED: rate limited'); return reject('Rate limited'); }
+        if (typeof gameId !== 'string' || gameId.length > 30) { console.log('[spectate] REJECTED: invalid game id'); return reject('Invalid game id'); }
         const game = this.gameManager.games.get(gameId);
         if (!game) {
+          console.log(`[spectate] REJECTED: game not found (active games: ${[...this.gameManager.games.keys()].join(', ')})`);
           return reject('Game not found');
         }
         if (!this._canSocketAccessGame(socket, game)) {
+          console.log(`[spectate] REJECTED: unauthorized (guildId=${game.guildId}, userGuilds=${JSON.stringify(this._getSocketUserGuildIds(socket))})`);
           return reject('Unauthorized game');
         }
 
@@ -282,7 +286,15 @@ class WebServer {
 
         // Send initial state
         socket.emit('gameState', this._enrichSnapshot(this.gameManager.getGameSnapshot(game)));
-        
+
+        // Send buffered event history so late spectators see the full feed
+        const eventBuffer = this.gameEventBuffers.get(gameId);
+        console.log(`[spectate] gameId=${gameId} bufferExists=${!!eventBuffer} bufferSize=${eventBuffer ? eventBuffer.length : 0}`);
+        if (eventBuffer && eventBuffer.length > 0) {
+          socket.emit('gameEventHistory', { gameId, events: [...eventBuffer] });
+          console.log(`[spectate] Sent ${eventBuffer.length} history events to socket ${socket.id}`);
+        }
+
         // Notify spectator count
         this.io.to(`game:${gameId}`).emit('spectatorCount', { gameId, count: this.spectatorRooms.get(gameId).size });
       });
@@ -332,6 +344,15 @@ class WebServer {
     this.gameManager.on('gameEvent', (data) => {
       const { event, gameId, guildId } = data;
 
+      // Buffer event for late-joining spectators (max 200 events per game)
+      if (!this.gameEventBuffers.has(gameId)) {
+        this.gameEventBuffers.set(gameId, []);
+      }
+      const buffer = this.gameEventBuffers.get(gameId);
+      buffer.push(data);
+      if (buffer.length > 200) buffer.shift();
+      console.log(`[event-buffer] gameId=${gameId} event=${event} bufferSize=${buffer.length}`);
+
       // Broadcast to spectators of this game
       this.io.to(`game:${gameId}`).emit('gameEvent', data);
 
@@ -356,10 +377,11 @@ class WebServer {
         }, 200));
       }
 
-      // Clean up spectator room on game end
+      // Clean up spectator room and event buffer on game end
       if (event === 'gameEnded') {
         setTimeout(() => {
           this.spectatorRooms.delete(gameId);
+          this.gameEventBuffers.delete(gameId);
         }, 60000); // Keep room for 1 minute after end
       }
     });

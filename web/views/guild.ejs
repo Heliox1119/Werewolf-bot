@@ -1,12 +1,5 @@
 <%- include('partials/header') %>
 
-<!-- Ambient floating orbs -->
-<div class="go-ambient" aria-hidden="true">
-  <div class="go-orb go-orb-1"></div>
-  <div class="go-orb go-orb-2"></div>
-  <div class="go-orb go-orb-3"></div>
-</div>
-
 <!-- ═══ GUILD HERO ═══ -->
 <section class="go-hero">
   <div class="go-hero-bg">
@@ -236,11 +229,11 @@
               </div>
               <div class="go-player-elo">
                 <span class="go-player-elo-val"><%= p.elo_rating || 1000 %></span>
-                <span class="go-player-elo-label">ELO</span>
+                <span class="go-player-elo-label">Points</span>
               </div>
               <div class="go-player-record">
-                <span class="go-player-wins"><%= p.games_won || 0 %>W</span>
-                <span class="go-player-total">/ <%= p.games_played || 0 %></span>
+                <span class="go-player-wins"><%= p.games_won || 0 %> <small>victoires</small></span>
+                <span class="go-player-total"><%= p.games_played || 0 %> <small>parties</small></span>
               </div>
               <span class="go-player-arrow">›</span>
             </a>
@@ -306,7 +299,7 @@
           <span class="go-nav-link-icon" style="background:rgba(245,158,11,0.12)">🏆</span>
           <div class="go-nav-link-body">
             <span class="go-nav-link-title">Classement</span>
-            <span class="go-nav-link-desc">Classement complet et ELO</span>
+            <span class="go-nav-link-desc">Classement complet et points</span>
           </div>
           <span class="go-nav-link-arrow">›</span>
         </a>

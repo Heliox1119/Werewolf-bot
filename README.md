@@ -5,7 +5,7 @@
 
 A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice management, ambient audio and interactive lobby.
 
-![Version](https://img.shields.io/badge/version-3.4.0-blue)
+![Version](https://img.shields.io/badge/version-3.4.1-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
@@ -81,17 +81,25 @@ A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice ma
 - **Extensible** — Adding a language = creating a `locales/xx.js` file
 
 ### 🌐 Web Dashboard & API
-- **Redesigned Web Dashboard** — Command center UI with ambient orbs, animated counters, PJAX SPA-like navigation
+- **Redesigned Web Dashboard** — Command center UI with global ambient glow, animated counters, PJAX SPA-like navigation
+- **Global ambient lighting** — Single viewport-wide glow layer replacing per-page orbs, darkened palette for optimal contrast
 - **Discord-style sidebar** — Dual sidebar: guild icon bar + guild management panel
+- **Dashboard data panels** — Global leaderboard (top 5) and recent completed games (last 5) with live data
 - **Interactive "Draw a Role"** — Card deck mini-game on dashboard with flip animations
+- **Invite card deck** — Premium card deck with shuffle animation, deal animation, fullscreen glassmorphism modal with role reveal
+- **Player page redesign** — Discord avatar integration, achievement progress bars with lock icons, ELO tier display
+- **Spectator enhancements** — Profile popup on player click, event feed persistence, real-time vote chart fixes
 - **Guild overview** — Win distribution charts, top players, recent games, animated metrics
 - **Leaderboard podium** — Top 3 visual cards with gold/silver/bronze glow, full ranking table
+- **Roles encyclopedia** — Redesigned roles page with detailed descriptions and camp filters
+- **Premium page** — Cinematic redesign with golden particles, pricing tiers, role carousel, testimonials
 - **Documentation wiki** — Full in-app wiki with sticky sidebar navigation
 - **Invite landing page** — Feature showcase, role carousel, permissions section, scroll-reveal
 - **Live Spectator** — 3-column layout with player quick modal, vote chart, real-time feed
 - **REST API** — 20+ endpoints for games, leaderboard, stats, roles, config, moderation
 - **Discord OAuth2** — Login with Discord, per-guild admin features, access-level filtering
 - **Custom Roles** — Create and manage custom roles via web editor
+- **Composable ability engine** — Event-driven architecture for custom role abilities
 
 ### 🗄️ Technical
 - **SQLite persistence** — Game state, player stats, night actions, metrics, achievements, ELO
@@ -377,6 +385,7 @@ npm run clear-commands      # Reset Discord commands
 | **v3.3.0** | 🚀 Production-readiness hardening: crash simulation matrix, WebSocket isolation/anti-abuse tests, GameMutex observability metrics, startup split-brain lock, stuck game liveness detection (`stuck_games_count`) |
 | **v3.2.0** | 🛡️ 6-axis architecture hardening: GameMutex, FSM transitions, transaction sync, dirty flag, 7 new DB columns, isRecentDuplicate on 12 commands, express-rate-limit, CORS, guild-scoped WS, Prometheus /metrics, /health, 223 tests |
 | **v3.1.0** | 🛡️ 15-point architecture audit, XSS elimination, WebSocket rate limiting & debounce, multi-tenant isolation, critical FSM fixes, game archiving, 200 tests || **v3.0.0** | 🌐 Web Dashboard (Express + EJS), Live Spectator (Socket.IO), REST API (15 endpoints), Discord OAuth2, Custom Roles system, EventEmitter architecture || **v2.9.0** | 🏆 Achievements (18), ELO ranking (7 tiers), death reveal embeds, DM turn notifications, `/leaderboard`, `/history`, post-game timeline, 4 bug fixes |
+| **v3.4.1** | 🎨 Visual overhaul: global ambient glow system, player page redesign, spectator UX, invite card deck, dashboard data panels |
 | **v2.8.0** | 🐳 Docker, auto SQLite backup (hourly), multi-guild (per-server lang & config), rematch system |
 | **v2.7.0** | Little Girl real-time DM relay, smart ambiguous hints, Unicode/zalgo-proof, wolf win server-wide config, guild-only commands |
 | **v2.6.0** | Phase balancing, automatic captain vote, witch potion fix, configurable wolf victory, wolf ping |
@@ -417,4 +426,4 @@ Full details: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-**Version**: 3.4.0 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **Docker**: ready · **License**: ISC
+**Version**: 3.4.1 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **Docker**: ready · **License**: ISC

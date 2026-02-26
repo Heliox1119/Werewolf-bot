@@ -1,5 +1,74 @@
 # 📝 Changelog - Werewolf Bot
 
+## [3.4.1] - 2026-02-26 - Visual Overhaul & Ability Engine
+
+### 🎨 Global Ambient Lighting — Architectural Overhaul
+- **Replaced 11 per-page ambient orb systems** (CSS + HTML) with a single `body::before` global glow layer — 5 `radial-gradient` ellipses covering the full viewport
+- **Removed `will-change: opacity, filter`** from `.main-content` to prevent CSS containing block issues (overlays, fixed elements escaping viewport)
+- **Page transitions simplified** to opacity-only animations (no `filter: blur()` or `transform` side-effects)
+- **Darkened color palette** — `--bg-primary: #06080f`, `--bg-secondary: #0a0e1a`, `--bg-tertiary: #0f1524`, glow opacities reduced to 0.02–0.035 for proper luminance hierarchy: fond < surface < hover
+- **Cleaned up** all 11 ambient orb HTML divs from: dashboard, guild, invite, spectator, guild-leaderboard, guild-history, guild-moderation, guild-rules, player, docs, monitoring
+
+### 🖥️ Dashboard — Data Panels
+- **Global leaderboard panel** (top 5) — Shows top players by ELO with tier badge, win rate, linked to player profile
+- **Recent completed games panel** (last 5) — Shows winner badge, guild name, player count, duration, date
+- **Robust data loading** — Fallback `AchievementEngine` instantiation when `gameManager.achievements` is unavailable, with error logging and stack traces
+- **Compact layout** — Hero + sidebar fit 16:9 viewport without scrolling
+
+### 🎴 Invite Page — Card Deck Mini-Game
+- **"Sélectionnez une carte" section** — Premium deck of 12 role cards with animated card backs
+- **Shuffle animation** — Cards scatter and reassemble with staggered timing
+- **Deal animation** — Cards fly into a fan layout with smooth easing
+- **Fullscreen modal** — Glassmorphism backdrop with smoke particle effect, card flip revealing role image, name, camp, description, and slash command
+- **Redraw support** — Draw again without closing the modal
+
+### 👤 Player Page — Redesign
+- **Discord avatar integration** — Real avatars from Discord CDN with fallback to initials
+- **Achievement progress bars** — Visual progress toward each locked achievement with percentage
+- **Lock icons** — Locked achievements shown with 🔒 overlay and grayscale filter
+- **ELO tier display** — Points system replacing raw ELO label, tier badge with emoji
+
+### 🎭 Spectator — UX Enhancements
+- **Profile popup** — Click any player to see stats loaded from API (ELO, tier, games, wins) in a glassmorphism popover
+- **Event feed persistence** — Events persist across reconnections via session buffer
+- **Real-time fixes** — Vote chart updates correctly, fake player handling improved
+- **Victory condition display** — End-of-game screen shows winning team with styled badge
+
+### 📖 Pages Redesigned
+- **Roles encyclopedia** — Complete redesign with detailed descriptions, camp filter chips, animated card grid, ability tooltips
+- **Premium page** — Cinematic redesign with golden particle system, 3 pricing tiers, role carousel, testimonials section, FAQ accordion
+- **Support page** — Professional redesign with contact methods, FAQ, status indicators
+
+### ⚙️ Composable Ability Engine (Custom Roles)
+- **New `game/abilities/` module** — Event-driven architecture for defining custom role abilities
+- **`abilitySchema.js`** — JSON schema validation for custom ability definitions
+- **`builtinRoles.js`** — All 12 base roles expressed as composable ability configurations
+- **`conflictResolver.js`** — Priority-based conflict resolution when multiple abilities target the same event
+- **`effectHandlers.js`** — Pluggable effect handlers (kill, protect, reveal, transform, etc.)
+- **`gameEventEngine.js`** — Core event bus that dispatches game events to registered ability handlers
+- **`roleBuilderService.js`** — Service to build complete role definitions from schema + ability compositions
+
+### 🐛 Bug Fixes
+- **Dashboard empty panels** — Fixed leaderboard and history showing empty despite data existing (fallback AchievementEngine + error logging)
+- **Overlay band issue** — Fixed CSS `will-change` creating containing block that trapped fixed/absolute overlays inside `.main-content`
+- **`dwHeroGlowFloat` orphaned keyframe** — Renamed from deleted `dwOrbFloat` to prevent animation reference errors
+- **i18n `data-i18n-html`** — Fixed premium page titles with `<span>` tags not rendering HTML through data attribute
+- **Version references** — Updated all 3.3→3.4 references in header, footer, CSS, server
+
+### 📦 Files Modified (24 files, ~12,000 lines changed)
+- **game/abilities/** *(new directory)* — 7 files: abilitySchema, builtinRoles, conflictResolver, effectHandlers, gameEventEngine, index, roleBuilderService
+- **tests/game/abilityEngine.test.js** *(new)* — 1122-line test suite for ability engine
+- **web/public/js/premium.js** *(new)* — Golden particle system + pricing interactions
+- **web/public/css/style.css** — +5000 lines: global glow, darkened palette, card deck, player page, spectator enhancements, roles encyclopedia, premium cinematic
+- **web/views/** — 12 templates modified (dashboard, guild, invite, spectator, player, roles, premium, support, docs, monitoring, guild-leaderboard, guild-rules)
+- **web/routes/dashboard.js** — Leaderboard + history data loading with fallback
+- **web/routes/api.js** — Extended API endpoints
+- **web/server.js** — Enhanced WebSocket handling
+- **web/public/js/roles.js** — +1400 lines: encyclopedia interactions, filters, animations
+- **web/public/js/spectator.js** — Profile popup, event persistence, real-time fixes
+
+---
+
 ## [3.4.0] - 2026-02-25 - Web Interface Redesign & Multi-Guild Hardening
 
 ### 🎨 Web Interface — Complete Redesign

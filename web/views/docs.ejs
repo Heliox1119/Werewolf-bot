@@ -1,9 +1,6 @@
 <%- include('partials/header') %>
 
 <div class="dw-page">
-  <div class="dw-orb dw-orb--1"></div>
-  <div class="dw-orb dw-orb--2"></div>
-  <div class="dw-orb dw-orb--3"></div>
 
   <div class="dw-layout">
     <!-- ===== Sidebar ===== -->
@@ -44,7 +41,7 @@
         <div class="dw-nav-group">
           <div class="dw-nav-cat" data-i18n="docs.nav_progression">PROGRESSION</div>
           <a href="#achievements" class="dw-nav-link"><span class="dw-nav-ico">🏅</span><span data-i18n="docs.achievements">Achievements</span></a>
-          <a href="#elo" class="dw-nav-link"><span class="dw-nav-ico">📊</span><span data-i18n="docs.elo">ELO & Tiers</span></a>
+          <a href="#elo" class="dw-nav-link"><span class="dw-nav-ico">📊</span><span data-i18n="docs.elo">Points & Rangs</span></a>
         </div>
         <div class="dw-nav-group">
           <div class="dw-nav-cat" data-i18n="docs.nav_config">CONFIGURATION</div>
@@ -87,7 +84,7 @@
             <li data-i18n="docs.feature_3">Private channels for wolves, seer, witch, and other special roles</li>
             <li data-i18n="docs.feature_4">Captain election and special death mechanics</li>
             <li data-i18n="docs.feature_5">Lover system with Cupid for romantic entanglements</li>
-            <li data-i18n="docs.feature_6">ELO ranking, achievements, and progression system</li>
+            <li data-i18n="docs.feature_6">Classement par points, succès et système de progression</li>
             <li data-i18n="docs.feature_7">Fully configurable rules per server</li>
             <li data-i18n="docs.feature_8">Real-time web dashboard with spectator mode</li>
             <li data-i18n="docs.feature_9">Multi-language support (FR / EN)</li>
@@ -588,7 +585,7 @@
               <tr><td class="dw-cmd">/start</td><td class="dw-cmd-desc" data-i18n="docs.cmd_start">Start the game (lobby host only, min 4 players)</td><td>Host</td></tr>
               <tr><td class="dw-cmd">/help</td><td class="dw-cmd-desc" data-i18n="docs.cmd_help">Display help information and available commands</td><td>Everyone</td></tr>
               <tr><td class="dw-cmd">/status</td><td class="dw-cmd-desc" data-i18n="docs.cmd_status">Show current game status, phase and alive players</td><td>Everyone</td></tr>
-              <tr><td class="dw-cmd">/stats [@user]</td><td class="dw-cmd-desc" data-i18n="docs.cmd_stats">View stats, ELO rating and achievements</td><td>Everyone</td></tr>
+              <tr><td class="dw-cmd">/stats [@user]</td><td class="dw-cmd-desc" data-i18n="docs.cmd_stats">Voir stats, points de classement et succès</td><td>Everyone</td></tr>
             </tbody>
           </table>
         </div>
@@ -689,9 +686,9 @@
 
       <!-- =================== ELO =================== -->
       <section class="dw-section" id="elo">
-        <h2 class="dw-section-title"><span class="dw-section-icon">📊</span> <span data-i18n="docs.elo_title">ELO Rating & Tiers</span></h2>
+        <h2 class="dw-section-title"><span class="dw-section-icon">📊</span> <span data-i18n="docs.elo_title">Points de classement & Rangs</span></h2>
         <div class="dw-info-box">
-          <p data-i18n="docs.elo_desc">Every player starts at 1000 ELO. Winning increases your rating, losing decreases it. The amount gained/lost depends on the result and your current tier. Your tier is determined by your ELO range.</p>
+          <p data-i18n="docs.elo_desc">Chaque joueur commence à 1000 points. Gagner augmente votre score, perdre le diminue. Le gain/perte dépend du résultat et de votre rang actuel. Votre rang est déterminé par votre nombre de points.</p>
         </div>
         <div class="dw-tiers">
           <div class="dw-tier" style="--tier-color: #8B8B8B;"><span class="dw-tier-emoji">🪨</span><span class="dw-tier-name">Iron</span><span class="dw-tier-range">0–799</span></div>

@@ -1,13 +1,5 @@
 <%- include('partials/header') %>
 
-<!-- Ambient floating orbs (purple + indigo) -->
-<div class="iv-ambient" aria-hidden="true">
-  <div class="iv-orb iv-orb-1"></div>
-  <div class="iv-orb iv-orb-2"></div>
-  <div class="iv-orb iv-orb-3"></div>
-  <div class="iv-orb iv-orb-4"></div>
-</div>
-
 <!-- ═══ HERO ═══ -->
 <section class="iv-hero">
   <div class="iv-hero-bg">
@@ -170,6 +162,54 @@
   </div>
 </section>
 
+<!-- ═══ CARD DECK DRAW — PREMIUM ═══ -->
+<section class="iv-deck">
+  <div class="iv-section-head">
+    <span class="iv-section-tag">🃏 Découverte</span>
+    <h2 class="iv-section-title">Sélectionnez une carte</h2>
+    <p class="iv-section-sub">Découvrez les rôles du jeu en piochant dans le deck.</p>
+  </div>
+  <div class="ivd-stage">
+    <div class="ivd-deck-wrap">
+      <div class="ivd-deck" id="ivd-deck">
+        <div class="ivd-card ivd-c1"></div>
+        <div class="ivd-card ivd-c2"></div>
+        <div class="ivd-card ivd-c3"></div>
+        <div class="ivd-card ivd-c4"></div>
+        <div class="ivd-card ivd-c5"></div>
+        <div class="ivd-card ivd-ctop"></div>
+      </div>
+      <div class="ivd-glow" id="ivd-glow"></div>
+    </div>
+    <button class="ivd-btn" id="ivd-btn" type="button">
+      <span class="ivd-btn-icon">🎴</span>
+      <span class="ivd-btn-text">Sélectionnez une carte</span>
+    </button>
+  </div>
+</section>
+
+<!-- Card reveal modal -->
+<div class="ivd-overlay" id="ivd-overlay">
+  <div class="ivd-smoke" id="ivd-smoke"></div>
+  <div class="ivd-modal" id="ivd-modal">
+    <button class="ivd-modal-close" id="ivd-modal-close" type="button" aria-label="Fermer">&times;</button>
+    <div class="ivd-modal-card">
+      <img src="" alt="" class="ivd-modal-img" id="ivd-modal-img">
+      <div class="ivd-modal-card-glow"></div>
+    </div>
+    <div class="ivd-modal-info">
+      <h3 class="ivd-modal-name" id="ivd-modal-name"></h3>
+      <span class="ivd-modal-camp" id="ivd-modal-camp"></span>
+      <p class="ivd-modal-desc" id="ivd-modal-desc"></p>
+      <code class="ivd-modal-cmd" id="ivd-modal-cmd"></code>
+    </div>
+    <button class="ivd-btn ivd-btn-redraw" id="ivd-btn-redraw" type="button">
+      <span class="ivd-btn-icon">🎴</span>
+      <span class="ivd-btn-text">Tirer une nouvelle carte</span>
+    </button>
+  </div>
+</div>
+
 <!-- ═══ PERMISSIONS ═══ -->
 <section class="iv-perms">
   <div class="iv-section-head">
@@ -262,13 +302,146 @@
   requestAnimationFrame(tick);
 
   // Scroll-reveal for sections
-  var sections = document.querySelectorAll('.iv-features, .iv-roles, .iv-perms, .iv-cta');
+  var sections = document.querySelectorAll('.iv-features, .iv-roles, .iv-deck, .iv-perms, .iv-cta');
   var obs = new IntersectionObserver(function(entries) {
     entries.forEach(function(e) {
       if (e.isIntersecting) { e.target.classList.add('iv-visible'); obs.unobserve(e.target); }
     });
   }, { threshold: 0.15 });
   sections.forEach(function(s) { obs.observe(s); });
+})();
+
+/* ── Card Deck Draw — Premium cinematic ── */
+(function() {
+  'use strict';
+
+  var ROLES = [
+    { name: 'Loup-Garou', camp: 'wolves', campLabel: '🐺 Loups', img: 'loupSimple.webp', cmd: '/kill @joueur', desc: 'Chaque nuit, les loups-garous se réunissent pour dévorer un villageois. Ils doivent rester discrets pour ne pas être démasqués.' },
+    { name: 'Villageois', camp: 'village', campLabel: '🏡 Village', img: 'villageois.webp', cmd: '/vote @joueur', desc: 'Un simple villageois sans pouvoir spécial. Il doit user de logique et d\'intuition pour démasquer les loups-garous.' },
+    { name: 'Voyante', camp: 'village', campLabel: '🏡 Village', img: 'voyante.webp', cmd: '/see @joueur', desc: 'Chaque nuit, la voyante peut sonder l\'âme d\'un joueur et découvrir sa véritable identité.' },
+    { name: 'Sorcière', camp: 'village', campLabel: '🏡 Village', img: 'sorciere.png', cmd: '/potion vie|mort @joueur', desc: 'Elle possède deux potions : une de guérison et une d\'empoisonnement, chacune utilisable une seule fois.' },
+    { name: 'Chasseur', camp: 'village', campLabel: '🏡 Village', img: 'chasseur.webp', cmd: '/shoot @joueur', desc: 'En mourant, le chasseur tire une dernière balle et emporte un joueur de son choix dans la tombe.' },
+    { name: 'Loup Blanc', camp: 'solo', campLabel: '⚡ Solitaire', img: 'loupBlanc.webp', cmd: '/kill @joueur', desc: 'Un loup solitaire qui joue pour lui-même. Une nuit sur deux, il peut dévorer un autre loup-garou.' },
+    { name: 'Petite Fille', camp: 'village', campLabel: '🏡 Village', img: 'petiteFille.webp', cmd: '/listen', desc: 'Curieuse et intrépide, elle peut espionner le conseil des loups-garous pendant la nuit.' },
+    { name: 'Cupidon', camp: 'village', campLabel: '🏡 Village', img: 'cupidon.webp', cmd: '/love @j1 @j2', desc: 'Au début de la partie, Cupidon désigne deux amoureux liés par le destin. Si l\'un meurt, l\'autre le suit.' },
+    { name: 'Salvateur', camp: 'village', campLabel: '🏡 Village', img: 'salvateur.webp', cmd: '/protect @joueur', desc: 'Chaque nuit, il place un joueur sous sa protection, le rendant invulnérable à l\'attaque des loups.' },
+    { name: 'Ancien', camp: 'village', campLabel: '🏡 Village', img: 'ancien.webp', cmd: '/vote @joueur', desc: 'Sa sagesse lui confère une résistance exceptionnelle : il survit à la première attaque des loups-garous.' },
+    { name: 'Idiot du Village', camp: 'village', campLabel: '🏡 Village', img: 'idiot.webp', cmd: '/vote @joueur', desc: 'S\'il est désigné par le vote du village, il est révélé et gracié mais perd définitivement son droit de vote.' },
+    { name: 'Voleur', camp: 'village', campLabel: '🏡 Village', img: 'voleur.webp', cmd: '/steal @carte', desc: 'Au début de la partie, il découvre deux cartes et peut en choisir une pour échanger son rôle.' }
+  ];
+
+  var CAMP_CSS = { wolves: 'ivd-camp-wolves', village: 'ivd-camp-village', solo: 'ivd-camp-solo' };
+
+  var deck = document.getElementById('ivd-deck');
+  var glow = document.getElementById('ivd-glow');
+  var btnDraw = document.getElementById('ivd-btn');
+  var btnRedraw = document.getElementById('ivd-btn-redraw');
+  var overlay = document.getElementById('ivd-overlay');
+  var modal = document.getElementById('ivd-modal');
+  var btnClose = document.getElementById('ivd-modal-close');
+  var imgEl = document.getElementById('ivd-modal-img');
+  var nameEl = document.getElementById('ivd-modal-name');
+  var campEl = document.getElementById('ivd-modal-camp');
+  var descEl = document.getElementById('ivd-modal-desc');
+  var cmdEl = document.getElementById('ivd-modal-cmd');
+
+  if (!deck || !btnDraw) return;
+
+  // Move overlay to <body> so position:fixed isn't trapped by
+  // .main-content's will-change / filter (which creates a new containing block)
+  document.body.appendChild(overlay);
+
+  var busy = false;
+  var lastIndex = -1;
+
+  function pickRole() {
+    var idx;
+    do { idx = Math.floor(Math.random() * ROLES.length); } while (idx === lastIndex && ROLES.length > 1);
+    lastIndex = idx;
+    return ROLES[idx];
+  }
+
+  function closeModal() {
+    overlay.classList.remove('ivd-active');
+    // Reset deck dealing state
+    deck.classList.remove('ivd-dealing');
+    // Restore top card visibility
+    var top = deck.querySelector('.ivd-ctop');
+    if (top) { top.style.opacity = ''; top.style.transform = ''; }
+    busy = false;
+  }
+
+  function drawCard() {
+    if (busy && !overlay.classList.contains('ivd-active')) return;
+    busy = true;
+    btnDraw.disabled = true;
+    if (btnRedraw) btnRedraw.disabled = true;
+
+    // Close modal if open (for redraw)
+    var wasOpen = overlay.classList.contains('ivd-active');
+    if (wasOpen) {
+      overlay.classList.remove('ivd-active');
+    }
+
+    var role = pickRole();
+    var delay = wasOpen ? 400 : 0;
+
+    setTimeout(function() {
+      // Reset deck
+      deck.classList.remove('ivd-dealing', 'ivd-shuffling');
+      var top = deck.querySelector('.ivd-ctop');
+      if (top) { top.style.opacity = ''; top.style.transform = ''; }
+
+      // Phase 1: Glow appears
+      glow.style.opacity = '0.7';
+
+      // Phase 2: Shuffle (1.8s)
+      deck.classList.add('ivd-shuffling');
+
+      setTimeout(function() {
+        deck.classList.remove('ivd-shuffling');
+
+        // Phase 3: Deal — top card flies out
+        deck.classList.add('ivd-dealing');
+
+        setTimeout(function() {
+          // Populate modal
+          imgEl.src = '/static/img/roles/' + role.img;
+          imgEl.alt = role.name;
+          nameEl.textContent = role.name;
+          campEl.textContent = role.campLabel;
+          campEl.className = 'ivd-modal-camp ' + (CAMP_CSS[role.camp] || '');
+          descEl.textContent = role.desc;
+          if (role.cmd) {
+            cmdEl.textContent = role.cmd;
+            cmdEl.style.display = '';
+          } else {
+            cmdEl.style.display = 'none';
+          }
+
+          // Phase 4: Show overlay + modal
+          glow.style.opacity = '0';
+          overlay.classList.add('ivd-active');
+
+          btnDraw.disabled = false;
+          if (btnRedraw) btnRedraw.disabled = false;
+          // busy stays true until modal closes (except redraw)
+        }, 800);
+      }, 1900);
+    }, delay);
+  }
+
+  btnDraw.addEventListener('click', drawCard);
+  if (btnRedraw) btnRedraw.addEventListener('click', drawCard);
+
+  // Close modal
+  btnClose.addEventListener('click', closeModal);
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay || e.target.classList.contains('ivd-smoke')) closeModal();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && overlay.classList.contains('ivd-active')) closeModal();
+  });
 })();
 </script>
 

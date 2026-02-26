@@ -5,7 +5,7 @@
 
 Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion vocale automatique, audio d'ambiance et lobby interactif.
 
-![Version](https://img.shields.io/badge/version-3.4.0-blue)
+![Version](https://img.shields.io/badge/version-3.4.1-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
@@ -81,17 +81,25 @@ Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion
 - **Extensible** — Ajouter une langue = créer un fichier `locales/xx.js`
 
 ### 🌐 Web Dashboard & API
-- **Interface web redessinée** — UI centre de commandes avec orbes ambiants, compteurs animés, navigation PJAX type SPA
+- **Interface web redessinée** — UI centre de commandes avec lueur ambiante globale, compteurs animés, navigation PJAX type SPA
+- **Éclairage ambiant global** — Couche de lueur unique couvrant tout le viewport, palette assombrie pour un contraste optimal
 - **Sidebar style Discord** — Double sidebar : barre d'icônes serveur + panneau de gestion du serveur
+- **Panneaux dashboard** — Classement global (top 5) et dernières parties terminées (5 dernières) avec données en direct
 - **Mini-jeu « Tirer une carte »** — Deck interactif sur le dashboard avec animations de retournement
+- **Deck de cartes invitation** — Deck premium avec animation de mélange, distribution, modale plein écran glassmorphism avec révélation du rôle
+- **Redesign page joueur** — Intégration avatar Discord, barres de progression des succès avec icônes cadenas, affichage palier ELO
+- **Améliorations spectateur** — Popup profil au clic joueur, persistance du flux d'événements, corrections graphique de votes temps réel
 - **Vue d'ensemble serveur** — Graphique de distribution des victoires, top joueurs, parties récentes, métriques animées
 - **Classement podium** — Top 3 en cartes visuelles or/argent/bronze, tableau complet triable
+- **Encyclopédie des rôles** — Page rôles redessinée avec descriptions détaillées et filtres par camp
+- **Page premium** — Redesign cinématique avec particules dorées, paliers de prix, carrousel de rôles, témoignages
 - **Wiki documentation** — Wiki intégré complet avec sidebar sticky
 - **Page d'invitation landing** — Showcase fonctionnalités, carrousel de rôles, section permissions, animations au scroll
 - **Spectateur live** — Layout 3 colonnes avec modale rapide joueur, graphique de votes, flux temps réel
 - **API REST** — 20+ endpoints (parties, classement, stats, rôles, config, modération)
 - **Discord OAuth2** — Connexion Discord, fonctionnalités admin par serveur, filtrage par niveau d'accès
 - **Rôles personnalisés** — Créez et gérez des rôles custom via l'éditeur web
+- **Moteur d'abilities composable** — Architecture événementielle pour les capacités de rôles custom
 
 ### 🗄️ Technique
 - **Persistance SQLite** — État des parties, stats joueurs, actions de nuit, métriques, succès, ELO
@@ -377,6 +385,7 @@ npm run clear-commands      # Réinitialiser les commandes Discord
 | **v3.3.0** | 🚀 Renforcement production : matrice de crash/restart, tests d'isolation WebSocket anti-abus, observabilité GameMutex, verrou anti split-brain au démarrage, détection de liveness STUCK (`stuck_games_count`) |
 | **v3.2.0** | 🛡️ Renforcement 6 axes : GameMutex, transitions FSM, sync transactionnelle, dirty flag, 7 nouvelles colonnes DB, isRecentDuplicate sur 12 commandes, express-rate-limit, CORS, WS guild-scoped, Prometheus /metrics, /health, 223 tests |
 | **v3.1.0** | 🛡️ Audit architecture 15 points, élimination XSS, rate limiting & debounce WebSocket, isolation multi-tenant, fixes critiques FSM, archivage parties, 200 tests || **v3.0.0** | 🌐 Tableau de bord web (Express + EJS), Spectateur live (Socket.IO), API REST (15 endpoints), Discord OAuth2, Rôles personnalisés, Architecture EventEmitter || **v2.9.0** | 🏆 Succès (18), classement ELO (7 paliers), révélation rôle à la mort, notification DM de tour, `/leaderboard`, `/history`, timeline post-game, 4 bug fixes |
+| **v3.4.1** | 🎨 Refonte visuelle : système de lueur ambiante global, redesign page joueur, UX spectateur, deck de cartes invitation, panneaux dashboard |
 | **v2.8.0** | 🐳 Docker, backup SQLite auto (horaire), multi-guild (langue & config par serveur), système de revanche |
 | **v2.7.0** | Petite Fille relay temps réel en DM, indices ambigus intelligents, normalisation Unicode/zalgo, wolfwin serveur-wide, commandes guild-only |
 | **v2.6.0** | Équilibrage phases, vote capitaine auto, fix potion sorcière, victoire loups configurable, ping loups |
@@ -417,4 +426,4 @@ Détails complets : [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-**Version** : 3.4.0 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **Docker** : ready · **License** : ISC
+**Version** : 3.4.1 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **Docker** : ready · **License** : ISC

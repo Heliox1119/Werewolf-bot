@@ -43,14 +43,51 @@ module.exports = function(webServer) {
         return snap;
       });
       const stats = db.getGlobalStats ? db.getGlobalStats() : {};
-      
+
+      // Global leaderboard — always use web db directly for reliability
+      let globalLeaderboard = [];
+      try {
+        const { AchievementEngine } = require('../../game/achievements');
+        const achievementEngine = gm.achievements || new AchievementEngine(db.db);
+        const raw = achievementEngine.getLeaderboard(5);
+        globalLeaderboard = raw.map((p, i) => ({
+          rank: i + 1,
+          ...p,
+          tier: AchievementEngine.getEloTier(p.elo_rating || 1000)
+        }));
+      } catch (err) {
+        console.error('[Dashboard] Leaderboard error:', err.message, err.stack);
+      }
+
+      // Recent completed games (last 5 globally)
+      let recentHistory = [];
+      try {
+        recentHistory = db.getGuildHistory(null, 5);
+        if (!Array.isArray(recentHistory)) recentHistory = [];
+      } catch (err) {
+        console.error('[Dashboard] History error:', err.message, err.stack);
+      }
+      // Resolve guild names for history entries
+      if (client) {
+        recentHistory.forEach(h => {
+          if (h.guild_id) {
+            const g = client.guilds.cache.get(h.guild_id);
+            if (g) h.guild_name = g.name;
+          }
+        });
+      }
+
+      console.log(`[Dashboard] Rendering: leaderboard=${globalLeaderboard.length}, history=${recentHistory.length}, gm.achievements=${!!gm.achievements}`);
+
       res.render('dashboard', {
         title: 'Dashboard',
         games,
         stats,
         activeGames: games.length,
         activePlayers: games.reduce((sum, g) => sum + (g.players ? g.players.filter(p => p.alive).length : 0), 0),
-        guilds: webServer.client ? webServer.client.guilds.cache.size : 0
+        guilds: webServer.client ? webServer.client.guilds.cache.size : 0,
+        globalLeaderboard,
+        recentHistory
       });
     } catch (e) {
       res.render('error', { title: 'Error', message: e.message });
@@ -298,28 +335,53 @@ module.exports = function(webServer) {
   });
 
   /** GET /player/:id — Player profile */
-  router.get('/player/:id', (req, res) => {
+  router.get('/player/:id', async (req, res) => {
     try {
       const stats = db.getPlayerStats(req.params.id);
       if (!stats) return res.render('error', { title: 'Not Found', message: 'Player not found.' });
 
+      const { AchievementEngine, ACHIEVEMENTS: ALL_ACH } = require('../../game/achievements');
       let ext = {}, achievements = [], tier = null, rank = null;
       
       if (gm.achievements) {
-        const { AchievementEngine, ACHIEVEMENTS } = require('../../game/achievements');
         ext = gm.achievements.getExtendedStats(req.params.id);
         rank = gm.achievements.getPlayerRank(req.params.id);
         tier = AchievementEngine.getEloTier(ext.elo_rating || 1000);
         achievements = gm.achievements.getPlayerAchievements(req.params.id).map(a => ({
           ...a,
-          ...(ACHIEVEMENTS[a.achievement_id] || {})
+          ...(ALL_ACH[a.achievement_id] || {})
         }));
       }
 
+      // Resolve Discord avatar via REST API (most reliable)
+      let avatarUrl = null;
+      try {
+        const https = require('https');
+        const userData = await new Promise((resolve, reject) => {
+          const req2 = https.get(`https://discord.com/api/v10/users/${req.params.id}`, {
+            headers: { Authorization: `Bot ${process.env.TOKEN}` }
+          }, resp => {
+            let data = '';
+            resp.on('data', c => data += c);
+            resp.on('end', () => {
+              try { resolve(JSON.parse(data)); } catch { resolve(null); }
+            });
+          });
+          req2.on('error', () => resolve(null));
+          req2.setTimeout(5000, () => { req2.destroy(); resolve(null); });
+        });
+        console.log('[avatar-debug] REST response:', userData ? `avatar=${userData.avatar}, username=${userData.username}` : 'null');
+        if (userData && userData.avatar) {
+          const imgExt = userData.avatar.startsWith('a_') ? 'gif' : 'png';
+          avatarUrl = `https://cdn.discordapp.com/avatars/${req.params.id}/${userData.avatar}.${imgExt}?size=256`;
+        }
+      } catch (avatarErr) { /* ignore avatar errors */ }
+
       res.render('player', {
         title: stats.username || `Player ${req.params.id}`,
-        player: { ...stats, ...ext, tier, rank, achievements },
-        playerId: req.params.id
+        player: { ...stats, ...ext, tier, rank, achievements, avatarUrl },
+        playerId: req.params.id,
+        allAchievements: ALL_ACH
       });
     } catch (e) {
       res.render('error', { title: 'Error', message: e.message });
@@ -424,20 +486,33 @@ module.exports = function(webServer) {
       const builtIn = Object.entries(ROLES).map(([key, value]) => ({ id: key, name: value, type: 'builtin' }));
       
       let customRoles = [];
+      let schema = {};
       try {
-        db.db.exec(`CREATE TABLE IF NOT EXISTS custom_roles (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          guild_id TEXT NOT NULL, name TEXT NOT NULL, emoji TEXT DEFAULT '❓',
-          camp TEXT NOT NULL DEFAULT 'village', power TEXT DEFAULT 'none',
-          description TEXT DEFAULT '', created_by TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`);
-        customRoles = db.db.prepare('SELECT * FROM custom_roles ORDER BY created_at DESC').all();
+        const RoleBuilderService = require('../../game/abilities/roleBuilderService');
+        const builder = new RoleBuilderService(db);
+        customRoles = db.db.prepare('SELECT * FROM custom_roles ORDER BY created_at DESC').all().map(row => {
+          let abilities = [];
+          try { abilities = JSON.parse(row.abilities_json || '[]'); } catch { abilities = []; }
+          return {
+            id: row.id,
+            guild_id: row.guild_id,
+            name: row.name,
+            emoji: row.emoji,
+            camp: row.camp,
+            description: row.description,
+            abilities,
+            winCondition: row.win_condition || 'village_wins',
+            created_at: row.created_at,
+          };
+        });
+        schema = builder.getSchema();
       } catch {}
 
       res.render('roles', {
         title: 'Roles Editor',
         builtIn,
         customRoles,
+        schema: JSON.stringify(schema),
         isAdmin: req.isAuthenticated && req.isAuthenticated()
       });
     } catch (e) {

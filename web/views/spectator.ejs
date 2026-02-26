@@ -2,13 +2,6 @@
 
 <div class="sp-page" data-game-id="<%= gameId %>">
 
-  <!-- Ambient orbs (red/crimson live feel) -->
-  <div class="sp-ambient" aria-hidden="true">
-    <div class="sp-orb sp-orb-1"></div>
-    <div class="sp-orb sp-orb-2"></div>
-    <div class="sp-orb sp-orb-3"></div>
-  </div>
-
   <!-- ═══ TOP BAR ═══ -->
   <div class="sp-topbar">
     <div class="sp-topbar-left">
@@ -54,6 +47,7 @@
               </div>
               <div class="sp-player-info">
                 <span class="sp-player-name"><%= p.username || p.id %></span>
+                <% if (p.id && p.id.startsWith('fake_')) { %><span class="sp-badge-fake">BOT</span><% } %>
                 <div class="sp-player-tags">
                   <% if (!p.alive && p.role) { %><span class="sp-role-tag"><%= p.role %></span><% } %>
                   <% if (p.isCaptain) { %><span class="sp-badge-tag">👑 Capitaine</span><% } %>
@@ -78,6 +72,7 @@
                   <span class="sp-grave-avatar sp-grave-avatar-default">☠️</span>
                 <% } %>
                 <span class="sp-grave-name"><%= d.username || d.id %></span>
+                <% if (d.id && d.id.startsWith('fake_')) { %><span class="sp-badge-fake">BOT</span><% } %>
                 <span class="sp-grave-role"><%= d.role || '?' %></span>
                 <span class="sp-player-chevron">›</span>
               </div>
@@ -159,7 +154,7 @@
           <div class="sp-info-card">
             <span class="sp-info-icon">🎮</span>
             <div class="sp-info-data">
-              <span class="sp-info-val"><%= game.players ? game.players.length : 0 %></span>
+              <span class="sp-info-val" id="player-count"><%= game.players ? game.players.length : 0 %></span>
               <span class="sp-info-label">Joueurs</span>
             </div>
           </div>
@@ -173,7 +168,7 @@
           <div class="sp-info-card">
             <span class="sp-info-icon">💀</span>
             <div class="sp-info-data">
-              <span class="sp-info-val"><%= game.dead ? game.dead.length : 0 %></span>
+              <span class="sp-info-val" id="dead-count"><%= game.dead ? game.dead.length : 0 %></span>
               <span class="sp-info-label">Morts</span>
             </div>
           </div>
@@ -186,15 +181,17 @@
           </div>
         </div>
 
-        <% if (game.rules) { %>
         <div class="sp-rules-section">
-          <div class="sp-rules-title">⚙️ Règles</div>
+          <div class="sp-rules-title">⚙️ Condition de victoire</div>
           <div class="sp-rules-row">
-            <span>Joueurs</span>
-            <span><%= game.rules.minPlayers %>–<%= game.rules.maxPlayers %></span>
+            <span>🐺 Loups</span>
+            <span><%= game.wolfWinCondition === 'majority' ? 'Majorité (loups ≥ villageois)' : 'Élimination (tuer tous les villageois)' %></span>
+          </div>
+          <div class="sp-rules-row">
+            <span>🏘️ Village</span>
+            <span>Éliminer tous les loups</span>
           </div>
         </div>
-        <% } %>
 
         <div class="sp-gameid-section">
           <span class="sp-gameid-label">Game ID</span>
@@ -206,75 +203,225 @@
   </div>
 </div>
 
-<!-- Player Quick Modal (Spectator) -->
+<!-- Player Quick Modal (Spectator) — Premium Design -->
 <div class="modal-overlay" id="spectator-player-modal" onclick="if(event.target===this)closeSpectatorPlayerModal()">
-  <div class="modal-card modal-card-sm">
-    <button class="modal-close" onclick="closeSpectatorPlayerModal()">&times;</button>
-    <div class="modal-header" id="sp-modal-header">
-      <div class="modal-player-avatar" id="sp-modal-avatar"><span>👤</span></div>
-      <div>
-        <h2 id="sp-modal-name">Player</h2>
-        <div id="sp-modal-badges"></div>
+  <div class="spm-card">
+    <button class="spm-close" onclick="closeSpectatorPlayerModal()" aria-label="Fermer">&times;</button>
+
+    <!-- Hero gradient bg -->
+    <div class="spm-hero" id="sp-modal-hero">
+      <div class="spm-hero-glow"></div>
+      <div class="spm-hero-dots"></div>
+      <!-- Avatar -->
+      <div class="spm-avatar-wrap">
+        <div class="spm-avatar" id="sp-modal-avatar"><span>👤</span></div>
+        <div class="spm-avatar-ring"></div>
+        <span class="spm-rank-badge" id="sp-modal-rank" style="display:none"></span>
+      </div>
+      <!-- Name + tier -->
+      <h2 class="spm-name" id="sp-modal-name">Player</h2>
+      <div class="spm-tier-row" id="sp-modal-tier" style="display:none"></div>
+      <div class="spm-badges" id="sp-modal-badges"></div>
+    </div>
+
+    <!-- Stats grid -->
+    <div class="spm-stats" id="sp-modal-info">
+      <p class="text-muted" style="text-align:center;padding:1.5rem 0">Chargement...</p>
+    </div>
+
+    <!-- ELO bar -->
+    <div class="spm-elo-wrap" id="sp-modal-elo-wrap" style="display:none">
+      <div class="spm-elo-bar">
+        <div class="spm-elo-fill" id="sp-modal-elo-fill"></div>
+      </div>
+      <div class="spm-elo-labels">
+        <span class="spm-elo-label" id="sp-modal-elo-val"></span>
+        <span class="spm-elo-label spm-elo-tier" id="sp-modal-elo-tier"></span>
       </div>
     </div>
-    <div class="modal-body">
-      <div class="modal-info-grid" id="sp-modal-info">
-        <p class="text-muted" style="text-align:center">Chargement...</p>
+
+    <!-- Achievements preview -->
+    <div class="spm-achievements" id="sp-modal-achs" style="display:none">
+      <div class="spm-ach-header">
+        <span class="spm-ach-title">🏆 Succès</span>
+        <span class="spm-ach-count" id="sp-modal-ach-count"></span>
       </div>
+      <div class="spm-ach-list" id="sp-modal-ach-list"></div>
     </div>
-    <div class="modal-footer">
-      <a id="sp-modal-link" href="#" class="btn btn-sm btn-primary">📈 Voir le profil complet</a>
+
+    <!-- Footer -->
+    <div class="spm-footer">
+      <a id="sp-modal-link" href="#" class="spm-btn-profile">
+        <span class="spm-btn-icon">📈</span>
+        <span>Voir le profil complet</span>
+        <span class="spm-btn-arrow">→</span>
+      </a>
     </div>
   </div>
 </div>
 
 <script>
-// Spectator player modal
-window.openSpectatorPlayerModal = async function(el) {
-  var playerId = el.dataset.playerId;
-  var playerAvatar = el.dataset.playerAvatar;
-  var nameEl = el.querySelector('.sp-player-name') || el.querySelector('.sp-grave-name');
-  var name = nameEl ? nameEl.textContent : playerId;
-  var modal = document.getElementById('spectator-player-modal');
-  
-  document.getElementById('sp-modal-name').textContent = name;
-  document.getElementById('sp-modal-link').href = '/player/' + playerId;
-  document.getElementById('sp-modal-badges').innerHTML = '';
-  document.getElementById('sp-modal-info').innerHTML = '<p class="text-muted" style="text-align:center">Chargement...</p>';
-  
-  var avatarContainer = document.getElementById('sp-modal-avatar');
-  if (playerAvatar) {
-    avatarContainer.innerHTML = '<img class="modal-avatar-img" src="' + playerAvatar + '" alt="" />';
-  } else {
-    avatarContainer.innerHTML = '<span>👤</span>';
-  }
-  
-  modal.classList.add('open');
-  document.body.style.overflow = 'hidden';
+// ── Spectator player modal — Premium ──
+(function() {
+  var tierColors = {
+    iron: { border: 'rgba(107,114,128,0.5)', glow: 'rgba(107,114,128,0.15)', gradient: 'linear-gradient(135deg, rgba(107,114,128,0.2), rgba(75,85,99,0.1))' },
+    bronze: { border: 'rgba(217,119,6,0.5)', glow: 'rgba(217,119,6,0.2)', gradient: 'linear-gradient(135deg, rgba(217,119,6,0.15), rgba(180,83,9,0.08))' },
+    silver: { border: 'rgba(203,213,225,0.5)', glow: 'rgba(203,213,225,0.2)', gradient: 'linear-gradient(135deg, rgba(203,213,225,0.12), rgba(148,163,184,0.06))' },
+    gold: { border: 'rgba(251,191,36,0.5)', glow: 'rgba(251,191,36,0.25)', gradient: 'linear-gradient(135deg, rgba(251,191,36,0.12), rgba(245,158,11,0.06))' },
+    platinum: { border: 'rgba(103,232,249,0.5)', glow: 'rgba(103,232,249,0.2)', gradient: 'linear-gradient(135deg, rgba(103,232,249,0.12), rgba(6,182,212,0.06))' },
+    diamond: { border: 'rgba(167,139,250,0.5)', glow: 'rgba(167,139,250,0.3)', gradient: 'linear-gradient(135deg, rgba(167,139,250,0.15), rgba(139,92,246,0.08))' },
+    'alpha-wolf': { border: 'rgba(251,191,36,0.5)', glow: 'rgba(251,191,36,0.35)', gradient: 'linear-gradient(135deg, rgba(251,191,36,0.15), rgba(239,68,68,0.1))' }
+  };
 
-  try {
-    var res = await fetch('/api/players/' + playerId);
-    var result = await res.json();
-    if (result.success && result.data) {
-      var d = result.data;
-      document.getElementById('sp-modal-info').innerHTML =
-        '<div class="modal-info-row"><span class="info-label">Parties</span><span class="info-value">' + (d.games_played || 0) + '</span></div>' +
-        '<div class="modal-info-row"><span class="info-label">Victoires</span><span class="info-value">' + (d.games_won || 0) + '</span></div>' +
-        '<div class="modal-info-row"><span class="info-label">Win rate</span><span class="info-value">' + (d.winrate || 0) + '%</span></div>' +
-        (d.elo ? '<div class="modal-info-row"><span class="info-label">ELO</span><span class="info-value">' + d.elo + '</span></div>' : '') +
-        (d.tier ? '<div class="modal-info-row"><span class="info-label">Rang</span><span class="info-value">' + (d.tier.emoji || '') + ' ' + (d.tier.name || '') + '</span></div>' : '');
-    } else {
-      document.getElementById('sp-modal-info').innerHTML = '<p class="text-muted" style="text-align:center">Aucune statistique disponible</p>';
-    }
-  } catch(e) {
-    document.getElementById('sp-modal-info').innerHTML = '<p class="text-muted" style="text-align:center">Impossible de charger les stats</p>';
+  function getTierSlug(tierNameEn) {
+    if (!tierNameEn) return 'iron';
+    return tierNameEn.toLowerCase().replace(/\s+/g, '-');
   }
-};
-window.closeSpectatorPlayerModal = function() {
-  document.getElementById('spectator-player-modal').classList.remove('open');
-  document.body.style.overflow = '';
-};
-document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeSpectatorPlayerModal(); });
+
+  window.openSpectatorPlayerModal = async function(el) {
+    var playerId = el.dataset.playerId;
+    var playerAvatar = el.dataset.playerAvatar;
+    var nameEl = el.querySelector('.sp-player-name') || el.querySelector('.sp-grave-name');
+    var name = nameEl ? nameEl.textContent : playerId;
+    var modal = document.getElementById('spectator-player-modal');
+
+    // Reset
+    document.getElementById('sp-modal-name').textContent = name;
+    document.getElementById('sp-modal-link').href = '/player/' + playerId;
+    document.getElementById('sp-modal-badges').innerHTML = '';
+    document.getElementById('sp-modal-info').innerHTML = '<p class="text-muted" style="text-align:center;padding:1.5rem 0">Chargement...</p>';
+    document.getElementById('sp-modal-tier').style.display = 'none';
+    document.getElementById('sp-modal-rank').style.display = 'none';
+    document.getElementById('sp-modal-elo-wrap').style.display = 'none';
+    document.getElementById('sp-modal-achs').style.display = 'none';
+    document.getElementById('sp-modal-hero').style.background = '';
+
+    // Avatar
+    var avatarContainer = document.getElementById('sp-modal-avatar');
+    if (playerAvatar) {
+      avatarContainer.innerHTML = '<img class="spm-avatar-img" src="' + playerAvatar + '" alt="" />';
+    } else {
+      var letter = (name || 'P').charAt(0).toUpperCase();
+      avatarContainer.innerHTML = '<span class="spm-avatar-letter">' + letter + '</span>';
+    }
+
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+
+    // Fake player: show label + hide profile link, no API call
+    var isFake = playerId && playerId.startsWith('fake_');
+    document.getElementById('sp-modal-link').style.display = isFake ? 'none' : '';
+    if (isFake) {
+      document.getElementById('sp-modal-info').innerHTML =
+        '<div class="spm-fake-notice">' +
+          '<span class="spm-fake-icon">🤖</span>' +
+          '<span class="spm-fake-text">Joueur fictif</span>' +
+          '<span class="spm-fake-sub">Ce joueur a été généré pour le debug</span>' +
+        '</div>';
+      return;
+    }
+
+    try {
+      var res = await fetch('/api/players/' + playerId);
+      var result = await res.json();
+      if (result.success && result.data) {
+        var d = result.data;
+        var slug = d.tier ? getTierSlug(d.tier.nameEn) : 'iron';
+        var tc = tierColors[slug] || tierColors.iron;
+
+        // Hero gradient per tier
+        document.getElementById('sp-modal-hero').style.background = tc.gradient;
+
+        // Avatar glow
+        avatarContainer.style.borderColor = tc.border;
+        avatarContainer.style.boxShadow = '0 0 24px ' + tc.glow + ', 0 4px 20px rgba(0,0,0,0.4)';
+
+        // Tier badge
+        if (d.tier) {
+          var tierEl = document.getElementById('sp-modal-tier');
+          tierEl.innerHTML = '<span class="spm-tier-chip"><span class="spm-tier-emoji">' + (d.tier.emoji || '') + '</span> ' + (d.tier.name || '') + '</span>';
+          tierEl.style.display = '';
+        }
+
+        // Rank
+        if (d.rank && d.rank <= 10) {
+          var rankEl = document.getElementById('sp-modal-rank');
+          rankEl.textContent = '#' + d.rank;
+          rankEl.style.display = '';
+        }
+
+        // Stats grid
+        var wr = d.winrate || 0;
+        var wrColor = wr >= 60 ? 'var(--color-success)' : wr >= 40 ? 'var(--phase-jour)' : 'var(--color-danger)';
+        document.getElementById('sp-modal-info').innerHTML =
+          '<div class="spm-stat">' +
+            '<span class="spm-stat-val" style="color:var(--color-info)">' + (d.games_played || 0) + '</span>' +
+            '<span class="spm-stat-label">Parties</span>' +
+          '</div>' +
+          '<div class="spm-stat">' +
+            '<span class="spm-stat-val" style="color:var(--color-success)">' + (d.games_won || 0) + '</span>' +
+            '<span class="spm-stat-label">Victoires</span>' +
+          '</div>' +
+          '<div class="spm-stat">' +
+            '<span class="spm-stat-val" style="color:' + wrColor + '">' + wr + '%</span>' +
+            '<span class="spm-stat-label">Win rate</span>' +
+          '</div>' +
+          (d.elo ? '<div class="spm-stat"><span class="spm-stat-val" style="color:var(--accent-secondary)">' + d.elo + '</span><span class="spm-stat-label">Points</span></div>' : '');
+
+        // ELO bar
+        if (d.elo) {
+          var eloWrap = document.getElementById('sp-modal-elo-wrap');
+          var eloFill = document.getElementById('sp-modal-elo-fill');
+          var pct = Math.min(100, Math.max(0, ((d.elo - 100) / 1900) * 100));
+          eloFill.style.width = '0%';
+          eloFill.className = 'spm-elo-fill spm-elo-fill-' + slug;
+          document.getElementById('sp-modal-elo-val').textContent = 'ELO ' + d.elo;
+          document.getElementById('sp-modal-elo-tier').textContent = (d.tier ? d.tier.emoji + ' ' + d.tier.name : '');
+          eloWrap.style.display = '';
+          requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+              eloFill.style.width = pct + '%';
+            });
+          });
+        }
+
+        // Achievements
+        if (d.achievements && d.achievements.length > 0) {
+          var achDiv = document.getElementById('sp-modal-achs');
+          document.getElementById('sp-modal-ach-count').textContent = d.achievements.length;
+          var achHtml = '';
+          var achNames = {
+            first_win:'Première Victoire',veteran:'Vétéran',legend:'Légende',
+            winning_streak_3:'Inarrêtable',winning_streak_5:'Invincible',
+            first_blood:'Premier Sang',alpha_wolf:'Loup Alpha',serial_killer:'Tueur en Série',
+            village_hero:'Héros du Village',sherlock:'Sherlock',guardian_angel:'Ange Gardien',
+            witch_master:'Maître Alchimiste',sharpshooter:"Tireur d'Élite",
+            romeo_juliet:'Roméo & Juliette',survivor:'Survivant',immortal:'Immortel',
+            popular:'Populaire',clown_prince:'Prince Clown',elder_wisdom:"Sagesse de l'Ancien"
+          };
+          d.achievements.slice(0, 6).forEach(function(a) {
+            achHtml += '<div class="spm-ach-chip" title="' + (achNames[a.id] || a.id) + '">' + (a.emoji || '🏅') + '</div>';
+          });
+          if (d.achievements.length > 6) {
+            achHtml += '<div class="spm-ach-chip spm-ach-more">+' + (d.achievements.length - 6) + '</div>';
+          }
+          document.getElementById('sp-modal-ach-list').innerHTML = achHtml;
+          achDiv.style.display = '';
+        }
+      } else {
+        document.getElementById('sp-modal-info').innerHTML = '<p class="text-muted" style="text-align:center;padding:1rem 0">Aucune statistique disponible</p>';
+      }
+    } catch(e) {
+      document.getElementById('sp-modal-info').innerHTML = '<p class="text-muted" style="text-align:center;padding:1rem 0">Impossible de charger les stats</p>';
+    }
+  };
+
+  window.closeSpectatorPlayerModal = function() {
+    document.getElementById('spectator-player-modal').classList.remove('open');
+    document.body.style.overflow = '';
+  };
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeSpectatorPlayerModal(); });
+})();
 </script>
 
 <script src="/static/js/spectator.js"></script>

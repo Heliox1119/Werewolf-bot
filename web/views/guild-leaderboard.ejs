@@ -1,12 +1,5 @@
 <%- include('partials/header') %>
 
-<!-- Ambient floating orbs (gold) -->
-<div class="gl-ambient" aria-hidden="true">
-  <div class="gl-orb gl-orb-1"></div>
-  <div class="gl-orb gl-orb-2"></div>
-  <div class="gl-orb gl-orb-3"></div>
-</div>
-
 <!-- ═══ HERO ═══ -->
 <section class="gl-hero">
   <div class="gl-hero-bg">
@@ -27,7 +20,7 @@
       </div>
       <div class="gl-hero-info">
         <h1 class="gl-hero-title"><%= guild ? guild.name : 'Guild ' + guildId %></h1>
-        <p class="gl-hero-subtitle" data-i18n="gleader.subtitle">Classement &middot; ELO &amp; Performances</p>
+        <p class="gl-hero-subtitle" data-i18n="gleader.subtitle">Classement &middot; Points &amp; Performances</p>
         <div class="gl-hero-tags">
           <div class="gl-hero-tag gl-tag-players">
             <span>🏆</span> <%= leaderboard.length %> joueurs classés
@@ -39,7 +32,7 @@
           <% } %>
           <% if (leaderboard.length > 0) { %>
             <div class="gl-hero-tag gl-tag-top">
-              <span>👑</span> Top ELO : <%= leaderboard[0].elo_rating || 1000 %>
+              <span>👑</span> Meilleur score : <%= leaderboard[0].elo_rating || 1000 %> pts
             </div>
           <% } %>
         </div>
@@ -70,7 +63,7 @@
           <a href="/player/<%= p.player_id %>" class="gl-podium-name"><%= p.username || p.player_id %></a>
           <div class="gl-podium-elo">
             <span class="gl-elo-val"><%= p.elo_rating || 1000 %></span>
-            <span class="gl-elo-label">ELO</span>
+            <span class="gl-elo-label">Points</span>
           </div>
           <div class="gl-podium-tier"><%= (p.tier || {}).emoji || '' %> <%= (p.tier || {}).name || '' %></div>
           <div class="gl-podium-bar">
@@ -79,7 +72,7 @@
           <div class="gl-podium-stats">
             <div class="gl-podium-stat">
               <span class="gl-podium-stat-val"><%= p.games_won || 0 %></span>
-              <span class="gl-podium-stat-label">Wins</span>
+              <span class="gl-podium-stat-label">Victoires</span>
             </div>
             <div class="gl-podium-stat">
               <span class="gl-podium-stat-val"><%= p.games_played || 0 %></span>
@@ -108,7 +101,7 @@
           <tr>
             <th class="gl-th-rank">#</th>
             <th class="gl-th-player" data-i18n="gleader.col_player">Joueur</th>
-            <th class="gl-th-elo">ELO</th>
+            <th class="gl-th-elo">Points</th>
             <th class="gl-th-tier" data-i18n="gleader.col_tier">Rang</th>
             <th data-i18n="gleader.col_games">Parties</th>
             <th data-i18n="gleader.col_wins">Victoires</th>

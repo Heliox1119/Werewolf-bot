@@ -1,11 +1,8 @@
 <%- include('partials/header') %>
-
-<!-- Ambient floating orbs -->
-<div class="dash-ambient" aria-hidden="true">
-  <div class="dash-orb dash-orb-1"></div>
-  <div class="dash-orb dash-orb-2"></div>
-  <div class="dash-orb dash-orb-3"></div>
-</div>
+<%
+  var globalLeaderboard = typeof globalLeaderboard !== 'undefined' ? globalLeaderboard : [];
+  var recentHistory = typeof recentHistory !== 'undefined' ? recentHistory : [];
+%>
 
 <!-- ═══ HERO COMMAND CENTER ═══ -->
 <section class="dash-hero">
@@ -166,16 +163,75 @@
 
   <!-- Sidebar -->
   <aside class="dashboard-sidebar">
-    <!-- Activity Feed -->
+    <!-- Global Leaderboard -->
     <div class="sidebar-panel" style="--enter:2">
-      <h3 class="panel-title"><span class="pulse-dot"></span> Activité récente</h3>
-      <div class="activity-feed" id="activity-feed">
-        <div class="activity-empty text-muted">En attente d'événements...</div>
-      </div>
+      <h3 class="panel-title">🏆 Classement global</h3>
+      <% if (globalLeaderboard.length === 0) { %>
+        <div class="db-lb-empty text-muted">
+          <span class="db-lb-empty-icon">🏆</span>
+          <p>Aucun joueur classé</p>
+        </div>
+      <% } else { %>
+        <div class="db-lb-list">
+          <% globalLeaderboard.forEach(function(p) { %>
+            <a href="/player/<%= p.player_id %>" class="db-lb-row" style="--delay:<%= (p.rank - 1) * 0.06 %>s">
+              <div class="db-lb-rank rank-<%= p.rank %>">#<%= p.rank %></div>
+              <div class="db-lb-info">
+                <span class="db-lb-name"><%= p.username || p.player_id %></span>
+                <span class="db-lb-tier tier tier-<%= (p.tier || {}).id || 'bronze' %>"><%= (p.tier || {}).emoji || '' %> <%= (p.tier || {}).name || 'Bronze' %></span>
+              </div>
+              <div class="db-lb-pts">
+                <span class="db-lb-pts-val"><%= p.elo_rating || 1000 %></span>
+                <span class="db-lb-pts-label">pts</span>
+              </div>
+            </a>
+          <% }); %>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Recent Completed Games -->
+    <div class="sidebar-panel" style="--enter:3">
+      <h3 class="panel-title">📜 Dernières parties</h3>
+      <% if (recentHistory.length === 0) { %>
+        <div class="db-rh-empty text-muted">
+          <span class="db-rh-empty-icon">📜</span>
+          <p>Aucune partie terminée</p>
+        </div>
+      <% } else { %>
+        <div class="db-rh-list">
+          <% recentHistory.forEach(function(h, i) { %>
+            <div class="db-rh-row" style="--delay:<%= i * 0.06 %>s">
+              <div class="db-rh-winner">
+                <% if (h.winner === 'village') { %>
+                  <span class="db-rh-badge db-rh-village">🏡</span>
+                <% } else if (h.winner === 'wolves') { %>
+                  <span class="db-rh-badge db-rh-wolves">🐺</span>
+                <% } else if (h.winner === 'lovers') { %>
+                  <span class="db-rh-badge db-rh-lovers">💕</span>
+                <% } else { %>
+                  <span class="db-rh-badge">❓</span>
+                <% } %>
+              </div>
+              <div class="db-rh-info">
+                <span class="db-rh-guild"><%= h.guild_name || 'Serveur inconnu' %></span>
+                <span class="db-rh-meta">
+                  👥 <%= h.player_count || '?' %>
+                  · 📅 <%= h.day_count || 0 %>j
+                  <% if (h.duration_seconds) { %>· ⏱️ <%= Math.floor(h.duration_seconds / 60) %>min<% } %>
+                </span>
+              </div>
+              <div class="db-rh-date">
+                <%= h.ended_at ? new Date(h.ended_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '' %>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
     </div>
 
     <!-- Quick Links -->
-    <div class="sidebar-panel" style="--enter:3">
+    <div class="sidebar-panel" style="--enter:4">
       <h3 class="panel-title">⚡ Accès rapide</h3>
       <div class="quick-links">
         <a href="/roles" class="quick-link">

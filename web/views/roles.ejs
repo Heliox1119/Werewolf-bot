@@ -238,17 +238,31 @@
   <% } else { %>
     <div class="rl-grid">
       <% customRoles.forEach(function(r) { %>
-        <div class="rl-card rl-card--<%= r.camp || 'village' %>" data-camp="<%= r.camp || 'village' %>">
+        <div class="rl-card rl-card--<%= r.camp || 'village' %>" data-camp="<%= r.camp || 'village' %>" data-role-id="<%= r.id %>">
           <div class="rl-card-accent"></div>
           <span class="rl-card-emoji-lg"><%= r.emoji || '&#10067;' %></span>
           <div class="rl-card-body">
             <h3 class="rl-card-name"><%= r.name %></h3>
             <div class="rl-card-meta">
               <span class="rl-camp camp-<%= r.camp %>"><%= r.camp %></span>
+              <% if (r.winCondition) { %>
+                <span class="rl-phase phase-passive"><%= r.winCondition %></span>
+              <% } %>
             </div>
+            <% if (r.abilities && r.abilities.length > 0) { %>
+              <div class="rl-card-abilities">
+                <% r.abilities.forEach(function(ab) { %>
+                  <span class="rl-ability-badge" title="<%= ab.type %> &mdash; <%= ab.effect %>">
+                    <%= ab.effect %>
+                  </span>
+                <% }); %>
+              </div>
+            <% } %>
             <% if (r.description) { %><p class="rl-card-desc"><%= r.description %></p><% } %>
             <% if (isAdmin) { %>
-              <button class="btn btn-sm btn-danger delete-role" data-role-id="<%= r.id %>" style="margin-top: 0.75rem;">Delete</button>
+              <div class="rl-card-actions" style="margin-top: 0.75rem; display: flex; gap: 0.5rem;">
+                <button class="btn btn-sm btn-danger delete-role" data-role-id="<%= r.id %>" data-guild-id="<%= r.guild_id %>">Supprimer</button>
+              </div>
             <% } %>
           </div>
         </div>
@@ -257,53 +271,345 @@
   <% } %>
 
   <% if (isAdmin) { %>
-    <div class="rl-create-panel">
-      <h3 class="rl-create-title" data-i18n="roles.create_title">Cr&eacute;er un r&ocirc;le</h3>
-      <form id="create-role-form" class="role-form">
-        <div class="form-row">
-          <div class="form-group">
-            <label data-i18n="roles.form_name">Nom</label>
-            <input type="text" name="name" required placeholder="ex. Forgeron" class="form-input" data-i18n-placeholder="roles.form_name_ph">
+    <!-- ═══ ABILITY BUILDER FORM ═══ -->
+    <div class="rl-create-panel" id="role-builder-panel">
+      <h3 class="rl-create-title" data-i18n="roles.create_title">&#128736; Cr&eacute;er un r&ocirc;le</h3>
+
+      <!-- Global validation errors -->
+      <div id="role-global-errors" class="role-errors" style="display:none;"></div>
+
+      <form id="create-role-form" class="role-form" novalidate>
+
+        <!-- ── Section 1: Basic Info ── -->
+        <fieldset class="role-fieldset">
+          <legend>Informations de base</legend>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="role-name" data-i18n="roles.form_name">Nom</label>
+              <input type="text" id="role-name" name="name" required minlength="1" maxlength="50"
+                     placeholder="ex. Forgeron" class="form-input" data-i18n-placeholder="roles.form_name_ph">
+              <span class="field-error" id="err-name"></span>
+            </div>
+            <div class="form-group emoji-picker-group">
+              <label data-i18n="roles.form_emoji">Emoji</label>
+              <div class="emoji-picker-trigger" id="emoji-picker-trigger">
+                <span class="emoji-picker-preview" id="emoji-picker-preview">&#10067;</span>
+                <span class="emoji-picker-arrow">&#9660;</span>
+              </div>
+              <input type="hidden" id="role-emoji" name="emoji" value="">
+              <div class="emoji-picker-dropdown" id="emoji-picker-dropdown" style="display:none;">
+                <div class="emoji-picker-search-wrap">
+                  <input type="text" class="emoji-picker-search" id="emoji-picker-search" placeholder="&#128269; Rechercher..." autocomplete="off">
+                </div>
+                <div class="emoji-picker-cats" id="emoji-picker-cats"></div>
+                <div class="emoji-picker-grid" id="emoji-picker-grid"></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="role-camp" data-i18n="roles.form_camp">Camp</label>
+              <select id="role-camp" name="camp" class="form-select" required>
+                <option value="village">Village</option>
+                <option value="wolves">Loups</option>
+                <option value="solo">Solo</option>
+              </select>
+              <span class="field-error" id="err-camp"></span>
+            </div>
+            <div class="form-group">
+              <label for="role-win-condition">Condition de victoire</label>
+              <select id="role-win-condition" name="winCondition" class="form-select" required>
+                <option value="village_wins">Village gagne</option>
+                <option value="wolves_win">Loups gagnent</option>
+                <option value="solo_survive">Solo &mdash; survivre</option>
+                <option value="lovers_survive">Amoureux survivent</option>
+              </select>
+              <span class="field-error" id="err-winCondition"></span>
+            </div>
           </div>
           <div class="form-group">
-            <label data-i18n="roles.form_emoji">Emoji</label>
-            <input type="text" name="emoji" placeholder="&#9935;" maxlength="4" class="form-input form-input-sm">
+            <label for="role-description" data-i18n="roles.form_desc">Description</label>
+            <textarea id="role-description" name="description"
+                      placeholder="D&eacute;crivez les capacit&eacute;s du r&ocirc;le..."
+                      class="form-input" rows="2"
+                      data-i18n-placeholder="roles.form_desc_ph"></textarea>
           </div>
-        </div>
-        <div class="form-row">
           <div class="form-group">
-            <label data-i18n="roles.form_camp">Camp</label>
-            <select name="camp" class="form-select">
-              <option value="village">Village</option>
-              <option value="wolves">Loups</option>
-              <option value="solo">Solo</option>
+            <label for="role-guild-id" data-i18n="roles.form_guild">Serveur</label>
+            <select id="role-guild-id" name="guildId" required class="form-select">
+              <option value="">-- Choisir un serveur --</option>
+              <% (userGuilds || []).filter(function(g) { return g.botPresent; }).forEach(function(g) { %>
+                <option value="<%= g.id %>"><%= g.name %></option>
+              <% }); %>
             </select>
+            <span class="field-error" id="err-guildId"></span>
           </div>
-          <div class="form-group">
-            <label data-i18n="roles.form_power">Pouvoir</label>
-            <select name="power" class="form-select">
-              <option value="none" data-i18n="roles.power_none">Aucun (Passif)</option>
-              <option value="see" data-i18n="roles.power_see">Vision (Voyante)</option>
-              <option value="protect" data-i18n="roles.power_protect">Protection (Salvateur)</option>
-              <option value="kill" data-i18n="roles.power_kill">Tuer (Chasseur)</option>
-              <option value="heal" data-i18n="roles.power_heal">Soin (Sorci&egrave;re)</option>
-              <option value="custom" data-i18n="roles.power_custom">Personnalis&eacute;</option>
-            </select>
+        </fieldset>
+
+        <!-- ── Section 2: Strategic Profile ── -->
+        <fieldset class="role-fieldset strat-profile-fieldset" id="strategic-profile-fieldset">
+          <legend>Profil strat&eacute;gique</legend>
+
+          <div class="strat-profile" id="strat-profile">
+            <div class="strat-empty" id="strat-empty">
+              <p>Ajoutez des r&egrave;gles pour afficher le profil strat&eacute;gique.</p>
+            </div>
+
+            <div class="strat-content" id="strat-content" style="display:none;">
+              <p class="strat-line" id="strat-power-line">⚡ Puissance estim&eacute;e : N/A</p>
+              <p class="strat-line" id="strat-orient-line">🎯 Orientation : Non d&eacute;fini</p>
+              <p class="strat-line" id="strat-risk-line">⚠ Risque de stabilit&eacute; : Faible</p>
+            </div>
           </div>
-        </div>
-        <div class="form-group">
-          <label data-i18n="roles.form_desc">Description</label>
-          <textarea name="description" placeholder="D&eacute;crivez les capacit&eacute;s du r&ocirc;le..." class="form-input" rows="2" data-i18n-placeholder="roles.form_desc_ph"></textarea>
-        </div>
-        <div class="form-group">
-          <label data-i18n="roles.form_guild">Guild ID</label>
-          <input type="text" name="guildId" required placeholder="ID du serveur" class="form-input" data-i18n-placeholder="roles.form_guild_ph">
-        </div>
-        <button type="submit" class="btn btn-primary" data-i18n="roles.create_btn">Cr&eacute;er le r&ocirc;le</button>
+        </fieldset>
+
+        <!-- ── Section 3: Rules Builder ── -->
+        <fieldset class="role-fieldset" id="abilities-fieldset">
+          <legend>R&egrave;gles du r&ocirc;le <span id="ability-count-badge" class="ability-count-badge">0</span></legend>
+
+          <div class="ab-mode-toggle-wrap">
+            <label class="ab-mode-toggle-label">
+              <input type="checkbox" id="ab-advanced-toggle" class="ab-mode-toggle-input">
+              <span class="ab-mode-toggle-slider"></span>
+              <span class="ab-mode-toggle-text">Mode avanc&eacute;</span>
+            </label>
+            <span class="ab-mode-hint" id="ab-mode-hint">Option secondaire &mdash; &eacute;dition technique du sch&eacute;ma</span>
+          </div>
+
+          <div id="abilities-container"></div>
+
+          <div class="abilities-toolbar">
+            <button type="button" id="btn-add-ability" class="btn btn-secondary btn-sm">
+              Ajouter une r&egrave;gle
+            </button>
+            <span id="ability-limit-hint" class="ability-limit-hint"></span>
+          </div>
+        </fieldset>
+
+        <button type="submit" class="btn btn-primary" id="btn-submit-role" data-i18n="roles.create_btn">
+          Cr&eacute;er le r&ocirc;le
+        </button>
       </form>
     </div>
+
+    <!-- ═══ RULE CARD TEMPLATE (hidden) ═══ -->
+    <template id="ability-card-template">
+      <div class="ability-card" data-ability-index="">
+        <div class="ability-card-header">
+          <button type="button" class="ability-toggle" title="R&eacute;duire/D&eacute;plier">&#9660;</button>
+          <span class="ability-card-title">R&egrave;gle #<span class="ability-num">1</span></span>
+          <div class="ability-card-actions">
+            <button type="button" class="btn-icon ability-duplicate" title="Dupliquer">&#128203;</button>
+            <button type="button" class="btn-icon ability-remove" title="Supprimer">&#128465;</button>
+          </div>
+        </div>
+        <div class="ability-card-body">
+
+          <div class="ab-summary" style="display:none;">
+            <span class="ab-summary-text"></span>
+          </div>
+
+          <div class="ab-simple-mode">
+            <div class="ab-rule-divider"></div>
+
+            <div class="ab-step">
+              <label class="ab-step-label">Quand cela se produit :</label>
+              <select class="form-select ab-when" required>
+                <option value="">-- choisir --</option>
+                <option value="every_night">Chaque nuit</option>
+                <option value="during_day">Pendant le jour</option>
+                <option value="on_death">&Agrave; la mort du r&ocirc;le</option>
+                <option value="on_targeted">Quand le r&ocirc;le est cibl&eacute;</option>
+                <option value="during_vote">Pendant le vote</option>
+                <option value="passive">En continu (passif)</option>
+              </select>
+              <span class="field-error ab-err-when"></span>
+            </div>
+
+            <div class="ab-step">
+              <label class="ab-step-label">Que se passe-t-il :</label>
+              <select class="form-select ab-what" required>
+                <option value="">-- choisir --</option>
+                <option value="protect">Prot&eacute;ger un joueur</option>
+                <option value="kill">&Eacute;liminer un joueur</option>
+                <option value="inspect_alignment">R&eacute;v&eacute;ler le camp d'un joueur</option>
+                <option value="inspect_role">R&eacute;v&eacute;ler le r&ocirc;le exact d'un joueur</option>
+                <option value="redirect">Rediriger une attaque</option>
+                <option value="double_vote">Accorder un vote double</option>
+                <option value="immune_to_kill">Rendre le r&ocirc;le immunis&eacute; aux attaques</option>
+                <option value="win_override">D&eacute;finir une condition de victoire sp&eacute;ciale</option>
+                <option value="silence">Emp&ecirc;cher un joueur de parler</option>
+                <option value="block">Bloquer la capacit&eacute; d'un joueur</option>
+                <option value="reveal_role">R&eacute;v&eacute;ler publiquement le r&ocirc;le</option>
+                <option value="reveal_alignment">R&eacute;v&eacute;ler publiquement le camp</option>
+                <option value="modify_vote_weight">Modifier le poids du vote</option>
+                <option value="swap_roles">&Eacute;changer les r&ocirc;les de deux joueurs</option>
+              </select>
+              <span class="field-error ab-err-what"></span>
+            </div>
+
+            <details class="ab-advanced-params">
+              <summary>Param&egrave;tres avanc&eacute;s</summary>
+              <div class="ab-advanced-params-body">
+                <div class="ab-step">
+                  <label class="ab-step-label">Type de cible :</label>
+                  <select class="form-select ab-who" required>
+                    <option value="">-- choisir --</option>
+                    <option value="self">Soi-m&ecirc;me</option>
+                    <option value="chosen_player">Un joueur choisi</option>
+                    <option value="automatic">Automatique</option>
+                    <option value="no_target">Aucune cible</option>
+                  </select>
+                  <span class="field-error ab-err-who"></span>
+                </div>
+
+                <div class="ab-step">
+                  <div class="ab-limits-row">
+                    <div class="form-group">
+                      <label>Limite d'utilisations</label>
+                      <div class="ab-charges-wrap">
+                        <label class="ab-radio-label">
+                          <input type="radio" name="" class="ab-charges-mode" value="infinite" checked> Illimit&eacute;
+                        </label>
+                        <label class="ab-radio-label">
+                          <input type="radio" name="" class="ab-charges-mode" value="limited"> Limit&eacute; &agrave;
+                          <input type="number" class="form-input form-input-sm ab-charges-val" min="1" max="99" value="1" disabled>
+                          <span>fois</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>D&eacute;lai de r&eacute;utilisation</label>
+                      <div class="ab-cooldown-wrap">
+                        <label class="ab-radio-label">
+                          <input type="radio" name="" class="ab-cooldown-mode" value="none" checked> Aucun
+                        </label>
+                        <label class="ab-radio-label">
+                          <input type="radio" name="" class="ab-cooldown-mode" value="has_cooldown"> Tous les
+                          <input type="number" class="form-input form-input-sm ab-cooldown-val" min="1" max="10" value="2" disabled>
+                          <span>tours</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="ab-parameters ab-step" style="display: none;">
+                  <label class="ab-step-label">Options sp&eacute;cifiques</label>
+                  <div class="ab-params-fields"></div>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <!-- ═══ ADVANCED MODE (raw schema editor) ═══ -->
+          <div class="ab-advanced-mode" style="display:none;">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Identifiant</label>
+                <input type="text" class="form-input ab-id" placeholder="ex. garde_protect" pattern="^[a-z0-9_]+$" maxlength="64">
+                <span class="field-error ab-err-id"></span>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Type</label>
+                <select class="form-select ab-type">
+                  <option value="">-- choisir --</option>
+                  <option value="night_target">Night Target</option>
+                  <option value="passive">Passive</option>
+                  <option value="on_death">On Death</option>
+                  <option value="on_attacked">On Attacked</option>
+                  <option value="on_vote">On Vote</option>
+                  <option value="on_phase_start">On Phase Start</option>
+                  <option value="on_phase_end">On Phase End</option>
+                </select>
+                <span class="field-error ab-err-type"></span>
+              </div>
+              <div class="form-group">
+                <label>Trigger</label>
+                <select class="form-select ab-trigger">
+                  <option value="">-- choisir --</option>
+                  <option value="night_action">Night Action</option>
+                  <option value="player_targeted">Player Targeted</option>
+                  <option value="vote_cast">Vote Cast</option>
+                  <option value="player_death">Player Death</option>
+                  <option value="phase_start">Phase Start</option>
+                  <option value="phase_end">Phase End</option>
+                </select>
+                <span class="field-error ab-err-trigger"></span>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Effet</label>
+                <select class="form-select ab-effect">
+                  <option value="">-- choisir --</option>
+                  <option value="protect">Protect</option>
+                  <option value="kill">Kill</option>
+                  <option value="inspect_alignment">Inspect Alignment</option>
+                  <option value="inspect_role">Inspect Role</option>
+                  <option value="double_vote">Double Vote</option>
+                  <option value="silence">Silence</option>
+                  <option value="redirect">Redirect</option>
+                  <option value="block">Block</option>
+                  <option value="reveal_role">Reveal Role</option>
+                  <option value="reveal_alignment">Reveal Alignment</option>
+                  <option value="modify_vote_weight">Modify Vote Weight</option>
+                  <option value="swap_roles">Swap Roles</option>
+                  <option value="immune_to_kill">Immune to Kill</option>
+                  <option value="win_override">Win Override</option>
+                </select>
+                <span class="field-error ab-err-effect"></span>
+              </div>
+              <div class="form-group">
+                <label>Cible</label>
+                <select class="form-select ab-target">
+                  <option value="none">Aucune</option>
+                  <option value="alive_player">Joueur vivant</option>
+                  <option value="alive_other">Joueur vivant (autre)</option>
+                  <option value="alive_non_wolf">Non-loup vivant</option>
+                  <option value="alive_wolf">Loup vivant</option>
+                  <option value="self">Soi-m&ecirc;me</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Phase</label>
+                <select class="form-select ab-phase">
+                  <option value="">Auto</option>
+                  <option value="night">Nuit</option>
+                  <option value="day">Jour</option>
+                  <option value="any">Toute</option>
+                </select>
+              </div>
+              <div class="form-group" style="max-width: 120px;">
+                <label>Charges</label>
+                <input type="number" class="form-input ab-charges" min="1" max="99" placeholder="&#8734;">
+              </div>
+              <div class="form-group" style="max-width: 120px;">
+                <label>Cooldown</label>
+                <input type="number" class="form-input ab-cooldown" min="1" max="10" placeholder="0">
+              </div>
+            </div>
+            <div class="ab-parameters-adv" style="display:none;">
+              <label class="ab-params-label">Param&egrave;tres</label>
+              <div class="ab-params-fields-adv"></div>
+            </div>
+            <span class="field-error ab-err-general"></span>
+          </div>
+
+        </div>
+      </div>
+    </template>
   <% } %>
 </section>
 
+<!-- Schema data for JS -->
+<script>
+  window.__ROLE_SCHEMA__ = <%- typeof schema !== 'undefined' ? schema : '{}' %>;
+</script>
+<script src="/static/js/strategicEngine.js"></script>
 <script src="/static/js/roles.js"></script>
 <%- include('partials/footer') %>

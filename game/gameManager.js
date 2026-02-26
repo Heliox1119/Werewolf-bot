@@ -815,6 +815,7 @@ class GameManager extends EventEmitter {
       voteVoters: game.voteVoters ? Object.fromEntries(game.voteVoters) : {},
       lobbyHostId: game.lobbyHostId,
       rules: game.rules,
+      wolfWinCondition: (() => { try { const c = require('../utils/config').getInstance(); return c.getWolfWinCondition(game.guildId || null); } catch { return 'majority'; } })(),
       // Additional state fields
       wolfVotes: game.wolfVotes || null,
       protectedPlayerId: game.protectedPlayerId || null,
