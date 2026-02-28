@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const GameDatabase = require("../database/db");
 const { safeReply } = require("../utils/interaction");
-const { t } = require('../utils/i18n');
+const { t, translateRole } = require('../utils/i18n');
 const { getColor } = require('../utils/theme');
 
 module.exports = {
@@ -62,7 +62,7 @@ module.exports = {
         const recentPlayers = JSON.parse(history[0].players_json);
         const playerLines = recentPlayers.map(p => {
           const status = p.alive ? '✅' : '💀';
-          const role = p.role ? t(`role.${p.role === 'Loup-Garou' ? 'werewolf' : p.role === 'Villageois' ? 'villager' : p.role === 'Voyante' ? 'seer' : p.role === 'Sorcière' ? 'witch' : p.role === 'Chasseur' ? 'hunter' : p.role === 'Petite Fille' ? 'petite_fille' : p.role === 'Cupidon' ? 'cupid' : p.role === 'Salvateur' ? 'salvateur' : p.role === 'Ancien' ? 'ancien' : p.role === 'Idiot du Village' ? 'idiot' : 'unknown'}`) : '?';
+          const role = p.role ? translateRole(p.role) : '?';
           return `${status} ${p.username} — ${role}`;
         }).join('\n');
         

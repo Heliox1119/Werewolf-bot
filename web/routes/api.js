@@ -401,8 +401,9 @@ module.exports = function(webServer) {
         });
       }
       if (Array.isArray(updates.enabledRoles)) {
-        // Ensure Loup-Garou and Villageois are always included
-        const mandatory = ['Loup-Garou', 'Villageois'];
+        // Ensure core roles are always included
+        const ROLES = require('../../game/roles');
+        const mandatory = [ROLES.WEREWOLF, ROLES.VILLAGER];
         const roles = [...new Set([...mandatory, ...updates.enabledRoles])];
         mgr.setEnabledRoles(roles, req.params.guildId);
       }

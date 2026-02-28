@@ -3445,7 +3445,7 @@ class GameManager extends EventEmitter {
         }
 
         // Restaurer ancienExtraLife : si l'Ancien est vivant et pas de log de survie, il a encore sa vie
-        const ancienPlayer = players.find(p => p.role === 'Ancien');
+        const ancienPlayer = players.find(p => p.role === ROLES.ANCIEN);
         if (ancienPlayer && ancienPlayer.alive) {
           const ancienUsedLife = actionLog.some(a => a.text && a.text.includes('vie supplémentaire'));
           ancienPlayer.ancienExtraLife = !ancienUsedLife;
