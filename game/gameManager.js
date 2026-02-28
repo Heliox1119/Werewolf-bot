@@ -21,6 +21,7 @@ const TIMEOUTS = {
     ? Number(process.env.GAME_STUCK_THRESHOLD_MS)
     : 10 * 60 * 1000,
   CAPTAIN_VOTE: 120_000,               // 2 min pour le vote capitaine
+  CAPTAIN_TIEBREAK: 60_000,            // 60s pour le départage capitaine
   RECENT_COMMAND_WINDOW: 5_000,        // 5s
   RECENT_COMMAND_CLEANUP: 30_000,      // 30s
   RECENT_COMMAND_INTERVAL: 60_000      // 60s interval de nettoyage
@@ -358,6 +359,79 @@ class GameManager extends EventEmitter {
     }
     const active = this.activeGameTimers.get(game.mainChannelId);
     if (active && active.type === 'captain-vote') {
+      this._deactivateTimer(game.mainChannelId, active.type, active.epoch);
+    }
+  }
+
+  // --- Captain tiebreak timeout ---
+  // Auto-resolves a captain tiebreak if the captain is AFK
+  startCaptainTiebreakTimeout(guild, game) {
+    const ctx = this._atomicContexts.get(game.mainChannelId);
+    if (ctx && ctx.active) {
+      this._queuePostCommit(game.mainChannelId, () => this.startCaptainTiebreakTimeout(guild, game));
+      return;
+    }
+    this.clearCaptainTiebreakTimeout(game);
+    this._scheduleGameTimer(game, 'captain-tiebreak', TIMEOUTS.CAPTAIN_TIEBREAK, async () => {
+      try {
+        if (!game._captainTiebreak || game.phase !== PHASES.DAY) return;
+
+        const mainChannel = game.villageChannelId
+          ? await guild.channels.fetch(game.villageChannelId)
+          : await guild.channels.fetch(game.mainChannelId);
+
+        const tiedIds = game._captainTiebreak;
+        const randomId = tiedIds[Math.floor(Math.random() * tiedIds.length)];
+
+        const result = await this.runAtomic(game.mainChannelId, (state) => {
+          const player = state.players.find(p => p.id === randomId);
+          if (!player || !player.alive) {
+            state._captainTiebreak = null;
+            return { skipped: true };
+          }
+          const collateral = this.kill(state.mainChannelId, randomId, { throwOnDbFailure: true });
+          this.logAction(state, `Départage capitaine (timeout AFK): ${player.username} éliminé au hasard`);
+          const hunterTriggered = player.role === ROLES.HUNTER && !state.villageRolesPowerless;
+          if (hunterTriggered) {
+            state._hunterMustShoot = player.id;
+          }
+          state._captainTiebreak = null;
+          const victory = this.checkWinner(state);
+          return { skipped: false, player, collateral, hunterTriggered, victory };
+        });
+
+        if (result.skipped) {
+          await this.transitionToNight(guild, game);
+          return;
+        }
+
+        await this.sendLogged(mainChannel, t('game.captain_tiebreak_timeout', { name: result.player.username }), { type: 'captainTiebreakTimeout' });
+        await this.announceDeathReveal(mainChannel, result.player, 'village');
+
+        for (const dead of result.collateral) {
+          await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
+          this.logAction(game, `Mort d'amour: ${dead.username}`);
+        }
+
+        if (result.hunterTriggered) {
+          await this.sendLogged(mainChannel, t('game.hunter_death', { name: result.player.username }), { type: 'hunterDeath' });
+          this.startHunterTimeout(guild, game, result.player.id);
+        }
+
+        if (result.victory) {
+          await this.announceVictoryIfAny(guild, game);
+        } else {
+          await this.transitionToNight(guild, game);
+        }
+      } catch (e) {
+        logger.error('Captain tiebreak timeout error', { error: e.message, stack: e.stack });
+      }
+    });
+  }
+
+  clearCaptainTiebreakTimeout(game) {
+    const active = this.activeGameTimers.get(game.mainChannelId);
+    if (active && active.type === 'captain-tiebreak') {
       this._deactivateTimer(game.mainChannelId, active.type, active.epoch);
     }
   }
@@ -1196,6 +1270,7 @@ class GameManager extends EventEmitter {
             if (game.voteVoters) game.voteVoters.clear();
             await this.sendLogged(mainChannel, t('game.vote_tie_captain', { names: tiedNames, count: voteCount, captainId: game.captainId }), { type: 'voteTie' });
             this.logAction(game, `Égalité au vote — capitaine doit départager: ${tiedNames}`);
+            this.startCaptainTiebreakTimeout(guild, game);
             return; // On NE passe PAS à la nuit
           } else {
             await this.sendLogged(mainChannel, t('game.vote_tie_no_captain', { names: tiedNames, count: voteCount }), { type: 'voteTie' });
@@ -1264,7 +1339,7 @@ class GameManager extends EventEmitter {
       await this.sendLogged(mainChannel, t('game.night_falls'), { type: 'transitionToNight' });
 
       // Lancer le timeout AFK ou auto-skip si sous-phase d'un fake player
-      const shouldAutoSkip = this._shouldAutoSkipSubPhase(game);
+      shouldAutoSkip = this._shouldAutoSkipSubPhase(game);
       if (!shouldAutoSkip) {
         this.startNightAfkTimeout(guild, game);
       }
@@ -1753,6 +1828,11 @@ class GameManager extends EventEmitter {
         await this.sendLogged(mainChannel, t('game.hunter_timeout'), { type: 'hunterTimeout' });
         this.logAction(game, 'AFK timeout: chasseur');
         await this.announceVictoryIfAny(guild, game);
+        // If still in DAY after hunter AFK (e.g. hunter killed during vote/tiebreak),
+        // chain to night to prevent deadlock
+        if (game.phase === PHASES.DAY && !this.checkWinner(game)) {
+          await this.transitionToNight(guild, game);
+        }
       } catch (e) {
         logger.error('Hunter timeout error', { error: e.message });
       }

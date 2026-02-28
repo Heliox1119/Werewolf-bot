@@ -175,6 +175,7 @@ module.exports = {
     captain_random_no_votes: "⏰👑 No captain votes! **{{name}}** is randomly designated as captain.",
     hunter_death: "🏹 **{{name}}** was the Hunter! They must shoot someone with `/shoot @player`!",
     hunter_shoot: "🏹 **{{name}}** the Hunter shot **{{target}}** while dying!",
+    captain_tiebreak_timeout: "⏰⚖️ The captain did not break the tie in time. **{{name}}** is randomly eliminated!",
     hunter_timeout: "⏰ The Hunter did not shoot in time. The shot is lost.",
     afk_wolves: "⏰ The wolves did not choose a victim in time. The night passes without an attack.",
     afk_witch: "⏰ The witch does not wake up... The night continues.",

@@ -107,6 +107,9 @@ module.exports = {
         return;
       }
 
+      // Cancel the AFK tiebreak timer — captain resolved manually
+      gameManager.clearCaptainTiebreakTimeout(game);
+
       const villageChannel = game.villageChannelId
         ? await interaction.guild.channels.fetch(game.villageChannelId)
         : await interaction.guild.channels.fetch(game.mainChannelId);
