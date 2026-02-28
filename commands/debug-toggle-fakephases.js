@@ -18,10 +18,15 @@ module.exports = {
       await interaction.reply({ content: t('error.no_game'), flags: MessageFlags.Ephemeral });
       return;
     }
-    game.skipFakePhases = !game.skipFakePhases;
-    const status = game.skipFakePhases
-      ? '⏭️ Phases des bots/fake joueurs: **désactivées** (skip automatique)'
-      : '▶️ Phases des bots/fake joueurs: **activées** (jouées normalement)';
+    // Default is undefined (=skip fake phases). Toggle between false (play all) and true/undefined (skip)
+    if (game.skipFakePhases === false) {
+      game.skipFakePhases = true;
+    } else {
+      game.skipFakePhases = false;
+    }
+    const status = game.skipFakePhases === false
+      ? '▶️ Phases des bots/fake joueurs: **activées** (jouées normalement avec AFK timeout)'
+      : '⏭️ Phases des bots/fake joueurs: **désactivées** (skip automatique)';
     await interaction.reply({ content: status });
   }
 };

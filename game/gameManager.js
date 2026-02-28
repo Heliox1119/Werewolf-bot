@@ -1505,8 +1505,8 @@ class GameManager extends EventEmitter {
       return;
     }
 
-    const useReal = game.skipFakePhases;
-    const hasRole = useReal ? this.hasAliveRealRole.bind(this) : this.hasAliveAnyRole.bind(this);
+    const useReal = game.skipFakePhases !== false; // default true: skip fake player phases
+    const hasRole = (g, r) => useReal ? this.hasAliveRealRole(g, r) : this.hasAliveAnyRole(g, r);
 
     const outcome = await this.runAtomic(game.mainChannelId, (state) => {
       const result = { announce: null, notifyRole: null, timer: null, stopListenRelay: false };
@@ -2775,13 +2775,15 @@ class GameManager extends EventEmitter {
       let computedSubPhase = state.subPhase;
 
       if (computedPhase === PHASES.NIGHT) {
+        const useReal = state.skipFakePhases !== false;
+        const checkRole = (g, r) => useReal ? this.hasAliveRealRole(g, r) : this.hasAliveAnyRole(g, r);
         const isFirstNight = computedDayCount === 0;
-        const cupidAlive = this.hasAliveRealRole(state, ROLES.CUPID);
+        const cupidAlive = checkRole(state, ROLES.CUPID);
         const cupidNotUsed = !state.lovers || state.lovers.length === 0;
         if (isFirstNight && cupidAlive && cupidNotUsed) {
           computedSubPhase = PHASES.CUPIDON;
         } else {
-          const salvateurAlive = this.hasAliveRealRole(state, ROLES.SALVATEUR);
+          const salvateurAlive = checkRole(state, ROLES.SALVATEUR);
           computedSubPhase = (salvateurAlive && !state.villageRolesPowerless) ? PHASES.SALVATEUR : PHASES.LOUPS;
         }
       } else {
