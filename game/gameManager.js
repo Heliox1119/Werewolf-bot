@@ -1107,8 +1107,21 @@ class GameManager extends EventEmitter {
       if (victoryResult) {
         await this.announceVictoryIfAny(guild, game);
       } else {
-        // Avancer vers VOTE_CAPITAINE ou DELIBERATION
-        await this.advanceSubPhase(guild, game);
+        // Inline REVEIL→day subphase (cannot call advanceSubPhase here: it uses
+        // runAtomic which would deadlock on the mutex we already hold)
+        const isFirstDay = (game.dayCount || 0) === 1;
+        const captain = game.captainId ? game.players.find(p => p.id === game.captainId) : null;
+        const captainDead = !captain || !captain.alive;
+        if ((isFirstDay && !game.captainId) || captainDead) {
+          game.captainId = null;
+          this._setSubPhase(game, PHASES.VOTE_CAPITAINE, { allowOutsideAtomic: true });
+          await this.announcePhase(guild, game, t('phase.captain_vote_announce'));
+          this.startCaptainVoteTimeout(guild, game);
+        } else {
+          this._setSubPhase(game, PHASES.DELIBERATION, { allowOutsideAtomic: true });
+          await this.announcePhase(guild, game, t('phase.deliberation_announce'));
+          this.startDayTimeout(guild, game, 'deliberation');
+        }
       }
 
       this.syncGameToDb(game.mainChannelId, { throwOnError: true });
@@ -1654,7 +1667,7 @@ class GameManager extends EventEmitter {
         await this.advanceSubPhase(guild, game);
         // REVEIL→Day chain + AFK restart are now handled inside advanceSubPhase
       } catch (e) {
-        logger.error('Night AFK timeout error', { error: e.message });
+        logger.error('Night AFK timeout error', { error: e.message, stack: e.stack });
       }
     });
   }
@@ -2721,9 +2734,9 @@ class GameManager extends EventEmitter {
         computedSubPhase = PHASES.REVEIL;
       }
 
-      this._setPhase(state, computedPhase);
+      this._setPhase(state, computedPhase, { allowOutsideAtomic: skipAtomic });
       state.dayCount = computedDayCount;
-      this._setSubPhase(state, computedSubPhase, { skipValidation: true });
+      this._setSubPhase(state, computedSubPhase, { skipValidation: true, allowOutsideAtomic: skipAtomic });
 
       state.votes.clear();
       if (state.voteVoters) state.voteVoters.clear();
