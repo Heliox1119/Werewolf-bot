@@ -75,21 +75,21 @@
         <% } %>
       </div>
       <div class="pp-hero-info">
-        <h1 class="pp-hero-name"><%= player.username || 'Joueur ' + playerId %></h1>
+        <h1 class="pp-hero-name"><% if (player.username) { %><%= player.username %><% } else { %><span data-i18n="fb.player">Joueur</span> <%= playerId %><% } %></h1>
         <div class="pp-hero-badges">
           <span class="pp-tier-badge pp-tier-<%= tierSlug %>">
             <span class="pp-tier-emoji"><%= tierEmoji %></span>
-            <span class="pp-tier-name"><%= tierName %></span>
+            <span class="pp-tier-name" data-i18n="player.tier_<%= tierSlug %>"><%= tierName %></span>
           </span>
           <% if (player.rank) { %>
-            <span class="pp-rank-badge">Rang #<%= player.rank %></span>
+            <span class="pp-rank-badge"><span data-i18n="player.rank_prefix">Rang</span> #<%= player.rank %></span>
           <% } %>
           <% if (player.achievements && player.achievements.length > 0) { %>
-            <span class="pp-ach-count-badge"><%= player.achievements.length %> succès</span>
+            <span class="pp-ach-count-badge"><%= player.achievements.length %> <span data-i18n="player.achievements_word">succès</span></span>
           <% } %>
         </div>
         <div class="pp-hero-sub">
-          <span class="pp-sub-item">Membre depuis <%= player.created_at ? new Date(player.created_at * 1000).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '—' %></span>
+          <span class="pp-sub-item"><span data-i18n="player.member_since">Membre depuis</span> <span class="pp-date" data-timestamp="<%= player.created_at || '' %>" data-date-format="month-year"><%= player.created_at ? new Date(player.created_at * 1000).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '—' %></span></span>
         </div>
       </div>
     </div>
@@ -100,28 +100,28 @@
         <div class="pp-metric-icon dm-green">🎮</div>
         <div class="pp-metric-data">
           <span class="pp-metric-val" data-target="<%= gamesPlayed %>">0</span>
-          <span class="pp-metric-label">Parties jouées</span>
+          <span class="pp-metric-label" data-i18n="player.games_played">Parties jouées</span>
         </div>
       </div>
       <div class="pp-metric" style="--i:1">
         <div class="pp-metric-icon dm-blue">🏆</div>
         <div class="pp-metric-data">
           <span class="pp-metric-val" data-target="<%= gamesWon %>">0</span>
-          <span class="pp-metric-label">Victoires</span>
+          <span class="pp-metric-label" data-i18n="player.wins">Victoires</span>
         </div>
       </div>
       <div class="pp-metric" style="--i:2">
         <div class="pp-metric-icon dm-purple">📊</div>
         <div class="pp-metric-data">
           <span class="pp-metric-val" data-target="<%= elo %>">0</span>
-          <span class="pp-metric-label">Points classement</span>
+          <span class="pp-metric-label" data-i18n="player.elo_points">Points classement</span>
         </div>
       </div>
       <div class="pp-metric" style="--i:3">
         <div class="pp-metric-icon dm-amber">⚡</div>
         <div class="pp-metric-data">
           <span class="pp-metric-val pp-metric-pct" data-target="<%= winRate %>">0</span>
-          <span class="pp-metric-label">Taux de victoire</span>
+          <span class="pp-metric-label" data-i18n="player.win_rate">Taux de victoire</span>
         </div>
       </div>
     </div>
@@ -132,16 +132,16 @@
     <div class="pp-elo-bar">
       <div class="pp-elo-fill pp-elo-fill-<%= tierSlug %>" style="width:<%= Math.min(100, Math.max(0, ((elo - 100) / 1900) * 100)) %>%"></div>
       <div class="pp-elo-markers">
-        <span class="pp-elo-mk" style="left:0%" title="Fer 100">⚙️</span>
-        <span class="pp-elo-mk" style="left:<%= ((800-100)/1900*100).toFixed(1) %>%" title="Bronze 800">🥉</span>
-        <span class="pp-elo-mk" style="left:<%= ((1000-100)/1900*100).toFixed(1) %>%" title="Argent 1000">🥈</span>
-        <span class="pp-elo-mk" style="left:<%= ((1200-100)/1900*100).toFixed(1) %>%" title="Or 1200">🥇</span>
-        <span class="pp-elo-mk" style="left:<%= ((1400-100)/1900*100).toFixed(1) %>%" title="Platine 1400">⚜️</span>
-        <span class="pp-elo-mk" style="left:<%= ((1700-100)/1900*100).toFixed(1) %>%" title="Diamant 1700">💎</span>
-        <span class="pp-elo-mk" style="left:100%" title="Alpha 2000">🐺</span>
+        <span class="pp-elo-mk" style="left:0%" title="Fer 100" data-i18n-title="player.tier_iron">⚙️</span>
+        <span class="pp-elo-mk" style="left:<%= ((800-100)/1900*100).toFixed(1) %>%" title="Bronze 800" data-i18n-title="player.tier_bronze">🥉</span>
+        <span class="pp-elo-mk" style="left:<%= ((1000-100)/1900*100).toFixed(1) %>%" title="Argent 1000" data-i18n-title="player.tier_silver">🥈</span>
+        <span class="pp-elo-mk" style="left:<%= ((1200-100)/1900*100).toFixed(1) %>%" title="Or 1200" data-i18n-title="player.tier_gold">🥇</span>
+        <span class="pp-elo-mk" style="left:<%= ((1400-100)/1900*100).toFixed(1) %>%" title="Platine 1400" data-i18n-title="player.tier_platinum">⚜️</span>
+        <span class="pp-elo-mk" style="left:<%= ((1700-100)/1900*100).toFixed(1) %>%" title="Diamant 1700" data-i18n-title="player.tier_diamond">💎</span>
+        <span class="pp-elo-mk" style="left:100%" title="Alpha 2000" data-i18n-title="player.tier_alpha">🐺</span>
       </div>
     </div>
-    <div class="pp-elo-info">Points <strong><%= elo %></strong> · Record <strong><%= eloPeak %></strong></div>
+    <div class="pp-elo-info"><span data-i18n="player.elo_pts">Points</span> <strong><%= elo %></strong> · <span data-i18n="player.elo_record">Record</span> <strong><%= eloPeak %></strong></div>
   </div>
 </section>
 
@@ -150,40 +150,40 @@
   <!-- ── Detailed Stats Panel ── -->
   <div class="pp-panel" style="--enter:0">
     <div class="pp-panel-head">
-      <div class="pp-panel-title">📈 Statistiques détaillées</div>
+      <div class="pp-panel-title" data-i18n="player.detailed_stats">📈 Statistiques détaillées</div>
     </div>
     <div class="pp-stats-list">
       <div class="pp-stat-row">
-        <span class="pp-stat-label">Record de points</span>
+        <span class="pp-stat-label" data-i18n="player.stat_peak">Record de points</span>
         <span class="pp-stat-value pp-stat-accent"><%= eloPeak %></span>
       </div>
       <div class="pp-stat-row">
-        <span class="pp-stat-label">Victoires consécutives</span>
+        <span class="pp-stat-label" data-i18n="player.stat_streak">Victoires consécutives</span>
         <span class="pp-stat-value"><%= player.current_streak || player.win_streak || 0 %></span>
       </div>
       <div class="pp-stat-row">
-        <span class="pp-stat-label">Meilleure série</span>
+        <span class="pp-stat-label" data-i18n="player.stat_best_streak">Meilleure série</span>
         <span class="pp-stat-value"><%= player.best_streak || player.best_win_streak || 0 %></span>
       </div>
       <div class="pp-stat-row">
-        <span class="pp-stat-label">Éliminé nuit 1</span>
+        <span class="pp-stat-label" data-i18n="player.stat_killed_n1">Éliminé nuit 1</span>
         <span class="pp-stat-value"><%= player.killed_night_one || 0 %></span>
       </div>
       <div class="pp-stat-row">
-        <span class="pp-stat-label">Kills totaux (Loup)</span>
+        <span class="pp-stat-label" data-i18n="player.stat_kills">Kills totaux (Loup)</span>
         <span class="pp-stat-value"><%= player.total_kills || player.wolf_kills || 0 %></span>
       </div>
       <div class="pp-stat-row">
-        <span class="pp-stat-label">Survivances</span>
+        <span class="pp-stat-label" data-i18n="player.stat_survived">Survivances</span>
         <span class="pp-stat-value"><%= player.times_survived || 0 %></span>
       </div>
       <div class="pp-stat-row">
-        <span class="pp-stat-label">Éliminations subies</span>
+        <span class="pp-stat-label" data-i18n="player.stat_deaths">Éliminations subies</span>
         <span class="pp-stat-value"><%= player.times_killed || 0 %></span>
       </div>
       <% if (player.favorite_role) { %>
       <div class="pp-stat-row">
-        <span class="pp-stat-label">Rôle favori</span>
+        <span class="pp-stat-label" data-i18n="player.stat_fav_role">Rôle favori</span>
         <span class="pp-stat-value pp-stat-accent"><%= player.favorite_role %></span>
       </div>
       <% } %>
@@ -193,20 +193,20 @@
   <!-- ── Role Distribution Panel ── -->
   <div class="pp-panel" style="--enter:1">
     <div class="pp-panel-head">
-      <div class="pp-panel-title">🎭 Répartition des rôles</div>
+      <div class="pp-panel-title" data-i18n="player.role_distribution">🎭 Répartition des rôles</div>
     </div>
     <%
-      const wolfGames    = player.times_werewolf || player.wolf_wins || 0;
-      const villageGames = player.times_villager || player.village_wins || 0;
-      const seerGames    = player.times_seer || player.seer_correct || 0;
-      const witchGames   = player.times_witch || player.witch_saves || 0;
+      const wolfGames    = player.times_werewolf ?? 0;
+      const villageGames = player.times_villager ?? 0;
+      const seerGames    = player.times_seer ?? 0;
+      const witchGames   = player.times_witch ?? 0;
       const roleMax      = Math.max(wolfGames, villageGames, seerGames, witchGames, 1);
     %>
     <div class="pp-role-bars">
       <div class="pp-role-bar-item">
         <div class="pp-role-bar-head">
           <span class="pp-role-bar-icon">🐺</span>
-          <span class="pp-role-bar-name">Loup-Garou</span>
+          <span class="pp-role-bar-name" data-i18n="player.role_werewolf">Loup-Garou</span>
           <span class="pp-role-bar-count"><%= wolfGames %></span>
         </div>
         <div class="pp-role-bar-track">
@@ -216,7 +216,7 @@
       <div class="pp-role-bar-item">
         <div class="pp-role-bar-head">
           <span class="pp-role-bar-icon">👤</span>
-          <span class="pp-role-bar-name">Villageois</span>
+          <span class="pp-role-bar-name" data-i18n="player.role_villager">Villageois</span>
           <span class="pp-role-bar-count"><%= villageGames %></span>
         </div>
         <div class="pp-role-bar-track">
@@ -226,7 +226,7 @@
       <div class="pp-role-bar-item">
         <div class="pp-role-bar-head">
           <span class="pp-role-bar-icon">🔮</span>
-          <span class="pp-role-bar-name">Voyante</span>
+          <span class="pp-role-bar-name" data-i18n="player.role_seer">Voyante</span>
           <span class="pp-role-bar-count"><%= seerGames %></span>
         </div>
         <div class="pp-role-bar-track">
@@ -236,7 +236,7 @@
       <div class="pp-role-bar-item">
         <div class="pp-role-bar-head">
           <span class="pp-role-bar-icon">🧪</span>
-          <span class="pp-role-bar-name">Sorcière</span>
+          <span class="pp-role-bar-name" data-i18n="player.role_witch">Sorcière</span>
           <span class="pp-role-bar-count"><%= witchGames %></span>
         </div>
         <div class="pp-role-bar-track">
@@ -249,12 +249,12 @@
     <div class="pp-win-compare">
       <div class="pp-win-side pp-win-wolves">
         <span class="pp-win-val"><%= player.wolf_wins || 0 %></span>
-        <span class="pp-win-lbl">🐺 Victoires Loup</span>
+        <span class="pp-win-lbl" data-i18n="player.wolf_wins">🐺 Victoires Loup</span>
       </div>
       <div class="pp-win-vs">VS</div>
       <div class="pp-win-side pp-win-village">
         <span class="pp-win-val"><%= player.village_wins || 0 %></span>
-        <span class="pp-win-lbl">🛡️ Victoires Village</span>
+        <span class="pp-win-lbl" data-i18n="player.village_wins">🛡️ Victoires Village</span>
       </div>
     </div>
   </div>
@@ -264,7 +264,7 @@
 <section class="pp-ach-section">
   <div class="pp-panel pp-panel-wide" style="--enter:2">
     <div class="pp-panel-head">
-      <div class="pp-panel-title">🏅 Succès</div>
+      <div class="pp-panel-title" data-i18n="player.achievements_title">🏅 Succès</div>
       <span class="pp-badge-count"><%= achievements.length %> / <%= Object.keys(typeof allAchievements !== 'undefined' ? allAchievements : {}).length %></span>
     </div>
 
@@ -302,10 +302,10 @@
           <% if (a.unlocked) { %><div class="pp-ach-card-glow"></div><% } %>
           <div class="pp-ach-emoji <%= a.unlocked ? '' : 'pp-ach-emoji-locked' %>"><%= a.emoji || '🏅' %><% if (!a.unlocked) { %><span class="pp-ach-lock">🔒</span><% } %></div>
           <div class="pp-ach-body">
-            <span class="pp-ach-name"><%= achNames[a.id] || a.id %></span>
-            <span class="pp-ach-desc"><%= achDescs[a.id] || '' %></span>
+            <span class="pp-ach-name" data-i18n="ach.name.<%= a.id %>"><%= achNames[a.id] || a.id %></span>
+            <span class="pp-ach-desc" data-i18n="ach.desc.<%= a.id %>"><%= achDescs[a.id] || '' %></span>
             <% if (a.unlocked) { %>
-              <span class="pp-ach-date">Débloqué le <%= a.unlocked_at ? new Date(a.unlocked_at * 1000).toLocaleDateString('fr-FR') : '' %></span>
+              <span class="pp-ach-date"><span data-i18n="player.unlocked_on">Débloqué le</span> <span class="pp-date" data-timestamp="<%= a.unlocked_at || '' %>" data-date-format="full"><%= a.unlocked_at ? new Date(a.unlocked_at * 1000).toLocaleDateString('fr-FR') : '' %></span></span>
             <% } else if (a.threshold > 1) { %>
               <div class="pp-ach-bar-wrap">
                 <div class="pp-ach-bar">
@@ -314,7 +314,7 @@
                 <span class="pp-ach-bar-text"><%= a.current %>/<%= a.threshold %></span>
               </div>
             <% } else { %>
-              <span class="pp-ach-locked-hint">🔒 Non débloqué</span>
+              <span class="pp-ach-locked-hint" data-i18n="player.locked_hint">🔒 Non débloqué</span>
             <% } %>
           </div>
         </div>

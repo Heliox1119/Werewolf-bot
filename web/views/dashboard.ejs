@@ -19,11 +19,11 @@
         <div class="dash-avatar-ring dash-avatar-ring-lg"></div>
       </div>
       <div class="dash-hero-info">
-        <h1 class="dash-hero-title">Werewolf <span>Dashboard</span></h1>
-        <p class="dash-hero-subtitle">Centre de commandement · Surveillance temps réel</p>
+        <h1 class="dash-hero-title" data-i18n-html="dash.title">Werewolf <span>Dashboard</span></h1>
+        <p class="dash-hero-subtitle" data-i18n="dash.subtitle">Centre de commandement · Surveillance temps réel</p>
         <div class="dash-hero-status">
           <span class="status-beacon"></span>
-          <span class="status-text">Système opérationnel</span>
+          <span class="status-text" data-i18n="dash.system_ok">Système opérationnel</span>
         </div>
       </div>
     </div>
@@ -32,28 +32,28 @@
         <div class="dash-metric-icon dm-green">🎮</div>
         <div class="dash-metric-data">
           <span class="dash-metric-val counter" data-target="<%= activeGames %>" id="active-games">0</span>
-          <span class="dash-metric-label">Parties actives</span>
+          <span class="dash-metric-label" data-i18n="dash.active_games">Parties actives</span>
         </div>
       </div>
       <div class="dash-metric" style="--i:1">
         <div class="dash-metric-icon dm-blue">👥</div>
         <div class="dash-metric-data">
           <span class="dash-metric-val counter" data-target="<%= activePlayers %>" id="active-players">0</span>
-          <span class="dash-metric-label">Joueurs en jeu</span>
+          <span class="dash-metric-label" data-i18n="dash.active_players">Joueurs en jeu</span>
         </div>
       </div>
       <div class="dash-metric" style="--i:2">
         <div class="dash-metric-icon dm-purple">🏰</div>
         <div class="dash-metric-data">
           <span class="dash-metric-val counter" data-target="<%= guilds %>">0</span>
-          <span class="dash-metric-label">Serveurs</span>
+          <span class="dash-metric-label" data-i18n="dash.servers">Serveurs</span>
         </div>
       </div>
       <div class="dash-metric" style="--i:3">
         <div class="dash-metric-icon dm-amber">📊</div>
         <div class="dash-metric-data">
           <span class="dash-metric-val counter" data-target="<%= stats.total_games || 0 %>">0</span>
-          <span class="dash-metric-label">Total parties</span>
+          <span class="dash-metric-label" data-i18n="dash.total_games">Total parties</span>
         </div>
       </div>
     </div>
@@ -66,7 +66,7 @@
     <!-- Live Games Panel -->
     <div class="dash-panel" style="--enter:0">
       <div class="dash-panel-head">
-        <div class="dash-panel-title"><span class="pulse-dot"></span> Parties en direct</div>
+        <div class="dash-panel-title"><span class="pulse-dot"></span> <span data-i18n="dash.live_games">Parties en direct</span></div>
         <span class="badge-count"><%= games.length %></span>
       </div>
       <div class="games-grid" id="games-grid">
@@ -76,8 +76,8 @@
               <span class="empty-icon-lg">🌙</span>
               <div class="empty-glow-ring"></div>
             </div>
-            <p class="empty-title">Le village dort paisiblement</p>
-            <p class="empty-sub text-muted">Les parties apparaîtront ici en temps réel</p>
+            <p class="empty-title" data-i18n="dash.no_games">Le village dort paisiblement</p>
+            <p class="empty-sub text-muted" data-i18n="dash.no_games_hint">Les parties apparaîtront ici en temps réel</p>
           </div>
         <% } else { %>
           <% games.forEach(function(g) {
@@ -88,24 +88,24 @@
           %>
             <a href="/game/<%= g.gameId %>" class="game-card" data-game="<%= g.gameId %>">
               <div class="game-card-header">
-                <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>"><%= g.phase || 'Lobby' %></span>
-                <span class="game-day"><%= g.dayCount ? 'Jour ' + g.dayCount : '' %></span>
+                <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>" data-i18n="phase.<%= g.phase || 'Lobby' %>"><%= g.phase || 'Lobby' %></span>
+                <span class="game-day"><% if (g.dayCount) { %><span data-i18n="goverview.day_prefix">Jour</span> <%= g.dayCount %><% } %></span>
               </div>
               <div class="game-card-body">
                 <div class="game-guild"><%= g.guildName || g.guildId %></div>
                 <div class="game-players">
-                  <span class="alive-count">❤️ <%= alive %> vivants</span>
-                  <span class="dead-count">☠️ <%= dead %> morts</span>
+                  <span class="alive-count">❤️ <%= alive %> <span data-i18n="dash.alive_count">vivants</span></span>
+                  <span class="dead-count">☠️ <%= dead %> <span data-i18n="dash.dead_count">morts</span></span>
                 </div>
                 <div class="game-hp-bar">
                   <div class="game-hp-fill" style="width: <%= pct %>%"></div>
                 </div>
                 <% if (g.subPhase) { %>
-                  <div class="game-subphase-tag"><%= g.subPhase %></div>
+                  <div class="game-subphase-tag" data-i18n="subphase.<%= g.subPhase %>"><%= g.subPhase %></div>
                 <% } %>
               </div>
               <div class="game-card-footer">
-                <span class="spectate-btn">👁️ Regarder en direct</span>
+                <span class="spectate-btn" data-i18n="dash.watch_live">👁️ Regarder en direct</span>
               </div>
             </a>
           <% }); %>
@@ -116,7 +116,7 @@
     <!-- Card Deck Draw — Wide layout -->
     <div class="dash-panel deck-panel deck-panel-wide" style="--enter:1">
       <div class="dash-panel-head">
-        <div class="dash-panel-title">🃏 Piocher un rôle</div>
+        <div class="dash-panel-title" data-i18n="dash.draw_role">🃏 Piocher un rôle</div>
       </div>
       <div class="deck-wide-layout">
         <div class="deck-wide-left">
@@ -142,13 +142,13 @@
             </div>
           </div>
           <button class="btn btn-draw" id="btn-draw" type="button">
-            <span class="draw-icon">🎴</span> Piocher une carte
+            <span class="draw-icon">🎴</span> <span data-i18n="dash.draw_card">Piocher une carte</span>
           </button>
         </div>
         <div class="deck-wide-right" id="drawn-role-info">
           <div class="drawn-role-placeholder" id="drawn-role-placeholder">
             <span class="drawn-role-placeholder-icon">🎴</span>
-            <span class="drawn-role-placeholder-text">Piochez une carte pour découvrir un rôle</span>
+            <span class="drawn-role-placeholder-text" data-i18n="dash.draw_hint">Piochez une carte pour découvrir un rôle</span>
           </div>
           <div class="drawn-role-detail" id="drawn-role-detail">
             <span class="drawn-role-name" id="drawn-role-name"></span>
@@ -163,13 +163,41 @@
 
   <!-- Sidebar -->
   <aside class="dashboard-sidebar">
-    <!-- Global Leaderboard -->
+    <!-- Quick Links -->
     <div class="sidebar-panel" style="--enter:2">
-      <h3 class="panel-title">🏆 Classement global</h3>
+      <h3 class="panel-title" data-i18n="dash.quick_access">⚡ Accès rapide</h3>
+      <div class="quick-links">
+        <a href="/roles" class="quick-link quick-link-featured">
+          <div class="ql-featured-glow"></div>
+          <div class="ql-featured-particles">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <span class="quick-link-icon ql-featured-icon">🐺</span>
+          <div class="quick-link-body">
+            <span class="quick-link-title" data-i18n="dash.link_roles">Rôles</span>
+            <span class="ql-featured-badge" data-i18n="dash.link_roles_badge">✨ Nouveau créateur de rôles</span>
+            <span class="quick-link-desc" data-i18n="dash.link_roles_desc">Encyclopédie & créateur personnalisé</span>
+          </div>
+          <span class="quick-link-arrow">›</span>
+        </a>
+        <a href="https://github.com/Heliox1119/Werewolf-bot" target="_blank" class="quick-link">
+          <span class="quick-link-icon">💻</span>
+          <div class="quick-link-body">
+            <span class="quick-link-title">GitHub</span>
+            <span class="quick-link-desc" data-i18n="dash.link_github_desc">Code source du bot</span>
+          </div>
+          <span class="quick-link-arrow">›</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Global Leaderboard -->
+    <div class="sidebar-panel" style="--enter:3">
+      <h3 class="panel-title" data-i18n="dash.leaderboard">🏆 Classement global</h3>
       <% if (globalLeaderboard.length === 0) { %>
         <div class="db-lb-empty text-muted">
           <span class="db-lb-empty-icon">🏆</span>
-          <p>Aucun joueur classé</p>
+          <p data-i18n="dash.no_ranked">Aucun joueur classé</p>
         </div>
       <% } else { %>
         <div class="db-lb-list">
@@ -178,11 +206,11 @@
               <div class="db-lb-rank rank-<%= p.rank %>">#<%= p.rank %></div>
               <div class="db-lb-info">
                 <span class="db-lb-name"><%= p.username || p.player_id %></span>
-                <span class="db-lb-tier tier tier-<%= (p.tier || {}).id || 'bronze' %>"><%= (p.tier || {}).emoji || '' %> <%= (p.tier || {}).name || 'Bronze' %></span>
+                <span class="db-lb-tier tier tier-<%= (p.tier || {}).id || 'bronze' %>"><%= (p.tier || {}).emoji || '' %><% if ((p.tier || {}).id) { %> <span data-i18n="tier.<%= (p.tier).id %>"><%= (p.tier || {}).name %></span><% } else { %> <span data-i18n="fb.tier_default">Bronze</span><% } %></span>
               </div>
               <div class="db-lb-pts">
                 <span class="db-lb-pts-val"><%= p.elo_rating || 1000 %></span>
-                <span class="db-lb-pts-label">pts</span>
+                <span class="db-lb-pts-label" data-i18n="gleader.pts">pts</span>
               </div>
             </a>
           <% }); %>
@@ -191,12 +219,12 @@
     </div>
 
     <!-- Recent Completed Games -->
-    <div class="sidebar-panel" style="--enter:3">
-      <h3 class="panel-title">📜 Dernières parties</h3>
+    <div class="sidebar-panel" style="--enter:4">
+      <h3 class="panel-title" data-i18n="dash.recent_games">📜 Dernières parties</h3>
       <% if (recentHistory.length === 0) { %>
         <div class="db-rh-empty text-muted">
           <span class="db-rh-empty-icon">📜</span>
-          <p>Aucune partie terminée</p>
+          <p data-i18n="dash.no_history">Aucune partie terminée</p>
         </div>
       <% } else { %>
         <div class="db-rh-list">
@@ -214,15 +242,15 @@
                 <% } %>
               </div>
               <div class="db-rh-info">
-                <span class="db-rh-guild"><%= h.guild_name || 'Serveur inconnu' %></span>
+                <span class="db-rh-guild"<% if (!h.guild_name) { %> data-i18n="fb.unknown_server"<% } %>><%= h.guild_name || 'Serveur inconnu' %></span>
                 <span class="db-rh-meta">
                   👥 <%= h.player_count || '?' %>
-                  · 📅 <%= h.day_count || 0 %>j
-                  <% if (h.duration_seconds) { %>· ⏱️ <%= Math.floor(h.duration_seconds / 60) %>min<% } %>
+                  · 📅 <%= h.day_count || 0 %><span data-i18n="goverview.day_suffix">j</span>
+                  <% if (h.duration_seconds) { %>· ⏱️ <%= Math.floor(h.duration_seconds / 60) %><span data-i18n="goverview.min_suffix">min</span><% } %>
                 </span>
               </div>
               <div class="db-rh-date">
-                <%= h.ended_at ? new Date(h.ended_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '' %>
+                <span class="pp-date" data-timestamp-ms="<%= h.ended_at ? new Date(h.ended_at).getTime() : '' %>" data-date-format="day-month"><%= h.ended_at ? new Date(h.ended_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '' %></span>
               </div>
             </div>
           <% }); %>
@@ -230,30 +258,11 @@
       <% } %>
     </div>
 
-    <!-- Quick Links -->
-    <div class="sidebar-panel" style="--enter:4">
-      <h3 class="panel-title">⚡ Accès rapide</h3>
-      <div class="quick-links">
-        <a href="/roles" class="quick-link">
-          <span class="quick-link-icon">🐺</span>
-          <div class="quick-link-body">
-            <span class="quick-link-title">Rôles</span>
-            <span class="quick-link-desc">Découvrir tous les rôles du jeu</span>
-          </div>
-          <span class="quick-link-arrow">›</span>
-        </a>
-        <a href="https://github.com/Heliox1119/Werewolf-bot" target="_blank" class="quick-link">
-          <span class="quick-link-icon">💻</span>
-          <div class="quick-link-body">
-            <span class="quick-link-title">GitHub</span>
-            <span class="quick-link-desc">Code source du bot</span>
-          </div>
-          <span class="quick-link-arrow">›</span>
-        </a>
-      </div>
-    </div>
   </aside>
 </div>
 
+<script>
+  window.__ROLE_DATA__ = <%- JSON.stringify(roleData) %>;
+</script>
 <script src="/static/js/dashboard.js"></script>
 <%- include('partials/footer') %>

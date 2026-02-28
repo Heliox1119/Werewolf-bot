@@ -23,11 +23,11 @@
         <p class="gh-hero-subtitle" data-i18n="ghistory.subtitle">Historique &middot; Parties &amp; Résultats</p>
         <div class="gh-hero-tags">
           <div class="gh-hero-tag gh-tag-games">
-            <span>📜</span> <%= history.length %> parties
+            <span>📜</span> <%= history.length %> <span data-i18n="ghistory.tag_games">parties</span>
           </div>
           <% if (guild && guild.memberCount) { %>
             <div class="gh-hero-tag gh-tag-members">
-              <span>👥</span> <%= guild.memberCount %> membres
+              <span>👥</span> <%= guild.memberCount %> <span data-i18n="goverview.members">membres</span>
             </div>
           <% } %>
         </div>
@@ -104,7 +104,7 @@
   <section class="gh-table-panel" style="animation: panelEnter 0.5s ease-out both; animation-delay: 0.25s;">
     <div class="gh-table-header">
       <h2 class="gh-table-title">📋 <span data-i18n="ghistory.recent_games">Parties récentes</span></h2>
-      <span class="gh-table-count"><%= totalGames %> parties</span>
+      <span class="gh-table-count"><%= totalGames %> <span data-i18n="ghistory.games_count">parties</span></span>
     </div>
     <div class="gh-table-wrap">
       <table class="gh-table">
@@ -128,14 +128,14 @@
             var secs = dur % 60;
             var players = [];
             try { players = JSON.parse(h.players_json || '[]'); } catch(e) {}
-            var winnerLabel = h.winner === 'village' ? '🏡 Village' : h.winner === 'wolves' ? '🐺 Loups-Garous' : h.winner === 'lovers' ? '💕 Amoureux' : (h.winner || '?');
+            var winnerLabel = h.winner === 'village' ? '🏡 <span data-i18n="goverview.legend_village">Village</span>' : h.winner === 'wolves' ? '🐺 <span data-i18n="goverview.legend_wolves">Loups-Garous</span>' : h.winner === 'lovers' ? '💕 <span data-i18n="goverview.legend_lovers">Amoureux</span>' : (h.winner || '?');
             var winnerClass = h.winner === 'village' ? 'gh-w-village' : h.winner === 'wolves' ? 'gh-w-wolves' : h.winner === 'lovers' ? 'gh-w-lovers' : '';
           %>
             <tr class="gh-row" style="animation-delay:<%= 0.3 + i * 0.03 %>s">
               <td class="gh-cell-date">
                 <% if (h.ended_at) { %>
-                  <span class="gh-date-main"><%= new Date(h.ended_at).toLocaleDateString() %></span>
-                  <span class="gh-date-time"><%= new Date(h.ended_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) %></span>
+                  <span class="gh-date-main pp-date" data-timestamp-ms="<%= new Date(h.ended_at).getTime() %>" data-date-format="full"><%= new Date(h.ended_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) %></span>
+                  <span class="gh-date-time pp-date" data-timestamp-ms="<%= new Date(h.ended_at).getTime() %>" data-date-format="time"><%= new Date(h.ended_at).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}) %></span>
                 <% } else { %>
                   —
                 <% } %>
@@ -151,8 +151,8 @@
               </td>
               <% if (accessLevel === 'owner') { %>
                 <td class="gh-cell-actions">
-                  <button class="gh-delete-btn" data-game-id="<%= h.id %>" title="Supprimer cette partie">
-                    🗑️ <span>Suppr.</span>
+                  <button class="gh-delete-btn" data-game-id="<%= h.id %>" title="Supprimer cette partie" data-i18n-title="ghistory.delete_game">
+                    🗑️ <span data-i18n="ghistory.btn_delete">Suppr.</span>
                   </button>
                 </td>
               <% } %>
@@ -166,7 +166,7 @@
                       <div class="gh-player <%= p.alive ? 'gh-survived' : 'gh-died' %>">
                         <span class="gh-player-status"><%- p.alive ? '❤️' : '☠️' %></span>
                         <span class="gh-player-name"><%= p.username || p.id %></span>
-                        <span class="gh-player-role"><%= p.role || '?' %></span>
+                        <span class="gh-player-role"<% if (p.role) { %> data-i18n="role.<%= p.role %>"<% } %>><%= p.role || '?' %></span>
                       </div>
                     <% }); %>
                   </div>
@@ -198,7 +198,7 @@ document.querySelectorAll('.gh-detail-btn').forEach(function(btn) {
 document.querySelectorAll('.gh-delete-btn').forEach(function(btn) {
   btn.addEventListener('click', function() {
     var id = this.getAttribute('data-game-id');
-    if (!confirm('Supprimer définitivement cette partie de l\'historique ?')) return;
+    if (!confirm(webI18n.t('gh.confirm_delete'))) return;
     var row = this.closest('tr');
     var detailRow = row.nextElementSibling;
     fetch('/api/history/' + id, { method: 'DELETE', credentials: 'same-origin' })
@@ -211,10 +211,10 @@ document.querySelectorAll('.gh-delete-btn').forEach(function(btn) {
           row.style.transform = 'translateX(20px)';
           setTimeout(function() { row.remove(); }, 300);
         } else {
-          alert('Erreur : ' + (data.error || 'Échec de la suppression'));
+          alert(webI18n.t('gh.alert_error') + ' ' + (data.error || webI18n.t('gh.delete_failed')));
         }
       })
-      .catch(function() { alert('Erreur réseau'); });
+      .catch(function() { alert(webI18n.t('gh.network_error')); });
   });
 });
 </script>

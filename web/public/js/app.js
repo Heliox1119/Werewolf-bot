@@ -4,6 +4,7 @@
  */
 (function() {
   'use strict';
+  const t = (k) => (window.webI18n ? window.webI18n.t(k) : k);
 
   let socket = null;
 
@@ -42,10 +43,10 @@
     if (!el) return;
     if (connected) {
       el.className = 'ws-indicator ws-connected';
-      el.innerHTML = '<span class="ws-dot"></span> Connected';
+      el.innerHTML = '<span class="ws-dot"></span> ' + t('ws.connected');
     } else {
       el.className = 'ws-indicator ws-disconnected';
-      el.innerHTML = '<span class="ws-dot"></span> Disconnected';
+      el.innerHTML = '<span class="ws-dot"></span> ' + t('ws.disconnected');
     }
   }
 
@@ -80,31 +81,23 @@
         userBtn.classList.remove('open');
       }
     });
-    // Language switch inside dropdown
-    const langBtn = document.getElementById('user-menu-lang');
-    if (langBtn) {
-      langBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        // Toggle language (uses webI18n functions)
-        if (typeof getLang === 'function' && typeof setLang === 'function') {
-          const current = getLang();
-          const next = current === 'fr' ? 'en' : 'fr';
-          setLang(next);
-        }
-        // Close dropdown after switching
-        userMenu.classList.remove('open');
-        userBtn.classList.remove('open');
-      });
-    }
   }
 
   // Sidebar settings gear popup
   const settingsBtn = document.getElementById('sidebar-settings-btn');
   const settingsPopup = document.getElementById('sidebar-settings-popup');
   if (settingsBtn && settingsPopup) {
+    // Move popup to body so it escapes overflow/backdrop-filter clipping
+    document.body.appendChild(settingsPopup);
+
     settingsBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      settingsPopup.classList.toggle('open');
+      const isOpen = settingsPopup.classList.toggle('open');
+      if (isOpen) {
+        const rect = settingsBtn.getBoundingClientRect();
+        settingsPopup.style.top = (rect.bottom + 6) + 'px';
+        settingsPopup.style.left = rect.left + 'px';
+      }
     });
     document.addEventListener('click', (e) => {
       if (!settingsBtn.contains(e.target) && !settingsPopup.contains(e.target)) {
@@ -262,6 +255,9 @@
           oldGuildPanel.outerHTML = newGuildPanel.outerHTML;
         }
 
+        // Hide i18n elements until translations are re-applied (prevent French flash)
+        document.documentElement.removeAttribute('data-i18n-ready');
+
         // Swap app-main content and class
         appMain.className = newAppMain.className;
         appMain.innerHTML = newAppMain.innerHTML;
@@ -296,10 +292,11 @@
           document.body.appendChild(ns);
         });
 
-        // Re-apply i18n translations
+        // Re-apply i18n translations synchronously, then reveal
         if (typeof applyTranslations === 'function') {
-          setTimeout(() => applyTranslations(), 10);
+          applyTranslations();
         }
+        document.documentElement.setAttribute('data-i18n-ready', '');
 
         // Re-sync WS status indicator on new footer element
         updateWsStatus(socket && socket.connected);
@@ -349,16 +346,16 @@
   // Utilities
   window.werewolfUtils = {
     formatNumber(n) {
-      if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-      if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+      if (n >= 1000000) return (n / 1000000).toFixed(1) + t('unit.million');
+      if (n >= 1000) return (n / 1000).toFixed(1) + t('unit.thousand');
       return n.toString();
     },
     timeAgo(date) {
       const seconds = Math.floor((Date.now() - new Date(date)) / 1000);
-      if (seconds < 60) return 'just now';
-      if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
-      if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
-      return Math.floor(seconds / 86400) + 'd ago';
+      if (seconds < 60) return t('time.just_now');
+      if (seconds < 3600) return Math.floor(seconds / 60) + t('time.m_ago');
+      if (seconds < 86400) return Math.floor(seconds / 3600) + t('time.h_ago');
+      return Math.floor(seconds / 86400) + t('time.d_ago');
     }
   };
 })();

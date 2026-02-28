@@ -5,7 +5,7 @@
 
 Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion vocale automatique, audio d'ambiance et lobby interactif.
 
-![Version](https://img.shields.io/badge/version-3.4.1-blue)
+![Version](https://img.shields.io/badge/version-3.5.0-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
@@ -381,11 +381,14 @@ npm run clear-commands      # Réinitialiser les commandes Discord
 
 | Version | Highlights |
 |---------|-----------|
+| **v3.5.0** | 🌐 Réécriture moteur i18n (traductions JSON externes), sessions persistantes (store SQLite + secret auto-généré), 456 tests |
+| **v3.4.1** | 🎨 Refonte visuelle : système de lueur ambiante global, redesign page joueur, UX spectateur, deck de cartes invitation, panneaux dashboard |
 | **v3.4.0** | 🎨 Refonte complète de l'interface web (navigation PJAX, dashboard centre de commandes, vue serveur, classement podium, wiki docs, page d'invitation landing), `/setup wizard` interactif, garde `/create`, fix nettoyage channels multi-guild, réconciliation de guildes, 268 tests |
 | **v3.3.0** | 🚀 Renforcement production : matrice de crash/restart, tests d'isolation WebSocket anti-abus, observabilité GameMutex, verrou anti split-brain au démarrage, détection de liveness STUCK (`stuck_games_count`) |
 | **v3.2.0** | 🛡️ Renforcement 6 axes : GameMutex, transitions FSM, sync transactionnelle, dirty flag, 7 nouvelles colonnes DB, isRecentDuplicate sur 12 commandes, express-rate-limit, CORS, WS guild-scoped, Prometheus /metrics, /health, 223 tests |
-| **v3.1.0** | 🛡️ Audit architecture 15 points, élimination XSS, rate limiting & debounce WebSocket, isolation multi-tenant, fixes critiques FSM, archivage parties, 200 tests || **v3.0.0** | 🌐 Tableau de bord web (Express + EJS), Spectateur live (Socket.IO), API REST (15 endpoints), Discord OAuth2, Rôles personnalisés, Architecture EventEmitter || **v2.9.0** | 🏆 Succès (18), classement ELO (7 paliers), révélation rôle à la mort, notification DM de tour, `/leaderboard`, `/history`, timeline post-game, 4 bug fixes |
-| **v3.4.1** | 🎨 Refonte visuelle : système de lueur ambiante global, redesign page joueur, UX spectateur, deck de cartes invitation, panneaux dashboard |
+| **v3.1.0** | 🛡️ Audit architecture 15 points, élimination XSS, rate limiting & debounce WebSocket, isolation multi-tenant, fixes critiques FSM, archivage parties, 200 tests |
+| **v3.0.0** | 🌐 Tableau de bord web (Express + EJS), Spectateur live (Socket.IO), API REST (15 endpoints), Discord OAuth2, Rôles personnalisés, Architecture EventEmitter |
+| **v2.9.0** | 🏆 Succès (18), classement ELO (7 paliers), révélation rôle à la mort, notification DM de tour, `/leaderboard`, `/history`, timeline post-game, 4 bug fixes |
 | **v2.8.0** | 🐳 Docker, backup SQLite auto (horaire), multi-guild (langue & config par serveur), système de revanche |
 | **v2.7.0** | Petite Fille relay temps réel en DM, indices ambigus intelligents, normalisation Unicode/zalgo, wolfwin serveur-wide, commandes guild-only |
 | **v2.6.0** | Équilibrage phases, vote capitaine auto, fix potion sorcière, victoire loups configurable, ping loups |
@@ -426,4 +429,4 @@ Détails complets : [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-**Version** : 3.4.1 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **Docker** : ready · **License** : ISC
+**Version** : 3.5.0 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **Docker** : ready · **License** : ISC

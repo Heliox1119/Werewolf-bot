@@ -5,6 +5,12 @@
 
 <!-- ═══ HERO — CINEMATIC CROWN ═══ -->
 <section class="pm-hero">
+  <!-- ═══ "EN PRÉPARATION" BADGE ═══ -->
+  <div class="pm-wip-banner">
+    <span class="pm-wip-icon">🔧</span>
+    <span class="pm-wip-text" data-i18n="premium.wip_badge">Premium is currently in preparation — stay tuned!</span>
+  </div>
+
   <div class="pm-hero-bg">
     <div class="pm-hero-gradient"></div>
     <div class="pm-hero-rays"></div>
@@ -21,7 +27,7 @@
     <p class="pm-hero-sub" data-i18n="premium.hero_sub">Elevate your Werewolf experience to legendary status</p>
     <div class="pm-hero-stats">
       <div class="pm-stat">
-        <span class="pm-stat-val" data-count="7">0</span>
+        <span class="pm-stat-val" data-count="6">0</span>
         <span class="pm-stat-label" data-i18n="premium.stat_roles">Exclusive Roles</span>
       </div>
       <div class="pm-stat-divider"></div>
@@ -60,14 +66,14 @@
         <span class="pm-col-name" data-i18n="premium.plan_free">Free</span>
       </div>
       <ul class="pm-compare-list">
-        <li class="pm-check">4 base roles</li>
-        <li class="pm-check">Basic game mechanics</li>
-        <li class="pm-check">Text channels</li>
-        <li class="pm-cross">No custom themes</li>
-        <li class="pm-cross">No sound effects</li>
-        <li class="pm-cross">Limited stats</li>
-        <li class="pm-cross">Community support</li>
-        <li class="pm-cross">No custom roles</li>
+        <li class="pm-check" data-i18n="premium.free_1">4 base roles</li>
+        <li class="pm-check" data-i18n="premium.free_2">Basic game mechanics</li>
+        <li class="pm-check" data-i18n="premium.free_3">Text channels</li>
+        <li class="pm-cross" data-i18n="premium.free_4">No custom themes</li>
+        <li class="pm-cross" data-i18n="premium.free_5">No sound effects</li>
+        <li class="pm-cross" data-i18n="premium.free_6">Limited stats</li>
+        <li class="pm-cross" data-i18n="premium.free_7">Community support</li>
+        <li class="pm-cross" data-i18n="premium.free_8">No custom roles</li>
       </ul>
     </div>
     <!-- Premium column -->
@@ -78,14 +84,14 @@
         <span class="pm-col-name" data-i18n="premium.plan_premium">Premium</span>
       </div>
       <ul class="pm-compare-list">
-        <li class="pm-check pm-gold">11+ roles including exclusives</li>
-        <li class="pm-check pm-gold">Advanced game mechanics</li>
-        <li class="pm-check pm-gold">Voice + text channels</li>
-        <li class="pm-check pm-gold">15 custom themes</li>
-        <li class="pm-check pm-gold">50+ sound effects</li>
-        <li class="pm-check pm-gold">Advanced analytics</li>
-        <li class="pm-check pm-gold">Priority support 24/7</li>
-        <li class="pm-check pm-gold">Create your own roles</li>
+        <li class="pm-check pm-gold" data-i18n="premium.pro_1">10+ roles including exclusives</li>
+        <li class="pm-check pm-gold" data-i18n="premium.pro_2">Advanced game mechanics</li>
+        <li class="pm-check pm-gold" data-i18n="premium.pro_3">Voice + text channels</li>
+        <li class="pm-check pm-gold" data-i18n="premium.pro_4">15 custom themes</li>
+        <li class="pm-check pm-gold" data-i18n="premium.pro_5">50+ sound effects</li>
+        <li class="pm-check pm-gold" data-i18n="premium.pro_6">Advanced analytics</li>
+        <li class="pm-check pm-gold" data-i18n="premium.pro_7">Priority support 24/7</li>
+        <li class="pm-check pm-gold" data-i18n="premium.pro_8">Create your own roles</li>
       </ul>
     </div>
   </div>
@@ -99,7 +105,7 @@
     <div class="pm-feat" style="--fi:0">
       <div class="pm-feat-icon-wrap"><span class="pm-feat-icon">🐺</span><div class="pm-feat-glow"></div></div>
       <h3 data-i18n="premium.feature_roles">Exclusive Roles</h3>
-      <p data-i18n="premium.feat_roles_desc">Unlock 7 premium roles: White Wolf, Fox, Cupid, Savior, Elder, Village Idiot, and Thief.</p>
+      <p data-i18n="premium.feat_roles_desc">Unlock 6 premium roles: White Wolf, Cupid, Savior, Elder, Village Idiot, and Thief.</p>
     </div>
     <div class="pm-feat" style="--fi:1">
       <div class="pm-feat-icon-wrap"><span class="pm-feat-icon">🎨</span><div class="pm-feat-glow"></div></div>
@@ -146,58 +152,51 @@
   <div class="pm-roles-track" id="pm-roles-track">
     <div class="pm-role-card" data-role="loupBlanc">
       <div class="pm-role-holo"></div>
-      <img src="/static/img/roles/loupBlanc.webp" alt="Loup Blanc" class="pm-role-img">
+      <img src="/static/img/roles/loupBlanc.webp" alt="Loup Blanc" class="pm-role-img" data-i18n-alt="premium.role_loup_blanc">
       <div class="pm-role-info">
-        <span class="pm-role-name">Loup Blanc</span>
-        <span class="pm-role-camp pm-camp-wolf">🐺 Loups-Garous</span>
+        <span class="pm-role-name" data-i18n="premium.role_loup_blanc">Loup Blanc</span>
+        <span class="pm-role-camp pm-camp-wolf" data-i18n="premium.camp_wolves">🐺 Loups-Garous</span>
       </div>
     </div>
-    <div class="pm-role-card" data-role="renard">
-      <div class="pm-role-holo"></div>
-      <img src="/static/img/roles/renard.webp" alt="Renard" class="pm-role-img">
-      <div class="pm-role-info">
-        <span class="pm-role-name">Renard</span>
-        <span class="pm-role-camp pm-camp-village">🏘️ Village</span>
-      </div>
-    </div>
+
     <div class="pm-role-card" data-role="cupidon">
       <div class="pm-role-holo"></div>
-      <img src="/static/img/roles/cupidon.webp" alt="Cupidon" class="pm-role-img">
+      <img src="/static/img/roles/cupidon.webp" alt="Cupidon" class="pm-role-img" data-i18n-alt="premium.role_cupidon">
       <div class="pm-role-info">
-        <span class="pm-role-name">Cupidon</span>
-        <span class="pm-role-camp pm-camp-village">🏘️ Village</span>
+        <span class="pm-role-name" data-i18n="premium.role_cupidon">Cupidon</span>
+        <span class="pm-role-camp pm-camp-village" data-i18n="premium.camp_village">🏘️ Village</span>
       </div>
     </div>
     <div class="pm-role-card" data-role="salvateur">
       <div class="pm-role-holo"></div>
-      <img src="/static/img/roles/salvateur.webp" alt="Salvateur" class="pm-role-img">
+      <img src="/static/img/roles/salvateur.webp" alt="Salvateur" class="pm-role-img" data-i18n-alt="premium.role_salvateur">
       <div class="pm-role-info">
-        <span class="pm-role-name">Salvateur</span>
-        <span class="pm-role-camp pm-camp-village">🏘️ Village</span>
+        <span class="pm-role-name" data-i18n="premium.role_salvateur">Salvateur</span>
+        <span class="pm-role-camp pm-camp-village" data-i18n="premium.camp_village">🏘️ Village</span>
       </div>
     </div>
     <div class="pm-role-card" data-role="ancien">
       <div class="pm-role-holo"></div>
-      <img src="/static/img/roles/ancien.webp" alt="Ancien" class="pm-role-img">
+      <img src="/static/img/roles/ancien.webp" alt="Ancien" class="pm-role-img" data-i18n-alt="premium.role_ancien">
       <div class="pm-role-info">
-        <span class="pm-role-name">Ancien</span>
-        <span class="pm-role-camp pm-camp-village">🏘️ Village</span>
+        <span class="pm-role-name" data-i18n="premium.role_ancien">Ancien</span>
+        <span class="pm-role-camp pm-camp-village" data-i18n="premium.camp_village">🏘️ Village</span>
       </div>
     </div>
     <div class="pm-role-card" data-role="voleur">
       <div class="pm-role-holo"></div>
-      <img src="/static/img/roles/voleur.webp" alt="Voleur" class="pm-role-img">
+      <img src="/static/img/roles/voleur.webp" alt="Voleur" class="pm-role-img" data-i18n-alt="premium.role_voleur">
       <div class="pm-role-info">
-        <span class="pm-role-name">Voleur</span>
-        <span class="pm-role-camp pm-camp-solo">🎭 Solo</span>
+        <span class="pm-role-name" data-i18n="premium.role_voleur">Voleur</span>
+        <span class="pm-role-camp pm-camp-solo" data-i18n="premium.camp_solo">🎭 Solo</span>
       </div>
     </div>
     <div class="pm-role-card" data-role="petiteFille">
       <div class="pm-role-holo"></div>
-      <img src="/static/img/roles/petiteFille.webp" alt="Petite Fille" class="pm-role-img">
+      <img src="/static/img/roles/petiteFille.webp" alt="Petite Fille" class="pm-role-img" data-i18n-alt="premium.role_petite_fille">
       <div class="pm-role-info">
-        <span class="pm-role-name">Petite Fille</span>
-        <span class="pm-role-camp pm-camp-village">🏘️ Village</span>
+        <span class="pm-role-name" data-i18n="premium.role_petite_fille">Petite Fille</span>
+        <span class="pm-role-camp pm-camp-village" data-i18n="premium.camp_village">🏘️ Village</span>
       </div>
     </div>
   </div>
@@ -211,7 +210,7 @@
   <!-- Billing toggle -->
   <div class="pm-billing-toggle">
     <span class="pm-billing-label pm-billing-active" id="pm-bill-monthly" data-i18n="premium.monthly">Monthly</span>
-    <button class="pm-toggle-track" id="pm-billing-switch" aria-label="Toggle billing period">
+    <button class="pm-toggle-track" id="pm-billing-switch" aria-label="Toggle billing period" data-i18n-aria-label="premium.aria_toggle_billing">
       <span class="pm-toggle-thumb"></span>
     </button>
     <span class="pm-billing-label" id="pm-bill-yearly" data-i18n="premium.yearly">Yearly</span>
@@ -232,14 +231,16 @@
         <span class="pm-price-period" data-i18n="premium.per_month">/month</span>
       </div>
       <ul class="pm-plan-features">
-        <li class="pm-pf-yes">3 premium roles</li>
-        <li class="pm-pf-yes">5 themes</li>
-        <li class="pm-pf-yes">Basic sound effects</li>
-        <li class="pm-pf-yes">Premium badge</li>
-        <li class="pm-pf-no">Custom roles</li>
-        <li class="pm-pf-no">Priority support</li>
+        <li class="pm-pf-yes" data-i18n="premium.starter_1">3 premium roles</li>
+        <li class="pm-pf-yes" data-i18n="premium.starter_2">5 themes</li>
+        <li class="pm-pf-yes" data-i18n="premium.starter_3">Basic sound effects</li>
+        <li class="pm-pf-yes" data-i18n="premium.starter_4">Premium badge</li>
+        <li class="pm-pf-no" data-i18n="premium.starter_5">Custom roles</li>
+        <li class="pm-pf-no" data-i18n="premium.starter_6">Priority support</li>
       </ul>
-      <button class="pm-plan-btn" data-i18n="premium.btn_get_started">Get Started</button>
+      <!-- TODO: [STRIPE] Replace disabled button with Stripe Checkout redirect once payment is live -->
+      <button class="pm-plan-btn pm-plan-btn-locked" disabled data-i18n="premium.btn_coming_soon">Coming Soon</button>
+      <span class="pm-plan-hint" data-i18n="premium.btn_hint">Premium plans will be available after bot stabilization.</span>
     </div>
 
     <!-- Pro — FEATURED -->
@@ -257,14 +258,16 @@
         <span class="pm-price-period" data-i18n="premium.per_month">/month</span>
       </div>
       <ul class="pm-plan-features">
-        <li class="pm-pf-yes">All 7 premium roles</li>
-        <li class="pm-pf-yes">15 themes</li>
-        <li class="pm-pf-yes">50+ sound effects</li>
-        <li class="pm-pf-yes">Premium badge</li>
-        <li class="pm-pf-yes">Custom roles creator</li>
-        <li class="pm-pf-yes">Priority support 24/7</li>
+        <li class="pm-pf-yes" data-i18n="premium.plan_pro_1">All 6 premium roles</li>
+        <li class="pm-pf-yes" data-i18n="premium.plan_pro_2">15 themes</li>
+        <li class="pm-pf-yes" data-i18n="premium.plan_pro_3">50+ sound effects</li>
+        <li class="pm-pf-yes" data-i18n="premium.plan_pro_4">Premium badge</li>
+        <li class="pm-pf-yes" data-i18n="premium.plan_pro_5">Custom roles creator</li>
+        <li class="pm-pf-yes" data-i18n="premium.plan_pro_6">Priority support 24/7</li>
       </ul>
-      <button class="pm-plan-btn pm-plan-btn-gold" data-i18n="premium.btn_go_pro">Go Pro</button>
+      <!-- TODO: [STRIPE] Replace disabled button with Stripe Checkout redirect once payment is live -->
+      <button class="pm-plan-btn pm-plan-btn-gold pm-plan-btn-locked" disabled data-i18n="premium.btn_coming_soon">Coming Soon</button>
+      <span class="pm-plan-hint" data-i18n="premium.btn_hint">Premium plans will be available after bot stabilization.</span>
     </div>
 
     <!-- Lifetime -->
@@ -280,14 +283,16 @@
         <span class="pm-price-period" data-i18n="premium.one_time">one-time</span>
       </div>
       <ul class="pm-plan-features">
-        <li class="pm-pf-yes">Everything in Pro</li>
-        <li class="pm-pf-yes">Lifetime updates</li>
-        <li class="pm-pf-yes">Early access to new roles</li>
-        <li class="pm-pf-yes">Exclusive Lifetime badge</li>
-        <li class="pm-pf-yes">Scenario editor</li>
-        <li class="pm-pf-yes">Direct dev channel</li>
+        <li class="pm-pf-yes" data-i18n="premium.lifetime_1">Everything in Pro</li>
+        <li class="pm-pf-yes" data-i18n="premium.lifetime_2">Lifetime updates</li>
+        <li class="pm-pf-yes" data-i18n="premium.lifetime_3">Early access to new roles</li>
+        <li class="pm-pf-yes" data-i18n="premium.lifetime_4">Exclusive Lifetime badge</li>
+        <li class="pm-pf-yes" data-i18n="premium.lifetime_5">Scenario editor</li>
+        <li class="pm-pf-yes" data-i18n="premium.lifetime_6">Direct dev channel</li>
       </ul>
-      <button class="pm-plan-btn" data-i18n="premium.btn_lifetime">Get Lifetime</button>
+      <!-- TODO: [STRIPE] Replace disabled button with Stripe Checkout redirect once payment is live -->
+      <button class="pm-plan-btn pm-plan-btn-locked" disabled data-i18n="premium.btn_coming_soon">Coming Soon</button>
+      <span class="pm-plan-hint" data-i18n="premium.btn_hint">Premium plans will be available after bot stabilization.</span>
     </div>
   </div>
 </section>
@@ -302,7 +307,7 @@
         <div class="pm-testi-avatar">A</div>
         <div>
           <span class="pm-testi-name">Alex</span>
-          <span class="pm-testi-server">Midnight Pack — 48 games</span>
+          <span class="pm-testi-server" data-i18n="premium.testi_server_1">Midnight Pack — 48 games</span>
         </div>
       </div>
     </div>
@@ -313,7 +318,7 @@
         <div class="pm-testi-avatar">M</div>
         <div>
           <span class="pm-testi-name">Marie</span>
-          <span class="pm-testi-server">Les Loups du Nord — 125 games</span>
+          <span class="pm-testi-server" data-i18n="premium.testi_server_2">Les Loups du Nord — 125 games</span>
         </div>
       </div>
     </div>
@@ -324,7 +329,7 @@
         <div class="pm-testi-avatar">J</div>
         <div>
           <span class="pm-testi-name">Jules</span>
-          <span class="pm-testi-server">La Meute — 89 games</span>
+          <span class="pm-testi-server" data-i18n="premium.testi_server_3">La Meute — 89 games</span>
         </div>
       </div>
     </div>
@@ -348,8 +353,8 @@
       <p data-i18n="premium.faq_a3">Absolutely. Cancel anytime with no questions asked. You keep access until the end of your billing period.</p>
     </details>
     <details class="pm-faq-item">
-      <summary data-i18n="premium.faq_q4">What payment methods do you accept?</summary>
-      <p data-i18n="premium.faq_a4">We accept credit cards, PayPal, and even crypto via our payment provider.</p>
+      <summary data-i18n="premium.faq_q4">When will Premium be available?</summary>
+      <p data-i18n="premium.faq_a4">We are currently stabilizing the bot's core features. Premium plans will be activated once the experience is solid and reliable.</p>
     </details>
   </div>
 </section>
@@ -361,12 +366,12 @@
   </div>
   <div class="pm-final-inner">
     <span class="pm-final-crown">👑</span>
-    <h2 data-i18n="premium.final_title">Ready to go Premium?</h2>
-    <p data-i18n="premium.final_sub">Join thousands of servers already enjoying the ultimate Werewolf experience.</p>
-    <a href="#pm-plans" class="pm-final-btn">
-      <span class="pm-cta-shimmer"></span>
-      <span data-i18n="premium.final_btn">Unlock Premium Now</span>
-    </a>
+    <h2 data-i18n="premium.final_title">Premium is coming!</h2>
+    <p data-i18n="premium.final_sub">We're preparing something exceptional. Stay tuned for the launch!</p>
+    <div class="pm-final-btn pm-final-btn-locked">
+      <span>🔒</span>
+      <span data-i18n="premium.final_btn">Coming Soon</span>
+    </div>
   </div>
 </section>
 

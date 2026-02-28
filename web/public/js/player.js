@@ -19,7 +19,8 @@
         // ease-out cubic
         const ease = 1 - Math.pow(1 - progress, 3);
         const current = Math.round(ease * target);
-        el.textContent = current.toLocaleString('fr-FR') + (isPct ? '%' : '');
+        var loc = (window.webI18n && window.webI18n.getLang() === 'en') ? 'en-US' : 'fr-FR';
+        el.textContent = current.toLocaleString(loc) + (isPct ? '%' : '');
         if (progress < 1) requestAnimationFrame(tick);
       }
 

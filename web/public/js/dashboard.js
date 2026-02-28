@@ -36,6 +36,7 @@
 /* ── Real-time socket updates ── */
 (function() {
   'use strict';
+  const t = (k) => (window.webI18n ? window.webI18n.t(k) : k);
 
   function init(socket) {
     socket.emit('requestGames');
@@ -95,13 +96,13 @@
 
     let icon, text;
     switch (data.event) {
-      case 'gameCreated': icon = '🎮'; text = 'Nouvelle partie créée'; break;
-      case 'gameStarted': icon = '🌙'; text = 'Partie démarrée'; break;
-      case 'gameEnded': icon = '🏆'; text = `Fin — ${data.victor || '?'}`; break;
-      case 'phaseChanged': icon = data.phase === 'NIGHT' ? '🌙' : '☀️'; text = `Phase → ${data.phase || '?'}`; break;
-      case 'playerJoined': icon = '👋'; text = `Joueur rejoint`; break;
-      case 'playerKilled': icon = '💀'; text = `${data.playerName || 'Joueur'} éliminé`; break;
-      default: icon = '📝'; text = data.event || 'Événement'; break;
+      case 'gameCreated': icon = '🎮'; text = t('dash.evt_created'); break;
+      case 'gameStarted': icon = '🌙'; text = t('dash.evt_started'); break;
+      case 'gameEnded': icon = '🏆'; text = t('dash.evt_ended') + ' ' + (data.victor || '?'); break;
+      case 'phaseChanged': icon = data.phase === 'NIGHT' ? '🌙' : '☀️'; text = t('dash.evt_phase') + ' ' + t('phase.' + (data.phase || '?')); break;
+      case 'playerJoined': icon = '👋'; text = t('dash.evt_joined'); break;
+      case 'playerKilled': icon = '💀'; text = (data.playerName || t('dash.evt_default_player')) + ' ' + t('dash.evt_killed'); break;
+      default: icon = '📝'; text = data.event || t('dash.evt_default'); break;
     }
 
     const item = document.createElement('div');
@@ -146,7 +147,7 @@
     header.className = 'game-card-header';
     const phaseSpan = document.createElement('span');
     phaseSpan.className = 'game-phase phase-lobby';
-    phaseSpan.textContent = 'Lobby';
+    phaseSpan.textContent = t('dash.phase_lobby');
     header.appendChild(phaseSpan);
     const daySpan = document.createElement('span');
     daySpan.className = 'game-day';
@@ -157,17 +158,17 @@
     body.className = 'game-card-body';
     const guildDiv = document.createElement('div');
     guildDiv.className = 'game-guild';
-    guildDiv.textContent = data.guildName || data.guildId || 'Unknown';
+    guildDiv.textContent = data.guildName || data.guildId || t('fb.unknown');
     body.appendChild(guildDiv);
     const playersDiv = document.createElement('div');
     playersDiv.className = 'game-players';
     const aliveSpan = document.createElement('span');
     aliveSpan.className = 'alive-count';
-    aliveSpan.textContent = '❤ 0 vivants';
+    aliveSpan.textContent = '❤ 0 ' + t('dash.alive_count');
     playersDiv.appendChild(aliveSpan);
     const deadSpan = document.createElement('span');
     deadSpan.className = 'dead-count';
-    deadSpan.textContent = '💀 0 morts';
+    deadSpan.textContent = '💀 0 ' + t('dash.dead_count');
     playersDiv.appendChild(deadSpan);
     body.appendChild(playersDiv);
     card.appendChild(body);
@@ -176,7 +177,7 @@
     footer.className = 'game-card-footer';
     const spectateBtn = document.createElement('span');
     spectateBtn.className = 'spectate-btn';
-    spectateBtn.textContent = '👁 Regarder en direct';
+    spectateBtn.textContent = '👁 ' + t('dash.spectate_btn');
     footer.appendChild(spectateBtn);
     card.appendChild(footer);
     card.style.animation = 'fadeIn 0.4s ease';
@@ -199,13 +200,13 @@
     if (data.phase) {
       const phase = card.querySelector('.game-phase');
       if (phase) {
-        phase.textContent = data.phase;
+        phase.textContent = t('phase.' + data.phase);
         phase.className = `game-phase phase-${data.phase.toLowerCase()}`;
       }
     }
     if (data.dayCount) {
       const day = card.querySelector('.game-day');
-      if (day) day.textContent = 'Jour ' + data.dayCount;
+      if (day) day.textContent = t('dash.day_prefix') + ' ' + data.dayCount;
     }
     // Resolve guild name if available
     const guildName = data.guildName || (data.snapshot && data.snapshot.guildName);
@@ -219,8 +220,8 @@
       const dead = snap.dead ? snap.dead.length : 0;
       const aliveEl = card.querySelector('.alive-count');
       const deadEl = card.querySelector('.dead-count');
-      if (aliveEl) aliveEl.textContent = `❤ ${alive} vivants`;
-      if (deadEl) deadEl.textContent = `💀 ${dead} morts`;
+      if (aliveEl) aliveEl.innerHTML = `❤ ${alive} <span data-i18n="dash.alive_count">${t('dash.alive_count')}</span>`;
+      if (deadEl) deadEl.innerHTML = `💀 ${dead} <span data-i18n="dash.dead_count">${t('dash.dead_count')}</span>`;
     }
   }
 
@@ -253,27 +254,32 @@
  */
 (function() {
   'use strict';
+  const t = (k) => (window.webI18n ? window.webI18n.t(k) : k);
 
-  const ROLES = [
-    { id: 'WEREWOLF', name: 'Loup-Garou', camp: 'wolves', campLabel: 'Loups', img: 'loupSimple.webp', cmd: '/kill @joueur', desc: 'Chaque nuit, les loups-garous se réunissent pour dévorer un villageois.' },
-    { id: 'VILLAGER', name: 'Villageois', camp: 'village', campLabel: 'Village', img: 'villageois.webp', cmd: '/vote @joueur', desc: 'Un simple villageois sans pouvoir spécial. Il doit démasquer les loups.' },
-    { id: 'SEER', name: 'Voyante', camp: 'village', campLabel: 'Village', img: 'voyante.webp', cmd: '/see @joueur', desc: 'Chaque nuit, la voyante peut découvrir le rôle d\'un joueur.' },
-    { id: 'WITCH', name: 'Sorcière', camp: 'village', campLabel: 'Village', img: 'sorciere.png', cmd: '/potion vie|mort @joueur', desc: 'Possède une potion de vie et une potion de mort, utilisable une fois chacune.' },
-    { id: 'HUNTER', name: 'Chasseur', camp: 'village', campLabel: 'Village', img: 'chasseur.webp', cmd: '/shoot @joueur', desc: 'En mourant, le chasseur peut emporter un autre joueur avec lui.' },
-    { id: 'WHITE_WOLF', name: 'Loup Blanc', camp: 'solo', campLabel: 'Solo', img: 'loupBlanc.webp', cmd: '/kill @joueur', desc: 'Joue en solitaire. Une nuit sur deux, il peut dévorer un loup-garou.' },
-    { id: 'PETITE_FILLE', name: 'Petite Fille', camp: 'village', campLabel: 'Village', img: 'petiteFille.webp', cmd: '/listen', desc: 'Peut espionner les loups-garous pendant la nuit.' },
-    { id: 'CUPID', name: 'Cupidon', camp: 'village', campLabel: 'Village', img: 'cupidon.webp', cmd: '/love @joueur1 @joueur2', desc: 'Désigne deux amoureux au début de la partie.' },
-    { id: 'SALVATEUR', name: 'Salvateur', camp: 'village', campLabel: 'Village', img: 'salvateur.webp', cmd: '/protect @joueur', desc: 'Chaque nuit, il protège un joueur de l\'attaque des loups-garous.' },
-    { id: 'ANCIEN', name: 'Ancien', camp: 'village', campLabel: 'Village', img: 'ancien.webp', cmd: '/vote @joueur', desc: 'Résiste à la première attaque des loups-garous.' },
-    { id: 'IDIOT', name: 'Idiot du Village', camp: 'village', campLabel: 'Village', img: 'idiot.webp', cmd: '/vote @joueur', desc: 'S\'il est voté par le village, il est révélé mais perd son droit de vote.' },
-    { id: 'THIEF', name: 'Voleur', camp: 'village', campLabel: 'Village', img: 'voleur.webp', cmd: '/steal @carte', desc: 'Découvre 2 cartes et peut en choisir une pour échanger son rôle.' }
-  ];
+  function getLang() { return window.webI18n ? window.webI18n.getLang() : 'fr'; }
+
+  const CAMP_KEYS = { village: 'dash.camp_village', wolves: 'dash.camp_wolves', solo: 'dash.camp_solo' };
+
+  let ROLES;
+  if (window.__ROLE_DATA__ && Array.isArray(window.__ROLE_DATA__) && window.__ROLE_DATA__.length) {
+    ROLES = window.__ROLE_DATA__.map(function(r) {
+      return {
+        id: r.id, camp: r.camp, img: r.image, cmd: r.cmd || '',
+        names: r.name, descs: r.desc
+      };
+    });
+  } else {
+    console.warn('[dashboard] __ROLE_DATA__ missing — card deck disabled');
+    ROLES = [];
+  }
 
   const CAMP_CLASSES = {
     wolves: 'camp-wolves',
     village: 'camp-village',
     solo: 'camp-solo'
   };
+
+  if (!ROLES.length) return;
 
   const btn = document.getElementById('btn-draw');
   const deckStack = document.getElementById('deck-stack');
@@ -320,13 +326,18 @@
         // Phase 2: Card slides out from deck (0.4s)
         drawnZone.classList.add('visible');
 
-        // Populate card back content
+        // Populate card back content (translate at render time)
+        const lang = getLang();
+        const roleName_ = role.names[lang] || role.names.fr;
+        const roleDesc_ = role.descs[lang] || role.descs.fr;
+        const campLabel = t(CAMP_KEYS[role.camp] || role.camp);
+
         roleImg.src = '/static/img/roles/' + role.img;
-        roleImg.alt = role.name;
-        roleName.textContent = role.name;
-        roleCamp.textContent = role.campLabel;
+        roleImg.alt = roleName_;
+        roleName.textContent = roleName_;
+        roleCamp.textContent = campLabel;
         roleCamp.className = 'drawn-role-camp ' + (CAMP_CLASSES[role.camp] || '');
-        roleDesc.textContent = role.desc;
+        roleDesc.textContent = roleDesc_;
         roleCmd.textContent = role.cmd;
 
         // Phase 3: Flip to reveal (after slide-in)

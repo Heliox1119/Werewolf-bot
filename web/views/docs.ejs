@@ -7,7 +7,7 @@
     <aside class="dw-sidebar">
       <div class="dw-sidebar-head">
         <span class="dw-sidebar-ico">📖</span>
-        <span class="dw-sidebar-lbl">Wiki</span>
+        <span class="dw-sidebar-lbl" data-i18n="docs.wiki">Wiki</span>
       </div>
       <nav class="dw-nav">
         <div class="dw-nav-group">
@@ -62,10 +62,10 @@
           <h1 class="dw-hero-title" data-i18n="docs.title">📚 Werewolf Bot — Complete Wiki</h1>
           <p class="dw-hero-sub" data-i18n="docs.subtitle">Everything you need to know about playing, configuring and mastering Werewolf on Discord.</p>
           <div class="dw-hero-chips">
-            <div class="dw-chip"><span class="dw-chip-val">12</span> Roles</div>
-            <div class="dw-chip"><span class="dw-chip-val">30+</span> Commands</div>
-            <div class="dw-chip"><span class="dw-chip-val">16</span> Achievements</div>
-            <div class="dw-chip"><span class="dw-chip-val">8</span> Tiers</div>
+            <div class="dw-chip"><span class="dw-chip-val">12</span> <span data-i18n="docs.chip_roles">Roles</span></div>
+            <div class="dw-chip"><span class="dw-chip-val">30+</span> <span data-i18n="docs.chip_commands">Commands</span></div>
+            <div class="dw-chip"><span class="dw-chip-val">19</span> <span data-i18n="docs.chip_achievements">Achievements</span></div>
+            <div class="dw-chip"><span class="dw-chip-val">8</span> <span data-i18n="docs.chip_tiers">Tiers</span></div>
           </div>
         </div>
       </div>
@@ -144,94 +144,25 @@
       <section class="dw-section" id="roles-village">
         <h2 class="dw-section-title"><span class="dw-section-icon">🏘️</span> <span data-i18n="docs.village_title">Village Roles</span></h2>
         <div class="dw-roles-grid">
-
-          <div class="dw-role-card dw-camp-village">
-            <img src="/static/img/roles/villageois.webp" alt="Villager" class="dw-role-img">
-            <div class="dw-role-body">
-              <div class="dw-role-name" data-i18n="role.name.VILLAGER">Villager</div>
-              <div class="dw-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
-              <p class="dw-role-desc" data-i18n="docs.role_villager">A simple villager with no special power. Must use deduction, observation and voting to unmask the wolves. The backbone of the village team.</p>
+          <%
+            var campLabels = { village: 'Village', wolves: 'Wolves', solo: 'Solo' };
+            var villageIds = ['VILLAGER','SEER','WITCH','HUNTER','CUPID','SALVATEUR','PETITE_FILLE','IDIOT','ANCIEN'];
+            villageIds.forEach(function(rid) {
+              var role = roleData.getRoleById(rid);
+              if (!role) return;
+          %>
+            <div class="dw-role-card dw-camp-<%= role.camp %>">
+              <img src="/static/img/roles/<%= role.image %>" alt="<%= role.name.en %>" class="dw-role-img">
+              <div class="dw-role-body">
+                <div class="dw-role-name" data-i18n="role.name.<%= role.id %>"><%= role.name.en %></div>
+                <div class="dw-role-meta"><span class="role-camp camp-<%= role.camp %>" data-i18n="role.camp.<%= role.camp %>"><%= campLabels[role.camp] %></span></div>
+                <p class="dw-role-desc" data-i18n="docs.role_<%= role.id.toLowerCase() %>"><%= role.doc.en || role.desc.en %></p>
+                <% if (role.cmd) { %>
+                  <div class="dw-role-ability"><%= role.cmd %></div>
+                <% } %>
+              </div>
             </div>
-          </div>
-
-          <div class="dw-role-card dw-camp-village">
-            <img src="/static/img/roles/voyante.webp" alt="Seer" class="dw-role-img">
-            <div class="dw-role-body">
-              <div class="dw-role-name" data-i18n="role.name.SEER">Seer</div>
-              <div class="dw-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
-              <p class="dw-role-desc" data-i18n="docs.role_seer">Each night, the seer can use /see to discover one player's true role. Vital information for the village, but must stay hidden from the wolves.</p>
-              <div class="dw-role-ability" data-i18n="docs.ability_seer">🔮 /see @player — Reveals the target's role via DM</div>
-            </div>
-          </div>
-
-          <div class="dw-role-card dw-camp-village">
-            <img src="/static/img/roles/sorciere.png" alt="Witch" class="dw-role-img">
-            <div class="dw-role-body">
-              <div class="dw-role-name" data-i18n="role.name.WITCH">Witch</div>
-              <div class="dw-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
-              <p class="dw-role-desc" data-i18n="docs.role_witch">Possesses two potions, each usable once per game: a life potion to save the wolves' victim, and a death potion to kill any player. Learns who the wolves targeted each night.</p>
-              <div class="dw-role-ability" data-i18n="docs.ability_witch">🧪 /potion heal|kill [@player] — Use a potion</div>
-            </div>
-          </div>
-
-          <div class="dw-role-card dw-camp-village">
-            <img src="/static/img/roles/chasseur.webp" alt="Hunter" class="dw-role-img">
-            <div class="dw-role-body">
-              <div class="dw-role-name" data-i18n="role.name.HUNTER">Hunter</div>
-              <div class="dw-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
-              <p class="dw-role-desc" data-i18n="docs.role_hunter">When the hunter dies (by any cause), he fires a last shot and can take another player down with him. Has 90 seconds to choose a target.</p>
-              <div class="dw-role-ability" data-i18n="docs.ability_hunter">🔫 /shoot @player — Fires upon death (90s timeout)</div>
-            </div>
-          </div>
-
-          <div class="dw-role-card dw-camp-village">
-            <img src="/static/img/roles/cupidon.webp" alt="Cupid" class="dw-role-img">
-            <div class="dw-role-body">
-              <div class="dw-role-name" data-i18n="role.name.CUPID">Cupid</div>
-              <div class="dw-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
-              <p class="dw-role-desc" data-i18n="docs.role_cupid">On the very first night, Cupid designates two lovers with /love. If one lover dies, the other dies of a broken heart. If the lovers are from opposite camps, they win together as a unique pair.</p>
-              <div class="dw-role-ability" data-i18n="docs.ability_cupid">💘 /love @player1 @player2 — Creates a love bond (Night 1 only)</div>
-            </div>
-          </div>
-
-          <div class="dw-role-card dw-camp-village">
-            <img src="/static/img/roles/salvateur.webp" alt="Guardian" class="dw-role-img">
-            <div class="dw-role-body">
-              <div class="dw-role-name" data-i18n="role.name.SALVATEUR">Guardian</div>
-              <div class="dw-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
-              <p class="dw-role-desc" data-i18n="docs.role_salvateur">Each night, the Guardian protects one player from the werewolves' attack. Cannot protect the same player two nights in a row.</p>
-              <div class="dw-role-ability" data-i18n="docs.ability_salvateur">🛡️ /protect @player — Shield a player for the night</div>
-            </div>
-          </div>
-
-          <div class="dw-role-card dw-camp-village">
-            <img src="/static/img/roles/petiteFille.webp" alt="Little Girl" class="dw-role-img">
-            <div class="dw-role-body">
-              <div class="dw-role-name" data-i18n="role.name.PETITE_FILLE">Little Girl</div>
-              <div class="dw-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
-              <p class="dw-role-desc" data-i18n="docs.role_petite_fille">Can spy on the werewolves at night using /listen, seeing fragments of their conversation. Risky — if the wolves notice her, they can target her.</p>
-              <div class="dw-role-ability" data-i18n="docs.ability_petite_fille">👂 /listen — Eavesdrop on werewolf channel</div>
-            </div>
-          </div>
-
-          <div class="dw-role-card dw-camp-village">
-            <img src="/static/img/roles/idiot.webp" alt="Village Idiot" class="dw-role-img">
-            <div class="dw-role-body">
-              <div class="dw-role-name" data-i18n="role.name.IDIOT">Village Idiot</div>
-              <div class="dw-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
-              <p class="dw-role-desc" data-i18n="docs.role_idiot">If voted out by the village during the day, the Idiot is revealed but survives — however, he permanently loses his right to vote. Dies normally to wolf attacks.</p>
-            </div>
-          </div>
-
-          <div class="dw-role-card dw-camp-village">
-            <img src="/static/img/roles/ancien.webp" alt="Elder" class="dw-role-img">
-            <div class="dw-role-body">
-              <div class="dw-role-name" data-i18n="role.name.ANCIEN">Elder</div>
-              <div class="dw-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
-              <p class="dw-role-desc" data-i18n="docs.role_ancien">Survives the first werewolf attack thanks to his resilience (has 2 lives against wolves). If killed by the village vote, all special villager powers are drained for the rest of the game.</p>
-            </div>
-          </div>
-
+          <% }); %>
         </div>
       </section>
 
@@ -239,27 +170,24 @@
       <section class="dw-section" id="roles-wolves">
         <h2 class="dw-section-title"><span class="dw-section-icon">🐺</span> <span data-i18n="docs.wolves_title">Wolf Roles</span></h2>
         <div class="dw-roles-grid">
-
-          <div class="dw-role-card dw-camp-wolves">
-            <img src="/static/img/roles/loupSimple.webp" alt="Werewolf" class="dw-role-img">
-            <div class="dw-role-body">
-              <div class="dw-role-name" data-i18n="role.name.WEREWOLF">Werewolf</div>
-              <div class="dw-role-meta"><span class="role-camp camp-wolves" data-i18n="role.camp.wolves">Wolves</span></div>
-              <p class="dw-role-desc" data-i18n="docs.role_werewolf">Each night the werewolves gather in a private channel and vote on a victim to devour using /kill. They must reach consensus. During the day, they pretend to be villagers.</p>
-              <div class="dw-role-ability" data-i18n="docs.ability_werewolf">🐺 /kill @player — Vote to devour a villager (consensus required)</div>
+          <%
+            var wolfIds = ['WEREWOLF','WHITE_WOLF'];
+            wolfIds.forEach(function(rid) {
+              var role = roleData.getRoleById(rid);
+              if (!role) return;
+          %>
+            <div class="dw-role-card dw-camp-<%= role.camp === 'solo' ? 'solo' : 'wolves' %>">
+              <img src="/static/img/roles/<%= role.image %>" alt="<%= role.name.en %>" class="dw-role-img">
+              <div class="dw-role-body">
+                <div class="dw-role-name" data-i18n="role.name.<%= role.id %>"><%= role.name.en %></div>
+                <div class="dw-role-meta"><span class="role-camp camp-<%= role.camp %>" data-i18n="role.camp.<%= role.camp %>"><%= campLabels[role.camp] %></span></div>
+                <p class="dw-role-desc" data-i18n="docs.role_<%= role.id.toLowerCase() %>"><%= role.doc.en || role.desc.en %></p>
+                <% if (role.cmd) { %>
+                  <div class="dw-role-ability"><%= role.cmd %></div>
+                <% } %>
+              </div>
             </div>
-          </div>
-
-          <div class="dw-role-card dw-camp-wolves">
-            <img src="/static/img/roles/loupBlanc.webp" alt="White Wolf" class="dw-role-img">
-            <div class="dw-role-body">
-              <div class="dw-role-name" data-i18n="role.name.WHITE_WOLF">White Wolf</div>
-              <div class="dw-role-meta"><span class="role-camp camp-solo" data-i18n="role.camp.solo">Solo</span></div>
-              <p class="dw-role-desc" data-i18n="docs.role_white_wolf">Appears as a werewolf and hunts with the pack normally. But every other night, can also secretly kill one of the other wolves. Wins only if he's the absolute last player standing — a true solo predator.</p>
-              <div class="dw-role-ability" data-i18n="docs.ability_white_wolf">🐺 /kill @wolf — Devour a fellow wolf (every other night, as a solo action)</div>
-            </div>
-          </div>
-
+          <% }); %>
         </div>
       </section>
 
@@ -267,16 +195,24 @@
       <section class="dw-section" id="roles-solo">
         <h2 class="dw-section-title"><span class="dw-section-icon">🎭</span> <span data-i18n="docs.solo_title">Solo / Special Roles</span></h2>
         <div class="dw-roles-grid">
-
-          <div class="dw-role-card dw-camp-solo">
-            <img src="/static/img/roles/voleur.webp" alt="Thief" class="dw-role-img">
-            <div class="dw-role-body">
-              <div class="dw-role-name" data-i18n="role.name.THIEF">Thief</div>
-              <div class="dw-role-meta"><span class="role-camp camp-village" data-i18n="role.camp.village">Village</span></div>
-              <p class="dw-role-desc" data-i18n="docs.role_thief">At the start of the game, the Thief sees 2 extra role cards dealt face-up. He can choose to swap his role for one of them. If both cards are werewolves, he MUST take one. Acts during the very first night before all other roles.</p>
+          <%
+            var soloIds = ['THIEF'];
+            soloIds.forEach(function(rid) {
+              var role = roleData.getRoleById(rid);
+              if (!role) return;
+          %>
+            <div class="dw-role-card dw-camp-<%= role.camp === 'village' ? 'solo' : role.camp %>">
+              <img src="/static/img/roles/<%= role.image %>" alt="<%= role.name.en %>" class="dw-role-img">
+              <div class="dw-role-body">
+                <div class="dw-role-name" data-i18n="role.name.<%= role.id %>"><%= role.name.en %></div>
+                <div class="dw-role-meta"><span class="role-camp camp-<%= role.camp %>" data-i18n="role.camp.<%= role.camp %>"><%= campLabels[role.camp] %></span></div>
+                <p class="dw-role-desc" data-i18n="docs.role_<%= role.id.toLowerCase() %>"><%= role.doc.en || role.desc.en %></p>
+                <% if (role.cmd) { %>
+                  <div class="dw-role-ability"><%= role.cmd %></div>
+                <% } %>
+              </div>
             </div>
-          </div>
-
+          <% }); %>
         </div>
       </section>
 
@@ -304,14 +240,14 @@
               <th data-i18n="docs.th_villagers">Villagers</th>
             </tr></thead>
             <tbody>
-              <tr><td>4</td><td>1</td><td>Seer</td><td>2</td></tr>
-              <tr><td>5</td><td>1</td><td>Seer, Witch</td><td>2</td></tr>
-              <tr><td>6</td><td>2</td><td>Seer, Witch</td><td>2</td></tr>
-              <tr><td>7</td><td>2</td><td>Seer, Witch, Hunter</td><td>2</td></tr>
-              <tr><td>8</td><td>2</td><td>Seer, Witch, Hunter, Cupid</td><td>2</td></tr>
-              <tr><td>9</td><td>3</td><td>Seer, Witch, Hunter, Cupid</td><td>2</td></tr>
-              <tr><td>10</td><td>3</td><td>Seer, Witch, Hunter, Cupid, Guardian</td><td>2</td></tr>
-              <tr><td>12+</td><td>4</td><td>All specials available</td><td>Remaining</td></tr>
+              <tr><td>4</td><td>1</td><td data-i18n="docs.dist_t4">Seer</td><td>2</td></tr>
+              <tr><td>5</td><td>1</td><td data-i18n="docs.dist_t5">Seer, Witch</td><td>2</td></tr>
+              <tr><td>6</td><td>2</td><td data-i18n="docs.dist_t6">Seer, Witch</td><td>2</td></tr>
+              <tr><td>7</td><td>2</td><td data-i18n="docs.dist_t7">Seer, Witch, Hunter</td><td>2</td></tr>
+              <tr><td>8</td><td>2</td><td data-i18n="docs.dist_8">Seer, Witch, Hunter, Cupid</td><td>2</td></tr>
+              <tr><td>9</td><td>3</td><td data-i18n="docs.dist_9">Seer, Witch, Hunter, Cupid</td><td>2</td></tr>
+              <tr><td>10</td><td>3</td><td data-i18n="docs.dist_10">Seer, Witch, Hunter, Cupid, Guardian</td><td>2</td></tr>
+              <tr><td>12+</td><td>4</td><td data-i18n="docs.dist_12">All specials available</td><td data-i18n="docs.dist_remaining">Remaining</td></tr>
             </tbody>
           </table>
         </div>
@@ -412,14 +348,14 @@
               <th data-i18n="docs.th_timing">When</th>
             </tr></thead>
             <tbody>
-              <tr><td>🃏 Thief</td><td class="dw-cmd">/steal</td><td data-i18n="docs.act_thief">Choose one of 2 revealed cards to swap role</td><td data-i18n="docs.when_n1">Night 1 only</td></tr>
-              <tr><td>💘 Cupid</td><td class="dw-cmd">/love</td><td data-i18n="docs.act_cupid">Designate 2 lovers</td><td data-i18n="docs.when_n1">Night 1 only</td></tr>
-              <tr><td>🛡️ Guardian</td><td class="dw-cmd">/protect</td><td data-i18n="docs.act_guardian">Protect one player from wolves</td><td data-i18n="docs.when_every">Every night</td></tr>
-              <tr><td>🐺 Werewolves</td><td class="dw-cmd">/kill</td><td data-i18n="docs.act_wolves">Vote to devour a villager (consensus)</td><td data-i18n="docs.when_every">Every night</td></tr>
-              <tr><td>🐺 White Wolf</td><td class="dw-cmd">/kill</td><td data-i18n="docs.act_white_wolf">Kill a fellow wolf (solo action)</td><td data-i18n="docs.when_odd">Odd nights (3, 5, 7...)</td></tr>
-              <tr><td>🧪 Witch</td><td class="dw-cmd">/potion</td><td data-i18n="docs.act_witch">Use heal or kill potion (once each)</td><td data-i18n="docs.when_every">Every night</td></tr>
-              <tr><td>🔮 Seer</td><td class="dw-cmd">/see</td><td data-i18n="docs.act_seer">Discover a player's role</td><td data-i18n="docs.when_every">Every night</td></tr>
-              <tr><td>👂 Little Girl</td><td class="dw-cmd">/listen</td><td data-i18n="docs.act_listen">Spy on wolf channel</td><td data-i18n="docs.when_every">Every night</td></tr>
+              <tr><td data-i18n="docs.role_thief">🃏 Thief</td><td class="dw-cmd">/steal</td><td data-i18n="docs.act_thief">Choose one of 2 revealed cards to swap role</td><td data-i18n="docs.when_n1">Night 1 only</td></tr>
+              <tr><td data-i18n="docs.role_cupid">💘 Cupid</td><td class="dw-cmd">/love</td><td data-i18n="docs.act_cupid">Designate 2 lovers</td><td data-i18n="docs.when_n1">Night 1 only</td></tr>
+              <tr><td data-i18n="docs.role_guardian">🛡️ Guardian</td><td class="dw-cmd">/protect</td><td data-i18n="docs.act_guardian">Protect one player from wolves</td><td data-i18n="docs.when_every">Every night</td></tr>
+              <tr><td data-i18n="docs.role_werewolves">🐺 Werewolves</td><td class="dw-cmd">/kill</td><td data-i18n="docs.act_wolves">Vote to devour a villager (consensus)</td><td data-i18n="docs.when_every">Every night</td></tr>
+              <tr><td data-i18n="docs.role_white_wolf">🐺 White Wolf</td><td class="dw-cmd">/kill</td><td data-i18n="docs.act_white_wolf">Kill a fellow wolf (solo action)</td><td data-i18n="docs.when_odd">Odd nights (3, 5, 7...)</td></tr>
+              <tr><td data-i18n="docs.role_witch">🧪 Witch</td><td class="dw-cmd">/potion</td><td data-i18n="docs.act_witch">Use heal or kill potion (once each)</td><td data-i18n="docs.when_every">Every night</td></tr>
+              <tr><td data-i18n="docs.role_seer">🔮 Seer</td><td class="dw-cmd">/see</td><td data-i18n="docs.act_seer">Discover a player's role</td><td data-i18n="docs.when_every">Every night</td></tr>
+              <tr><td data-i18n="docs.role_little_girl">👂 Little Girl</td><td class="dw-cmd">/listen</td><td data-i18n="docs.act_listen">Spy on wolf channel</td><td data-i18n="docs.when_every">Every night</td></tr>
             </tbody>
           </table>
         </div>
@@ -580,12 +516,12 @@
               <th data-i18n="docs.th_permission">Permission</th>
             </tr></thead>
             <tbody>
-              <tr><td class="dw-cmd">/create</td><td class="dw-cmd-desc" data-i18n="docs.cmd_create">Create a new game lobby in the current channel</td><td>Everyone</td></tr>
-              <tr><td class="dw-cmd">/join</td><td class="dw-cmd-desc" data-i18n="docs.cmd_join">Join an existing game lobby</td><td>Everyone</td></tr>
-              <tr><td class="dw-cmd">/start</td><td class="dw-cmd-desc" data-i18n="docs.cmd_start">Start the game (lobby host only, min 4 players)</td><td>Host</td></tr>
-              <tr><td class="dw-cmd">/help</td><td class="dw-cmd-desc" data-i18n="docs.cmd_help">Display help information and available commands</td><td>Everyone</td></tr>
-              <tr><td class="dw-cmd">/status</td><td class="dw-cmd-desc" data-i18n="docs.cmd_status">Show current game status, phase and alive players</td><td>Everyone</td></tr>
-              <tr><td class="dw-cmd">/stats [@user]</td><td class="dw-cmd-desc" data-i18n="docs.cmd_stats">Voir stats, points de classement et succès</td><td>Everyone</td></tr>
+              <tr><td class="dw-cmd">/create</td><td class="dw-cmd-desc" data-i18n="docs.cmd_create">Create a new game lobby in the current channel</td><td data-i18n="docs.perm_everyone">Everyone</td></tr>
+              <tr><td class="dw-cmd">/join</td><td class="dw-cmd-desc" data-i18n="docs.cmd_join">Join an existing game lobby</td><td data-i18n="docs.perm_everyone">Everyone</td></tr>
+              <tr><td class="dw-cmd">/start</td><td class="dw-cmd-desc" data-i18n="docs.cmd_start">Start the game (lobby host only, min 4 players)</td><td data-i18n="docs.perm_host">Host</td></tr>
+              <tr><td class="dw-cmd">/help</td><td class="dw-cmd-desc" data-i18n="docs.cmd_help">Display help information and available commands</td><td data-i18n="docs.perm_everyone">Everyone</td></tr>
+              <tr><td class="dw-cmd">/status</td><td class="dw-cmd-desc" data-i18n="docs.cmd_status">Show current game status, phase and alive players</td><td data-i18n="docs.perm_everyone">Everyone</td></tr>
+              <tr><td class="dw-cmd">/stats [@user]</td><td class="dw-cmd-desc" data-i18n="docs.cmd_stats">Voir stats, points de classement et succès</td><td data-i18n="docs.perm_everyone">Everyone</td></tr>
             </tbody>
           </table>
         </div>
@@ -602,14 +538,14 @@
               <th data-i18n="docs.th_description">Description</th>
             </tr></thead>
             <tbody>
-              <tr><td class="dw-cmd">/kill @player</td><td>🐺 Werewolf</td><td class="dw-cmd-desc" data-i18n="docs.cmd_kill">Vote to devour a player (wolf channel)</td></tr>
-              <tr><td class="dw-cmd">/see @player</td><td>🔮 Seer</td><td class="dw-cmd-desc" data-i18n="docs.cmd_see">Discover a player's true role</td></tr>
-              <tr><td class="dw-cmd">/potion heal</td><td>🧪 Witch</td><td class="dw-cmd-desc" data-i18n="docs.cmd_potion_heal">Save the wolves' victim (1 use)</td></tr>
-              <tr><td class="dw-cmd">/potion kill @player</td><td>🧪 Witch</td><td class="dw-cmd-desc" data-i18n="docs.cmd_potion_kill">Kill any player with death potion (1 use)</td></tr>
-              <tr><td class="dw-cmd">/love @p1 @p2</td><td>💘 Cupid</td><td class="dw-cmd-desc" data-i18n="docs.cmd_love">Bind two players as lovers (Night 1)</td></tr>
-              <tr><td class="dw-cmd">/protect @player</td><td>🛡️ Guardian</td><td class="dw-cmd-desc" data-i18n="docs.cmd_protect">Shield a player from wolf attack</td></tr>
-              <tr><td class="dw-cmd">/listen</td><td>👂 Little Girl</td><td class="dw-cmd-desc" data-i18n="docs.cmd_listen">Eavesdrop on wolf channel</td></tr>
-              <tr><td class="dw-cmd">/skip</td><td>Any</td><td class="dw-cmd-desc" data-i18n="docs.cmd_skip">Skip your night action</td></tr>
+              <tr><td class="dw-cmd">/kill @player</td><td data-i18n="docs.role_werewolf">🐺 Werewolf</td><td class="dw-cmd-desc" data-i18n="docs.cmd_kill">Vote to devour a player (wolf channel)</td></tr>
+              <tr><td class="dw-cmd">/see @player</td><td data-i18n="docs.role_seer">🔮 Seer</td><td class="dw-cmd-desc" data-i18n="docs.cmd_see">Discover a player's true role</td></tr>
+              <tr><td class="dw-cmd">/potion heal</td><td data-i18n="docs.role_witch">🧪 Witch</td><td class="dw-cmd-desc" data-i18n="docs.cmd_potion_heal">Save the wolves' victim (1 use)</td></tr>
+              <tr><td class="dw-cmd">/potion kill @player</td><td data-i18n="docs.role_witch">🧪 Witch</td><td class="dw-cmd-desc" data-i18n="docs.cmd_potion_kill">Kill any player with death potion (1 use)</td></tr>
+              <tr><td class="dw-cmd">/love @p1 @p2</td><td data-i18n="docs.role_cupid">💘 Cupid</td><td class="dw-cmd-desc" data-i18n="docs.cmd_love">Bind two players as lovers (Night 1)</td></tr>
+              <tr><td class="dw-cmd">/protect @player</td><td data-i18n="docs.role_guardian">🛡️ Guardian</td><td class="dw-cmd-desc" data-i18n="docs.cmd_protect">Shield a player from wolf attack</td></tr>
+              <tr><td class="dw-cmd">/listen</td><td data-i18n="docs.role_little_girl">👂 Little Girl</td><td class="dw-cmd-desc" data-i18n="docs.cmd_listen">Eavesdrop on wolf channel</td></tr>
+              <tr><td class="dw-cmd">/skip</td><td data-i18n="docs.perm_any">Any</td><td class="dw-cmd-desc" data-i18n="docs.cmd_skip">Skip your night action</td></tr>
             </tbody>
           </table>
         </div>
@@ -646,16 +582,16 @@
               <th data-i18n="docs.th_permission">Permission</th>
             </tr></thead>
             <tbody>
-              <tr><td class="dw-cmd">/setup</td><td class="dw-cmd-desc" data-i18n="docs.cmd_setup">Interactive setup wizard — creates category, channels, rules</td><td>Admin</td></tr>
-              <tr><td class="dw-cmd">/setrules</td><td class="dw-cmd-desc" data-i18n="docs.cmd_setrules">Configure game rules (wolf count, enabled roles, timers)</td><td>Admin</td></tr>
-              <tr><td class="dw-cmd">/lang [fr|en]</td><td class="dw-cmd-desc" data-i18n="docs.cmd_lang">Set the bot language for this server</td><td>Admin</td></tr>
-              <tr><td class="dw-cmd">/theme [name]</td><td class="dw-cmd-desc" data-i18n="docs.cmd_theme">Change the bot's visual theme</td><td>Admin</td></tr>
-              <tr><td class="dw-cmd">/clear</td><td class="dw-cmd-desc" data-i18n="docs.cmd_clear">Remove game channels and clean up</td><td>Admin</td></tr>
-              <tr><td class="dw-cmd">/force-end</td><td class="dw-cmd-desc" data-i18n="docs.cmd_force_end">Force-end the current game immediately</td><td>Admin</td></tr>
-              <tr><td class="dw-cmd">/end</td><td class="dw-cmd-desc" data-i18n="docs.cmd_end">End the game gracefully</td><td>Admin</td></tr>
-              <tr><td class="dw-cmd">/nextphase</td><td class="dw-cmd-desc" data-i18n="docs.cmd_nextphase">Force advance to the next phase</td><td>Admin</td></tr>
-              <tr><td class="dw-cmd">/monitoring</td><td class="dw-cmd-desc" data-i18n="docs.cmd_monitoring">Display bot health and metrics</td><td>Admin</td></tr>
-              <tr><td class="dw-cmd">/ratelimit</td><td class="dw-cmd-desc" data-i18n="docs.cmd_ratelimit">View rate limit statistics</td><td>Admin</td></tr>
+              <tr><td class="dw-cmd">/setup</td><td class="dw-cmd-desc" data-i18n="docs.cmd_setup">Interactive setup wizard — creates category, channels, rules</td><td data-i18n="docs.perm_admin">Admin</td></tr>
+              <tr><td class="dw-cmd">/setrules</td><td class="dw-cmd-desc" data-i18n="docs.cmd_setrules">Configure game rules (wolf count, enabled roles, timers)</td><td data-i18n="docs.perm_admin">Admin</td></tr>
+              <tr><td class="dw-cmd">/lang [fr|en]</td><td class="dw-cmd-desc" data-i18n="docs.cmd_lang">Set the bot language for this server</td><td data-i18n="docs.perm_admin">Admin</td></tr>
+              <tr><td class="dw-cmd">/theme [name]</td><td class="dw-cmd-desc" data-i18n="docs.cmd_theme">Change the bot's visual theme</td><td data-i18n="docs.perm_admin">Admin</td></tr>
+              <tr><td class="dw-cmd">/clear</td><td class="dw-cmd-desc" data-i18n="docs.cmd_clear">Remove game channels and clean up</td><td data-i18n="docs.perm_admin">Admin</td></tr>
+              <tr><td class="dw-cmd">/force-end</td><td class="dw-cmd-desc" data-i18n="docs.cmd_force_end">Force-end the current game immediately</td><td data-i18n="docs.perm_admin">Admin</td></tr>
+              <tr><td class="dw-cmd">/end</td><td class="dw-cmd-desc" data-i18n="docs.cmd_end">End the game gracefully</td><td data-i18n="docs.perm_admin">Admin</td></tr>
+              <tr><td class="dw-cmd">/nextphase</td><td class="dw-cmd-desc" data-i18n="docs.cmd_nextphase">Force advance to the next phase</td><td data-i18n="docs.perm_admin">Admin</td></tr>
+              <tr><td class="dw-cmd">/monitoring</td><td class="dw-cmd-desc" data-i18n="docs.cmd_monitoring">Display bot health and metrics</td><td data-i18n="docs.perm_admin">Admin</td></tr>
+              <tr><td class="dw-cmd">/ratelimit</td><td class="dw-cmd-desc" data-i18n="docs.cmd_ratelimit">View rate limit statistics</td><td data-i18n="docs.perm_admin">Admin</td></tr>
             </tbody>
           </table>
         </div>
@@ -681,6 +617,9 @@
           <div class="dw-ach"><span class="dw-ach-emoji">🃏</span><div><span class="dw-ach-name" data-i18n="docs.ach_thief_master">Thief Master</span><span class="dw-ach-req" data-i18n="docs.ach_thief_master_req">Win 3 games as Thief</span></div></div>
           <div class="dw-ach"><span class="dw-ach-emoji">🌙</span><div><span class="dw-ach-name" data-i18n="docs.ach_night_owl">Night Owl</span><span class="dw-ach-req" data-i18n="docs.ach_night_owl_req">Survive 10 nights in a single game</span></div></div>
           <div class="dw-ach"><span class="dw-ach-emoji">👑</span><div><span class="dw-ach-name" data-i18n="docs.ach_captain">Beloved Captain</span><span class="dw-ach-req" data-i18n="docs.ach_captain_req">Be elected captain 10 times</span></div></div>
+          <div class="dw-ach"><span class="dw-ach-emoji">♾️</span><div><span class="dw-ach-name" data-i18n="docs.ach_immortal">Immortal</span><span class="dw-ach-req" data-i18n="docs.ach_immortal_req">Survive a wolf attack as Elder</span></div></div>
+          <div class="dw-ach"><span class="dw-ach-emoji">🤡</span><div><span class="dw-ach-name" data-i18n="docs.ach_clown_prince">Clown Prince</span><span class="dw-ach-req" data-i18n="docs.ach_clown_prince_req">Survive using the Idiot's power</span></div></div>
+          <div class="dw-ach"><span class="dw-ach-emoji">📜</span><div><span class="dw-ach-name" data-i18n="docs.ach_elder_wisdom">Elder's Wisdom</span><span class="dw-ach-req" data-i18n="docs.ach_elder_wisdom_req">Win 3 games as Elder</span></div></div>
         </div>
       </section>
 
@@ -691,14 +630,14 @@
           <p data-i18n="docs.elo_desc">Chaque joueur commence à 1000 points. Gagner augmente votre score, perdre le diminue. Le gain/perte dépend du résultat et de votre rang actuel. Votre rang est déterminé par votre nombre de points.</p>
         </div>
         <div class="dw-tiers">
-          <div class="dw-tier" style="--tier-color: #8B8B8B;"><span class="dw-tier-emoji">🪨</span><span class="dw-tier-name">Iron</span><span class="dw-tier-range">0–799</span></div>
-          <div class="dw-tier" style="--tier-color: #cd7f32;"><span class="dw-tier-emoji">🥉</span><span class="dw-tier-name">Bronze</span><span class="dw-tier-range">800–999</span></div>
-          <div class="dw-tier" style="--tier-color: #c0c0c0;"><span class="dw-tier-emoji">🥈</span><span class="dw-tier-name">Silver</span><span class="dw-tier-range">1000–1199</span></div>
-          <div class="dw-tier" style="--tier-color: #ffd700;"><span class="dw-tier-emoji">🥇</span><span class="dw-tier-name">Gold</span><span class="dw-tier-range">1200–1399</span></div>
-          <div class="dw-tier" style="--tier-color: #e5e4e2;"><span class="dw-tier-emoji">💎</span><span class="dw-tier-name">Platinum</span><span class="dw-tier-range">1400–1599</span></div>
-          <div class="dw-tier" style="--tier-color: #b9f2ff;"><span class="dw-tier-emoji">💠</span><span class="dw-tier-name">Diamond</span><span class="dw-tier-range">1600–1799</span></div>
-          <div class="dw-tier" style="--tier-color: #ff6b6b;"><span class="dw-tier-emoji">🔥</span><span class="dw-tier-name">Master</span><span class="dw-tier-range">1800–1999</span></div>
-          <div class="dw-tier" style="--tier-color: #ff4500;"><span class="dw-tier-emoji">👑</span><span class="dw-tier-name">Alpha Wolf</span><span class="dw-tier-range">2000+</span></div>
+          <div class="dw-tier" style="--tier-color: #8B8B8B;"><span class="dw-tier-emoji">🪨</span><span class="dw-tier-name" data-i18n="docs.tier_iron">Iron</span><span class="dw-tier-range">0–799</span></div>
+          <div class="dw-tier" style="--tier-color: #cd7f32;"><span class="dw-tier-emoji">🥉</span><span class="dw-tier-name" data-i18n="docs.tier_bronze">Bronze</span><span class="dw-tier-range">800–999</span></div>
+          <div class="dw-tier" style="--tier-color: #c0c0c0;"><span class="dw-tier-emoji">🥈</span><span class="dw-tier-name" data-i18n="docs.tier_silver">Silver</span><span class="dw-tier-range">1000–1199</span></div>
+          <div class="dw-tier" style="--tier-color: #ffd700;"><span class="dw-tier-emoji">🥇</span><span class="dw-tier-name" data-i18n="docs.tier_gold">Gold</span><span class="dw-tier-range">1200–1399</span></div>
+          <div class="dw-tier" style="--tier-color: #e5e4e2;"><span class="dw-tier-emoji">💎</span><span class="dw-tier-name" data-i18n="docs.tier_platinum">Platinum</span><span class="dw-tier-range">1400–1599</span></div>
+          <div class="dw-tier" style="--tier-color: #b9f2ff;"><span class="dw-tier-emoji">💠</span><span class="dw-tier-name" data-i18n="docs.tier_diamond">Diamond</span><span class="dw-tier-range">1600–1799</span></div>
+          <div class="dw-tier" style="--tier-color: #ff6b6b;"><span class="dw-tier-emoji">🔥</span><span class="dw-tier-name" data-i18n="docs.tier_master">Master</span><span class="dw-tier-range">1800–1999</span></div>
+          <div class="dw-tier" style="--tier-color: #ff4500;"><span class="dw-tier-emoji">👑</span><span class="dw-tier-name" data-i18n="docs.tier_alpha">Alpha Wolf</span><span class="dw-tier-range">2000+</span></div>
         </div>
       </section>
 
@@ -739,12 +678,12 @@
               <th data-i18n="docs.th_description">Description</th>
             </tr></thead>
             <tbody>
-              <tr><td>Night AFK</td><td>120s</td><td class="dw-cmd-desc" data-i18n="docs.to_night_afk">Auto-skip if player doesn't act during their night phase</td></tr>
-              <tr><td>Hunter Shot</td><td>90s</td><td class="dw-cmd-desc" data-i18n="docs.to_hunter">Time for Hunter to choose a target after death</td></tr>
-              <tr><td>Deliberation</td><td>5 min</td><td class="dw-cmd-desc" data-i18n="docs.to_deliberation">Village discussion before voting</td></tr>
-              <tr><td>Village Vote</td><td>3 min</td><td class="dw-cmd-desc" data-i18n="docs.to_vote">Time window for village elimination vote</td></tr>
-              <tr><td>Captain Vote</td><td>2 min</td><td class="dw-cmd-desc" data-i18n="docs.to_captain">Time for captain election</td></tr>
-              <tr><td>Lobby Cleanup</td><td>1 hour</td><td class="dw-cmd-desc" data-i18n="docs.to_lobby">Auto-cleanup idle lobbies</td></tr>
+              <tr><td data-i18n="docs.to_night_afk_name">Night AFK</td><td>120s</td><td class="dw-cmd-desc" data-i18n="docs.to_night_afk">Auto-skip if player doesn't act during their night phase</td></tr>
+              <tr><td data-i18n="docs.to_hunter_name">Hunter Shot</td><td>90s</td><td class="dw-cmd-desc" data-i18n="docs.to_hunter">Time for Hunter to choose a target after death</td></tr>
+              <tr><td data-i18n="docs.to_deliberation_name">Deliberation</td><td data-i18n="docs.to_deliberation_dur">5 min</td><td class="dw-cmd-desc" data-i18n="docs.to_deliberation">Village discussion before voting</td></tr>
+              <tr><td data-i18n="docs.to_vote_name">Village Vote</td><td data-i18n="docs.to_vote_dur">3 min</td><td class="dw-cmd-desc" data-i18n="docs.to_vote">Time window for village elimination vote</td></tr>
+              <tr><td data-i18n="docs.to_captain_name">Captain Vote</td><td data-i18n="docs.to_captain_dur">2 min</td><td class="dw-cmd-desc" data-i18n="docs.to_captain">Time for captain election</td></tr>
+              <tr><td data-i18n="docs.to_lobby_name">Lobby Cleanup</td><td data-i18n="docs.to_lobby_dur">1 hour</td><td class="dw-cmd-desc" data-i18n="docs.to_lobby">Auto-cleanup idle lobbies</td></tr>
             </tbody>
           </table>
         </div>

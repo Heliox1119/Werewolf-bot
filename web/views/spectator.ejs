@@ -5,10 +5,10 @@
   <!-- ═══ TOP BAR ═══ -->
   <div class="sp-topbar">
     <div class="sp-topbar-left">
-      <a href="<%= game.guildId ? '/guild/' + game.guildId : '/' %>" class="sp-back-btn">← Retour</a>
+      <a href="<%= game.guildId ? '/guild/' + game.guildId : '/' %>" class="sp-back-btn" data-i18n="spectator.back">← Retour</a>
       <div class="sp-live-indicator">
         <span class="sp-live-dot"></span>
-        <span>LIVE</span>
+        <span data-i18n="spectator.live">LIVE</span>
       </div>
     </div>
     <div class="sp-topbar-center">
@@ -16,10 +16,10 @@
     </div>
     <div class="sp-topbar-right">
       <div class="sp-phase-container">
-        <span class="sp-phase game-phase phase-<%= (game.phase || 'lobby').toLowerCase() %>" id="game-phase"><%= game.phase || 'Lobby' %></span>
+        <span class="sp-phase game-phase phase-<%= (game.phase || 'lobby').toLowerCase() %>" id="game-phase"<% if (!game.phase) { %> data-i18n="fb.lobby"<% } %>><%= game.phase || 'Lobby' %></span>
         <% if (game.subPhase) { %><span class="sp-subphase" id="game-subphase"><%= game.subPhase %></span><% } else { %><span class="sp-subphase" id="game-subphase"></span><% } %>
       </div>
-      <span class="sp-day" id="game-day"><%= game.dayCount ? 'Jour ' + game.dayCount : '' %></span>
+      <span class="sp-day" id="game-day"><% if (game.dayCount) { %><span data-i18n="goverview.day_prefix">Jour</span> <%= game.dayCount %><% } %></span>
       <span class="sp-viewers" id="spectator-count">👁 <span>0</span></span>
     </div>
   </div>
@@ -31,8 +31,8 @@
     <div class="sp-col-left">
       <div class="sp-panel sp-panel-players" style="animation: panelEnter 0.5s ease-out both; animation-delay: 0.1s;">
         <div class="sp-panel-header">
-          <h3 class="sp-panel-title">⚔️ Joueurs</h3>
-          <span class="sp-alive-badge" id="alive-count-badge"><span id="alive-count"><%= game.players ? game.players.filter(function(p) { return p.alive; }).length : 0 %></span> vivants</span>
+          <h3 class="sp-panel-title" data-i18n="spectator.players">⚔️ Joueurs</h3>
+          <span class="sp-alive-badge" id="alive-count-badge"><span id="alive-count"><%= game.players ? game.players.filter(function(p) { return p.alive; }).length : 0 %></span> <span data-i18n="dash.alive_count">vivants</span></span>
         </div>
         <div class="sp-player-list" id="player-list">
           <% if (game.players) { game.players.forEach(function(p, i) { %>
@@ -49,8 +49,8 @@
                 <span class="sp-player-name"><%= p.username || p.id %></span>
                 <% if (p.id && p.id.startsWith('fake_')) { %><span class="sp-badge-fake">BOT</span><% } %>
                 <div class="sp-player-tags">
-                  <% if (!p.alive && p.role) { %><span class="sp-role-tag"><%= p.role %></span><% } %>
-                  <% if (p.isCaptain) { %><span class="sp-badge-tag">👑 Capitaine</span><% } %>
+                  <% if (!p.alive && p.role) { %><span class="sp-role-tag" data-i18n="role.<%= p.role %>"><%= p.role %></span><% } %>
+                  <% if (p.isCaptain) { %><span class="sp-badge-tag">👑 <span data-i18n="spectator.captain">Capitaine</span></span><% } %>
                   <% if (p.inLove) { %><span class="sp-badge-tag sp-badge-love">💕</span><% } %>
                 </div>
               </div>
@@ -86,14 +86,14 @@
     <div class="sp-col-center">
       <div class="sp-panel sp-panel-feed" style="animation: panelEnter 0.5s ease-out both; animation-delay: 0.2s;">
         <div class="sp-panel-header">
-          <h3 class="sp-panel-title">📡 Événements en direct</h3>
+          <h3 class="sp-panel-title" data-i18n="spectator.events">📡 Événements en direct</h3>
           <span class="sp-feed-pulse"></span>
         </div>
         <div class="sp-feed" id="event-feed">
           <div class="sp-event sp-ev-info">
             <span class="sp-ev-time"><%= new Date().toLocaleTimeString() %></span>
             <span class="sp-ev-icon">📡</span>
-            <span class="sp-ev-text">Connecté au flux spectateur en temps réel</span>
+            <span class="sp-ev-text" data-i18n="spectator.connected">Connecté au flux spectateur en temps réel</span>
           </div>
           <% if (game.actionLog) { game.actionLog.slice(-10).forEach(function(log) { %>
             <div class="sp-event sp-ev-action">
@@ -109,8 +109,8 @@
       <% if (game.votes && Object.keys(game.votes).length > 0) { %>
       <div class="sp-panel sp-panel-votes" style="animation: panelEnter 0.5s ease-out both; animation-delay: 0.3s;">
         <div class="sp-panel-header">
-          <h3 class="sp-panel-title">🗳️ Votes en cours</h3>
-          <span class="sp-vote-count"><%= Object.keys(game.votes).length %> exprimés</span>
+          <h3 class="sp-panel-title" data-i18n="spectator.votes">🗳️ Votes en cours</h3>
+          <span class="sp-vote-count"><%= Object.keys(game.votes).length %> <span data-i18n="spectator.votes_cast">exprimés</span></span>
         </div>
         <div class="sp-votes" id="vote-display">
           <%
@@ -148,53 +148,53 @@
     <div class="sp-col-right">
       <div class="sp-panel sp-panel-info" style="animation: panelEnter 0.5s ease-out both; animation-delay: 0.25s;">
         <div class="sp-panel-header">
-          <h3 class="sp-panel-title">📊 Infos</h3>
+          <h3 class="sp-panel-title" data-i18n="spectator.info">📊 Infos</h3>
         </div>
         <div class="sp-info-grid">
           <div class="sp-info-card">
             <span class="sp-info-icon">🎮</span>
             <div class="sp-info-data">
               <span class="sp-info-val" id="player-count"><%= game.players ? game.players.length : 0 %></span>
-              <span class="sp-info-label">Joueurs</span>
+              <span class="sp-info-label" data-i18n="spectator.info_players">Joueurs</span>
             </div>
           </div>
           <div class="sp-info-card">
             <span class="sp-info-icon">💚</span>
             <div class="sp-info-data">
               <span class="sp-info-val" id="info-alive"><%= game.players ? game.players.filter(function(p) { return p.alive; }).length : 0 %></span>
-              <span class="sp-info-label">Vivants</span>
+              <span class="sp-info-label" data-i18n="spectator.info_alive">Vivants</span>
             </div>
           </div>
           <div class="sp-info-card">
             <span class="sp-info-icon">💀</span>
             <div class="sp-info-data">
               <span class="sp-info-val" id="dead-count"><%= game.dead ? game.dead.length : 0 %></span>
-              <span class="sp-info-label">Morts</span>
+              <span class="sp-info-label" data-i18n="spectator.info_dead">Morts</span>
             </div>
           </div>
           <div class="sp-info-card">
             <span class="sp-info-icon">📅</span>
             <div class="sp-info-data">
-              <span class="sp-info-val" id="game-started"><%= game.startedAt ? new Date(game.startedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—' %></span>
-              <span class="sp-info-label">Démarré</span>
+              <span class="sp-info-val" id="game-started"<% if (!game.startedAt) { %> data-i18n="fb.no_data"<% } %>><%= game.startedAt ? new Date(game.startedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—' %></span>
+              <span class="sp-info-label" data-i18n="spectator.info_started">Démarré</span>
             </div>
           </div>
         </div>
 
         <div class="sp-rules-section">
-          <div class="sp-rules-title">⚙️ Condition de victoire</div>
+          <div class="sp-rules-title" data-i18n="spectator.win_condition">⚙️ Condition de victoire</div>
           <div class="sp-rules-row">
-            <span>🐺 Loups</span>
-            <span><%= game.wolfWinCondition === 'majority' ? 'Majorité (loups ≥ villageois)' : 'Élimination (tuer tous les villageois)' %></span>
+            <span>🐺 <span data-i18n="spectator.wolves">Loups</span></span>
+            <span><%= game.wolfWinCondition === 'majority' ? '' : '' %><span data-i18n="spectator.wc_<%= game.wolfWinCondition || 'majority' %>"><%= game.wolfWinCondition === 'majority' ? 'Majorité (loups ≥ villageois)' : 'Élimination (tuer tous les villageois)' %></span></span>
           </div>
           <div class="sp-rules-row">
-            <span>🏘️ Village</span>
-            <span>Éliminer tous les loups</span>
+            <span>🏘️ <span data-i18n="spectator.village_label">Village</span></span>
+            <span data-i18n="spectator.wc_village">Éliminer tous les loups</span>
           </div>
         </div>
 
         <div class="sp-gameid-section">
-          <span class="sp-gameid-label">Game ID</span>
+          <span class="sp-gameid-label" data-i18n="spectator.game_id">Game ID</span>
           <span class="sp-gameid-val"><%= gameId %></span>
         </div>
       </div>
@@ -206,7 +206,7 @@
 <!-- Player Quick Modal (Spectator) — Premium Design -->
 <div class="modal-overlay" id="spectator-player-modal" onclick="if(event.target===this)closeSpectatorPlayerModal()">
   <div class="spm-card">
-    <button class="spm-close" onclick="closeSpectatorPlayerModal()" aria-label="Fermer">&times;</button>
+    <button class="spm-close" onclick="closeSpectatorPlayerModal()" aria-label="Fermer" data-i18n-aria-label="ui.close">&times;</button>
 
     <!-- Hero gradient bg -->
     <div class="spm-hero" id="sp-modal-hero">
@@ -226,7 +226,7 @@
 
     <!-- Stats grid -->
     <div class="spm-stats" id="sp-modal-info">
-      <p class="text-muted" style="text-align:center;padding:1.5rem 0">Chargement...</p>
+      <p class="text-muted" style="text-align:center;padding:1.5rem 0" data-i18n="spm.loading">Chargement...</p>
     </div>
 
     <!-- ELO bar -->
@@ -243,7 +243,7 @@
     <!-- Achievements preview -->
     <div class="spm-achievements" id="sp-modal-achs" style="display:none">
       <div class="spm-ach-header">
-        <span class="spm-ach-title">🏆 Succès</span>
+      <span class="spm-ach-title" data-i18n="spectator.modal_achievements">🏆 Succès</span>
         <span class="spm-ach-count" id="sp-modal-ach-count"></span>
       </div>
       <div class="spm-ach-list" id="sp-modal-ach-list"></div>
@@ -251,9 +251,9 @@
 
     <!-- Footer -->
     <div class="spm-footer">
-      <a id="sp-modal-link" href="#" class="spm-btn-profile">
+      <a id="sp-modal-link" href="#" onclick="return false" class="spm-btn-profile">
         <span class="spm-btn-icon">📈</span>
-        <span>Voir le profil complet</span>
+        <span data-i18n="spectator.view_profile">Voir le profil complet</span>
         <span class="spm-btn-arrow">→</span>
       </a>
     </div>
@@ -289,7 +289,7 @@
     document.getElementById('sp-modal-name').textContent = name;
     document.getElementById('sp-modal-link').href = '/player/' + playerId;
     document.getElementById('sp-modal-badges').innerHTML = '';
-    document.getElementById('sp-modal-info').innerHTML = '<p class="text-muted" style="text-align:center;padding:1.5rem 0">Chargement...</p>';
+    document.getElementById('sp-modal-info').innerHTML = '<p class="text-muted" style="text-align:center;padding:1.5rem 0">' + webI18n.t('spm.loading') + '</p>';
     document.getElementById('sp-modal-tier').style.display = 'none';
     document.getElementById('sp-modal-rank').style.display = 'none';
     document.getElementById('sp-modal-elo-wrap').style.display = 'none';
@@ -315,8 +315,8 @@
       document.getElementById('sp-modal-info').innerHTML =
         '<div class="spm-fake-notice">' +
           '<span class="spm-fake-icon">🤖</span>' +
-          '<span class="spm-fake-text">Joueur fictif</span>' +
-          '<span class="spm-fake-sub">Ce joueur a été généré pour le debug</span>' +
+          '<span class="spm-fake-text">' + webI18n.t('spm.fake_player') + '</span>' +
+          '<span class="spm-fake-sub">' + webI18n.t('spm.fake_player_desc') + '</span>' +
         '</div>';
       return;
     }
@@ -356,17 +356,17 @@
         document.getElementById('sp-modal-info').innerHTML =
           '<div class="spm-stat">' +
             '<span class="spm-stat-val" style="color:var(--color-info)">' + (d.games_played || 0) + '</span>' +
-            '<span class="spm-stat-label">Parties</span>' +
+            '<span class="spm-stat-label">' + webI18n.t('spm.stat_games') + '</span>' +
           '</div>' +
           '<div class="spm-stat">' +
             '<span class="spm-stat-val" style="color:var(--color-success)">' + (d.games_won || 0) + '</span>' +
-            '<span class="spm-stat-label">Victoires</span>' +
+            '<span class="spm-stat-label">' + webI18n.t('spm.stat_wins') + '</span>' +
           '</div>' +
           '<div class="spm-stat">' +
             '<span class="spm-stat-val" style="color:' + wrColor + '">' + wr + '%</span>' +
-            '<span class="spm-stat-label">Win rate</span>' +
+            '<span class="spm-stat-label">' + webI18n.t('spm.stat_winrate') + '</span>' +
           '</div>' +
-          (d.elo ? '<div class="spm-stat"><span class="spm-stat-val" style="color:var(--accent-secondary)">' + d.elo + '</span><span class="spm-stat-label">Points</span></div>' : '');
+          (d.elo ? '<div class="spm-stat"><span class="spm-stat-val" style="color:var(--accent-secondary)">' + d.elo + '</span><span class="spm-stat-label">' + webI18n.t('spm.stat_points') + '</span></div>' : '');
 
         // ELO bar
         if (d.elo) {
@@ -391,13 +391,13 @@
           document.getElementById('sp-modal-ach-count').textContent = d.achievements.length;
           var achHtml = '';
           var achNames = {
-            first_win:'Première Victoire',veteran:'Vétéran',legend:'Légende',
-            winning_streak_3:'Inarrêtable',winning_streak_5:'Invincible',
-            first_blood:'Premier Sang',alpha_wolf:'Loup Alpha',serial_killer:'Tueur en Série',
-            village_hero:'Héros du Village',sherlock:'Sherlock',guardian_angel:'Ange Gardien',
-            witch_master:'Maître Alchimiste',sharpshooter:"Tireur d'Élite",
-            romeo_juliet:'Roméo & Juliette',survivor:'Survivant',immortal:'Immortel',
-            popular:'Populaire',clown_prince:'Prince Clown',elder_wisdom:"Sagesse de l'Ancien"
+            first_win: webI18n.t('ach.first_win'), veteran: webI18n.t('ach.veteran'), legend: webI18n.t('ach.legend'),
+            winning_streak_3: webI18n.t('ach.winning_streak_3'), winning_streak_5: webI18n.t('ach.winning_streak_5'),
+            first_blood: webI18n.t('ach.first_blood'), alpha_wolf: webI18n.t('ach.alpha_wolf'), serial_killer: webI18n.t('ach.serial_killer'),
+            village_hero: webI18n.t('ach.village_hero'), sherlock: webI18n.t('ach.sherlock'), guardian_angel: webI18n.t('ach.guardian_angel'),
+            witch_master: webI18n.t('ach.witch_master'), sharpshooter: webI18n.t('ach.sharpshooter'),
+            romeo_juliet: webI18n.t('ach.romeo_juliet'), survivor: webI18n.t('ach.survivor'), immortal: webI18n.t('ach.immortal'),
+            popular: webI18n.t('ach.popular'), clown_prince: webI18n.t('ach.clown_prince'), elder_wisdom: webI18n.t('ach.elder_wisdom')
           };
           d.achievements.slice(0, 6).forEach(function(a) {
             achHtml += '<div class="spm-ach-chip" title="' + (achNames[a.id] || a.id) + '">' + (a.emoji || '🏅') + '</div>';
@@ -409,10 +409,10 @@
           achDiv.style.display = '';
         }
       } else {
-        document.getElementById('sp-modal-info').innerHTML = '<p class="text-muted" style="text-align:center;padding:1rem 0">Aucune statistique disponible</p>';
+        document.getElementById('sp-modal-info').innerHTML = '<p class="text-muted" style="text-align:center;padding:1rem 0">' + webI18n.t('spm.no_stats') + '</p>';
       }
     } catch(e) {
-      document.getElementById('sp-modal-info').innerHTML = '<p class="text-muted" style="text-align:center;padding:1rem 0">Impossible de charger les stats</p>';
+      document.getElementById('sp-modal-info').innerHTML = '<p class="text-muted" style="text-align:center;padding:1rem 0">' + webI18n.t('spm.load_error') + '</p>';
     }
   };
 

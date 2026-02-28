@@ -1,1224 +1,222 @@
 /**
- * Web Interface — Client-side i18n (FR / EN)
+ * Web Interface — Client-side i18n engine
+ * Loads translations from /static/locales/{lang}.json
  * Uses data-i18n attributes and localStorage for persistence.
  */
 (function() {
   'use strict';
 
-  const translations = {
-    fr: {
-      // Nav
-      'nav.dashboard': 'Tableau de bord',
-      'nav.roles': 'Rôles',
-      'nav.moderation': 'Modération',
-      'nav.monitoring': 'Monitoring',
-      'nav.docs': 'Documentation',
-      'nav.premium': 'Premium',
-      'nav.status': 'Statut',
-      'nav.support': 'Support',
-      'nav.faq': 'FAQ',
-      'nav.logout': 'Déconnexion',
-      'nav.login': 'Connexion',
-      'nav.language': 'Langue',
+  // -- Internal state --
+  // Flat key->value map for the currently loaded language
+  var _translations = {};
+  var _loadedLang = null;
+  var _loading = null; // current fetch promise (dedup)
 
-      // Guild Panel
-      'guild.overview': 'Vue d\'ensemble',
-      'guild.leaderboard': 'Classement',
-      'guild.history': 'Historique',
-      'guild.admin_section': 'Administration',
-      'guild.rules': 'Règles du jeu',
-
-      // Guild Overview
-      'goverview.members': 'membres',
-      'goverview.total_played': 'parties jouées',
-      'goverview.active_now': 'en cours',
-      'goverview.stat_games': 'Parties jouées',
-      'goverview.stat_village': 'Victoires Village',
-      'goverview.stat_wolves': 'Victoires Loups',
-      'goverview.stat_lovers': 'Victoires Amoureux',
-      'goverview.stat_avg_players': 'Joueurs / partie',
-      'goverview.stat_avg_duration': 'Durée moyenne',
-      'goverview.active_games': 'Parties en cours',
-      'goverview.no_games': 'Aucune partie en cours',
-      'goverview.no_games_hint': 'Les parties apparaîtront ici en temps réel',
-      'goverview.alive': 'vivants',
-      'goverview.dead': 'morts',
-      'goverview.spectate': 'Regarder',
-      'goverview.top_players': 'Meilleurs joueurs',
-      'goverview.see_all': 'Voir tout →',
-      'goverview.no_players': 'Aucun joueur classé',
-      'goverview.recent_games': 'Parties récentes',
-      'goverview.see_all_history': 'Voir tout →',
-      'goverview.no_history': 'Aucune partie terminée',
-      'goverview.quick_nav': 'Navigation rapide',
-      'goverview.nav_leaderboard_desc': 'Classement complet et ELO',
-      'goverview.nav_history_desc': 'Toutes les parties jouées',
-      'goverview.nav_rules_desc': 'Rôles et paramètres',
-      'goverview.nav_mod_desc': 'Gérer les parties en cours',
-
-      // Guild Moderation
-      'gmod.title': 'Modération',
-      'gmod.subtitle': 'Gérez les parties actives de ce serveur',
-      'gmod.no_games': 'Aucune partie en cours sur ce serveur',
-      'gmod.no_games_hint': 'Les parties apparaîtront ici en temps réel',
-      'gmod.players': 'joueurs',
-      'gmod.alive': 'vivants',
-      'gmod.skip_phase': 'Passer la phase',
-      'gmod.force_end': 'Forcer la fin',
-      'gmod.players_list': 'Joueurs',
-      'gmod.log': 'Journal',
-      'gmod.no_logs': 'Aucune action enregistrée',
-      'gmod.day': 'Jour',
-      'gmod.view_profile': 'Voir profil',
-
-      // Guild Rules
-      'grules.title': 'Règles du jeu',
-      'grules.subtitle': 'Configurez les paramètres des parties pour ce serveur',
-      'grules.players_title': 'Joueurs',
-      'grules.min_players': 'Minimum de joueurs',
-      'grules.max_players': 'Maximum de joueurs',
-      'grules.min_hint': 'Entre 3 et 6',
-      'grules.max_hint': 'Entre min et 20',
-      'grules.win_title': 'Condition de victoire',
-      'grules.wolf_win': 'Victoire des loups',
-      'grules.majority': 'Majorité',
-      'grules.majority_desc': 'Loups ≥ Villageois',
-      'grules.elimination': 'Élimination totale',
-      'grules.elimination_desc': 'Tous les villageois morts',
-      'grules.lang_title': 'Langue du bot',
-      'grules.bot_locale': 'Langue des messages en jeu',
-      'grules.roles_title': 'Rôles disponibles',
-      'grules.roles_desc': 'Rôles qui peuvent apparaître dans les parties sur ce serveur',
-      'grules.setup_title': 'Configuration',
-      'grules.category': 'Catégorie Discord',
-      'grules.setup_status': 'Statut du setup',
-      'grules.save': 'Enregistrer les modifications',
-      'grules.role_mandatory': 'Rôle obligatoire',
-      'grules.role_enabled': 'Activé',
-      'grules.role_disabled': 'Désactivé',
-      'grules.classic_roles': 'Rôles Classiques',
-      'grules.classic_roles_desc': 'Rôles de base disponibles pour tous les serveurs',
-      'grules.premium_roles': 'Rôles Premium',
-      'grules.premium_roles_desc': 'Rôles exclusifs réservés aux membres Premium',
-      'grules.premium_lifetime': 'Premium Lifetime',
-      'grules.premium_active': 'Premium Actif',
-      'grules.premium_locked': 'Premium requis',
-      'grules.unlocked': 'Débloqué',
-      'grules.premium_required': 'Premium',
-      'grules.premium_cta': 'Passez en Premium pour débloquer tous les rôles exclusifs et fonctionnalités avancées.',
-      'grules.premium_cta_title': 'Débloquer les rôles Premium',
-
-      // Guild Leaderboard
-      'gleader.title': 'Classement',
-      'gleader.subtitle': 'Les meilleurs joueurs de ce serveur',
-      'gleader.empty': 'Aucun joueur classé pour le moment. Jouez des parties pour voir le classement !',
-      'gleader.full_ranking': 'Classement complet',
-      'gleader.col_player': 'Joueur',
-      'gleader.col_tier': 'Rang',
-      'gleader.col_games': 'Parties',
-      'gleader.col_wins': 'Victoires',
-      'gleader.col_winrate': 'Win%',
-      'gleader.col_wolf_wins': '🐺 Loups',
-      'gleader.col_village_wins': '🏡 Village',
-      'gleader.col_streak': 'Série',
-
-      // Guild History
-      'ghistory.title': 'Historique',
-      'ghistory.subtitle': 'Les dernières parties jouées sur ce serveur',
-      'ghistory.empty': 'Aucune partie terminée pour le moment.',
-      'ghistory.total_games': 'Parties jouées',
-      'ghistory.village_wins': 'Victoires Village',
-      'ghistory.wolf_wins': 'Victoires Loups',
-      'ghistory.lovers_wins': 'Victoires Amoureux',
-      'ghistory.avg_players': 'Joueurs / partie',
-      'ghistory.avg_duration': 'Durée moyenne',
-      'ghistory.recent_games': 'Parties récentes',
-      'ghistory.col_date': 'Date',
-      'ghistory.col_winner': 'Vainqueur',
-      'ghistory.col_players': 'Joueurs',
-      'ghistory.col_days': 'Jours',
-      'ghistory.col_duration': 'Durée',
-      'ghistory.col_details': 'Détails',
-      'ghistory.btn_details': 'Voir',
-      'ghistory.player_list': 'Liste des joueurs',
-
-      // Dashboard
-      'dash.title': 'Werewolf Dashboard',
-      'dash.subtitle': 'Surveillance temps réel de toutes les parties sur vos serveurs',
-      'dash.active_games': 'Parties actives',
-      'dash.active_players': 'Joueurs en jeu',
-      'dash.servers': 'Serveurs',
-      'dash.total_games': 'Total parties',
-      'dash.live_games': 'Parties en direct',
-      'dash.no_games': 'Aucune partie en cours',
-      'dash.no_games_hint': 'Les parties apparaîtront ici en temps réel',
-      'dash.watch_live': '👁️ Regarder en direct',
-      'dash.recent_activity': 'Activité récente',
-      'dash.waiting': 'En attente d\'événements...',
-      'dash.quick_access': '⚡️ Accès rapide',
-
-      // Monitoring
-      'mon.title': '📊 Monitoring',
-      'mon.subtitle': 'Surveillance en temps réel du bot — Métriques système, Discord et jeu',
-      'mon.health': 'Santé',
-      'mon.uptime': 'Uptime',
-      'mon.memory': 'Mémoire (RSS)',
-      'mon.latency': 'Latence Discord',
-      'mon.system': 'Système',
-      'mon.cpu': 'CPU',
-      'mon.heap': 'Heap V8',
-      'mon.ram_free': 'RAM libre',
-      'mon.ram_total': 'RAM totale',
-      'mon.process_uptime': 'Uptime process',
-      'mon.discord': 'Discord',
-      'mon.guilds': 'Serveurs',
-      'mon.users_cached': 'Utilisateurs (cache)',
-      'mon.channels': 'Channels',
-      'mon.ws_status': 'Statut WebSocket',
-      'mon.ws_latency': 'Latence WS',
-      'mon.game': 'Jeu',
-      'mon.active_games': 'Parties actives',
-      'mon.total_players': 'Joueurs en jeu',
-      'mon.games_24h': 'Parties créées (24h)',
-      'mon.completed_24h': 'Parties terminées (24h)',
-      'mon.commands': 'Commandes',
-      'mon.cmd_total': 'Total exécutées',
-      'mon.cmd_errors': 'Erreurs',
-      'mon.cmd_ratelimited': 'Rate limited',
-      'mon.cmd_avg': 'Temps moyen',
-      'mon.errors': 'Erreurs',
-      'mon.err_total': 'Total',
-      'mon.err_critical': 'Critiques',
-      'mon.err_warnings': 'Avertissements',
-      'mon.err_24h': 'Dernières 24h',
-      'mon.history': '📈 Historique (24h)',
-      'mon.auto_refresh': 'Actualisation auto toutes les 30s',
-      'mon.refresh': 'Actualiser',
-      'mon.connecting': 'Connexion...',
-
-      // Moderation
-      'mod.title': '🛡️ Modération',
-      'mod.subtitle': 'Gérer les parties actives — voir les rôles, contrôler les phases, modérer les joueurs',
-      'mod.no_games': 'Aucune partie active sur vos serveurs',
-      'mod.no_games_hint': 'Les parties que vous pouvez modérer apparaîtront ici en temps réel',
-      'mod.skip_phase': '⏩ Skip Phase',
-      'mod.force_end': '⏹️ Forcer la fin',
-      'mod.players': '👥 Joueurs',
-      'mod.log': '📜 Journal',
-      'mod.game_info': '⚙️ Infos partie',
-      'mod.alive': 'vivants',
-
-      // Footer
-      'footer.connected': 'Connecté',
-      'footer.disconnected': 'Déconnecté',
-
-      // Roles Page
-      'roles.badge': 'Encyclopédie',
-      'roles.title': 'Découvrez les <span>Rôles</span>',
-      'roles.subtitle': 'Chaque rôle possède des pouvoirs uniques. Maîtrisez-les tous pour dominer la partie.',
-      'roles.stat_total': 'Rôles',
-      'roles.stat_village': 'Village',
-      'roles.stat_wolves': 'Loups',
-      'roles.stat_solo': 'Solo',
-      'roles.filter_all': 'Tous',
-      'roles.filter_village': 'Village',
-      'roles.filter_wolves': 'Loups',
-      'roles.filter_solo': 'Solo',
-      'roles.reveal': 'Révéler tout',
-      'roles.classic_title': 'Rôles <span>Classiques</span>',
-      'roles.classic_desc': 'Les rôles essentiels du jeu de base',
-      'roles.premium_title': 'Rôles <span>Premium</span>',
-      'roles.premium_desc': 'Des rôles spéciaux aux pouvoirs uniques',
-      'roles.roles_label': 'rôles',
-      'roles.builtin': 'Rôles intégrés',
-      'roles.custom': 'Rôles <span>Personnalisés</span>',
-      'roles.custom_desc': 'Créés par les administrateurs',
-      'roles.no_custom': 'Aucun rôle personnalisé créé',
-      'roles.create_hint': 'Utilisez le formulaire ci-dessous pour en créer un',
-      'roles.login_hint': 'Connectez-vous en tant qu\'administrateur pour créer des rôles',
-      'roles.create_title': 'Créer un rôle personnalisé',
-      'roles.form_name': 'Nom',
-      'roles.form_name_ph': 'ex. Forgeron',
-      'roles.form_emoji': 'Emoji',
-      'roles.form_camp': 'Camp',
-      'roles.form_power': 'Pouvoir',
-      'roles.form_desc': 'Description',
-      'roles.form_desc_ph': 'Décrivez les capacités du rôle...',
-      'roles.form_guild': 'ID du serveur',
-      'roles.form_guild_ph': 'ID du serveur',
-      'roles.create_btn': 'Créer le rôle',
-      'roles.power_none': 'Aucun (Passif)',
-      'roles.power_see': 'Voir (comme Voyante)',
-      'roles.power_protect': 'Protéger (comme Salvateur)',
-      'roles.power_kill': 'Tuer (comme Chasseur)',
-      'roles.power_heal': 'Soigner (comme Sorcière)',
-      'roles.power_custom': 'Personnalisé',
-      'roles.phase_night': '🌙 Nuit',
-      'roles.phase_day': '☀️ Jour',
-      'roles.phase_death': '💀 Mort',
-      'roles.phase_start': '🌅 Début',
-      'roles.phase_passive': '🛡️ Passif',
-      // Role names
-      'role.name.WEREWOLF': 'Loup-Garou',
-      'role.name.SEER': 'Voyante',
-      'role.name.WITCH': 'Sorcière',
-      'role.name.HUNTER': 'Chasseur',
-      'role.name.CUPID': 'Cupidon',
-      'role.name.PETITE_FILLE': 'Petite Fille',
-      'role.name.VILLAGER': 'Villageois',
-      'role.name.IDIOT': 'Idiot du Village',
-      'role.name.SALVATEUR': 'Salvateur',
-      'role.name.ANCIEN': 'Ancien',
-      'role.name.WHITE_WOLF': 'Loup Blanc',
-      'role.name.THIEF': 'Voleur',
-      // Role camps
-      'role.camp.wolves': 'Loups',
-      'role.camp.village': 'Village',
-      'role.camp.solo': 'Solo',
-      // Role descriptions
-      'role.desc.WEREWOLF': 'Chaque nuit, les loups-garous se réunissent pour dévorer un villageois.',
-      'role.desc.SEER': 'Chaque nuit, la voyante peut découvrir le rôle d\'un joueur.',
-      'role.desc.WITCH': 'Possède une potion de vie et une potion de mort, utilisable une fois chacune.',
-      'role.desc.HUNTER': 'En mourant, le chasseur peut emporter un autre joueur avec lui.',
-      'role.desc.CUPID': 'Désigne deux amoureux au début de la partie. Si l\'un meurt, l\'autre aussi.',
-      'role.desc.PETITE_FILLE': 'Peut espionner les loups-garous pendant la nuit, au risque de se faire repérer.',
-      'role.desc.VILLAGER': 'Un simple villageois sans pouvoir spécial. Il doit démasquer les loups.',
-      'role.desc.IDIOT': 'S\'il est voté par le village, il est révélé mais perd son droit de vote.',
-      'role.desc.SALVATEUR': 'Chaque nuit, il protège un joueur de l\'attaque des loups-garous.',
-      'role.desc.ANCIEN': 'Résiste à la première attaque des loups-garous grâce à sa robustesse.',
-      'role.desc.WHITE_WOLF': 'Joue en solitaire. Chasse avec la meute mais peut dévorer un loup une nuit sur deux. Gagne s\'il est le dernier.',
-      'role.desc.THIEF': 'Découvre 2 cartes au début et peut échanger son rôle. Si les deux sont des loups, il doit en prendre une.',
-
-      // Documentation Page
-      'docs.title': '📚 Werewolf Bot — Wiki complet',
-      'docs.subtitle': 'Tout ce que vous devez savoir pour jouer, configurer et maîtriser le Loup-Garou sur Discord.',
-      'docs.nav_getting_started': 'POUR COMMENCER',
-      'docs.nav_roles': 'RÔLES',
-      'docs.nav_gameplay': 'JEU',
-      'docs.nav_commands': 'COMMANDES',
-      'docs.nav_progression': 'PROGRESSION',
-      'docs.nav_config': 'CONFIGURATION',
-      'docs.overview': 'Aperçu',
-      'docs.game_flow': 'Déroulement',
-      'docs.setup': 'Installation',
-      'docs.village_roles': 'Village',
-      'docs.wolf_roles': 'Loups',
-      'docs.solo_roles': 'Solo',
-      'docs.distribution': 'Distribution',
-      'docs.phases': 'Phases',
-      'docs.night_actions': 'Actions Nuit',
-      'docs.day_actions': 'Actions Jour',
-      'docs.special_mechanics': 'Mécaniques spéciales',
-      'docs.victory': 'Victoire',
-      'docs.player_commands': 'Joueur',
-      'docs.night_commands': 'Nuit',
-      'docs.day_commands': 'Jour',
-      'docs.admin_commands': 'Admin',
-      'docs.achievements': 'Succès',
-      'docs.elo': 'ELO & Tiers',
-      'docs.rules': 'Règles',
-      'docs.timeouts': 'Délais',
-      'docs.overview_title': 'Aperçu',
-      'docs.overview_text': 'Werewolf Bot est une implémentation complète du jeu de société Loup-Garou sur Discord. Les joueurs reçoivent secrètement des rôles — certains sont des villageois cherchant à survivre, d\'autres sont des loups-garous chassant la nuit. Le jour, le village débat et vote pour éliminer les suspects. Le jeu alterne entre phases de nuit et de jour jusqu\'à la victoire d\'un camp.',
-      'docs.key_features': 'Fonctionnalités clés',
-      'docs.feature_1': '12 rôles uniques répartis en 3 camps (Village, Loups, Solo)',
-      'docs.feature_2': 'Gestion automatique des salons vocaux (mute/unmute par phase)',
-      'docs.feature_3': 'Channels privés pour les loups, voyante, sorcière et autres rôles',
-      'docs.feature_4': 'Élection du capitaine et mécaniques de mort spéciales',
-      'docs.feature_5': 'Système amoureux avec Cupidon',
-      'docs.feature_6': 'Classement ELO, succès et système de progression',
-      'docs.feature_7': 'Règles configurables par serveur',
-      'docs.feature_8': 'Dashboard web temps réel avec mode spectateur',
-      'docs.feature_9': 'Support multilingue (FR / EN)',
-      'docs.game_flow_title': 'Déroulement du jeu',
-      'docs.flow_setup': 'Configuration',
-      'docs.flow_create': 'Création & Rejoindre',
-      'docs.flow_roles': 'Attribution des rôles',
-      'docs.flow_channels': 'Création des channels',
-      'docs.flow_night': 'Phase de Nuit',
-      'docs.flow_day': 'Phase de Jour',
-      'docs.flow_victory': 'Victoire',
-      'docs.flow_details': 'Déroulement détaillé',
-      'docs.flow_d1': 'Un admin lance /setup pour configurer le bot sur le serveur',
-      'docs.flow_d2': 'Un joueur utilise /create. Les autres rejoignent avec /join (minimum 4 joueurs)',
-      'docs.flow_d3': 'L\'hôte lance /start — les rôles sont assignés secrètement via DM',
-      'docs.flow_d4': 'Des channels privés sont créés pour les loups, la voyante, la sorcière, etc.',
-      'docs.flow_d5': 'Phase nuit : les rôles spéciaux agissent dans l\'ordre (Voleur → Cupidon → Salvateur → Loups → Loup Blanc → Sorcière → Voyante)',
-      'docs.flow_d6': 'Phase jour : annonce des morts, vote capitaine (si besoin), délibération, puis vote du village',
-      'docs.flow_d7': 'Le cycle se répète jusqu\'à une condition de victoire',
-      'docs.setup_title': 'Installation initiale',
-      'docs.setup_steps': 'Étapes d\'installation',
-      'docs.setup_1': 'Invitez le bot sur votre serveur avec les permissions admin',
-      'docs.setup_2': 'Lancez /setup — un assistant interactif démarre',
-      'docs.setup_3': 'L\'assistant crée : une catégorie de jeu, un salon texte principal et un salon vocal',
-      'docs.setup_4': 'Configurez optionnellement les règles avec /setrules',
-      'docs.setup_5': 'Choisissez une langue avec /lang fr ou /lang en',
-      'docs.setup_6': 'Les joueurs peuvent maintenant /create des parties !',
-      'docs.village_title': 'Rôles du Village',
-      'docs.wolves_title': 'Rôles des Loups',
-      'docs.solo_title': 'Rôles Solo / Spéciaux',
-      'docs.distribution_title': 'Distribution des rôles',
-      'docs.dist_rules': 'Règles de distribution',
-      'docs.dist_1': 'Minimum 4 joueurs pour lancer une partie',
-      'docs.dist_2': 'Nombre de loups : ~⅓ des joueurs (1 pour 4-5, 2 pour 6-8, 3 pour 9-11, 4 pour 12+)',
-      'docs.dist_3': 'Rôles spéciaux ajoutés par priorité : Voyante → Sorcière → Chasseur → Cupidon → Salvateur → Petite Fille → Ancien → Idiot',
-      'docs.dist_4': 'Les places restantes sont remplies de Villageois',
-      'docs.dist_5': 'Le Loup Blanc remplace un loup normal si activé et 8+ joueurs',
-      'docs.dist_6': 'Le Voleur nécessite 2 cartes supplémentaires',
-      'docs.dist_7': 'Configurable : les admins peuvent activer/désactiver des rôles via /setrules',
-      'docs.phases_title': 'Phases de jeu',
-      'docs.night_phase': 'Phase de Nuit',
-      'docs.night_desc': 'La nuit, le village dort (tous mute vocal). Les rôles spéciaux agissent dans un ordre strict via leurs channels privés.',
-      'docs.day_phase': 'Phase de Jour',
-      'docs.day_desc': 'À l\'aube, les morts de la nuit sont annoncées. Le village débat et vote ensuite.',
-      'docs.transitions': 'Transitions de phase',
-      'docs.night_to_day': '🌅 Nuit → Jour',
-      'docs.day_to_night': '🌙 Jour → Nuit',
-      'docs.night_actions_title': 'Actions de Nuit',
-      'docs.day_actions_title': 'Actions de Jour',
-      'docs.afk_warning': 'Avertissement AFK',
-      'docs.afk_text': 'Les joueurs qui n\'agissent pas dans les 120 secondes pendant leur phase de nuit verront leur action auto-skip.',
-      'docs.captain_info': 'Mécanique du Capitaine',
-      'docs.captain_1': 'Le capitaine est élu le premier jour via /captainvote',
-      'docs.captain_2': 'Le vote du capitaine compte double',
-      'docs.captain_3': 'Si le capitaine meurt, il choisit un successeur',
-      'docs.captain_4': 'En cas d\'égalité, le capitaine tranche',
-      'docs.mechanics_title': 'Mécaniques spéciales',
-      'docs.mech_lovers': 'Système Amoureux',
-      'docs.mech_wolf_vote': 'Vote Consensus des Loups',
-      'docs.mech_elder': 'Drain de l\'Ancien',
-      'docs.mech_voice': 'Gestion Vocale',
-      'docs.mech_death': 'Mort & Révélation',
-      'docs.victory_title': 'Conditions de Victoire',
-      'docs.win_village': 'Victoire du Village',
-      'docs.win_village_desc': 'Tous les loups-garous ont été éliminés. Le village célèbre !',
-      'docs.win_wolves': 'Victoire des Loups',
-      'docs.win_wolves_desc': 'Les loups égalent ou surpassent les villageois restants. La meute a pris le contrôle !',
-      'docs.win_white_wolf': 'Victoire du Loup Blanc',
-      'docs.win_white_wolf_desc': 'Le Loup Blanc est l\'ultime dernier joueur debout.',
-      'docs.win_lovers': 'Victoire des Amoureux',
-      'docs.win_lovers_desc': 'Les deux amoureux (de camps différents) sont les derniers debout. L\'amour triomphe !',
-      'docs.win_draw': 'Égalité',
-      'docs.win_draw_desc': 'Plus aucun joueur ne reste, ou la partie ne peut continuer.',
-      'docs.cmd_player_title': 'Commandes Joueur',
-      'docs.cmd_night_title': 'Commandes de Nuit',
-      'docs.cmd_day_title': 'Commandes de Jour',
-      'docs.cmd_admin_title': 'Commandes Admin',
-      'docs.achievements_title': 'Succès',
-      'docs.elo_title': 'Classement ELO & Tiers',
-      'docs.elo_desc': 'Chaque joueur commence à 1000 ELO. Gagner augmente votre score, perdre le diminue. Votre tier est déterminé par votre fourchette d\'ELO.',
-      'docs.rules_title': 'Règles configurables',
-      'docs.timeouts_title': 'Délais & Minuteries',
-      'docs.th_players': 'Joueurs',
-      'docs.th_wolves': 'Loups',
-      'docs.th_specials': 'Rôles spéciaux',
-      'docs.th_villagers': 'Villageois',
-      'docs.th_role': 'Rôle',
-      'docs.th_command': 'Commande',
-      'docs.th_action': 'Action',
-      'docs.th_timing': 'Quand',
-      'docs.th_description': 'Description',
-      'docs.th_permission': 'Permission',
-      'docs.th_rule': 'Règle',
-      'docs.th_default': 'Par défaut',
-      'docs.th_event': 'Événement',
-      'docs.th_duration': 'Durée',
-      'docs.when_n1': 'Nuit 1 uniquement',
-      'docs.when_every': 'Chaque nuit',
-      'docs.when_odd': 'Nuits impaires (3, 5, 7...)',
-
-      // Premium Page
-      'premium.title': 'Werewolf <span>Premium</span>',
-      'premium.hero_sub': 'Élevez votre expérience Werewolf au rang de légende',
-      'premium.stat_roles': 'Rôles exclusifs',
-      'premium.stat_themes': 'Thèmes custom',
-      'premium.stat_sounds': 'Effets sonores',
-      'premium.stat_fun': 'Fun',
-      'premium.cta_explore': 'Découvrir les offres',
-      'premium.compare_title': 'Gratuit vs <span>Premium</span>',
-      'premium.compare_sub': 'Voyez la différence en un coup d\'œil',
-      'premium.plan_free': 'Gratuit',
-      'premium.plan_premium': 'Premium',
-      'premium.popular': 'Le plus populaire',
-      'premium.features_title': 'Fonctionnalités <span>Premium</span>',
-      'premium.features_sub': 'Tout ce qu\'il faut pour l\'expérience Werewolf ultime',
-      'premium.feature_roles': 'Rôles exclusifs',
-      'premium.feat_roles_desc': 'Débloquez 7 rôles premium : Loup Blanc, Renard, Cupidon, Salvateur, Ancien, Idiot du Village et Voleur.',
-      'premium.feature_themes': 'Thèmes personnalisés',
-      'premium.feat_themes_desc': 'Transformez vos parties avec 15 thèmes — de Lune de Sang à Forêt Enchantée.',
-      'premium.feature_sounds': 'Effets sonores',
-      'premium.feat_sounds_desc': 'Audio immersif : hurlement de loup la nuit, cloches à l\'aube, révélation dramatique des votes.',
-      'premium.feature_stats': 'Stats avancées',
-      'premium.feat_stats_desc': 'Taux de victoire par rôle, heat maps, chaînes de kills et rapports CSV exportables.',
-      'premium.feature_priority': 'Support prioritaire',
-      'premium.feat_priority_desc': 'Ligne directe avec notre équipe dev. Bugs corrigés en heures, pas en jours.',
-      'premium.feature_badges': 'Badge Premium',
-      'premium.feat_badges_desc': 'Couronne dorée sur les classements, le profil et les mentions en jeu.',
-      'premium.feat_custom_title': 'Rôles custom',
-      'premium.feat_custom_desc': 'Créez des rôles entièrement nouveaux avec capacités, camps et conditions de victoire.',
-      'premium.feat_scenarios_title': 'Scénarios',
-      'premium.feat_scenarios_desc': 'Scénarios pré-construits avec règles uniques, rebondissements et conditions de victoire.',
-      'premium.roles_title': 'Rôles <span>exclusifs</span>',
-      'premium.roles_sub': 'Débloquez ces personnages puissants',
-      'premium.pricing_title': 'Choisissez votre <span>plan</span>',
-      'premium.pricing_sub': 'Des offres flexibles pour chaque meute',
-      'premium.monthly': 'Mensuel',
-      'premium.yearly': 'Annuel',
-      'premium.save_badge': '-25%',
-      'premium.plan_starter': 'Starter',
-      'premium.plan_starter_desc': 'Idéal pour découvrir le premium',
-      'premium.plan_pro': 'Pro',
-      'premium.plan_pro_desc': 'L\'expérience ultime',
-      'premium.plan_lifetime': 'À vie',
-      'premium.plan_lifetime_desc': 'Un paiement, à vous pour toujours',
-      'premium.per_month': '/mois',
-      'premium.one_time': 'unique',
-      'premium.btn_get_started': 'Commencer',
-      'premium.btn_go_pro': 'Passer Pro',
-      'premium.btn_lifetime': 'Obtenir à vie',
-      'premium.testi_1': '"Les rôles premium ont complètement changé nos parties. Le Loup Blanc crée des retournements incroyables !"',
-      'premium.testi_2': '"Les effets sonores rendent le jeu 10x plus immersif. Mes amis ne peuvent plus s\'arrêter."',
-      'premium.testi_3': '"Les rôles custom nous permettent de créer des scénarios qu\'on n\'aurait jamais imaginés. Ça vaut chaque centime."',
-      'premium.faq_title': 'Questions <span>fréquentes</span>',
-      'premium.faq_q1': 'Comment activer Premium après le paiement ?',
-      'premium.faq_a1': 'Une fois le paiement effectué, votre compte Discord est instantanément lié. Les fonctionnalités s\'activent en quelques secondes.',
-      'premium.faq_q2': 'Puis-je utiliser Premium sur plusieurs serveurs ?',
-      'premium.faq_a2': 'Oui ! Premium est lié à votre compte Discord et fonctionne sur tous les serveurs où le bot est installé.',
-      'premium.faq_q3': 'Puis-je annuler à tout moment ?',
-      'premium.faq_a3': 'Absolument. Annulez quand vous voulez, sans questions. Vous gardez l\'accès jusqu\'à la fin de votre période de facturation.',
-      'premium.faq_q4': 'Quels moyens de paiement acceptez-vous ?',
-      'premium.faq_a4': 'Nous acceptons les cartes bancaires, PayPal et même les cryptos via notre prestataire de paiement.',
-      'premium.final_title': 'Prêt à passer Premium ?',
-      'premium.final_sub': 'Rejoignez des milliers de serveurs qui profitent déjà de l\'expérience Werewolf ultime.',
-      'premium.final_btn': 'Débloquer Premium',
-
-      // Support Page
-      'support.badge': 'Centre d\'aide',
-      'support.title': 'Support & <span>Ressources</span>',
-      'support.subtitle': 'Besoin d\'aide ? Nous sommes là pour vous. Trouvez vos réponses, contactez-nous ou explorez nos ressources.',
-      'support.github_desc': 'Code source, rapports de bugs, demandes de fonctionnalités et contributions.',
-      'support.github_btn': 'Voir le dépôt <span class="sp-arrow">→</span>',
-      'support.discord_desc': 'Serveur communautaire pour l\'aide en direct, les annonces et discussions.',
-      'support.discord_btn': 'Rejoindre le serveur <span class="sp-arrow">→</span>',
-      'support.docs_title': 'Documentation',
-      'support.docs_desc': 'Wiki complet avec tous les rôles, commandes, mécaniques et options de configuration.',
-      'support.docs_btn': 'Lire le Wiki <span class="sp-arrow">→</span>',
-      'support.premium_title': 'Premium',
-      'support.premium_desc': 'Débloquez des rôles exclusifs, thèmes, sons et fonctionnalités avancées.',
-      'support.premium_btn': 'Découvrir Premium <span class="sp-arrow">→</span>',
-      'support.commands_title': 'Commandes <span>rapides</span>',
-      'support.commands_sub': 'Les commandes essentielles pour bien démarrer',
-      'support.cmd_create': 'Créer une nouvelle partie sur le serveur',
-      'support.cmd_join': 'Rejoindre le lobby de la partie en cours',
-      'support.cmd_start': 'Lancer la partie quand assez de joueurs sont prêts',
-      'support.cmd_setup': 'Assistant interactif pour configurer le bot',
-      'support.cmd_setrules': 'Activer/désactiver des rôles et options',
-      'support.cmd_lang': 'Changer la langue du bot (fr/en)',
-      'support.cmd_stats': 'Voir votre classement ELO et statistiques',
-      'support.cmd_help': 'Lister toutes les commandes disponibles',
-      'support.faq_heading': 'Questions <span>fréquentes</span>',
-      'support.faq_sub': 'Réponses rapides aux questions courantes',
-      'support.faq_q1': 'Comment inviter le bot sur mon serveur ?',
-      'support.faq_a1': 'Utilisez le lien d\'invitation depuis le dépôt GitHub ou le profil du bot. Le bot a besoin des permissions Administrateur pour gérer les salons, rôles et le mute vocal.',
-      'support.faq_q2': 'Quel est le nombre minimum de joueurs ?',
-      'support.faq_a2': 'Il faut au moins 4 joueurs pour lancer une partie. Pour la meilleure expérience avec tous les rôles, 8 à 12 joueurs est recommandé.',
-      'support.faq_q3': 'Comment changer la langue ?',
-      'support.faq_a3': 'Utilisez la commande /lang suivie de "fr" pour français ou "en" pour anglais. Cela change la langue du bot pour tout le serveur.',
-      'support.faq_q4': 'Puis-je personnaliser les rôles en jeu ?',
-      'support.faq_a4': 'Oui ! Utilisez /setrules pour activer ou désactiver des rôles spécifiques, changer le nombre de loups et configurer d\'autres options par serveur.',
-      'support.faq_q5': 'Pourquoi mes joueurs ne sont pas mute/unmute ?',
-      'support.faq_a5': 'Vérifiez que le bot a la permission "Rendre muet les membres". Les joueurs doivent aussi être connectés au salon vocal de la partie.',
-      'support.faq_q6': 'Le jeu est bloqué, que faire ?',
-      'support.faq_a6': 'Un admin peut utiliser /nextphase pour forcer l\'avancement, ou /force-end pour terminer immédiatement. Utilisez /clear pour nettoyer les salons.',
-      'support.faq_q7': 'Comment fonctionne le système ELO ?',
-      'support.faq_a7': 'Chaque joueur commence à 1000 ELO. Gagner augmente le score et perdre le diminue. Votre rang (Fer → Alpha Wolf) dépend de votre fourchette. Utilisez /stats pour vérifier.',
-      'support.contact_title': 'Encore besoin d\'<span>aide</span> ?',
-      'support.contact_sub': 'Notre communauté est toujours prête à vous aider. Rejoignez notre Discord ou ouvrez un ticket sur GitHub.',
-      'support.btn_discord': 'Rejoindre Discord',
-      'support.btn_github': 'Ouvrir un ticket',
-
-      // Invite page
-      'invite.title': 'Ajouter Werewolf Bot',
-      'invite.subtitle': 'Le bot n\'est pas encore sur',
-      'invite.card_title': 'Inviter Werewolf Bot',
-      'invite.card_desc': 'Ajoutez le bot à votre serveur pour commencer à jouer au Loup-Garou avec votre communauté. Le bot inclut les commandes slash, la gestion des rôles, le mute vocal et une expérience de jeu complète.',
-      'invite.feature_game': 'Jeu de Loup-Garou complet',
-      'invite.feature_roles': '12+ rôles uniques',
-      'invite.feature_voice': 'Gestion du vocal',
-      'invite.feature_stats': 'Stats, ELO & succès',
-      'invite.feature_lang': 'Français & anglais',
-      'invite.feature_dashboard': 'Dashboard web inclus',
-      'invite.btn_invite': 'Ajouter au serveur',
-      'invite.perms_title': 'Permissions requises',
-      'invite.perm_commands': 'Commandes slash',
-      'invite.perm_commands_desc': 'Enregistrer et répondre aux commandes /',
-      'invite.perm_messages': 'Envoyer des messages',
-      'invite.perm_messages_desc': 'Envoyer les annonces et mises à jour du jeu',
-      'invite.perm_manage_channels': 'Gérer les salons',
-      'invite.perm_manage_channels_desc': 'Créer et gérer les salons de jeu',
-      'invite.perm_voice': 'Rendre muet les membres',
-      'invite.perm_voice_desc': 'Gérer le vocal pendant les phases de nuit',
-      'invite.perm_embed': 'Intégrer des liens',
-      'invite.perm_embed_desc': 'Embeds enrichis pour l\'interface de jeu',
-      'invite.perm_dm': 'Messages directs',
-      'invite.perm_dm_desc': 'Envoyer les attributions de rôle en privé',
-      'invite.back': 'Retour au Dashboard',
-
-      // Monitoring access
-      'mon.login_required': 'Connectez-vous pour voir plus de détails',
-      'mon.login_desc': 'Les métriques détaillées sont réservées aux membres connectés et administrateurs.',
-      'mon.restricted_notice': 'Certaines métriques avancées sont réservées aux administrateurs du bot.',
-    },
-    en: {
-      // Nav
-      'nav.dashboard': 'Dashboard',
-      'nav.roles': 'Roles',
-      'nav.moderation': 'Moderation',
-      'nav.monitoring': 'Monitoring',
-      'nav.docs': 'Documentation',
-      'nav.premium': 'Premium',
-      'nav.status': 'Status',
-      'nav.support': 'Support',
-      'nav.faq': 'FAQ',
-      'nav.logout': 'Logout',
-      'nav.login': 'Login',
-      'nav.language': 'Language',
-
-      // Guild Panel
-      'guild.overview': 'Overview',
-      'guild.leaderboard': 'Leaderboard',
-      'guild.history': 'History',
-      'guild.admin_section': 'Administration',
-      'guild.rules': 'Game Rules',
-
-      // Guild Overview
-      'goverview.members': 'members',
-      'goverview.total_played': 'games played',
-      'goverview.active_now': 'active now',
-      'goverview.stat_games': 'Games Played',
-      'goverview.stat_village': 'Village Wins',
-      'goverview.stat_wolves': 'Wolf Wins',
-      'goverview.stat_lovers': 'Lovers Wins',
-      'goverview.stat_avg_players': 'Players / game',
-      'goverview.stat_avg_duration': 'Avg. Duration',
-      'goverview.active_games': 'Active Games',
-      'goverview.no_games': 'No active games',
-      'goverview.no_games_hint': 'Games will appear here in real-time',
-      'goverview.alive': 'alive',
-      'goverview.dead': 'dead',
-      'goverview.spectate': 'Spectate',
-      'goverview.top_players': 'Top Players',
-      'goverview.see_all': 'See all →',
-      'goverview.no_players': 'No ranked players',
-      'goverview.recent_games': 'Recent Games',
-      'goverview.see_all_history': 'See all →',
-      'goverview.no_history': 'No completed games',
-      'goverview.quick_nav': 'Quick Navigation',
-      'goverview.nav_leaderboard_desc': 'Full ranking and ELO',
-      'goverview.nav_history_desc': 'All played games',
-      'goverview.nav_rules_desc': 'Roles and settings',
-      'goverview.nav_mod_desc': 'Manage active games',
-
-      // Guild Moderation
-      'gmod.title': 'Moderation',
-      'gmod.subtitle': 'Manage active games on this server',
-      'gmod.no_games': 'No active games on this server',
-      'gmod.no_games_hint': 'Games will appear here in real-time',
-      'gmod.players': 'players',
-      'gmod.alive': 'alive',
-      'gmod.skip_phase': 'Skip Phase',
-      'gmod.force_end': 'Force End',
-      'gmod.players_list': 'Players',
-      'gmod.log': 'Log',
-      'gmod.no_logs': 'No actions recorded',
-      'gmod.day': 'Day',
-      'gmod.view_profile': 'View Profile',
-
-      // Guild Rules
-      'grules.title': 'Game Rules',
-      'grules.subtitle': 'Configure game settings for this server',
-      'grules.settings_title': 'Game Settings',
-      'grules.settings_desc': 'General game rules configuration',
-      'grules.roles_active': 'active roles',
-      'grules.players_range': 'players',
-      'grules.current_lang': 'language',
-      'grules.players_title': 'Players',
-      'grules.min_players': 'Minimum',
-      'grules.max_players': 'Maximum',
-      'grules.min_hint': '3 – 6',
-      'grules.max_hint': 'min – 20',
-      'grules.win_title': 'Wolf Victory',
-      'grules.wolf_win': 'Wolf victory',
-      'grules.majority': 'Majority',
-      'grules.majority_desc': 'Wolves ≥ Villagers',
-      'grules.elimination': 'Total Elimination',
-      'grules.elimination_desc': 'All villagers dead',
-      'grules.lang_title': 'Bot Language',
-      'grules.bot_locale': 'In-game message language',
-      'grules.roles_title': 'Available Roles',
-      'grules.roles_desc': 'Roles that can appear in games on this server',
-      'grules.setup_title': 'Setup',
-      'grules.setup_desc': 'Discord setup status for this server',
-      'grules.category': 'Discord Category',
-      'grules.setup_status': 'Setup status',
-      'grules.save': 'Save',
-      'grules.unsaved': 'Unsaved changes',
-      'grules.role_mandatory': 'Mandatory',
-      'grules.role_enabled': 'Enabled',
-      'grules.role_disabled': 'Disabled',
-      'grules.classic_roles': 'Classic Roles',
-      'grules.classic_roles_desc': 'Basic roles available for all servers',
-      'grules.premium_roles': 'Premium Roles',
-      'grules.premium_roles_desc': 'Exclusive roles reserved for Premium members',
-      'grules.premium_lifetime': 'Premium Lifetime',
-      'grules.premium_active': 'Premium Active',
-      'grules.premium_locked': 'Premium required',
-      'grules.unlocked': 'Unlocked',
-      'grules.premium_required': 'Premium',
-      'grules.premium_cta': 'Upgrade to Premium to unlock all exclusive roles and advanced features.',
-      'grules.premium_cta_title': 'Unlock Premium Roles',
-
-      // Guild Leaderboard
-      'gleader.title': 'Leaderboard',
-      'gleader.subtitle': 'Top players on this server',
-      'gleader.empty': 'No ranked players yet. Play games to see the leaderboard!',
-      'gleader.full_ranking': 'Full ranking',
-      'gleader.col_player': 'Player',
-      'gleader.col_tier': 'Tier',
-      'gleader.col_games': 'Games',
-      'gleader.col_wins': 'Wins',
-      'gleader.col_winrate': 'Win%',
-      'gleader.col_wolf_wins': '🐺 Wolf',
-      'gleader.col_village_wins': '🏡 Village',
-      'gleader.col_streak': 'Streak',
-
-      // Guild History
-      'ghistory.title': 'History',
-      'ghistory.subtitle': 'Recent games played on this server',
-      'ghistory.empty': 'No completed games yet.',
-      'ghistory.total_games': 'Games played',
-      'ghistory.village_wins': 'Village wins',
-      'ghistory.wolf_wins': 'Wolf wins',
-      'ghistory.lovers_wins': 'Lovers wins',
-      'ghistory.avg_players': 'Players / game',
-      'ghistory.avg_duration': 'Average duration',
-      'ghistory.recent_games': 'Recent games',
-      'ghistory.col_date': 'Date',
-      'ghistory.col_winner': 'Winner',
-      'ghistory.col_players': 'Players',
-      'ghistory.col_days': 'Days',
-      'ghistory.col_duration': 'Duration',
-      'ghistory.col_details': 'Details',
-      'ghistory.btn_details': 'View',
-      'ghistory.player_list': 'Player list',
-
-      // Dashboard
-      'dash.title': 'Werewolf Dashboard',
-      'dash.subtitle': 'Real-time monitoring of all games on your servers',
-      'dash.active_games': 'Active games',
-      'dash.active_players': 'Players in game',
-      'dash.servers': 'Servers',
-      'dash.total_games': 'Total games',
-      'dash.live_games': 'Live games',
-      'dash.no_games': 'No active games',
-      'dash.no_games_hint': 'Games will appear here in real-time',
-      'dash.watch_live': '👁️ Watch live',
-      'dash.recent_activity': 'Recent activity',
-      'dash.waiting': 'Waiting for events...',
-      'dash.quick_access': '⚡️ Quick access',
-
-      // Monitoring
-      'mon.title': '📊 Monitoring',
-      'mon.subtitle': 'Real-time bot monitoring — System, Discord and game metrics',
-      'mon.health': 'Health',
-      'mon.uptime': 'Uptime',
-      'mon.memory': 'Memory (RSS)',
-      'mon.latency': 'Discord Latency',
-      'mon.system': 'System',
-      'mon.cpu': 'CPU',
-      'mon.heap': 'V8 Heap',
-      'mon.ram_free': 'Free RAM',
-      'mon.ram_total': 'Total RAM',
-      'mon.process_uptime': 'Process uptime',
-      'mon.discord': 'Discord',
-      'mon.guilds': 'Guilds',
-      'mon.users_cached': 'Users (cached)',
-      'mon.channels': 'Channels',
-      'mon.ws_status': 'WebSocket status',
-      'mon.ws_latency': 'WS Latency',
-      'mon.game': 'Game',
-      'mon.active_games': 'Active games',
-      'mon.total_players': 'Players in game',
-      'mon.games_24h': 'Games created (24h)',
-      'mon.completed_24h': 'Games completed (24h)',
-      'mon.commands': 'Commands',
-      'mon.cmd_total': 'Total executed',
-      'mon.cmd_errors': 'Errors',
-      'mon.cmd_ratelimited': 'Rate limited',
-      'mon.cmd_avg': 'Avg response',
-      'mon.errors': 'Errors',
-      'mon.err_total': 'Total',
-      'mon.err_critical': 'Critical',
-      'mon.err_warnings': 'Warnings',
-      'mon.err_24h': 'Last 24h',
-      'mon.history': '📈 History (24h)',
-      'mon.auto_refresh': 'Auto-refresh every 30s',
-      'mon.refresh': 'Refresh',
-      'mon.connecting': 'Connecting...',
-
-      // Moderation
-      'mod.title': '🛡️ Moderation',
-      'mod.subtitle': 'Manage active games — view roles, control phases, moderate players',
-      'mod.no_games': 'No active games on your servers',
-      'mod.no_games_hint': 'Games you can moderate will appear here in real-time',
-      'mod.skip_phase': '⏩ Skip Phase',
-      'mod.force_end': '⏹️ Force End',
-      'mod.players': '👥 Players',
-      'mod.log': '📜 Log',
-      'mod.game_info': '⚙️ Game info',
-      'mod.alive': 'alive',
-
-      // Footer
-      'footer.connected': 'Connected',
-      'footer.disconnected': 'Disconnected',
-
-      // Roles Page
-      'roles.badge': 'Encyclopedia',
-      'roles.title': 'Discover the <span>Roles</span>',
-      'roles.subtitle': 'Each role has unique powers. Master them all to dominate the game.',
-      'roles.stat_total': 'Roles',
-      'roles.stat_village': 'Village',
-      'roles.stat_wolves': 'Wolves',
-      'roles.stat_solo': 'Solo',
-      'roles.filter_all': 'All',
-      'roles.filter_village': 'Village',
-      'roles.filter_wolves': 'Wolves',
-      'roles.filter_solo': 'Solo',
-      'roles.reveal': 'Reveal all',
-      'roles.classic_title': '<span>Classic</span> Roles',
-      'roles.classic_desc': 'The essential roles of the base game',
-      'roles.premium_title': '<span>Premium</span> Roles',
-      'roles.premium_desc': 'Special roles with unique powers',
-      'roles.roles_label': 'roles',
-      'roles.builtin': 'Built-in Roles',
-      'roles.custom': '<span>Custom</span> Roles',
-      'roles.custom_desc': 'Created by server administrators',
-      'roles.no_custom': 'No custom roles created yet',
-      'roles.create_hint': 'Use the form below to create one',
-      'roles.login_hint': 'Login as a server admin to create custom roles',
-      'roles.create_title': 'Create Custom Role',
-      'roles.form_name': 'Name',
-      'roles.form_name_ph': 'e.g. Blacksmith',
-      'roles.form_emoji': 'Emoji',
-      'roles.form_camp': 'Camp',
-      'roles.form_power': 'Power',
-      'roles.form_desc': 'Description',
-      'roles.form_desc_ph': 'Describe the role\'s abilities...',
-      'roles.form_guild': 'Guild ID',
-      'roles.form_guild_ph': 'Server ID',
-      'roles.create_btn': 'Create Role',
-      'roles.power_none': 'None (Passive)',
-      'roles.power_see': 'See (like Seer)',
-      'roles.power_protect': 'Protect (like Guard)',
-      'roles.power_kill': 'Kill (like Hunter)',
-      'roles.power_heal': 'Heal (like Witch)',
-      'roles.power_custom': 'Custom',
-      'roles.phase_night': '🌙 Night',
-      'roles.phase_day': '☀️ Day',
-      'roles.phase_death': '💀 Death',
-      'roles.phase_start': '🌅 Start',
-      'roles.phase_passive': '🛡️ Passive',
-      // Role names
-      'role.name.WEREWOLF': 'Werewolf',
-      'role.name.SEER': 'Seer',
-      'role.name.WITCH': 'Witch',
-      'role.name.HUNTER': 'Hunter',
-      'role.name.CUPID': 'Cupid',
-      'role.name.PETITE_FILLE': 'Little Girl',
-      'role.name.VILLAGER': 'Villager',
-      'role.name.IDIOT': 'Village Idiot',
-      'role.name.SALVATEUR': 'Guardian',
-      'role.name.ANCIEN': 'Elder',
-      'role.name.WHITE_WOLF': 'White Wolf',
-      'role.name.THIEF': 'Thief',
-      // Role camps
-      'role.camp.wolves': 'Wolves',
-      'role.camp.village': 'Village',
-      'role.camp.solo': 'Solo',
-      // Role descriptions
-      'role.desc.WEREWOLF': 'Each night, the werewolves gather to devour a villager.',
-      'role.desc.SEER': 'Each night, the seer can discover a player\'s role.',
-      'role.desc.WITCH': 'Has a life potion and a death potion, each usable once.',
-      'role.desc.HUNTER': 'When dying, the hunter can take another player down.',
-      'role.desc.CUPID': 'Chooses two lovers at the start. If one dies, so does the other.',
-      'role.desc.PETITE_FILLE': 'Can spy on the werewolves at night, at the risk of being caught.',
-      'role.desc.VILLAGER': 'A simple villager with no special power. Must unmask the wolves.',
-      'role.desc.IDIOT': 'If voted out by the village, he is revealed but loses his voting rights.',
-      'role.desc.SALVATEUR': 'Each night, protects a player from the werewolves\' attack.',
-      'role.desc.ANCIEN': 'Survives the first werewolf attack thanks to his resilience.',
-      'role.desc.WHITE_WOLF': 'Plays solo. Hunts with the pack but can devour a wolf every other night. Wins if last standing.',
-      'role.desc.THIEF': 'Discovers 2 cards at the start and can swap his role. If both are wolves, he must take one.',
-
-      // Documentation Page
-      'docs.title': '📚 Werewolf Bot — Complete Wiki',
-      'docs.subtitle': 'Everything you need to know about playing, configuring and mastering Werewolf on Discord.',
-      'docs.nav_getting_started': 'GETTING STARTED',
-      'docs.nav_roles': 'ROLES',
-      'docs.nav_gameplay': 'GAMEPLAY',
-      'docs.nav_commands': 'COMMANDS',
-      'docs.nav_progression': 'PROGRESSION',
-      'docs.nav_config': 'CONFIGURATION',
-      'docs.overview': 'Overview',
-      'docs.game_flow': 'Game Flow',
-      'docs.setup': 'Setup',
-      'docs.village_roles': 'Village',
-      'docs.wolf_roles': 'Wolves',
-      'docs.solo_roles': 'Solo',
-      'docs.distribution': 'Distribution',
-      'docs.phases': 'Phases',
-      'docs.night_actions': 'Night Actions',
-      'docs.day_actions': 'Day Actions',
-      'docs.special_mechanics': 'Special Mechanics',
-      'docs.victory': 'Victory',
-      'docs.player_commands': 'Player',
-      'docs.night_commands': 'Night',
-      'docs.day_commands': 'Day',
-      'docs.admin_commands': 'Admin',
-      'docs.achievements': 'Achievements',
-      'docs.elo': 'ELO & Tiers',
-      'docs.rules': 'Rules',
-      'docs.timeouts': 'Timeouts',
-      'docs.overview_title': 'Overview',
-      'docs.overview_text': 'Werewolf Bot is a complete Discord implementation of the classic Werewolf (Mafia) party game. Players are secretly assigned roles — some are villagers trying to survive, others are werewolves hunting at night. By day, the village debates and votes to eliminate suspected wolves. The game alternates between night and day until a side wins.',
-      'docs.key_features': 'Key Features',
-      'docs.feature_1': '12 unique roles across 3 camps (Village, Wolves, Solo)',
-      'docs.feature_2': 'Automatic voice channel management (muting/unmuting per phase)',
-      'docs.feature_3': 'Private channels for wolves, seer, witch, and other special roles',
-      'docs.feature_4': 'Captain election and special death mechanics',
-      'docs.feature_5': 'Lover system with Cupid for romantic entanglements',
-      'docs.feature_6': 'ELO ranking, achievements, and progression system',
-      'docs.feature_7': 'Fully configurable rules per server',
-      'docs.feature_8': 'Real-time web dashboard with spectator mode',
-      'docs.feature_9': 'Multi-language support (FR / EN)',
-      'docs.game_flow_title': 'Game Flow',
-      'docs.flow_setup': 'Setup',
-      'docs.flow_create': 'Create & Join',
-      'docs.flow_roles': 'Role Assignment',
-      'docs.flow_channels': 'Channel Creation',
-      'docs.flow_night': 'Night Phase',
-      'docs.flow_day': 'Day Phase',
-      'docs.flow_victory': 'Victory',
-      'docs.flow_details': 'Detailed Flow',
-      'docs.flow_d1': 'An admin runs /setup to configure the bot for the server',
-      'docs.flow_d2': 'A player uses /create. Others join with /join (minimum 4 players)',
-      'docs.flow_d3': 'The host uses /start — roles are secretly assigned via DM',
-      'docs.flow_d4': 'Private channels are created for wolves, seer, witch, etc.',
-      'docs.flow_d5': 'Night phase: special roles act in order (Thief → Cupid → Guardian → Wolves → White Wolf → Witch → Seer)',
-      'docs.flow_d6': 'Day phase: deaths announced, captain vote, deliberation, then village vote',
-      'docs.flow_d7': 'The cycle repeats until a victory condition is met',
-      'docs.setup_title': 'Initial Setup',
-      'docs.setup_steps': 'Setup Steps',
-      'docs.setup_1': 'Invite the bot to your server with admin permissions',
-      'docs.setup_2': 'Run /setup — this launches an interactive wizard',
-      'docs.setup_3': 'The wizard creates: a game category, a main text channel, and a voice channel',
-      'docs.setup_4': 'Optionally configure rules with /setrules',
-      'docs.setup_5': 'Choose a language with /lang fr or /lang en',
-      'docs.setup_6': 'Players can now /create games!',
-      'docs.village_title': 'Village Roles',
-      'docs.wolves_title': 'Wolf Roles',
-      'docs.solo_title': 'Solo / Special Roles',
-      'docs.distribution_title': 'Role Distribution',
-      'docs.dist_rules': 'Distribution Rules',
-      'docs.dist_1': 'Minimum 4 players to start a game',
-      'docs.dist_2': 'Wolf count: ~⅓ of players (1 for 4-5, 2 for 6-8, 3 for 9-11, 4 for 12+)',
-      'docs.dist_3': 'Special roles added in priority: Seer → Witch → Hunter → Cupid → Guardian → Little Girl → Elder → Idiot',
-      'docs.dist_4': 'Remaining slots are filled with Villagers',
-      'docs.dist_5': 'White Wolf replaces one regular wolf if enabled and 8+ players',
-      'docs.dist_6': 'Thief requires 2 extra cards',
-      'docs.dist_7': 'Configurable: admins can enable/disable specific roles via /setrules',
-      'docs.phases_title': 'Game Phases',
-      'docs.night_phase': 'Night Phase',
-      'docs.night_desc': 'During the night, the village sleeps (all voice-muted). Special roles act in strict order via their private channels.',
-      'docs.day_phase': 'Day Phase',
-      'docs.day_desc': 'At dawn, night deaths are announced. The village then debates and votes.',
-      'docs.transitions': 'Phase Transitions',
-      'docs.night_to_day': '🌅 Night → Day',
-      'docs.day_to_night': '🌙 Day → Night',
-      'docs.night_actions_title': 'Night Actions',
-      'docs.day_actions_title': 'Day Actions',
-      'docs.afk_warning': 'AFK Warning',
-      'docs.afk_text': 'Players who don\'t act within 120 seconds during their night phase will have their action auto-skipped.',
-      'docs.captain_info': 'Captain Mechanic',
-      'docs.captain_1': 'The captain is elected on the first day via /captainvote',
-      'docs.captain_2': 'The captain\'s vote counts double',
-      'docs.captain_3': 'If the captain dies, they choose a successor',
-      'docs.captain_4': 'In case of a tie, the captain breaks the tie',
-      'docs.mechanics_title': 'Special Mechanics',
-      'docs.mech_lovers': 'Lovers System',
-      'docs.mech_wolf_vote': 'Wolf Consensus Vote',
-      'docs.mech_elder': 'Elder Power Drain',
-      'docs.mech_voice': 'Voice Channel Management',
-      'docs.mech_death': 'Death & Role Reveal',
-      'docs.victory_title': 'Victory Conditions',
-      'docs.win_village': 'Village Victory',
-      'docs.win_village_desc': 'All werewolves have been eliminated. The village celebrates!',
-      'docs.win_wolves': 'Wolves Victory',
-      'docs.win_wolves_desc': 'Wolves equal or outnumber the remaining villagers.',
-      'docs.win_white_wolf': 'White Wolf Victory',
-      'docs.win_white_wolf_desc': 'The White Wolf is the absolute last player standing.',
-      'docs.win_lovers': 'Lovers Victory',
-      'docs.win_lovers_desc': 'The two lovers (from different camps) are the last ones standing. Love conquers all!',
-      'docs.win_draw': 'Draw',
-      'docs.win_draw_desc': 'No players remain, or the game cannot continue.',
-      'docs.cmd_player_title': 'Player Commands',
-      'docs.cmd_night_title': 'Night Commands',
-      'docs.cmd_day_title': 'Day Commands',
-      'docs.cmd_admin_title': 'Admin Commands',
-      'docs.achievements_title': 'Achievements',
-      'docs.elo_title': 'ELO Rating & Tiers',
-      'docs.elo_desc': 'Every player starts at 1000 ELO. Winning increases your rating, losing decreases it. Your tier is determined by your ELO range.',
-      'docs.rules_title': 'Configurable Rules',
-      'docs.timeouts_title': 'Timeouts & Timers',
-      'docs.th_players': 'Players',
-      'docs.th_wolves': 'Wolves',
-      'docs.th_specials': 'Special Roles',
-      'docs.th_villagers': 'Villagers',
-      'docs.th_role': 'Role',
-      'docs.th_command': 'Command',
-      'docs.th_action': 'Action',
-      'docs.th_timing': 'When',
-      'docs.th_description': 'Description',
-      'docs.th_permission': 'Permission',
-      'docs.th_rule': 'Rule',
-      'docs.th_default': 'Default',
-      'docs.th_event': 'Event',
-      'docs.th_duration': 'Duration',
-      'docs.when_n1': 'Night 1 only',
-      'docs.when_every': 'Every night',
-      'docs.when_odd': 'Odd nights (3, 5, 7...)',
-
-      // Premium Page
-      'premium.title': 'Werewolf <span>Premium</span>',
-      'premium.hero_sub': 'Elevate your Werewolf experience to legendary status',
-      'premium.stat_roles': 'Exclusive Roles',
-      'premium.stat_themes': 'Custom Themes',
-      'premium.stat_sounds': 'Sound Effects',
-      'premium.stat_fun': 'Fun',
-      'premium.cta_explore': 'Discover Plans',
-      'premium.compare_title': 'Free vs <span>Premium</span>',
-      'premium.compare_sub': 'See the difference at a glance',
-      'premium.plan_free': 'Free',
-      'premium.plan_premium': 'Premium',
-      'premium.popular': 'Most Popular',
-      'premium.features_title': 'Premium <span>Features</span>',
-      'premium.features_sub': 'Everything you need for the ultimate Werewolf experience',
-      'premium.feature_roles': 'Exclusive Roles',
-      'premium.feat_roles_desc': 'Unlock 7 premium roles: White Wolf, Fox, Cupid, Savior, Elder, Village Idiot, and Thief.',
-      'premium.feature_themes': 'Custom Themes',
-      'premium.feat_themes_desc': 'Transform your game visuals with 15 handcrafted themes — from Blood Moon to Enchanted Forest.',
-      'premium.feature_sounds': 'Sound Effects',
-      'premium.feat_sounds_desc': 'Immersive audio: wolf howls at night, church bells at dawn, dramatic vote reveals.',
-      'premium.feature_stats': 'Advanced Stats',
-      'premium.feat_stats_desc': 'Win rates per role, heat maps, kill chains, and exportable CSV reports.',
-      'premium.feature_priority': 'Priority Support',
-      'premium.feat_priority_desc': 'Direct line to our dev team. Bugs fixed in hours, not days.',
-      'premium.feature_badges': 'Premium Badge',
-      'premium.feat_badges_desc': 'Golden crown badge on leaderboards, profile, and in-game mentions.',
-      'premium.feat_custom_title': 'Custom Roles',
-      'premium.feat_custom_desc': 'Design entirely new roles with custom abilities, camps, and win conditions.',
-      'premium.feat_scenarios_title': 'Scenarios',
-      'premium.feat_scenarios_desc': 'Pre-built game scenarios with unique rules, twists, and win conditions.',
-      'premium.roles_title': 'Exclusive <span>Roles</span>',
-      'premium.roles_sub': 'Unlock these powerful characters',
-      'premium.pricing_title': 'Choose Your <span>Plan</span>',
-      'premium.pricing_sub': 'Flexible plans for every werewolf pack',
-      'premium.monthly': 'Monthly',
-      'premium.yearly': 'Yearly',
-      'premium.save_badge': 'Save 25%',
-      'premium.plan_starter': 'Starter',
-      'premium.plan_starter_desc': 'Perfect for trying out premium',
-      'premium.plan_pro': 'Pro',
-      'premium.plan_pro_desc': 'The ultimate experience',
-      'premium.plan_lifetime': 'Lifetime',
-      'premium.plan_lifetime_desc': 'One payment, forever yours',
-      'premium.per_month': '/month',
-      'premium.one_time': 'one-time',
-      'premium.btn_get_started': 'Get Started',
-      'premium.btn_go_pro': 'Go Pro',
-      'premium.btn_lifetime': 'Get Lifetime',
-      'premium.testi_1': '"The premium roles completely changed our games. White Wolf creates amazing plot twists!"',
-      'premium.testi_2': '"Sound effects make it 10x more immersive. My friends can\'t stop playing."',
-      'premium.testi_3': '"Custom roles let us build scenarios we never thought possible. Worth every cent."',
-      'premium.faq_title': 'Frequently <span>Asked</span>',
-      'premium.faq_q1': 'How do I activate Premium after payment?',
-      'premium.faq_a1': 'Once paid, your Discord account is instantly linked. Premium features activate within seconds.',
-      'premium.faq_q2': 'Can I use Premium on multiple servers?',
-      'premium.faq_a2': 'Yes! Premium is tied to your Discord account and works on all servers where the bot is installed.',
-      'premium.faq_q3': 'Can I cancel anytime?',
-      'premium.faq_a3': 'Absolutely. Cancel anytime with no questions asked. You keep access until the end of your billing period.',
-      'premium.faq_q4': 'What payment methods do you accept?',
-      'premium.faq_a4': 'We accept credit cards, PayPal, and even crypto via our payment provider.',
-      'premium.final_title': 'Ready to go Premium?',
-      'premium.final_sub': 'Join thousands of servers already enjoying the ultimate Werewolf experience.',
-      'premium.final_btn': 'Unlock Premium Now',
-
-      // Support Page
-      'support.badge': 'Help Center',
-      'support.title': 'Support & <span>Resources</span>',
-      'support.subtitle': 'Need help? We\'ve got you covered. Find answers, contact us, or explore our resources.',
-      'support.github_desc': 'Source code, bug reports, feature requests, and contributions.',
-      'support.github_btn': 'View Repository <span class="sp-arrow">→</span>',
-      'support.discord_desc': 'Community server for live help, announcements, and discussions.',
-      'support.discord_btn': 'Join Server <span class="sp-arrow">→</span>',
-      'support.docs_title': 'Documentation',
-      'support.docs_desc': 'Complete wiki with all roles, commands, mechanics, and configuration options.',
-      'support.docs_btn': 'Read the Wiki <span class="sp-arrow">→</span>',
-      'support.premium_title': 'Premium',
-      'support.premium_desc': 'Unlock exclusive roles, themes, sounds and advanced features.',
-      'support.premium_btn': 'Explore Premium <span class="sp-arrow">→</span>',
-      'support.commands_title': 'Quick <span>Commands</span>',
-      'support.commands_sub': 'Essential commands to get you started',
-      'support.cmd_create': 'Create a new game in the current server',
-      'support.cmd_join': 'Join the lobby of the current game',
-      'support.cmd_start': 'Start the game when enough players are ready',
-      'support.cmd_setup': 'Interactive wizard to configure the bot',
-      'support.cmd_setrules': 'Enable/disable specific roles and options',
-      'support.cmd_lang': 'Switch the bot language (fr/en)',
-      'support.cmd_stats': 'View your ELO rating and game stats',
-      'support.cmd_help': 'List all available commands',
-      'support.faq_heading': 'Frequently <span>Asked</span>',
-      'support.faq_sub': 'Quick answers to common questions',
-      'support.faq_q1': 'How do I invite the bot to my server?',
-      'support.faq_a1': 'Use the invite link from the GitHub repository or the bot\'s profile. The bot needs Administrator permissions to manage channels, roles, and voice muting.',
-      'support.faq_q2': 'What is the minimum number of players?',
-      'support.faq_a2': 'You need at least 4 players to start a game. For the best experience with all roles, 8-12 players is recommended.',
-      'support.faq_q3': 'How do I change the language?',
-      'support.faq_a3': 'Use the /lang command followed by "fr" for French or "en" for English. This changes the bot\'s language for the entire server.',
-      'support.faq_q4': 'Can I customize which roles are in the game?',
-      'support.faq_a4': 'Yes! Use /setrules to enable or disable specific roles, change wolf count, and configure other game options per server.',
-      'support.faq_q5': 'Why are my players not being muted/unmuted?',
-      'support.faq_a5': 'Make sure the bot has the "Mute Members" permission. Players also need to be connected to the game\'s voice channel for voice management to work.',
-      'support.faq_q6': 'The game is stuck, what do I do?',
-      'support.faq_a6': 'An admin can use /nextphase to force advance, or /force-end to end the game immediately. Use /clear to clean up channels.',
-      'support.faq_q7': 'How does the ELO system work?',
-      'support.faq_a7': 'Every player starts at 1000 ELO. Winning increases your rating and losing decreases it. Your tier (Iron → Alpha Wolf) is determined by your range. Use /stats to check.',
-      'support.contact_title': 'Still need <span>help</span>?',
-      'support.contact_sub': 'Our community is always ready to help. Join our Discord server or open an issue on GitHub.',
-      'support.btn_discord': 'Join Discord',
-      'support.btn_github': 'Open Issue',
-
-      // Invite page
-      'invite.title': 'Add Werewolf Bot',
-      'invite.subtitle': 'The bot is not yet on',
-      'invite.card_title': 'Invite Werewolf Bot',
-      'invite.card_desc': 'Add the bot to your server to start playing Werewolf with your community. The bot includes slash commands, role management, voice mute, and a full game experience.',
-      'invite.feature_game': 'Complete Werewolf game',
-      'invite.feature_roles': '12+ unique roles',
-      'invite.feature_voice': 'Voice channel management',
-      'invite.feature_stats': 'Stats, ELO & achievements',
-      'invite.feature_lang': 'French & English support',
-      'invite.feature_dashboard': 'Web dashboard included',
-      'invite.btn_invite': 'Add to Server',
-      'invite.perms_title': 'Required Permissions',
-      'invite.perm_commands': 'Slash Commands',
-      'invite.perm_commands_desc': 'Register and respond to / commands',
-      'invite.perm_messages': 'Send Messages',
-      'invite.perm_messages_desc': 'Send game announcements and updates',
-      'invite.perm_manage_channels': 'Manage Channels',
-      'invite.perm_manage_channels_desc': 'Create and manage game channels',
-      'invite.perm_voice': 'Mute Members',
-      'invite.perm_voice_desc': 'Manage voice during night phases',
-      'invite.perm_embed': 'Embed Links',
-      'invite.perm_embed_desc': 'Rich embeds for game interface',
-      'invite.perm_dm': 'Direct Messages',
-      'invite.perm_dm_desc': 'Send private role assignments',
-      'invite.back': 'Back to Dashboard',
-
-      // Monitoring access
-      'mon.login_required': 'Log in to see more details',
-      'mon.login_desc': 'Detailed metrics are reserved for logged-in members and administrators.',
-      'mon.restricted_notice': 'Some advanced metrics are reserved for bot administrators.',
+  // -- Flatten nested JSON into dot-notation keys --
+  function _flatten(obj, prefix) {
+    var flat = {};
+    for (var k in obj) {
+      if (!obj.hasOwnProperty(k)) continue;
+      var key = prefix ? prefix + '.' + k : k;
+      if (obj[k] && typeof obj[k] === 'object' && !Array.isArray(obj[k])) {
+        var sub = _flatten(obj[k], key);
+        for (var s in sub) { if (sub.hasOwnProperty(s)) flat[s] = sub[s]; }
+      } else {
+        flat[key] = obj[k];
+      }
     }
-  };
+    return flat;
+  }
 
-  // Get/set language
+  // -- Load JSON for a given language --
+  function loadTranslations(lang) {
+    if (_loadedLang === lang && Object.keys(_translations).length > 0) {
+      return Promise.resolve(_translations);
+    }
+    if (_loading && _loading._lang === lang) return _loading;
+
+    var url = '/static/locales/' + lang + '.json';
+    var promise = fetch(url)
+      .then(function(res) {
+        if (!res.ok) throw new Error('Failed to load ' + url + ' (' + res.status + ')');
+        return res.json();
+      })
+      .then(function(json) {
+        _translations = _flatten(json, '');
+        _loadedLang = lang;
+        _loading = null;
+        return _translations;
+      })
+      .catch(function(err) {
+        console.error('[webI18n] ' + err.message);
+        _translations = {};
+        _loadedLang = null;
+        _loading = null;
+        return _translations;
+      });
+    promise._lang = lang;
+    _loading = promise;
+    return promise;
+  }
+
+  // -- Get / Set language --
   function getLang() {
     return localStorage.getItem('werewolf-lang') || 'fr';
   }
 
   function setLang(lang) {
     localStorage.setItem('werewolf-lang', lang);
-    applyTranslations(lang);
+    document.documentElement.lang = lang;
+    document.documentElement.setAttribute('data-lang', lang);
     updateLangButton(lang);
+    document.documentElement.removeAttribute('data-i18n-ready');
+    loadTranslations(lang).then(function() {
+      applyTranslations(lang);
+      document.documentElement.setAttribute('data-i18n-ready', '');
+    });
   }
 
+  // -- Translation lookup --
   function t(key) {
-    const lang = getLang();
-    return (translations[lang] && translations[lang][key]) || (translations.fr[key]) || key;
+    if (_translations.hasOwnProperty(key)) return _translations[key];
+    return '[' + key + ']';
   }
 
-  // Apply translations to all elements with data-i18n
+  // -- Apply translations to the DOM --
   function applyTranslations(lang) {
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-      const key = el.getAttribute('data-i18n');
-      const val = (translations[lang] && translations[lang][key]) || (translations.fr[key]);
-      if (val) el.textContent = val;
+    if (!lang) lang = getLang();
+
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+      var key = el.getAttribute('data-i18n');
+      var val = _translations[key];
+      if (val !== undefined) el.textContent = val;
     });
-    // HTML-safe translations (preserves inner tags like <span>)
-    document.querySelectorAll('[data-i18n-html]').forEach(el => {
-      const key = el.getAttribute('data-i18n-html');
-      const val = (translations[lang] && translations[lang][key]) || (translations.fr[key]);
-      if (val) el.innerHTML = val;
+
+    document.querySelectorAll('[data-i18n-html]').forEach(function(el) {
+      var key = el.getAttribute('data-i18n-html');
+      var val = _translations[key];
+      if (val !== undefined) el.innerHTML = val;
     });
-    // Also update placeholders
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-      const key = el.getAttribute('data-i18n-placeholder');
-      const val = (translations[lang] && translations[lang][key]) || (translations.fr[key]);
-      if (val) el.placeholder = val;
+
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+      var key = el.getAttribute('data-i18n-placeholder');
+      var val = _translations[key];
+      if (val !== undefined) el.placeholder = val;
     });
-    // Update title attributes
-    document.querySelectorAll('[data-i18n-title]').forEach(el => {
-      const key = el.getAttribute('data-i18n-title');
-      const val = (translations[lang] && translations[lang][key]) || (translations.fr[key]);
-      if (val) el.title = val;
+
+    document.querySelectorAll('[data-i18n-title]').forEach(function(el) {
+      var key = el.getAttribute('data-i18n-title');
+      var val = _translations[key];
+      if (val !== undefined) el.title = val;
+    });
+
+    document.querySelectorAll('[data-i18n-aria-label]').forEach(function(el) {
+      var key = el.getAttribute('data-i18n-aria-label');
+      var val = _translations[key];
+      if (val !== undefined) el.setAttribute('aria-label', val);
+    });
+
+    document.querySelectorAll('[data-i18n-content]').forEach(function(el) {
+      var key = el.getAttribute('data-i18n-content');
+      var val = _translations[key];
+      if (val !== undefined) el.setAttribute('content', val);
+    });
+
+    document.querySelectorAll('[data-i18n-alt]').forEach(function(el) {
+      var key = el.getAttribute('data-i18n-alt');
+      var val = _translations[key];
+      if (val !== undefined) el.alt = val;
+    });
+
+    // Re-format dates with the correct locale
+    var locale = lang === 'en' ? 'en-GB' : 'fr-FR';
+    var DATE_FORMATS = {
+      'month-year': { month: 'long', year: 'numeric' },
+      'full': { day: 'numeric', month: 'long', year: 'numeric' },
+      'day-month': { day: 'numeric', month: 'short' },
+      'day-month-year': { day: 'numeric', month: 'short', year: 'numeric' }
+    };
+    var TIME_FORMAT = lang === 'en'
+      ? { hour: 'numeric', minute: '2-digit', hour12: true }
+      : { hour: '2-digit', minute: '2-digit', hour12: false };
+    var TIME_SEC_FORMAT = lang === 'en'
+      ? { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }
+      : { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+    var DATETIME_FORMAT = lang === 'en'
+      ? { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true }
+      : { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false };
+    document.querySelectorAll('.pp-date[data-date-format]').forEach(function(el) {
+      var tsS = el.getAttribute('data-timestamp');
+      var tsMs = el.getAttribute('data-timestamp-ms');
+      var ms = tsS ? Number(tsS) * 1000 : (tsMs ? Number(tsMs) : 0);
+      if (!ms) return;
+      var fmtKey = el.getAttribute('data-date-format');
+      if (fmtKey === 'time') {
+        el.textContent = new Date(ms).toLocaleTimeString(locale, TIME_FORMAT);
+      } else if (fmtKey === 'time-sec') {
+        el.textContent = new Date(ms).toLocaleTimeString(locale, TIME_SEC_FORMAT);
+      } else if (fmtKey === 'datetime') {
+        el.textContent = new Date(ms).toLocaleString(locale, DATETIME_FORMAT);
+      } else {
+        el.textContent = new Date(ms).toLocaleDateString(locale, DATE_FORMATS[fmtKey] || {});
+      }
     });
   }
 
+  // -- Update language toggle button state --
   function updateLangButton(lang) {
-    // Support both old standalone button IDs and new dropdown IDs
-    const flag = document.getElementById('lang-flag') || document.getElementById('user-menu-lang-flag');
-    const label = document.getElementById('lang-label');
-    const sidebarFlag = document.getElementById('sidebar-lang-flag');
-    if (flag) flag.textContent = lang === 'fr' ? '🇫🇷' : '🇬🇧';
+    var toggle = document.getElementById('header-lang-toggle');
+    if (toggle) {
+      toggle.setAttribute('data-lang', lang);
+      var frEl = document.getElementById('header-lang-fr');
+      var enEl = document.getElementById('header-lang-en');
+      if (frEl) frEl.classList.toggle('active', lang === 'fr');
+      if (enEl) enEl.classList.toggle('active', lang === 'en');
+    }
+    var flag = document.getElementById('lang-flag') || document.getElementById('user-menu-lang-flag');
+    var label = document.getElementById('lang-label');
+    var sidebarFlag = document.getElementById('sidebar-lang-flag');
+    if (flag) flag.textContent = lang === 'fr' ? '\uD83C\uDDEB\uD83C\uDDF7' : '\uD83C\uDDEC\uD83C\uDDE7';
     if (label) label.textContent = lang === 'fr' ? 'FR' : 'EN';
-    if (sidebarFlag) sidebarFlag.textContent = lang === 'fr' ? '🇫🇷' : '🇬🇧';
+    if (sidebarFlag) sidebarFlag.textContent = lang === 'fr' ? '\uD83C\uDDEB\uD83C\uDDF7' : '\uD83C\uDDEC\uD83C\uDDE7';
   }
 
-  // Init on DOM ready
+  // -- Initialization --
   function init() {
-    const lang = getLang();
-    applyTranslations(lang);
+    var lang = getLang();
+    document.documentElement.lang = lang;
+    document.documentElement.setAttribute('data-lang', lang);
     updateLangButton(lang);
-    // Signal that translations are applied — unhides [data-i18n] elements
-    document.documentElement.setAttribute('data-i18n-ready', '');
 
-    // Language toggle button (standalone, dropdown, or sidebar)
-    document.addEventListener('click', (e) => {
-      if (e.target.id === 'lang-toggle' || e.target.closest('#lang-toggle')
+    loadTranslations(lang).then(function() {
+      applyTranslations(lang);
+      document.documentElement.setAttribute('data-i18n-ready', '');
+    });
+
+    document.addEventListener('click', function(e) {
+      if (e.target.id === 'header-lang-toggle' || e.target.closest('#header-lang-toggle')
+        || e.target.id === 'lang-toggle' || e.target.closest('#lang-toggle')
         || e.target.id === 'sidebar-lang-toggle' || e.target.closest('#sidebar-lang-toggle')
         || e.target.id === 'user-menu-lang' || e.target.closest('#user-menu-lang')) {
-        const current = getLang();
+        var current = getLang();
         setLang(current === 'fr' ? 'en' : 'fr');
       }
     });
   }
 
-  // Export for other scripts
+  // -- Export for other scripts --
   window.getLang = getLang;
   window.setLang = setLang;
   window.applyTranslations = applyTranslations;
   window.updateLangButton = updateLangButton;
-  window.webI18n = { t, getLang, setLang, applyTranslations, updateLangButton };
+  window.webI18n = {
+    t: t,
+    getLang: getLang,
+    setLang: setLang,
+    applyTranslations: applyTranslations,
+    updateLangButton: updateLangButton,
+    loadTranslations: loadTranslations
+  };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

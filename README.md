@@ -5,7 +5,7 @@
 
 A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice management, ambient audio and interactive lobby.
 
-![Version](https://img.shields.io/badge/version-3.4.1-blue)
+![Version](https://img.shields.io/badge/version-3.5.0-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
@@ -381,11 +381,14 @@ npm run clear-commands      # Reset Discord commands
 
 | Version | Highlights |
 |---------|-----------|
+| **v3.5.0** | 🌐 i18n engine rewrite (external JSON translations), persistent sessions (SQLite store + auto-generated secret), 456 tests |
+| **v3.4.1** | 🎨 Visual overhaul: global ambient glow system, player page redesign, spectator UX, invite card deck, dashboard data panels |
 | **v3.4.0** | 🎨 Complete web interface redesign (PJAX navigation, command center dashboard, guild overview, podium leaderboard, wiki docs, invite landing page), interactive `/setup wizard`, `/create` setup guard, multi-guild channel cleanup fix, guild reconciliation, 268 tests |
 | **v3.3.0** | 🚀 Production-readiness hardening: crash simulation matrix, WebSocket isolation/anti-abuse tests, GameMutex observability metrics, startup split-brain lock, stuck game liveness detection (`stuck_games_count`) |
 | **v3.2.0** | 🛡️ 6-axis architecture hardening: GameMutex, FSM transitions, transaction sync, dirty flag, 7 new DB columns, isRecentDuplicate on 12 commands, express-rate-limit, CORS, guild-scoped WS, Prometheus /metrics, /health, 223 tests |
-| **v3.1.0** | 🛡️ 15-point architecture audit, XSS elimination, WebSocket rate limiting & debounce, multi-tenant isolation, critical FSM fixes, game archiving, 200 tests || **v3.0.0** | 🌐 Web Dashboard (Express + EJS), Live Spectator (Socket.IO), REST API (15 endpoints), Discord OAuth2, Custom Roles system, EventEmitter architecture || **v2.9.0** | 🏆 Achievements (18), ELO ranking (7 tiers), death reveal embeds, DM turn notifications, `/leaderboard`, `/history`, post-game timeline, 4 bug fixes |
-| **v3.4.1** | 🎨 Visual overhaul: global ambient glow system, player page redesign, spectator UX, invite card deck, dashboard data panels |
+| **v3.1.0** | 🛡️ 15-point architecture audit, XSS elimination, WebSocket rate limiting & debounce, multi-tenant isolation, critical FSM fixes, game archiving, 200 tests |
+| **v3.0.0** | 🌐 Web Dashboard (Express + EJS), Live Spectator (Socket.IO), REST API (15 endpoints), Discord OAuth2, Custom Roles system, EventEmitter architecture |
+| **v2.9.0** | 🏆 Achievements (18), ELO ranking (7 tiers), death reveal embeds, DM turn notifications, `/leaderboard`, `/history`, post-game timeline, 4 bug fixes |
 | **v2.8.0** | 🐳 Docker, auto SQLite backup (hourly), multi-guild (per-server lang & config), rematch system |
 | **v2.7.0** | Little Girl real-time DM relay, smart ambiguous hints, Unicode/zalgo-proof, wolf win server-wide config, guild-only commands |
 | **v2.6.0** | Phase balancing, automatic captain vote, witch potion fix, configurable wolf victory, wolf ping |
@@ -426,4 +429,4 @@ Full details: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-**Version**: 3.4.1 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **Docker**: ready · **License**: ISC
+**Version**: 3.5.0 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **Docker**: ready · **License**: ISC

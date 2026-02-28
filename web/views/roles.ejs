@@ -1,55 +1,13 @@
 <%- include('partials/header') %>
 
 <%
-  // ── Role data maps ──
-  var roleImageMap = {
-    'WEREWOLF': 'loupSimple.webp', 'SEER': 'voyante.webp', 'WITCH': 'sorciere.png',
-    'HUNTER': 'chasseur.webp', 'CUPID': 'cupidon.webp', 'PETITE_FILLE': 'petiteFille.webp',
-    'VILLAGER': 'villageois.webp', 'IDIOT': 'idiot.webp', 'SALVATEUR': 'salvateur.webp',
-    'ANCIEN': 'ancien.webp', 'WHITE_WOLF': 'loupBlanc.webp', 'THIEF': 'voleur.webp'
-  };
-  var campMap = {
-    'WEREWOLF': 'wolves', 'SEER': 'village', 'WITCH': 'village', 'HUNTER': 'village',
-    'CUPID': 'village', 'PETITE_FILLE': 'village', 'VILLAGER': 'village', 'IDIOT': 'village',
-    'SALVATEUR': 'village', 'ANCIEN': 'village', 'WHITE_WOLF': 'solo', 'THIEF': 'village'
-  };
-  var roleNameMap = {
-    'WEREWOLF': 'Loup-Garou', 'SEER': 'Voyante', 'WITCH': 'Sorci\u00e8re', 'HUNTER': 'Chasseur',
-    'CUPID': 'Cupidon', 'PETITE_FILLE': 'Petite Fille', 'VILLAGER': 'Villageois',
-    'IDIOT': 'Idiot du Village', 'SALVATEUR': 'Salvateur', 'ANCIEN': 'Ancien',
-    'WHITE_WOLF': 'Loup Blanc', 'THIEF': 'Voleur'
-  };
-  var roleDescMap = {
-    'WEREWOLF': 'Chaque nuit, les loups-garous se r\u00e9unissent pour d\u00e9vorer un villageois.',
-    'SEER': 'Chaque nuit, la voyante peut d\u00e9couvrir le r\u00f4le d\'un joueur.',
-    'WITCH': 'Poss\u00e8de une potion de vie et une potion de mort, utilisable une fois chacune.',
-    'HUNTER': 'En mourant, le chasseur peut emporter un autre joueur avec lui.',
-    'CUPID': 'D\u00e9signe deux amoureux au d\u00e9but de la partie. Si l\'un meurt, l\'autre aussi.',
-    'PETITE_FILLE': 'Peut espionner les loups-garous pendant la nuit, au risque de se faire rep\u00e9rer.',
-    'VILLAGER': 'Un simple villageois sans pouvoir sp\u00e9cial. Il doit d\u00e9masquer les loups.',
-    'IDIOT': 'S\'il est vot\u00e9 par le village, il est r\u00e9v\u00e9l\u00e9 mais perd son droit de vote.',
-    'SALVATEUR': 'Chaque nuit, il prot\u00e8ge un joueur de l\'attaque des loups-garous.',
-    'ANCIEN': 'R\u00e9siste \u00e0 la premi\u00e8re attaque des loups-garous gr\u00e2ce \u00e0 sa robustesse.',
-    'WHITE_WOLF': 'Joue en solitaire. Chasse avec la meute mais peut d\u00e9vorer un loup une nuit sur deux. Gagne s\u2019il est le dernier.',
-    'THIEF': 'D\u00e9couvre 2 cartes au d\u00e9but et peut \u00e9changer son r\u00f4le. Si les deux sont des loups, il doit en prendre une.'
-  };
+  // ── Derived from roleData (injected via res.locals) ──
+  var phaseIcons  = { night: '\uD83C\uDF19', day: '\u2600\uFE0F', death: '\uD83D\uDC80', start: '\uD83C\uDF05', passive: '\uD83D\uDEE1\uFE0F' };
+  var phaseLabels = { night: 'Nuit', day: 'Jour', death: 'Mort', start: 'D\u00e9but', passive: 'Passif' };
+  var campLabels  = { village: 'Village', wolves: 'Loups', solo: 'Solo' };
 
-  // Ability phase
-  var phaseMap = {
-    'WEREWOLF': 'night', 'SEER': 'night', 'WITCH': 'night', 'HUNTER': 'death',
-    'CUPID': 'start', 'PETITE_FILLE': 'night', 'VILLAGER': 'day', 'IDIOT': 'day',
-    'SALVATEUR': 'night', 'ANCIEN': 'passive', 'WHITE_WOLF': 'night', 'THIEF': 'start'
-  };
-  var phaseIcons = { 'night': '\uD83C\uDF19', 'day': '\u2600\uFE0F', 'death': '\uD83D\uDC80', 'start': '\uD83C\uDF05', 'passive': '\uD83D\uDEE1\uFE0F' };
-  var phaseLabels = { 'night': 'Nuit', 'day': 'Jour', 'death': 'Mort', 'start': 'D\u00e9but', 'passive': 'Passif' };
-
-  var classicRoleIds = ['WEREWOLF', 'VILLAGER', 'SEER', 'WITCH', 'HUNTER'];
-  var premiumRoleIds = ['WHITE_WOLF', 'PETITE_FILLE', 'CUPID', 'SALVATEUR', 'ANCIEN', 'IDIOT', 'THIEF'];
-  var allRoleIds = classicRoleIds.concat(premiumRoleIds);
-  var totalRoles = allRoleIds.length;
-  var villageCount = allRoleIds.filter(function(id) { return campMap[id] === 'village'; }).length;
-  var wolfCount = allRoleIds.filter(function(id) { return campMap[id] === 'wolves'; }).length;
-  var soloCount = allRoleIds.filter(function(id) { return campMap[id] === 'solo'; }).length;
+  var classicRoles = roleData.filter(function(r) { return r.classic; });
+  var premiumRoles = roleData.filter(function(r) { return !r.classic; });
 %>
 
 <!-- ═══ HERO ═══ -->
@@ -66,27 +24,6 @@
     </div>
     <h1 class="rl-hero-title" data-i18n-html="roles.title">D&eacute;couvrez les <span>R&ocirc;les</span></h1>
     <p class="rl-hero-sub" data-i18n="roles.subtitle">Chaque r&ocirc;le poss&egrave;de des pouvoirs uniques. Ma&icirc;trisez-les tous pour dominer la partie.</p>
-    <div class="rl-hero-stats">
-      <div class="rl-stat">
-        <span class="rl-stat-val"><%= totalRoles %></span>
-        <span class="rl-stat-label" data-i18n="roles.stat_total">R&ocirc;les</span>
-      </div>
-      <div class="rl-stat-sep"></div>
-      <div class="rl-stat rl-stat--village">
-        <span class="rl-stat-val"><%= villageCount %></span>
-        <span class="rl-stat-label" data-i18n="roles.stat_village">Village</span>
-      </div>
-      <div class="rl-stat-sep"></div>
-      <div class="rl-stat rl-stat--wolves">
-        <span class="rl-stat-val"><%= wolfCount %></span>
-        <span class="rl-stat-label" data-i18n="roles.stat_wolves">Loups</span>
-      </div>
-      <div class="rl-stat-sep"></div>
-      <div class="rl-stat rl-stat--solo">
-        <span class="rl-stat-val"><%= soloCount %></span>
-        <span class="rl-stat-label" data-i18n="roles.stat_solo">Solo</span>
-      </div>
-    </div>
   </div>
 </section>
 
@@ -121,19 +58,11 @@
       <h2 class="rl-section-title" data-i18n-html="roles.classic_title">R&ocirc;les <span>Classiques</span></h2>
       <p class="rl-section-desc" data-i18n="roles.classic_desc">Les r&ocirc;les essentiels du jeu de base</p>
     </div>
-    <span class="rl-section-count"><%= classicRoleIds.length %> <span data-i18n="roles.roles_label">r&ocirc;les</span></span>
+    <span class="rl-section-count"><%= classicRoles.length %> <span data-i18n="roles.roles_label">r&ocirc;les</span></span>
   </div>
   <div class="rl-grid">
-    <% classicRoleIds.forEach(function(rid, idx) {
-      var r = builtIn.find(function(b) { return b.id === rid; });
-      if (!r) return;
-      var imgFile = roleImageMap[r.id];
-      var camp = campMap[r.id] || 'village';
-      var displayName = roleNameMap[r.id] || r.name;
-      var desc = roleDescMap[r.id] || '';
-      var phase = phaseMap[r.id] || 'passive';
-    %>
-      <div class="rl-card rl-card--<%= camp %>" data-camp="<%= camp %>" style="--ci:<%= idx %>">
+    <% classicRoles.forEach(function(role, idx) { %>
+      <div class="rl-card rl-card--<%= role.camp %>" data-camp="<%= role.camp %>" style="--ci:<%= idx %>">
         <div class="rl-card-accent"></div>
         <div class="rl-card-img-wrap">
           <div class="rl-flip">
@@ -142,8 +71,8 @@
                 <img src="/static/img/roles/loup-garou-dos.png" alt="Carte" loading="lazy">
               </div>
               <div class="rl-flip-back">
-                <% if (imgFile) { %>
-                  <img src="/static/img/roles/<%= imgFile %>" alt="<%= displayName %>" loading="lazy">
+                <% if (role.image) { %>
+                  <img src="/static/img/roles/<%= role.image %>" alt="<%= role.name.fr %>" loading="lazy">
                 <% } else { %>
                   <span class="rl-card-emoji">&#128058;</span>
                 <% } %>
@@ -152,12 +81,12 @@
           </div>
         </div>
         <div class="rl-card-body">
-          <h3 class="rl-card-name" data-i18n="role.name.<%= r.id %>"><%= displayName %></h3>
+          <h3 class="rl-card-name" data-i18n="role.name.<%= role.id %>"><%= role.name.fr %></h3>
           <div class="rl-card-meta">
-            <span class="rl-camp camp-<%= camp %>" data-i18n="role.camp.<%= camp %>"><%= camp === 'wolves' ? 'Loups' : camp === 'solo' ? 'Solo' : 'Village' %></span>
-            <span class="rl-phase phase-<%= phase %>" data-i18n="roles.phase_<%= phase %>"><%= phaseIcons[phase] %> <%= phaseLabels[phase] %></span>
+            <span class="rl-camp camp-<%= role.camp %>" data-i18n="role.camp.<%= role.camp %>"><%= campLabels[role.camp] %></span>
+            <span class="rl-phase phase-<%= role.phase %>" data-i18n="roles.phase_<%= role.phase %>"><%= phaseIcons[role.phase] %> <%= phaseLabels[role.phase] %></span>
           </div>
-          <p class="rl-card-desc" data-i18n="role.desc.<%= r.id %>"><%= desc %></p>
+          <p class="rl-card-desc" data-i18n="role.desc.<%= role.id %>"><%= role.desc.fr %></p>
         </div>
       </div>
     <% }); %>
@@ -172,19 +101,11 @@
       <h2 class="rl-section-title rl-section-title--premium" data-i18n-html="roles.premium_title">R&ocirc;les <span>Premium</span></h2>
       <p class="rl-section-desc" data-i18n="roles.premium_desc">Des r&ocirc;les sp&eacute;ciaux aux pouvoirs uniques</p>
     </div>
-    <span class="rl-section-count rl-section-count--premium"><%= premiumRoleIds.length %> <span data-i18n="roles.roles_label">r&ocirc;les</span></span>
+    <span class="rl-section-count rl-section-count--premium"><%= premiumRoles.length %> <span data-i18n="roles.roles_label">r&ocirc;les</span></span>
   </div>
   <div class="rl-grid">
-    <% premiumRoleIds.forEach(function(rid, idx) {
-      var r = builtIn.find(function(b) { return b.id === rid; });
-      if (!r) return;
-      var imgFile = roleImageMap[r.id];
-      var camp = campMap[r.id] || 'village';
-      var displayName = roleNameMap[r.id] || r.name;
-      var desc = roleDescMap[r.id] || '';
-      var phase = phaseMap[r.id] || 'passive';
-    %>
-      <div class="rl-card rl-card--premium rl-card--<%= camp %>" data-camp="<%= camp %>" style="--ci:<%= idx %>">
+    <% premiumRoles.forEach(function(role, idx) { %>
+      <div class="rl-card rl-card--premium rl-card--<%= role.camp %>" data-camp="<%= role.camp %>" style="--ci:<%= idx %>">
         <div class="rl-card-accent rl-card-accent--premium"></div>
         <div class="rl-card-shimmer"></div>
         <div class="rl-card-img-wrap">
@@ -194,8 +115,8 @@
                 <img src="/static/img/roles/loup-garou-dos.png" alt="Carte" loading="lazy">
               </div>
               <div class="rl-flip-back">
-                <% if (imgFile) { %>
-                  <img src="/static/img/roles/<%= imgFile %>" alt="<%= displayName %>" loading="lazy">
+                <% if (role.image) { %>
+                  <img src="/static/img/roles/<%= role.image %>" alt="<%= role.name.fr %>" loading="lazy">
                 <% } else { %>
                   <span class="rl-card-emoji">&#128058;</span>
                 <% } %>
@@ -204,12 +125,12 @@
           </div>
         </div>
         <div class="rl-card-body">
-          <h3 class="rl-card-name" data-i18n="role.name.<%= r.id %>"><%= displayName %></h3>
+          <h3 class="rl-card-name" data-i18n="role.name.<%= role.id %>"><%= role.name.fr %></h3>
           <div class="rl-card-meta">
-            <span class="rl-camp camp-<%= camp %>" data-i18n="role.camp.<%= camp %>"><%= camp === 'wolves' ? 'Loups' : camp === 'solo' ? 'Solo' : 'Village' %></span>
-            <span class="rl-phase phase-<%= phase %>" data-i18n="roles.phase_<%= phase %>"><%= phaseIcons[phase] %> <%= phaseLabels[phase] %></span>
+            <span class="rl-camp camp-<%= role.camp %>" data-i18n="role.camp.<%= role.camp %>"><%= campLabels[role.camp] %></span>
+            <span class="rl-phase phase-<%= role.phase %>" data-i18n="roles.phase_<%= role.phase %>"><%= phaseIcons[role.phase] %> <%= phaseLabels[role.phase] %></span>
           </div>
-          <p class="rl-card-desc" data-i18n="role.desc.<%= r.id %>"><%= desc %></p>
+          <p class="rl-card-desc" data-i18n="role.desc.<%= role.id %>"><%= role.desc.fr %></p>
         </div>
       </div>
     <% }); %>
@@ -244,9 +165,9 @@
           <div class="rl-card-body">
             <h3 class="rl-card-name"><%= r.name %></h3>
             <div class="rl-card-meta">
-              <span class="rl-camp camp-<%= r.camp %>"><%= r.camp %></span>
+              <span class="rl-camp camp-<%= r.camp %>" data-i18n="roles.camp_<%= r.camp %>"><%= r.camp %></span>
               <% if (r.winCondition) { %>
-                <span class="rl-phase phase-passive"><%= r.winCondition %></span>
+                <span class="rl-phase phase-passive" data-i18n="roles.wc_<%= r.winCondition %>"><%= r.winCondition %></span>
               <% } %>
             </div>
             <% if (r.abilities && r.abilities.length > 0) { %>
@@ -260,8 +181,9 @@
             <% } %>
             <% if (r.description) { %><p class="rl-card-desc"><%= r.description %></p><% } %>
             <% if (isAdmin) { %>
-              <div class="rl-card-actions" style="margin-top: 0.75rem; display: flex; gap: 0.5rem;">
-                <button class="btn btn-sm btn-danger delete-role" data-role-id="<%= r.id %>" data-guild-id="<%= r.guild_id %>">Supprimer</button>
+              <div class="rl-card-actions" style="margin-top: 0.5rem; display: flex; gap: 0.35rem; justify-content: center;">
+                <button class="btn btn-xs btn-secondary edit-role" data-role-id="<%= r.id %>" data-guild-id="<%= r.guild_id %>">✏️ <span data-i18n="roles.btn_edit">Éditer</span></button>
+                <button class="btn btn-xs btn-danger delete-role" data-role-id="<%= r.id %>" data-guild-id="<%= r.guild_id %>">🗑 <span data-i18n="roles.btn_delete">Suppr.</span></button>
               </div>
             <% } %>
           </div>
@@ -282,7 +204,7 @@
 
         <!-- ── Section 1: Basic Info ── -->
         <fieldset class="role-fieldset">
-          <legend>Informations de base</legend>
+          <legend data-i18n="roles.legend_basic">Informations de base</legend>
           <div class="form-row">
             <div class="form-group">
               <label for="role-name" data-i18n="roles.form_name">Nom</label>
@@ -299,7 +221,7 @@
               <input type="hidden" id="role-emoji" name="emoji" value="">
               <div class="emoji-picker-dropdown" id="emoji-picker-dropdown" style="display:none;">
                 <div class="emoji-picker-search-wrap">
-                  <input type="text" class="emoji-picker-search" id="emoji-picker-search" placeholder="&#128269; Rechercher..." autocomplete="off">
+                  <input type="text" class="emoji-picker-search" id="emoji-picker-search" placeholder="🔍 Rechercher..." data-i18n-placeholder="roles.emoji_search_ph" autocomplete="off">
                 </div>
                 <div class="emoji-picker-cats" id="emoji-picker-cats"></div>
                 <div class="emoji-picker-grid" id="emoji-picker-grid"></div>
@@ -310,19 +232,19 @@
             <div class="form-group">
               <label for="role-camp" data-i18n="roles.form_camp">Camp</label>
               <select id="role-camp" name="camp" class="form-select" required>
-                <option value="village">Village</option>
-                <option value="wolves">Loups</option>
-                <option value="solo">Solo</option>
+                <option value="village" data-i18n="roles.camp_village">Village</option>
+                <option value="wolves" data-i18n="roles.camp_wolves">Loups</option>
+                <option value="solo" data-i18n="roles.camp_solo">Solo</option>
               </select>
               <span class="field-error" id="err-camp"></span>
             </div>
             <div class="form-group">
-              <label for="role-win-condition">Condition de victoire</label>
+              <label for="role-win-condition" data-i18n="roles.form_win_condition">Condition de victoire</label>
               <select id="role-win-condition" name="winCondition" class="form-select" required>
-                <option value="village_wins">Village gagne</option>
-                <option value="wolves_win">Loups gagnent</option>
-                <option value="solo_survive">Solo &mdash; survivre</option>
-                <option value="lovers_survive">Amoureux survivent</option>
+                <option value="village_wins" data-i18n="roles.wc_village_wins">Village gagne</option>
+                <option value="wolves_win" data-i18n="roles.wc_wolves_win">Loups gagnent</option>
+                <option value="solo_survive" data-i18n="roles.wc_solo_survive">Solo — survivre</option>
+                <option value="lovers_survive" data-i18n="roles.wc_lovers_survive">Amoureux survivent</option>
               </select>
               <span class="field-error" id="err-winCondition"></span>
             </div>
@@ -337,7 +259,7 @@
           <div class="form-group">
             <label for="role-guild-id" data-i18n="roles.form_guild">Serveur</label>
             <select id="role-guild-id" name="guildId" required class="form-select">
-              <option value="">-- Choisir un serveur --</option>
+              <option value="" data-i18n="roles.choose_server">-- Choisir un serveur --</option>
               <% (userGuilds || []).filter(function(g) { return g.botPresent; }).forEach(function(g) { %>
                 <option value="<%= g.id %>"><%= g.name %></option>
               <% }); %>
@@ -348,38 +270,38 @@
 
         <!-- ── Section 2: Strategic Profile ── -->
         <fieldset class="role-fieldset strat-profile-fieldset" id="strategic-profile-fieldset">
-          <legend>Profil strat&eacute;gique</legend>
+          <legend data-i18n="roles.legend_strategic">Profil stratégique</legend>
 
           <div class="strat-profile" id="strat-profile">
             <div class="strat-empty" id="strat-empty">
-              <p>Ajoutez des r&egrave;gles pour afficher le profil strat&eacute;gique.</p>
+              <p data-i18n="roles.strat_empty">Ajoutez des règles pour afficher le profil stratégique.</p>
             </div>
 
             <div class="strat-content" id="strat-content" style="display:none;">
-              <p class="strat-line" id="strat-power-line">⚡ Puissance estim&eacute;e : N/A</p>
-              <p class="strat-line" id="strat-orient-line">🎯 Orientation : Non d&eacute;fini</p>
-              <p class="strat-line" id="strat-risk-line">⚠ Risque de stabilit&eacute; : Faible</p>
+              <p class="strat-line" id="strat-power-line" data-i18n="roles.strat_power">⚡ Puissance estimée : N/A</p>
+              <p class="strat-line" id="strat-orient-line" data-i18n="roles.strat_orient">🎯 Orientation : Non défini</p>
+              <p class="strat-line" id="strat-risk-line" data-i18n="roles.strat_risk">⚠ Risque de stabilité : Faible</p>
             </div>
           </div>
         </fieldset>
 
         <!-- ── Section 3: Rules Builder ── -->
         <fieldset class="role-fieldset" id="abilities-fieldset">
-          <legend>R&egrave;gles du r&ocirc;le <span id="ability-count-badge" class="ability-count-badge">0</span></legend>
+          <legend><span data-i18n="roles.legend_rules">Règles du rôle</span> <span id="ability-count-badge" class="ability-count-badge">0</span></legend>
 
           <div class="ab-mode-toggle-wrap">
             <label class="ab-mode-toggle-label">
               <input type="checkbox" id="ab-advanced-toggle" class="ab-mode-toggle-input">
               <span class="ab-mode-toggle-slider"></span>
-              <span class="ab-mode-toggle-text">Mode avanc&eacute;</span>
+              <span class="ab-mode-toggle-text" data-i18n="roles.advanced_mode">Mode avancé</span>
             </label>
-            <span class="ab-mode-hint" id="ab-mode-hint">Option secondaire &mdash; &eacute;dition technique du sch&eacute;ma</span>
+            <span class="ab-mode-hint" id="ab-mode-hint" data-i18n="roles.advanced_hint">Option secondaire — édition technique du schéma</span>
           </div>
 
           <div id="abilities-container"></div>
 
           <div class="abilities-toolbar">
-            <button type="button" id="btn-add-ability" class="btn btn-secondary btn-sm">
+            <button type="button" id="btn-add-ability" class="btn btn-secondary btn-sm" data-i18n="roles.add_rule_btn">
               Ajouter une r&egrave;gle
             </button>
             <span id="ability-limit-hint" class="ability-limit-hint"></span>
@@ -396,11 +318,11 @@
     <template id="ability-card-template">
       <div class="ability-card" data-ability-index="">
         <div class="ability-card-header">
-          <button type="button" class="ability-toggle" title="R&eacute;duire/D&eacute;plier">&#9660;</button>
-          <span class="ability-card-title">R&egrave;gle #<span class="ability-num">1</span></span>
+          <button type="button" class="ability-toggle" title="Réduire/Déplier" data-i18n-title="roles.ability_toggle">&#9660;</button>
+          <span class="ability-card-title"><span data-i18n="roles.rule_prefix">Règle #</span><span class="ability-num">1</span></span>
           <div class="ability-card-actions">
-            <button type="button" class="btn-icon ability-duplicate" title="Dupliquer">&#128203;</button>
-            <button type="button" class="btn-icon ability-remove" title="Supprimer">&#128465;</button>
+            <button type="button" class="btn-icon ability-duplicate" title="Dupliquer" data-i18n-title="roles.ability_duplicate">&#128203;</button>
+            <button type="button" class="btn-icon ability-remove" title="Supprimer" data-i18n-title="roles.ability_remove">&#128465;</button>
           </div>
         </div>
         <div class="ability-card-body">
@@ -413,52 +335,52 @@
             <div class="ab-rule-divider"></div>
 
             <div class="ab-step">
-              <label class="ab-step-label">Quand cela se produit :</label>
+              <label class="ab-step-label" data-i18n="roles.when_label">Quand cela se produit :</label>
               <select class="form-select ab-when" required>
-                <option value="">-- choisir --</option>
-                <option value="every_night">Chaque nuit</option>
-                <option value="during_day">Pendant le jour</option>
-                <option value="on_death">&Agrave; la mort du r&ocirc;le</option>
-                <option value="on_targeted">Quand le r&ocirc;le est cibl&eacute;</option>
-                <option value="during_vote">Pendant le vote</option>
-                <option value="passive">En continu (passif)</option>
+                <option value="" data-i18n="roles.opt_choose">-- choisir --</option>
+                <option value="every_night" data-i18n="roles.when_every_night">Chaque nuit</option>
+                <option value="during_day" data-i18n="roles.when_during_day">Pendant le jour</option>
+                <option value="on_death" data-i18n="roles.when_on_death">À la mort du rôle</option>
+                <option value="on_targeted" data-i18n="roles.when_on_targeted">Quand le rôle est ciblé</option>
+                <option value="during_vote" data-i18n="roles.when_during_vote">Pendant le vote</option>
+                <option value="passive" data-i18n="roles.when_passive">En continu (passif)</option>
               </select>
               <span class="field-error ab-err-when"></span>
             </div>
 
             <div class="ab-step">
-              <label class="ab-step-label">Que se passe-t-il :</label>
+              <label class="ab-step-label" data-i18n="roles.what_label">Que se passe-t-il :</label>
               <select class="form-select ab-what" required>
-                <option value="">-- choisir --</option>
-                <option value="protect">Prot&eacute;ger un joueur</option>
-                <option value="kill">&Eacute;liminer un joueur</option>
-                <option value="inspect_alignment">R&eacute;v&eacute;ler le camp d'un joueur</option>
-                <option value="inspect_role">R&eacute;v&eacute;ler le r&ocirc;le exact d'un joueur</option>
-                <option value="redirect">Rediriger une attaque</option>
-                <option value="double_vote">Accorder un vote double</option>
-                <option value="immune_to_kill">Rendre le r&ocirc;le immunis&eacute; aux attaques</option>
-                <option value="win_override">D&eacute;finir une condition de victoire sp&eacute;ciale</option>
-                <option value="silence">Emp&ecirc;cher un joueur de parler</option>
-                <option value="block">Bloquer la capacit&eacute; d'un joueur</option>
-                <option value="reveal_role">R&eacute;v&eacute;ler publiquement le r&ocirc;le</option>
-                <option value="reveal_alignment">R&eacute;v&eacute;ler publiquement le camp</option>
-                <option value="modify_vote_weight">Modifier le poids du vote</option>
-                <option value="swap_roles">&Eacute;changer les r&ocirc;les de deux joueurs</option>
+                <option value="" data-i18n="roles.opt_choose">-- choisir --</option>
+                <option value="protect" data-i18n="roles.what_protect">Protéger un joueur</option>
+                <option value="kill" data-i18n="roles.what_kill">Éliminer un joueur</option>
+                <option value="inspect_alignment" data-i18n="roles.what_inspect_alignment">Révéler le camp d'un joueur</option>
+                <option value="inspect_role" data-i18n="roles.what_inspect_role">Révéler le rôle exact d'un joueur</option>
+                <option value="redirect" data-i18n="roles.what_redirect">Rediriger une attaque</option>
+                <option value="double_vote" data-i18n="roles.what_double_vote">Accorder un vote double</option>
+                <option value="immune_to_kill" data-i18n="roles.what_immune">Rendre le rôle immunisé aux attaques</option>
+                <option value="win_override" data-i18n="roles.what_win_override">Définir une condition de victoire spéciale</option>
+                <option value="silence" data-i18n="roles.what_silence">Empêcher un joueur de parler</option>
+                <option value="block" data-i18n="roles.what_block">Bloquer la capacité d'un joueur</option>
+                <option value="reveal_role" data-i18n="roles.what_reveal_role">Révéler publiquement le rôle</option>
+                <option value="reveal_alignment" data-i18n="roles.what_reveal_alignment">Révéler publiquement le camp</option>
+                <option value="modify_vote_weight" data-i18n="roles.what_modify_vote">Modifier le poids du vote</option>
+                <option value="swap_roles" data-i18n="roles.what_swap">Échanger les rôles de deux joueurs</option>
               </select>
               <span class="field-error ab-err-what"></span>
             </div>
 
             <details class="ab-advanced-params">
-              <summary>Param&egrave;tres avanc&eacute;s</summary>
+              <summary data-i18n="roles.advanced_params">Paramètres avancés</summary>
               <div class="ab-advanced-params-body">
                 <div class="ab-step">
-                  <label class="ab-step-label">Type de cible :</label>
+                  <label class="ab-step-label" data-i18n="roles.who_label">Type de cible :</label>
                   <select class="form-select ab-who" required>
-                    <option value="">-- choisir --</option>
-                    <option value="self">Soi-m&ecirc;me</option>
-                    <option value="chosen_player">Un joueur choisi</option>
-                    <option value="automatic">Automatique</option>
-                    <option value="no_target">Aucune cible</option>
+                    <option value="" data-i18n="roles.opt_choose">-- choisir --</option>
+                    <option value="self" data-i18n="roles.who_self">Soi-même</option>
+                    <option value="chosen_player" data-i18n="roles.who_chosen">Un joueur choisi</option>
+                    <option value="automatic" data-i18n="roles.who_auto">Automatique</option>
+                    <option value="no_target" data-i18n="roles.who_none">Aucune cible</option>
                   </select>
                   <span class="field-error ab-err-who"></span>
                 </div>
@@ -466,28 +388,28 @@
                 <div class="ab-step">
                   <div class="ab-limits-row">
                     <div class="form-group">
-                      <label>Limite d'utilisations</label>
+                      <label data-i18n="roles.usage_limit">Limite d'utilisations</label>
                       <div class="ab-charges-wrap">
                         <label class="ab-radio-label">
-                          <input type="radio" name="" class="ab-charges-mode" value="infinite" checked> Illimit&eacute;
+                          <input type="radio" name="" class="ab-charges-mode" value="infinite" checked> <span data-i18n="roles.unlimited">Illimité</span>
                         </label>
                         <label class="ab-radio-label">
-                          <input type="radio" name="" class="ab-charges-mode" value="limited"> Limit&eacute; &agrave;
+                          <input type="radio" name="" class="ab-charges-mode" value="limited"> <span data-i18n="roles.limited_to">Limité à</span>
                           <input type="number" class="form-input form-input-sm ab-charges-val" min="1" max="99" value="1" disabled>
-                          <span>fois</span>
+                          <span data-i18n="roles.times">fois</span>
                         </label>
                       </div>
                     </div>
                     <div class="form-group">
-                      <label>D&eacute;lai de r&eacute;utilisation</label>
+                      <label data-i18n="roles.cooldown_label">Délai de réutilisation</label>
                       <div class="ab-cooldown-wrap">
                         <label class="ab-radio-label">
-                          <input type="radio" name="" class="ab-cooldown-mode" value="none" checked> Aucun
+                          <input type="radio" name="" class="ab-cooldown-mode" value="none" checked> <span data-i18n="roles.cooldown_none">Aucun</span>
                         </label>
                         <label class="ab-radio-label">
-                          <input type="radio" name="" class="ab-cooldown-mode" value="has_cooldown"> Tous les
+                          <input type="radio" name="" class="ab-cooldown-mode" value="has_cooldown"> <span data-i18n="roles.cooldown_every">Tous les</span>
                           <input type="number" class="form-input form-input-sm ab-cooldown-val" min="1" max="10" value="2" disabled>
-                          <span>tours</span>
+                          <span data-i18n="roles.turns">tours</span>
                         </label>
                       </div>
                     </div>
@@ -495,7 +417,7 @@
                 </div>
 
                 <div class="ab-parameters ab-step" style="display: none;">
-                  <label class="ab-step-label">Options sp&eacute;cifiques</label>
+                  <label class="ab-step-label" data-i18n="roles.specific_options">Options spécifiques</label>
                   <div class="ab-params-fields"></div>
                 </div>
               </div>
@@ -506,95 +428,95 @@
           <div class="ab-advanced-mode" style="display:none;">
             <div class="form-row">
               <div class="form-group">
-                <label>Identifiant</label>
-                <input type="text" class="form-input ab-id" placeholder="ex. garde_protect" pattern="^[a-z0-9_]+$" maxlength="64">
+                <label data-i18n="roles.adv_id">Identifiant</label>
+                <input type="text" class="form-input ab-id" placeholder="ex. garde_protect" data-i18n-placeholder="roles.ability_id_ph" pattern="^[a-z0-9_]+$" maxlength="64">
                 <span class="field-error ab-err-id"></span>
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Type</label>
+                <label data-i18n="roles.adv_type">Type</label>
                 <select class="form-select ab-type">
-                  <option value="">-- choisir --</option>
-                  <option value="night_target">Night Target</option>
-                  <option value="passive">Passive</option>
-                  <option value="on_death">On Death</option>
-                  <option value="on_attacked">On Attacked</option>
-                  <option value="on_vote">On Vote</option>
-                  <option value="on_phase_start">On Phase Start</option>
-                  <option value="on_phase_end">On Phase End</option>
+                  <option value="" data-i18n="roles.opt_choose">-- choisir --</option>
+                  <option value="night_target" data-i18n="roles.type_night_target">Night Target</option>
+                  <option value="passive" data-i18n="roles.type_passive">Passive</option>
+                  <option value="on_death" data-i18n="roles.type_on_death">On Death</option>
+                  <option value="on_attacked" data-i18n="roles.type_on_attacked">On Attacked</option>
+                  <option value="on_vote" data-i18n="roles.type_on_vote">On Vote</option>
+                  <option value="on_phase_start" data-i18n="roles.type_on_phase_start">On Phase Start</option>
+                  <option value="on_phase_end" data-i18n="roles.type_on_phase_end">On Phase End</option>
                 </select>
                 <span class="field-error ab-err-type"></span>
               </div>
               <div class="form-group">
-                <label>Trigger</label>
+                <label data-i18n="roles.adv_trigger">Trigger</label>
                 <select class="form-select ab-trigger">
-                  <option value="">-- choisir --</option>
-                  <option value="night_action">Night Action</option>
-                  <option value="player_targeted">Player Targeted</option>
-                  <option value="vote_cast">Vote Cast</option>
-                  <option value="player_death">Player Death</option>
-                  <option value="phase_start">Phase Start</option>
-                  <option value="phase_end">Phase End</option>
+                  <option value="" data-i18n="roles.opt_choose">-- choisir --</option>
+                  <option value="night_action" data-i18n="roles.trig_night_action">Night Action</option>
+                  <option value="player_targeted" data-i18n="roles.trig_player_targeted">Player Targeted</option>
+                  <option value="vote_cast" data-i18n="roles.trig_vote_cast">Vote Cast</option>
+                  <option value="player_death" data-i18n="roles.trig_player_death">Player Death</option>
+                  <option value="phase_start" data-i18n="roles.trig_phase_start">Phase Start</option>
+                  <option value="phase_end" data-i18n="roles.trig_phase_end">Phase End</option>
                 </select>
                 <span class="field-error ab-err-trigger"></span>
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Effet</label>
+                <label data-i18n="roles.adv_effect">Effet</label>
                 <select class="form-select ab-effect">
-                  <option value="">-- choisir --</option>
-                  <option value="protect">Protect</option>
-                  <option value="kill">Kill</option>
-                  <option value="inspect_alignment">Inspect Alignment</option>
-                  <option value="inspect_role">Inspect Role</option>
-                  <option value="double_vote">Double Vote</option>
-                  <option value="silence">Silence</option>
-                  <option value="redirect">Redirect</option>
-                  <option value="block">Block</option>
-                  <option value="reveal_role">Reveal Role</option>
-                  <option value="reveal_alignment">Reveal Alignment</option>
-                  <option value="modify_vote_weight">Modify Vote Weight</option>
-                  <option value="swap_roles">Swap Roles</option>
-                  <option value="immune_to_kill">Immune to Kill</option>
-                  <option value="win_override">Win Override</option>
+                  <option value="" data-i18n="roles.opt_choose">-- choisir --</option>
+                  <option value="protect" data-i18n="roles.eff_protect">Protect</option>
+                  <option value="kill" data-i18n="roles.eff_kill">Kill</option>
+                  <option value="inspect_alignment" data-i18n="roles.eff_inspect_alignment">Inspect Alignment</option>
+                  <option value="inspect_role" data-i18n="roles.eff_inspect_role">Inspect Role</option>
+                  <option value="double_vote" data-i18n="roles.eff_double_vote">Double Vote</option>
+                  <option value="silence" data-i18n="roles.eff_silence">Silence</option>
+                  <option value="redirect" data-i18n="roles.eff_redirect">Redirect</option>
+                  <option value="block" data-i18n="roles.eff_block">Block</option>
+                  <option value="reveal_role" data-i18n="roles.eff_reveal_role">Reveal Role</option>
+                  <option value="reveal_alignment" data-i18n="roles.eff_reveal_alignment">Reveal Alignment</option>
+                  <option value="modify_vote_weight" data-i18n="roles.eff_modify_vote">Modify Vote Weight</option>
+                  <option value="swap_roles" data-i18n="roles.eff_swap">Swap Roles</option>
+                  <option value="immune_to_kill" data-i18n="roles.eff_immune">Immune to Kill</option>
+                  <option value="win_override" data-i18n="roles.eff_win_override">Win Override</option>
                 </select>
                 <span class="field-error ab-err-effect"></span>
               </div>
               <div class="form-group">
-                <label>Cible</label>
+                <label data-i18n="roles.adv_target">Cible</label>
                 <select class="form-select ab-target">
-                  <option value="none">Aucune</option>
-                  <option value="alive_player">Joueur vivant</option>
-                  <option value="alive_other">Joueur vivant (autre)</option>
-                  <option value="alive_non_wolf">Non-loup vivant</option>
-                  <option value="alive_wolf">Loup vivant</option>
-                  <option value="self">Soi-m&ecirc;me</option>
+                  <option value="none" data-i18n="roles.target_none">Aucune</option>
+                  <option value="alive_player" data-i18n="roles.target_alive">Joueur vivant</option>
+                  <option value="alive_other" data-i18n="roles.target_alive_other">Joueur vivant (autre)</option>
+                  <option value="alive_non_wolf" data-i18n="roles.target_non_wolf">Non-loup vivant</option>
+                  <option value="alive_wolf" data-i18n="roles.target_wolf">Loup vivant</option>
+                  <option value="self" data-i18n="roles.who_self">Soi-même</option>
                 </select>
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Phase</label>
+                <label data-i18n="roles.adv_phase">Phase</label>
                 <select class="form-select ab-phase">
-                  <option value="">Auto</option>
-                  <option value="night">Nuit</option>
-                  <option value="day">Jour</option>
-                  <option value="any">Toute</option>
+                  <option value="" data-i18n="roles.phase_auto">Auto</option>
+                  <option value="night" data-i18n="roles.phase_night">Nuit</option>
+                  <option value="day" data-i18n="roles.phase_day">Jour</option>
+                  <option value="any" data-i18n="roles.phase_any">Toute</option>
                 </select>
               </div>
               <div class="form-group" style="max-width: 120px;">
-                <label>Charges</label>
+                <label data-i18n="roles.adv_charges">Charges</label>
                 <input type="number" class="form-input ab-charges" min="1" max="99" placeholder="&#8734;">
               </div>
               <div class="form-group" style="max-width: 120px;">
-                <label>Cooldown</label>
+                <label data-i18n="roles.adv_cooldown">Cooldown</label>
                 <input type="number" class="form-input ab-cooldown" min="1" max="10" placeholder="0">
               </div>
             </div>
             <div class="ab-parameters-adv" style="display:none;">
-              <label class="ab-params-label">Param&egrave;tres</label>
+              <label class="ab-params-label" data-i18n="roles.adv_params">Paramètres</label>
               <div class="ab-params-fields-adv"></div>
             </div>
             <span class="field-error ab-err-general"></span>

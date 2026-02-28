@@ -1,5 +1,33 @@
 # 📝 Changelog - Werewolf Bot
 
+## [3.5.0] - 2026-02-28 - i18n Engine Rewrite & Persistent Sessions
+
+### 🌐 i18n Engine — Architecture Separation
+- **Extracted 1491 translation keys** from inline `webI18n.js` (3517 lines) into external JSON files: `web/public/locales/fr.json` and `web/public/locales/en.json`
+- **Rewrote `webI18n.js`** as a pure i18n engine (227 lines) — loads translations via `fetch('/static/locales/{lang}.json')`, flattens nested JSON to dot-notation keys, caches in memory
+- **100% FR/EN parity** — 9 missing FR keys added (gleader.podium_points/wins, grules.settings_title/desc/roles_active/players_range/current_lang/setup_desc/unsaved)
+- **PJAX compatible** — `applyTranslations()` called synchronously after content swap; JSON cached after first fetch
+- **FOUC prevention** preserved — `data-i18n-ready` attribute controls element visibility during translation loading
+
+### 🔐 Persistent Sessions
+- **SQLite session store** — replaced in-memory `MemoryStore` with `better-sqlite3-session-store` writing to `data/sessions.db`
+- **Auto-generated session secret** — new `_resolveSessionSecret()` method: reads `SESSION_SECRET` from env, or auto-generates and persists to `data/.session-secret` (file created once, reused across restarts)
+- **Expired session cleanup** — automatic purge every 15 minutes
+- **WAL mode** enabled on session database for concurrent read performance
+- **Zero-config** — works out-of-the-box without setting `SESSION_SECRET` in `.env`
+
+### 📦 Dependencies
+- Added `better-sqlite3-session-store` for persistent session storage
+
+### 📄 Files Modified
+- **web/public/js/webI18n.js** — Rewritten from 3517 → 227 lines (pure engine, fetch-based)
+- **web/public/locales/fr.json** *(new)* — 1491 French translation keys
+- **web/public/locales/en.json** *(new)* — 1491 English translation keys
+- **web/server.js** — SQLite session store, auto-persisted session secret, `fs`/`Database`/`SqliteStore` imports
+- **.env.example** — Added `SESSION_SECRET` documentation
+
+---
+
 ## [3.4.1] - 2026-02-26 - Visual Overhaul & Ability Engine
 
 ### 🎨 Global Ambient Lighting — Architectural Overhaul

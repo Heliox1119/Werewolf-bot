@@ -249,6 +249,19 @@ CREATE TABLE IF NOT EXISTS config (
   updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
 );
 
+-- Moderation audit trail (persistent across game lifecycle)
+CREATE TABLE IF NOT EXISTS mod_audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  moderator_id TEXT NOT NULL,
+  moderator_name TEXT NOT NULL,
+  action TEXT NOT NULL,
+  details TEXT,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_mod_audit_guild ON mod_audit_log(guild_id, created_at);
+
 -- Version du schéma
 INSERT OR IGNORE INTO config (key, value) VALUES ('schema_version', '1');
 

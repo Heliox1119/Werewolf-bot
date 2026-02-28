@@ -299,6 +299,16 @@ class MockGameDatabase {
     return logs.slice(-limit);
   }
 
+  // ===== MODERATION AUDIT LOG =====
+
+  addModAuditLog(guildId, moderatorId, moderatorName, action, details = null) {
+    return true;
+  }
+
+  getModAuditLog(guildId, limit = 30) {
+    return [];
+  }
+
   // ===== LOVERS =====
 
   setLovers(channelId, lover1Id, lover2Id) {

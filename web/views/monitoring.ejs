@@ -30,7 +30,7 @@
           <p class="st-hero-sub" data-i18n="mon.subtitle">Surveillance en temps réel du bot — Métriques système, Discord et jeu</p>
           <div class="st-hero-chips">
             <% if (isMember) { %>
-              <span class="access-badge access-<%= level %>"><%= level === 'owner' ? '👑 Owner' : level === 'admin' ? '🛡️ Admin' : '👤 Member' %></span>
+              <span class="access-badge access-<%= level %>" data-i18n="mon.access_<%= level %>"><%= level === 'owner' ? '👑 Owner' : level === 'admin' ? '🛡️ Admin' : '👤 Member' %></span>
             <% } %>
             <span class="st-chip st-chip--auto" id="st-auto-chip">
               <span class="st-chip-dot"></span>
@@ -96,7 +96,7 @@
         <h3 class="st-panel-title">📈 <span data-i18n="mon.latency_chart">Latence Discord (24h)</span></h3>
         <div class="st-panel-head-right">
           <span class="st-panel-badge" id="st-lat-avg">— ms avg</span>
-          <div class="st-chart-toggle" role="button" tabindex="0" aria-label="Expand chart" title="Expand">
+          <div class="st-chart-toggle" role="button" tabindex="0" aria-label="Expand chart" data-i18n-aria-label="mon.aria_expand_chart" title="Expand" data-i18n-title="mon.title_expand">
             <span class="st-chart-chevron"></span>
           </div>
         </div>
@@ -119,7 +119,7 @@
         <h3 class="st-panel-title">📊 <span data-i18n="mon.memory_chart">Mémoire (24h)</span></h3>
         <div class="st-panel-head-right">
           <span class="st-panel-badge st-badge--mem" id="st-mem-avg">— MB avg</span>
-          <div class="st-chart-toggle" role="button" tabindex="0" aria-label="Expand chart" title="Expand">
+          <div class="st-chart-toggle" role="button" tabindex="0" aria-label="Expand chart" data-i18n-aria-label="mon.aria_expand_chart" title="Expand" data-i18n-title="mon.title_expand">
             <span class="st-chart-chevron"></span>
           </div>
         </div>

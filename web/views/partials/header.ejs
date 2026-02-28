@@ -1,27 +1,25 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="fr" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %> — Werewolf Bot</title>
-  <meta name="description" content="Werewolf Bot — Real-time Discord game dashboard">
+  <meta name="description" content="Werewolf Bot — Real-time Discord game dashboard" data-i18n-content="meta.description">
   <meta name="theme-color" content="#080b14">
   <link rel="icon" href="/static/img/roles/LG.jpg" type="image/jpeg">
-  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/style.css?v=3.4.2">
   <script>
-    // Synchronous i18n pre-apply: prevent FOUC of English text
+    // Synchronous i18n pre-apply: prevent FOUC of wrong language
     (function(){
       var lang = localStorage.getItem('werewolf-lang') || 'fr';
-      if (lang !== 'en') {
-        // Set lang attribute immediately
-        document.documentElement.lang = lang;
-      }
+      document.documentElement.lang = lang;
       document.documentElement.setAttribute('data-lang', lang);
     })();
   </script>
   <style>
     /* Hide translatable elements until i18n applies (prevents flash of wrong language) */
-    html:not([data-i18n-ready]) [data-i18n] { visibility: hidden; }
+    html:not([data-i18n-ready]) [data-i18n],
+    html:not([data-i18n-ready]) .pp-date { visibility: hidden; }
   </style>
 </head>
 <%
@@ -50,7 +48,7 @@
         <a href="/" class="nav-brand">
           <img src="/static/img/roles/LG.jpg" alt="Werewolf" class="nav-logo">
           <span class="nav-title"><%= typeof botName !== 'undefined' && botName ? botName : 'Werewolf' %></span>
-          <span class="nav-version">v3.4</span>
+          <span class="nav-version">v3.5</span>
         </a>
         <div class="nav-tabs" id="nav-tabs">
           <a href="/" class="nav-tab<%= title === 'Dashboard' ? ' active' : '' %>" data-i18n="nav.dashboard">Dashboard</a>
@@ -63,11 +61,11 @@
               <div class="nav-dropdown-menu-inner">
               <a href="https://github.com/Heliox1119/Werewolf-bot" target="_blank" rel="noopener" class="nav-dropdown-item">
                 <span class="nav-dropdown-icon">&#128187;</span>
-                <span>GitHub</span>
+                <span data-i18n="nav.github">GitHub</span>
               </a>
               <a href="/support#discord" class="nav-dropdown-item">
                 <span class="nav-dropdown-icon">&#128172;</span>
-                <span>Discord</span>
+                <span data-i18n="nav.discord">Discord</span>
               </a>
               <a href="/support" class="nav-dropdown-item">
                 <span class="nav-dropdown-icon">&#10067;</span>
@@ -82,6 +80,13 @@
 
       <!-- Right: User dropdown or Login -->
       <div class="nav-right">
+        <!-- Standalone language toggle — always visible -->
+        <button class="header-lang-toggle" id="header-lang-toggle" type="button" aria-label="Toggle language">
+          <span class="header-lang-option" id="header-lang-fr">FR</span>
+          <span class="header-lang-option" id="header-lang-en">EN</span>
+          <span class="header-lang-slider" id="header-lang-slider"></span>
+        </button>
+
         <% if (typeof user !== 'undefined' && user) { %>
           <div class="nav-user-dropdown" id="nav-user-dropdown">
             <button class="nav-user-btn" id="nav-user-btn" type="button">
@@ -104,6 +109,7 @@
                   <% if (user.avatar_decoration_data && user.avatar_decoration_data.asset) { %>
                     <img src="https://cdn.discordapp.com/avatar-decoration-presets/<%= user.avatar_decoration_data.asset %>.png?size=240" alt="" class="nav-menu-avatar-decoration">
                   <% } %>
+                  <span class="nav-menu-status-dot"></span>
                 </div>
                 <div class="nav-menu-user-info">
                   <span class="nav-menu-displayname"><%= user.global_name || user.username %></span>
@@ -111,18 +117,19 @@
                 </div>
               </div>
               <div class="nav-user-menu-sep"></div>
+              <a href="/player/<%= user.id %>" class="nav-user-menu-item">
+                <span class="nav-user-menu-icon">👤</span>
+                <span data-i18n="nav.profile">Profil</span>
+              </a>
               <a href="/" class="nav-user-menu-item">
                 <span class="nav-user-menu-icon">&#127968;</span>
                 <span data-i18n="nav.dashboard">Dashboard</span>
               </a>
-              <button class="nav-user-menu-item" id="user-menu-lang" type="button">
-                <span class="nav-user-menu-icon" id="user-menu-lang-flag">🇬🇧</span>
-                <span data-i18n="nav.language">Language</span>
-              </button>
+
               <div class="nav-user-menu-sep"></div>
               <a href="/auth/logout" class="nav-user-menu-item nav-user-menu-danger">
                 <span class="nav-user-menu-icon">&#128682;</span>
-                <span data-i18n="nav.logout">Logout</span>
+                <span data-i18n="nav.logout">Déconnexion</span>
               </a>
             </div>
           </div>
@@ -134,7 +141,7 @@
         <% } %>
       </div>
 
-      <button class="nav-toggle" id="nav-toggle" aria-label="Menu">&#9776;</button>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Menu" data-i18n-aria-label="nav.aria_menu">&#9776;</button>
     </div>
   </nav>
 
@@ -156,7 +163,7 @@
           </a>
         <% }); %>
       <% } else { %>
-        <a href="/auth/discord" class="sidebar-guild sidebar-guild-add" title="Login to see your servers">
+        <a href="/auth/discord" class="sidebar-guild sidebar-guild-add" title="Login to see your servers" data-i18n-title="nav.title_login_servers">
           <span class="sidebar-guild-initial">+</span>
         </a>
       <% } %>
@@ -173,9 +180,9 @@
       <% } else { %>
         <span class="guild-panel-initial"><%= activeGuild.name ? activeGuild.name.charAt(0).toUpperCase() : '?' %></span>
       <% } %>
-      <span class="guild-panel-name"><%= activeGuild.name || 'Server' %></span>
+      <span class="guild-panel-name"<% if (!activeGuild.name) { %> data-i18n="fb.server"<% } %>><%= activeGuild.name || 'Server' %></span>
       <div class="guild-panel-settings-wrap" id="sidebar-settings-wrap">
-        <button class="guild-panel-settings" id="sidebar-settings-btn" type="button" title="Settings">&#9881;&#65039;</button>
+        <button class="guild-panel-settings" id="sidebar-settings-btn" type="button" title="Settings" data-i18n-title="nav.title_settings">&#9881;&#65039;</button>
         <div class="guild-panel-settings-popup" id="sidebar-settings-popup">
           <button class="guild-panel-settings-lang" id="sidebar-lang-toggle" type="button">
             <span id="sidebar-lang-flag">&#127760;</span>

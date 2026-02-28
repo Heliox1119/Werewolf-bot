@@ -36,6 +36,9 @@ data/*.db
 data/*.db-shm
 data/*.db-wal
 
+# Session secret (auto-generated)
+data/.session-secret
+
 # Build
 dist/
 build/

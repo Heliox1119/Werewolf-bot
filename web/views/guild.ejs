@@ -20,19 +20,19 @@
       </div>
       <div class="go-hero-info">
         <h1 class="go-hero-title"><%= guild ? guild.name : 'Guild ' + guildId %></h1>
-        <p class="go-hero-subtitle">Vue d'ensemble · Statistiques & Activité</p>
+        <p class="go-hero-subtitle" data-i18n="goverview.subtitle">Vue d'ensemble · Statistiques & Activité</p>
         <div class="go-hero-tags">
           <% if (guild && guild.memberCount) { %>
             <div class="go-hero-tag go-tag-members">
-              <span>👥</span> <%= guild.memberCount %> membres
+              <span>👥</span> <%= guild.memberCount %> <span data-i18n="goverview.members">membres</span>
             </div>
           <% } %>
           <div class="go-hero-tag go-tag-games">
-            <span>🎮</span> <%= guildStats.totalGames %> parties jouées
+            <span>🎮</span> <%= guildStats.totalGames %> <span data-i18n="goverview.total_played">parties jouées</span>
           </div>
           <% if (guildStats.activeGames > 0) { %>
             <div class="go-hero-tag go-tag-live">
-              <span class="status-beacon"></span> <%= guildStats.activeGames %> en cours
+              <span class="status-beacon"></span> <%= guildStats.activeGames %> <span data-i18n="goverview.active_now">en cours</span>
             </div>
           <% } %>
         </div>
@@ -43,28 +43,28 @@
         <div class="go-metric-icon gm-purple">🏆</div>
         <div class="go-metric-data">
           <span class="go-metric-val counter" data-target="<%= guildStats.totalGames %>">0</span>
-          <span class="go-metric-label">Total parties</span>
+          <span class="go-metric-label" data-i18n="goverview.stat_games">Total parties</span>
         </div>
       </div>
       <div class="go-metric" style="--i:1">
         <div class="go-metric-icon gm-green">🏡</div>
         <div class="go-metric-data">
           <span class="go-metric-val counter" data-target="<%= guildStats.villageWins %>">0</span>
-          <span class="go-metric-label">Victoires Village</span>
+          <span class="go-metric-label" data-i18n="goverview.stat_village">Victoires Village</span>
         </div>
       </div>
       <div class="go-metric" style="--i:2">
         <div class="go-metric-icon gm-red">🐺</div>
         <div class="go-metric-data">
           <span class="go-metric-val counter" data-target="<%= guildStats.wolfWins %>">0</span>
-          <span class="go-metric-label">Victoires Loups</span>
+          <span class="go-metric-label" data-i18n="goverview.stat_wolves">Victoires Loups</span>
         </div>
       </div>
       <div class="go-metric" style="--i:3">
         <div class="go-metric-icon gm-pink">💕</div>
         <div class="go-metric-data">
           <span class="go-metric-val counter" data-target="<%= guildStats.loversWins %>">0</span>
-          <span class="go-metric-label">Victoires Amoureux</span>
+          <span class="go-metric-label" data-i18n="goverview.stat_lovers">Victoires Amoureux</span>
         </div>
       </div>
     </div>
@@ -77,7 +77,7 @@
     <span class="go-stat-chip-icon">👥</span>
     <div class="go-stat-chip-data">
       <span class="go-stat-chip-val counter" data-target="<%= guildStats.avgPlayers %>">0</span>
-      <span class="go-stat-chip-label">Joueurs / partie</span>
+      <span class="go-stat-chip-label" data-i18n="goverview.stat_avg_players">Joueurs / partie</span>
     </div>
   </div>
   <div class="go-stat-chip">
@@ -85,7 +85,7 @@
     <div class="go-stat-chip-data">
       <% var avgMin = Math.floor(guildStats.avgDuration / 60); %>
       <span class="go-stat-chip-val counter" data-target="<%= avgMin %>">0</span>
-      <span class="go-stat-chip-label">min en moyenne</span>
+      <span class="go-stat-chip-label" data-i18n="goverview.stat_avg_duration_min">min en moyenne</span>
     </div>
   </div>
   <div class="go-stat-chip">
@@ -96,7 +96,7 @@
         var winRate = total > 0 ? Math.round(guildStats.villageWins / total * 100) : 0;
       %>
       <span class="go-stat-chip-val"><%= winRate %><small>%</small></span>
-      <span class="go-stat-chip-label">Taux village</span>
+      <span class="go-stat-chip-label" data-i18n="goverview.stat_village_rate">Taux village</span>
     </div>
   </div>
   <% if (guildStats.totalGames > 0) { %>
@@ -104,7 +104,7 @@
     <span class="go-stat-chip-icon">📈</span>
     <div class="go-stat-chip-data">
       <span class="go-stat-chip-val"><%= Math.round(guildStats.wolfWins / (total || 1) * 100) %><small>%</small></span>
-      <span class="go-stat-chip-label">Taux loups</span>
+      <span class="go-stat-chip-label" data-i18n="goverview.stat_wolf_rate">Taux loups</span>
     </div>
   </div>
   <% } %>
@@ -114,7 +114,7 @@
 <% if (guildStats.totalGames > 0) { %>
 <div class="go-winbar-panel" style="--enter:0">
   <div class="go-winbar-head">
-    <span class="go-winbar-title">🏁 Répartition des victoires</span>
+    <span class="go-winbar-title" data-i18n="goverview.win_distribution">🏁 Répartition des victoires</span>
   </div>
   <div class="go-winbar">
     <%
@@ -122,22 +122,22 @@
       var wPct = total > 0 ? (guildStats.wolfWins / total * 100).toFixed(1) : 0;
       var lPct = total > 0 ? (guildStats.loversWins / total * 100).toFixed(1) : 0;
     %>
-    <div class="go-winbar-seg go-winbar-village" style="width:<%= vPct %>%" title="Village <%= vPct %>%">
+    <div class="go-winbar-seg go-winbar-village" style="width:<%= vPct %>%" title="Village <%= vPct %>%" data-i18n-title="goverview.title_village">
       <span>🏡 <%= vPct %>%</span>
     </div>
-    <div class="go-winbar-seg go-winbar-wolves" style="width:<%= wPct %>%" title="Loups <%= wPct %>%">
+    <div class="go-winbar-seg go-winbar-wolves" style="width:<%= wPct %>%" title="Loups <%= wPct %>%" data-i18n-title="goverview.title_wolves">
       <span>🐺 <%= wPct %>%</span>
     </div>
     <% if (parseFloat(lPct) > 0) { %>
-    <div class="go-winbar-seg go-winbar-lovers" style="width:<%= lPct %>%" title="Amoureux <%= lPct %>%">
+    <div class="go-winbar-seg go-winbar-lovers" style="width:<%= lPct %>%" title="Amoureux <%= lPct %>%" data-i18n-title="goverview.title_lovers">
       <span>💕 <%= lPct %>%</span>
     </div>
     <% } %>
   </div>
   <div class="go-winbar-legend">
-    <span class="go-legend-item"><span class="go-legend-dot go-legend-village"></span> Village</span>
-    <span class="go-legend-item"><span class="go-legend-dot go-legend-wolves"></span> Loups-Garous</span>
-    <span class="go-legend-item"><span class="go-legend-dot go-legend-lovers"></span> Amoureux</span>
+    <span class="go-legend-item"><span class="go-legend-dot go-legend-village"></span> <span data-i18n="goverview.legend_village">Village</span></span>
+    <span class="go-legend-item"><span class="go-legend-dot go-legend-wolves"></span> <span data-i18n="goverview.legend_wolves">Loups-Garous</span></span>
+    <span class="go-legend-item"><span class="go-legend-dot go-legend-lovers"></span> <span data-i18n="goverview.legend_lovers">Amoureux</span></span>
   </div>
 </div>
 <% } %>
@@ -149,7 +149,7 @@
     <!-- Live Games Panel -->
     <div class="dash-panel go-panel" style="--enter:0">
       <div class="dash-panel-head">
-        <div class="dash-panel-title"><span class="pulse-dot"></span> Parties en cours</div>
+        <div class="dash-panel-title"><span class="pulse-dot"></span> <span data-i18n="goverview.active_games">Parties en cours</span></div>
         <span class="badge-count"><%= games.length %></span>
       </div>
       <div class="games-grid">
@@ -159,8 +159,8 @@
               <span class="empty-icon-lg">🌙</span>
               <div class="empty-glow-ring"></div>
             </div>
-            <p class="empty-title">Le village dort paisiblement</p>
-            <p class="empty-sub text-muted">Les parties apparaîtront ici en temps réel</p>
+            <p class="empty-title" data-i18n="goverview.no_games">Le village dort paisiblement</p>
+            <p class="empty-sub text-muted" data-i18n="goverview.no_games_hint">Les parties apparaîtront ici en temps réel</p>
           </div>
         <% } else { games.forEach(function(g) {
             var alive = g.players ? g.players.filter(function(p) { return p.alive; }).length : 0;
@@ -170,13 +170,13 @@
         %>
           <a href="/game/<%= g.gameId %>" class="game-card" data-game="<%= g.gameId %>">
             <div class="game-card-header">
-              <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>"><%= g.phase || 'Lobby' %></span>
-              <span class="game-day"><%= g.dayCount ? 'Jour ' + g.dayCount : '' %></span>
+              <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>" data-i18n="phase.<%= g.phase || 'Lobby' %>"><%= g.phase || 'Lobby' %></span>
+              <span class="game-day"><% if (g.dayCount) { %><span data-i18n="goverview.day_prefix">Jour</span> <%= g.dayCount %><% } %></span>
             </div>
             <div class="game-card-body">
               <div class="game-players">
-                <span class="alive-count">❤️ <%= alive %> vivants</span>
-                <span class="dead-count">☠️ <%= dead %> morts</span>
+                <span class="alive-count">❤️ <%= alive %> <span data-i18n="dash.alive_count">vivants</span></span>
+                <span class="dead-count">☠️ <%= dead %> <span data-i18n="dash.dead_count">morts</span></span>
               </div>
               <div class="game-hp-bar">
                 <div class="game-hp-fill" style="width: <%= pct %>%"></div>
@@ -192,11 +192,11 @@
                 </div>
               <% } %>
               <% if (g.subPhase) { %>
-                <div class="game-subphase-tag"><%= g.subPhase %></div>
+                <div class="game-subphase-tag" data-i18n="subphase.<%= g.subPhase %>"><%= g.subPhase %></div>
               <% } %>
             </div>
             <div class="game-card-footer">
-              <span class="spectate-btn">👁️ Regarder en direct</span>
+              <span class="spectate-btn" data-i18n="goverview.spectate">👁️ Regarder en direct</span>
             </div>
           </a>
         <% }); } %>
@@ -206,8 +206,8 @@
     <!-- Top Players Panel -->
     <div class="dash-panel go-panel" style="--enter:1">
       <div class="dash-panel-head">
-        <div class="dash-panel-title">🏆 Meilleurs joueurs</div>
-        <a href="/guild/<%= guildId %>/leaderboard" class="go-see-all">Voir tout →</a>
+        <div class="dash-panel-title" data-i18n="goverview.top_players">🏆 Meilleurs joueurs</div>
+        <a href="/guild/<%= guildId %>/leaderboard" class="go-see-all" data-i18n="goverview.see_all">Voir tout →</a>
       </div>
       <% if (leaderboard.length === 0) { %>
         <div class="empty-state">
@@ -215,8 +215,8 @@
             <span class="empty-icon-lg">🏆</span>
             <div class="empty-glow-ring"></div>
           </div>
-          <p class="empty-title">Aucun joueur classé</p>
-          <p class="empty-sub text-muted">Les classements apparaîtront après la première partie</p>
+          <p class="empty-title" data-i18n="goverview.no_players">Aucun joueur classé</p>
+          <p class="empty-sub text-muted" data-i18n="goverview.no_players_hint">Les classements apparaîtront après la première partie</p>
         </div>
       <% } else { %>
         <div class="go-leaderboard">
@@ -225,15 +225,15 @@
               <div class="go-player-rank rank-<%= p.rank %>">#<%= p.rank %></div>
               <div class="go-player-info">
                 <span class="go-player-name"><%= p.username || p.player_id %></span>
-                <span class="go-player-tier tier tier-<%= (p.tier || {}).id || 'bronze' %>"><%= (p.tier || {}).emoji || '' %> <%= (p.tier || {}).name || 'Bronze' %></span>
+                <span class="go-player-tier tier tier-<%= (p.tier || {}).id || 'bronze' %>"><%= (p.tier || {}).emoji || '' %><% if ((p.tier || {}).id) { %> <span data-i18n="tier.<%= (p.tier).id %>"><%= (p.tier || {}).name %></span><% } else { %> <span data-i18n="fb.tier_default">Bronze</span><% } %></span>
               </div>
               <div class="go-player-elo">
                 <span class="go-player-elo-val"><%= p.elo_rating || 1000 %></span>
-                <span class="go-player-elo-label">Points</span>
+                <span class="go-player-elo-label" data-i18n="goverview.points">Points</span>
               </div>
               <div class="go-player-record">
-                <span class="go-player-wins"><%= p.games_won || 0 %> <small>victoires</small></span>
-                <span class="go-player-total"><%= p.games_played || 0 %> <small>parties</small></span>
+                <span class="go-player-wins"><%= p.games_won || 0 %> <small data-i18n="goverview.wins_label">victoires</small></span>
+                <span class="go-player-total"><%= p.games_played || 0 %> <small data-i18n="goverview.games_label">parties</small></span>
               </div>
               <span class="go-player-arrow">›</span>
             </a>
@@ -245,8 +245,8 @@
     <!-- Recent Games Panel -->
     <div class="dash-panel go-panel" style="--enter:2">
       <div class="dash-panel-head">
-        <div class="dash-panel-title">📜 Parties récentes</div>
-        <a href="/guild/<%= guildId %>/history" class="go-see-all">Voir tout →</a>
+        <div class="dash-panel-title" data-i18n="goverview.recent_games">📜 Parties récentes</div>
+        <a href="/guild/<%= guildId %>/history" class="go-see-all" data-i18n="goverview.see_all_history">Voir tout →</a>
       </div>
       <% if (history.length === 0) { %>
         <div class="empty-state">
@@ -254,8 +254,8 @@
             <span class="empty-icon-lg">📜</span>
             <div class="empty-glow-ring"></div>
           </div>
-          <p class="empty-title">Aucune partie terminée</p>
-          <p class="empty-sub text-muted">L'historique s'affichera ici</p>
+          <p class="empty-title" data-i18n="goverview.no_history">Aucune partie terminée</p>
+          <p class="empty-sub text-muted" data-i18n="goverview.no_history_hint">L'historique s'affichera ici</p>
         </div>
       <% } else { %>
         <div class="go-history">
@@ -263,24 +263,24 @@
             <div class="go-history-row" style="--delay:<%= i * 0.06 %>s">
               <div class="go-history-winner">
                 <% if (h.winner === 'village') { %>
-                  <span class="go-winner-badge go-winner-village">🏡 Village</span>
+                  <span class="go-winner-badge go-winner-village">🏡 <span data-i18n="goverview.legend_village">Village</span></span>
                 <% } else if (h.winner === 'wolves') { %>
-                  <span class="go-winner-badge go-winner-wolves">🐺 Loups</span>
+                  <span class="go-winner-badge go-winner-wolves">🐺 <span data-i18n="goverview.legend_wolves">Loups</span></span>
                 <% } else if (h.winner === 'lovers') { %>
-                  <span class="go-winner-badge go-winner-lovers">💕 Amoureux</span>
+                  <span class="go-winner-badge go-winner-lovers">💕 <span data-i18n="goverview.legend_lovers">Amoureux</span></span>
                 <% } else { %>
                   <span class="go-winner-badge"><%= h.winner || '?' %></span>
                 <% } %>
               </div>
               <div class="go-history-stats">
                 <span class="go-history-stat">👥 <%= h.player_count || '?' %></span>
-                <span class="go-history-stat">📅 <%= h.day_count || 0 %>j</span>
+                <span class="go-history-stat">📅 <%= h.day_count || 0 %><span data-i18n="goverview.day_suffix">j</span></span>
                 <% if (h.duration_seconds) { %>
-                  <span class="go-history-stat">⏱️ <%= Math.floor(h.duration_seconds / 60) %>min</span>
+                  <span class="go-history-stat">⏱️ <%= Math.floor(h.duration_seconds / 60) %><span data-i18n="goverview.min_suffix">min</span></span>
                 <% } %>
               </div>
               <div class="go-history-date">
-                <%= h.ended_at ? new Date(h.ended_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '' %>
+                <span class="pp-date" data-timestamp-ms="<%= h.ended_at ? new Date(h.ended_at).getTime() : '' %>" data-date-format="day-month-year"><%= h.ended_at ? new Date(h.ended_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '' %></span>
               </div>
             </div>
           <% }); %>
@@ -293,37 +293,37 @@
   <aside class="go-sidebar">
     <!-- Quick Navigation -->
     <div class="sidebar-panel go-panel" style="--enter:1">
-      <h3 class="panel-title">⚡ Navigation</h3>
+      <h3 class="panel-title" data-i18n="goverview.quick_nav">⚡ Navigation</h3>
       <div class="go-nav-links">
         <a href="/guild/<%= guildId %>/leaderboard" class="go-nav-link">
           <span class="go-nav-link-icon" style="background:rgba(245,158,11,0.12)">🏆</span>
           <div class="go-nav-link-body">
-            <span class="go-nav-link-title">Classement</span>
-            <span class="go-nav-link-desc">Classement complet et points</span>
+            <span class="go-nav-link-title" data-i18n="guild.leaderboard">Classement</span>
+            <span class="go-nav-link-desc" data-i18n="goverview.nav_leaderboard_desc">Classement complet et points</span>
           </div>
           <span class="go-nav-link-arrow">›</span>
         </a>
         <a href="/guild/<%= guildId %>/history" class="go-nav-link">
           <span class="go-nav-link-icon" style="background:rgba(59,130,246,0.12)">📜</span>
           <div class="go-nav-link-body">
-            <span class="go-nav-link-title">Historique</span>
-            <span class="go-nav-link-desc">Toutes les parties jouées</span>
+            <span class="go-nav-link-title" data-i18n="guild.history">Historique</span>
+            <span class="go-nav-link-desc" data-i18n="goverview.nav_history_desc">Toutes les parties jouées</span>
           </div>
           <span class="go-nav-link-arrow">›</span>
         </a>
         <a href="/guild/<%= guildId %>/rules" class="go-nav-link">
           <span class="go-nav-link-icon" style="background:rgba(139,92,246,0.12)">⚙️</span>
           <div class="go-nav-link-body">
-            <span class="go-nav-link-title">Règles du jeu</span>
-            <span class="go-nav-link-desc">Rôles et paramètres</span>
+            <span class="go-nav-link-title" data-i18n="guild.rules">Règles du jeu</span>
+            <span class="go-nav-link-desc" data-i18n="goverview.nav_rules_desc">Rôles et paramètres</span>
           </div>
           <span class="go-nav-link-arrow">›</span>
         </a>
         <a href="/guild/<%= guildId %>/moderation" class="go-nav-link">
           <span class="go-nav-link-icon" style="background:rgba(239,68,68,0.12)">🛡️</span>
           <div class="go-nav-link-body">
-            <span class="go-nav-link-title">Modération</span>
-            <span class="go-nav-link-desc">Gérer les parties en cours</span>
+            <span class="go-nav-link-title" data-i18n="gmod.title">Modération</span>
+            <span class="go-nav-link-desc" data-i18n="goverview.nav_mod_desc">Gérer les parties en cours</span>
           </div>
           <span class="go-nav-link-arrow">›</span>
         </a>
@@ -332,27 +332,27 @@
 
     <!-- Server Info -->
     <div class="sidebar-panel go-panel" style="--enter:2">
-      <h3 class="panel-title">🔮 Informations</h3>
+      <h3 class="panel-title" data-i18n="goverview.info_title">🔮 Informations</h3>
       <div class="go-info-grid">
         <div class="go-info-row">
-          <span class="go-info-label">Parties totales</span>
+          <span class="go-info-label" data-i18n="goverview.info_total_games">Parties totales</span>
           <span class="go-info-value"><%= guildStats.totalGames %></span>
         </div>
         <div class="go-info-row">
-          <span class="go-info-label">En cours</span>
+          <span class="go-info-label" data-i18n="goverview.info_active">En cours</span>
           <span class="go-info-value go-info-live"><%= guildStats.activeGames %></span>
         </div>
         <div class="go-info-row">
-          <span class="go-info-label">Joueurs moyens</span>
+          <span class="go-info-label" data-i18n="goverview.info_avg_players">Joueurs moyens</span>
           <span class="go-info-value"><%= guildStats.avgPlayers %></span>
         </div>
         <div class="go-info-row">
-          <span class="go-info-label">Durée moyenne</span>
+          <span class="go-info-label" data-i18n="goverview.info_avg_duration">Durée moyenne</span>
           <span class="go-info-value"><%= avgMin %> min</span>
         </div>
         <% if (guild && guild.memberCount) { %>
         <div class="go-info-row">
-          <span class="go-info-label">Membres</span>
+          <span class="go-info-label" data-i18n="goverview.info_members">Membres</span>
           <span class="go-info-value"><%= guild.memberCount %></span>
         </div>
         <% } %>
@@ -366,6 +366,7 @@
 (function() {
   const counters = document.querySelectorAll('.go-hero .counter, .go-stats-bar .counter');
   if (!counters.length) return;
+  const numLocale = (document.cookie.match(/lang=(en|fr)/)||[])[1] === 'en' ? 'en-GB' : 'fr-FR';
   function easeOutExpo(t) { return t === 1 ? 1 : 1 - Math.pow(2, -10 * t); }
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
@@ -378,7 +379,7 @@
       const start = performance.now();
       function tick(now) {
         const t = Math.min((now - start) / duration, 1);
-        el.textContent = Math.round(easeOutExpo(t) * target).toLocaleString('fr-FR');
+        el.textContent = Math.round(easeOutExpo(t) * target).toLocaleString(numLocale);
         if (t < 1) requestAnimationFrame(tick);
       }
       requestAnimationFrame(tick);

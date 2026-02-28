@@ -558,13 +558,13 @@ class AchievementEngine {
    * Get ELO tier name and emoji based on rating
    */
   static getEloTier(elo) {
-    if (elo >= 2000) return { name: 'Loup Alpha', nameEn: 'Alpha Wolf', emoji: '🐺👑' };
-    if (elo >= 1700) return { name: 'Diamant', nameEn: 'Diamond', emoji: '💎' };
-    if (elo >= 1400) return { name: 'Platine', nameEn: 'Platinum', emoji: '⚜️' };
-    if (elo >= 1200) return { name: 'Or', nameEn: 'Gold', emoji: '🥇' };
-    if (elo >= 1000) return { name: 'Argent', nameEn: 'Silver', emoji: '🥈' };
-    if (elo >= 800) return { name: 'Bronze', nameEn: 'Bronze', emoji: '🥉' };
-    return { name: 'Fer', nameEn: 'Iron', emoji: '⚙️' };
+    if (elo >= 2000) return { id: 'alpha', name: 'Loup Alpha', nameEn: 'Alpha Wolf', emoji: '🐺👑' };
+    if (elo >= 1700) return { id: 'diamond', name: 'Diamant', nameEn: 'Diamond', emoji: '💎' };
+    if (elo >= 1400) return { id: 'platinum', name: 'Platine', nameEn: 'Platinum', emoji: '⚜️' };
+    if (elo >= 1200) return { id: 'gold', name: 'Or', nameEn: 'Gold', emoji: '🥇' };
+    if (elo >= 1000) return { id: 'silver', name: 'Argent', nameEn: 'Silver', emoji: '🥈' };
+    if (elo >= 800) return { id: 'bronze', name: 'Bronze', nameEn: 'Bronze', emoji: '🥉' };
+    return { id: 'iron', name: 'Fer', nameEn: 'Iron', emoji: '⚙️' };
   }
 }
 

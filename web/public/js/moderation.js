@@ -4,6 +4,7 @@
  */
 (function() {
   'use strict';
+  const t = (k) => (window.webI18n ? window.webI18n.t(k) : k);
 
   // === Tab Switching ===
   function switchModGame(gameId) {
@@ -21,17 +22,17 @@
     let url, confirmMsg;
     switch (action) {
       case 'force-end':
-        confirmMsg = 'Forcer la fin de cette partie ?';
+        confirmMsg = t('mod.confirm_force_end');
         url = `/api/mod/force-end/${gameId}`;
         break;
       case 'skip-phase':
-        confirmMsg = 'Passer à la phase suivante ?';
+        confirmMsg = t('mod.confirm_skip_phase');
         url = `/api/mod/skip-phase/${gameId}`;
         break;
       case 'kill-player':
         const card = document.querySelector(`.gm-player[data-player-id="${playerId}"][data-game-id="${gameId}"]`);
         const name = card ? card.querySelector('.gm-player-name').textContent : playerId;
-        confirmMsg = `Éliminer ${name} ?`;
+        confirmMsg = t('mod.confirm_kill') + ' ' + name + ' ?';
         url = `/api/mod/kill-player/${gameId}/${playerId}`;
         break;
       default:
@@ -51,7 +52,7 @@
       console.log('[MOD] Response status:', res.status);
 
       if (res.status === 401) {
-        showToast('Session expirée — reconnexion…', 'error');
+        showToast(t('mod.toast_session_expired'), 'error');
         setTimeout(() => { window.location.href = '/auth/discord'; }, 1000);
         return;
       }
@@ -59,14 +60,14 @@
       const result = await res.json();
       console.log('[MOD] Response body:', result);
       if (result.success) {
-        showToast(result.message || 'Action effectuée', 'success');
+        showToast(result.message || t('mod.toast_action_done'), 'success');
         setTimeout(() => location.reload(), 800);
       } else {
-        showToast('Erreur : ' + (result.error || 'Unknown'), 'error');
+        showToast(t('mod.toast_error') + (result.error || t('fb.unknown')), 'error');
       }
     } catch (err) {
       console.error('[MOD] Fetch error:', err);
-      showToast('Erreur réseau : ' + err.message, 'error');
+      showToast(t('mod.toast_network_error') + err.message, 'error');
     }
   }
 
@@ -87,24 +88,24 @@
     // Badges
     const badges = document.getElementById('modal-badges');
     badges.innerHTML = '';
-    if (isAlive) badges.innerHTML += '<span class="badge badge-alive">&#10084; Vivant</span>';
-    else badges.innerHTML += '<span class="badge badge-dead">&#9760; Mort</span>';
-    if (isCaptain) badges.innerHTML += '<span class="badge badge-captain">&#128081; Capitaine</span>';
-    if (isLover) badges.innerHTML += '<span class="badge badge-love">&#128149; Amoureux</span>';
+    if (isAlive) badges.innerHTML += '<span class="badge badge-alive">&#10084; ' + t('mod.badge_alive') + '</span>';
+    else badges.innerHTML += '<span class="badge badge-dead">&#9760; ' + t('mod.badge_dead') + '</span>';
+    if (isCaptain) badges.innerHTML += '<span class="badge badge-captain">&#128081; ' + t('mod.badge_captain') + '</span>';
+    if (isLover) badges.innerHTML += '<span class="badge badge-love">&#128149; ' + t('mod.badge_lover') + '</span>';
 
     // Info
     const infoGrid = document.getElementById('modal-info');
     infoGrid.innerHTML = `
-      <div class="modal-info-row"><span class="info-label">Rôle</span><span class="info-value role-tag">${role}</span></div>
-      <div class="modal-info-row"><span class="info-label">Statut</span><span class="info-value">${isAlive ? '✅ En vie' : '💀 Éliminé'}</span></div>
-      <div class="modal-info-row"><span class="info-label">ID</span><span class="info-value" style="font-family:monospace;font-size:0.75rem;opacity:0.6;">${playerId}</span></div>
+      <div class="modal-info-row"><span class="info-label">${t('mod.label_role')}</span><span class="info-value role-tag">${role}</span></div>
+      <div class="modal-info-row"><span class="info-label">${t('mod.label_status')}</span><span class="info-value">${isAlive ? t('mod.status_alive') : t('mod.status_dead')}</span></div>
+      <div class="modal-info-row"><span class="info-label">${t('mod.label_id')}</span><span class="info-value" style="font-family:monospace;font-size:0.75rem;opacity:0.6;">${playerId}</span></div>
     `;
 
     // Actions — use data attributes instead of inline onclick
     const actions = document.getElementById('modal-actions');
     actions.innerHTML = '';
     if (isAlive) {
-      actions.innerHTML += `<button class="btn btn-sm btn-danger" data-mod-action="kill-player" data-game-id="${gameId}" data-player-id="${playerId}">&#9760; Éliminer</button>`;
+      actions.innerHTML += `<button class="btn btn-sm btn-danger" data-mod-action="kill-player" data-game-id="${gameId}" data-player-id="${playerId}">&#9760; ${t('mod.btn_kill')}</button>`;
     }
 
     // Try to load extended stats
@@ -114,11 +115,11 @@
       if (result.success && result.data) {
         const d = result.data;
         infoGrid.innerHTML += `
-          <div class="modal-info-row"><span class="info-label">Parties jouées</span><span class="info-value">${d.games_played || 0}</span></div>
-          <div class="modal-info-row"><span class="info-label">Victoires</span><span class="info-value">${d.games_won || 0}</span></div>
-          <div class="modal-info-row"><span class="info-label">Win rate</span><span class="info-value">${d.winrate || 0}%</span></div>
-          ${d.elo ? `<div class="modal-info-row"><span class="info-label">ELO</span><span class="info-value">${d.elo}</span></div>` : ''}
-          ${d.tier ? `<div class="modal-info-row"><span class="info-label">Rang</span><span class="info-value">${d.tier.emoji || ''} ${d.tier.name || ''}</span></div>` : ''}
+          <div class="modal-info-row"><span class="info-label">${t('mod.label_games_played')}</span><span class="info-value">${d.games_played || 0}</span></div>
+          <div class="modal-info-row"><span class="info-label">${t('mod.label_victories')}</span><span class="info-value">${d.games_won || 0}</span></div>
+          <div class="modal-info-row"><span class="info-label">${t('mod.label_winrate')}</span><span class="info-value">${d.winrate || 0}%</span></div>
+          ${d.elo ? `<div class="modal-info-row"><span class="info-label">${t('mod.label_elo')}</span><span class="info-value">${d.elo}</span></div>` : ''}
+          ${d.tier ? `<div class="modal-info-row"><span class="info-label">${t('mod.label_rank')}</span><span class="info-value">${d.tier.emoji || ''} ${d.tier.name || ''}</span></div>` : ''}
         `;
       }
     } catch {}
@@ -206,30 +207,19 @@
   });
 
   // === Real-time updates ===
+  function _getLang() { return (document.cookie.match(/lang=(en|fr)/)||[])[1] || 'fr'; }
+  function _fmtTime(date) {
+    const lang = _getLang();
+    const locale = lang === 'en' ? 'en-GB' : 'fr-FR';
+    const opts = lang === 'en'
+      ? { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }
+      : { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+    return date.toLocaleTimeString(locale, opts);
+  }
+
   function initSocket(socket) {
     socket.on('gameEvent', (data) => {
-      const panel = document.getElementById(`gm-game-${data.gameId}`);
-      if (!panel) return;
-
-      // Add to log
-      const log = document.getElementById(`gm-log-${data.gameId}`);
-      if (log) {
-        const entry = document.createElement('div');
-        entry.className = 'gm-log-entry gm-log-new';
-        const time = new Date().toLocaleTimeString();
-        let text = '';
-        switch (data.event) {
-          case 'phaseChanged': text = `Phase → ${data.phase}${data.subPhase ? ' (' + data.subPhase + ')' : ''}`; break;
-          case 'playerKilled': text = `💀 ${data.playerName || '?'} éliminé (${data.role || '?'})`; break;
-          case 'gameStarted': text = '🎮 Partie démarrée'; break;
-          case 'gameEnded': text = `🏆 Fin — ${data.victor || '?'}`; break;
-          default: text = data.event;
-        }
-        entry.innerHTML = `<span class="gm-log-time">${time}</span><span class="gm-log-text">${text}</span>`;
-        log.insertBefore(entry, log.firstChild);
-      }
-
-      // Refresh on major events
+      // Auto-refresh on major events so the page picks up new audit log entries
       if (['gameEnded', 'gameStarted', 'gameCreated'].includes(data.event)) {
         setTimeout(() => location.reload(), 1500);
       }

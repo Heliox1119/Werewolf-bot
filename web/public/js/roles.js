@@ -3,6 +3,7 @@
  */
 (function() {
   'use strict';
+  const t = (k) => (window.webI18n ? window.webI18n.t(k) : k);
 
   // ═══════════════════════════════════════════════════
   // Schema from backend (injected by EJS)
@@ -91,37 +92,37 @@
   // Effect → parameter definitions for UI rendering
   const EFFECT_PARAMS = {
     protect: [
-      { key: 'protectSelf', label: 'Peut se protéger soi-même', type: 'checkbox', default: false },
+      { key: 'protectSelf', labelKey: 'roles.param_protect_self', type: 'checkbox', default: false },
     ],
     kill: [
-      { key: 'bypassProtection', label: 'Ignore la protection', type: 'checkbox', default: false },
+      { key: 'bypassProtection', labelKey: 'roles.param_bypass_protection', type: 'checkbox', default: false },
     ],
     silence: [
-      { key: 'duration', label: 'Durée (tours)', type: 'number', min: 1, max: 5, default: 1 },
+      { key: 'duration', labelKey: 'roles.param_duration', type: 'number', min: 1, max: 5, default: 1 },
     ],
     block: [
-      { key: 'duration', label: 'Durée (tours)', type: 'number', min: 1, max: 5, default: 1 },
+      { key: 'duration', labelKey: 'roles.param_duration', type: 'number', min: 1, max: 5, default: 1 },
     ],
     reveal_role: [
-      { key: 'toAll', label: 'Visible par tous les joueurs', type: 'checkbox', default: false },
+      { key: 'toAll', labelKey: 'roles.param_visible_all', type: 'checkbox', default: false },
     ],
     reveal_alignment: [
-      { key: 'toAll', label: 'Visible par tous les joueurs', type: 'checkbox', default: false },
+      { key: 'toAll', labelKey: 'roles.param_visible_all', type: 'checkbox', default: false },
     ],
     modify_vote_weight: [
-      { key: 'weight', label: 'Poids du vote', type: 'number', min: 0, max: 5, step: 0.5, default: 2, required: true },
+      { key: 'weight', labelKey: 'roles.param_vote_weight', type: 'number', min: 0, max: 5, step: 0.5, default: 2, required: true },
     ],
     immune_to_kill: [
-      { key: 'maxUses', label: 'Nombre de protections', type: 'number', min: 1, max: 10, default: 1 },
+      { key: 'maxUses', labelKey: 'roles.param_protection_count', type: 'number', min: 1, max: 10, default: 1 },
     ],
     win_override: [
       {
-        key: 'condition', label: 'Condition de victoire', type: 'select', required: true,
+        key: 'condition', labelKey: 'roles.param_win_condition', type: 'select', required: true,
         options: [
-          { value: 'village_wins', label: 'Village gagne' },
-          { value: 'wolves_win', label: 'Loups gagnent' },
-          { value: 'solo_survive', label: 'Solo survit' },
-          { value: 'lovers_survive', label: 'Amoureux survivent' },
+          { value: 'village_wins', labelKey: 'roles.param_village_wins' },
+          { value: 'wolves_win', labelKey: 'roles.param_wolves_win' },
+          { value: 'solo_survive', labelKey: 'roles.param_solo_survive' },
+          { value: 'lovers_survive', labelKey: 'roles.param_lovers_survive' },
         ],
       },
     ],
@@ -132,98 +133,98 @@
   // ═══════════════════════════════════════════════════
 
   const WHEN_LABELS = {
-    every_night: 'Chaque nuit',
-    during_day:  'Pendant la journée',
-    on_death:    'À sa mort',
-    on_targeted: 'Lorsqu\'il est ciblé',
-    during_vote: 'Pendant le vote',
-    passive:     'En continu',
+    every_night: 'roles.when_every_night',
+    during_day:  'roles.when_during_day',
+    on_death:    'roles.when_on_death',
+    on_targeted: 'roles.when_on_targeted',
+    during_vote: 'roles.when_during_vote',
+    passive:     'roles.when_passive',
   };
 
   const ACTION_PHRASES = {
     protect: {
-      chosen_player: 'protéger un joueur de son choix',
-      self: 'se protéger',
-      automatic: 'accorder une protection automatiquement',
-      no_target: 'accorder une protection',
+      chosen_player: 'roles.phrase_protect_chosen',
+      self: 'roles.phrase_protect_self',
+      automatic: 'roles.phrase_protect_auto',
+      no_target: 'roles.phrase_protect_none',
     },
     kill: {
-      chosen_player: 'éliminer un joueur de son choix',
-      self: 's\'éliminer',
-      automatic: 'éliminer automatiquement une cible',
-      no_target: 'éliminer une cible',
+      chosen_player: 'roles.phrase_kill_chosen',
+      self: 'roles.phrase_kill_self',
+      automatic: 'roles.phrase_kill_auto',
+      no_target: 'roles.phrase_kill_none',
     },
     inspect_alignment: {
-      chosen_player: 'analyser le camp d\'un joueur',
-      self: 'analyser son propre camp',
-      automatic: 'analyser automatiquement un camp',
-      no_target: 'obtenir une information de camp',
+      chosen_player: 'roles.phrase_inspect_align_chosen',
+      self: 'roles.phrase_inspect_align_self',
+      automatic: 'roles.phrase_inspect_align_auto',
+      no_target: 'roles.phrase_inspect_align_none',
     },
     inspect_role: {
-      chosen_player: 'identifier le rôle exact d\'un joueur',
-      self: 'vérifier son propre rôle',
-      automatic: 'identifier automatiquement un rôle',
-      no_target: 'obtenir une information de rôle',
+      chosen_player: 'roles.phrase_inspect_role_chosen',
+      self: 'roles.phrase_inspect_role_self',
+      automatic: 'roles.phrase_inspect_role_auto',
+      no_target: 'roles.phrase_inspect_role_none',
     },
     redirect: {
-      chosen_player: 'rediriger une attaque vers une autre cible',
-      self: 'rediriger une attaque reçue',
-      automatic: 'rediriger automatiquement une attaque',
-      no_target: 'rediriger une attaque',
+      chosen_player: 'roles.phrase_redirect_chosen',
+      self: 'roles.phrase_redirect_self',
+      automatic: 'roles.phrase_redirect_auto',
+      no_target: 'roles.phrase_redirect_none',
     },
     double_vote: {
-      chosen_player: 'accorder un vote double à un joueur',
-      self: 'obtenir un vote double',
-      automatic: 'activer automatiquement un vote double',
-      no_target: 'appliquer un vote double',
+      chosen_player: 'roles.phrase_double_vote_chosen',
+      self: 'roles.phrase_double_vote_self',
+      automatic: 'roles.phrase_double_vote_auto',
+      no_target: 'roles.phrase_double_vote_none',
     },
     immune_to_kill: {
-      chosen_player: 'rendre un joueur immunisé aux attaques',
-      self: 'devenir immunisé aux attaques',
-      automatic: 'activer automatiquement une immunité',
-      no_target: 'activer une immunité',
+      chosen_player: 'roles.phrase_immune_chosen',
+      self: 'roles.phrase_immune_self',
+      automatic: 'roles.phrase_immune_auto',
+      no_target: 'roles.phrase_immune_none',
     },
     win_override: {
-      chosen_player: 'appliquer une condition de victoire spéciale',
-      self: 'définir sa propre condition de victoire spéciale',
-      automatic: 'appliquer automatiquement une condition de victoire spéciale',
-      no_target: 'définir une condition de victoire spéciale',
+      chosen_player: 'roles.phrase_win_override_chosen',
+      self: 'roles.phrase_win_override_self',
+      automatic: 'roles.phrase_win_override_auto',
+      no_target: 'roles.phrase_win_override_none',
     },
     silence: {
-      chosen_player: 'réduire au silence un joueur',
-      self: 'se rendre silencieux',
-      automatic: 'réduire automatiquement un joueur au silence',
-      no_target: 'réduire un joueur au silence',
+      chosen_player: 'roles.phrase_silence_chosen',
+      self: 'roles.phrase_silence_self',
+      automatic: 'roles.phrase_silence_auto',
+      no_target: 'roles.phrase_silence_none',
     },
     block: {
-      chosen_player: 'bloquer la capacité d\'un joueur',
-      self: 'bloquer ses propres actions',
-      automatic: 'bloquer automatiquement une capacité',
-      no_target: 'bloquer une capacité',
+      chosen_player: 'roles.phrase_block_chosen',
+      self: 'roles.phrase_block_self',
+      automatic: 'roles.phrase_block_auto',
+      no_target: 'roles.phrase_block_none',
     },
     reveal_role: {
-      chosen_player: 'révéler publiquement le rôle d\'un joueur',
-      self: 'révéler publiquement son rôle',
-      automatic: 'révéler automatiquement un rôle',
-      no_target: 'révéler publiquement un rôle',
+      chosen_player: 'roles.phrase_reveal_role_chosen',
+      self: 'roles.phrase_reveal_role_self',
+      automatic: 'roles.phrase_reveal_role_auto',
+      no_target: 'roles.phrase_reveal_role_none',
     },
     reveal_alignment: {
-      chosen_player: 'révéler publiquement le camp d\'un joueur',
-      self: 'révéler publiquement son camp',
-      automatic: 'révéler automatiquement un camp',
-      no_target: 'révéler publiquement un camp',
+      chosen_player: 'roles.phrase_reveal_align_chosen',
+      self: 'roles.phrase_reveal_align_self',
+      automatic: 'roles.phrase_reveal_align_auto',
+      no_target: 'roles.phrase_reveal_align_none',
     },
     modify_vote_weight: {
-      chosen_player: 'modifier le poids du vote d\'un joueur',
-      self: 'modifier le poids de son propre vote',
-      automatic: 'ajuster automatiquement le poids d\'un vote',
-      no_target: 'modifier le poids d\'un vote',
+      chosen_player: 'roles.phrase_modify_vote_chosen',
+      self: 'roles.phrase_modify_vote_self',
+      automatic: 'roles.phrase_modify_vote_auto',
+      no_target: 'roles.phrase_modify_vote_none',
     },
     swap_roles: {
-      chosen_player: 'échanger les rôles de deux joueurs',
-      self: 'échanger son rôle avec un autre joueur',
-      automatic: 'échanger automatiquement des rôles',
-      no_target: 'échanger des rôles',
+      chosen_player: 'roles.phrase_swap_chosen',
+      self: 'roles.phrase_swap_self',
+      automatic: 'roles.phrase_swap_auto',
+      no_target: 'roles.phrase_swap_none',
     },
   };
 
@@ -235,19 +236,20 @@
   function generateSummary(when, what, who, chargesMode, chargesVal, cooldownMode, cooldownVal) {
     if (!when || !what) return '';
 
-    const whenText = WHEN_LABELS[when] || when;
+    const whenText = t(WHEN_LABELS[when] || when);
     const resolvedWho = who || getDefaultWho(what) || 'no_target';
-    const whatText = ACTION_PHRASES[what]?.[resolvedWho] || ACTION_PHRASES[what]?.no_target || 'appliquer cet effet';
-    const fragments = [whenText + ', ce rôle peut ' + whatText];
+    const whatKey = ACTION_PHRASES[what]?.[resolvedWho] || ACTION_PHRASES[what]?.no_target || 'roles.phrase_default';
+    const whatText = t(whatKey);
+    const fragments = [whenText + ', ' + t('roles.summary_this_role_can') + ' ' + whatText];
 
     // Charges
     if (chargesMode === 'limited' && chargesVal) {
-      fragments.push('Utilisable ' + chargesVal + ' fois par partie');
+      fragments.push(t('roles.summary_usable') + ' ' + chargesVal + ' ' + t('roles.summary_times_per_game'));
     }
 
     // Cooldown
     if (cooldownMode === 'has_cooldown' && cooldownVal) {
-      fragments.push('Délai de réutilisation : ' + cooldownVal + (cooldownVal > 1 ? ' tours' : ' tour'));
+      fragments.push(t('roles.summary_cooldown') + ' ' + cooldownVal + ' ' + (cooldownVal > 1 ? t('roles.summary_turns') : t('roles.summary_turn')));
     }
 
     return fragments.join('. ') + '.';
@@ -342,14 +344,14 @@
   function checkIllegalCombo(when, what) {
     // A passive "kill" doesn't make sense
     if (when === 'passive' && what === 'kill') {
-      return 'Impossible d\'avoir un pouvoir de tuer passif permanent.';
+      return t('roles.err_passive_kill');
     }
     // "On death" + protect is odd
     if (when === 'on_death' && what === 'protect') {
-      return 'Protéger quelqu\'un après sa propre mort n\'est pas possible.';
+      return t('roles.err_death_protect');
     }
     if (when === 'on_death' && what === 'immune_to_kill') {
-      return 'Devenir immune après sa mort n\'a pas de sens.';
+      return t('roles.err_death_immune');
     }
     return '';
   }
@@ -451,8 +453,8 @@
   advancedToggle.addEventListener('change', () => {
     isAdvancedMode = advancedToggle.checked;
     modeHint.textContent = isAdvancedMode
-      ? 'Mode avancé activé — édition technique complète'
-      : 'Mode simple — édition orientée règles';
+      ? t('roles.mode_advanced_hint')
+      : t('roles.mode_simple_hint');
 
     container.querySelectorAll('.ability-card').forEach(card => {
       syncModeVisibility(card);
@@ -746,6 +748,7 @@
     syncModeVisibility(card);
 
     container.appendChild(card);
+    if (window.webI18n && window.webI18n.applyTranslations) window.webI18n.applyTranslations(window.webI18n.getLang());
     updateAbilityUI();
     updateSummary(card);
     return card;
@@ -894,11 +897,11 @@
         input.dataset.paramKey = p.key;
         input.checked = !!p.default;
         label.appendChild(input);
-        label.appendChild(document.createTextNode(' ' + p.label));
+        label.appendChild(document.createTextNode(' ' + t(p.labelKey)));
         wrapper.appendChild(label);
       } else if (p.type === 'number') {
         const label = document.createElement('label');
-        label.textContent = p.label;
+        label.textContent = t(p.labelKey);
         const input = document.createElement('input');
         input.type = 'number';
         input.className = 'form-input form-input-sm ab-param';
@@ -912,7 +915,7 @@
         wrapper.appendChild(input);
       } else if (p.type === 'select') {
         const label = document.createElement('label');
-        label.textContent = p.label;
+        label.textContent = t(p.labelKey);
         const select = document.createElement('select');
         select.className = 'form-select ab-param';
         select.dataset.paramKey = p.key;
@@ -920,7 +923,7 @@
         (p.options || []).forEach(opt => {
           const option = document.createElement('option');
           option.value = opt.value;
-          option.textContent = opt.label;
+          option.textContent = t(opt.labelKey);
           select.appendChild(option);
         });
         wrapper.appendChild(label);
@@ -974,11 +977,11 @@
         input.dataset.paramKey = p.key;
         input.checked = !!p.default;
         label.appendChild(input);
-        label.appendChild(document.createTextNode(' ' + p.label));
+        label.appendChild(document.createTextNode(' ' + t(p.labelKey)));
         wrapper.appendChild(label);
       } else if (p.type === 'number') {
         const label = document.createElement('label');
-        label.textContent = p.label;
+        label.textContent = t(p.labelKey);
         const input = document.createElement('input');
         input.type = 'number';
         input.className = 'form-input form-input-sm ab-param';
@@ -992,7 +995,7 @@
         wrapper.appendChild(input);
       } else if (p.type === 'select') {
         const label = document.createElement('label');
-        label.textContent = p.label;
+        label.textContent = t(p.labelKey);
         const select = document.createElement('select');
         select.className = 'form-select ab-param';
         select.dataset.paramKey = p.key;
@@ -1000,7 +1003,7 @@
         (p.options || []).forEach(opt => {
           const option = document.createElement('option');
           option.value = opt.value;
-          option.textContent = opt.label;
+          option.textContent = t(opt.labelKey);
           select.appendChild(option);
         });
         wrapper.appendChild(label);
@@ -1040,8 +1043,8 @@
     countBadge.textContent = count;
     addBtn.disabled = count >= MAX_ABILITIES;
     limitHint.textContent = count >= MAX_ABILITIES
-      ? 'Maximum ' + MAX_ABILITIES + ' capacités atteint'
-      : (MAX_ABILITIES - count) + ' restante(s)';
+      ? t('roles.ability_max_reached').replace('{max}', MAX_ABILITIES)
+      : (MAX_ABILITIES - count) + ' ' + t('roles.ability_remaining');
     updateStrategicProfile();
   }
 
@@ -1073,31 +1076,31 @@
 
     const name = form.querySelector('#role-name').value.trim();
     if (!name || name.length < 1 || name.length > 50) {
-      showFieldError('err-name', 'Le nom doit faire entre 1 et 50 caractères');
+      showFieldError('err-name', t('roles.err_name_length'));
       valid = false;
     }
 
     const camp = campSelect.value;
     if (!['village', 'wolves', 'solo'].includes(camp)) {
-      showFieldError('err-camp', 'Camp invalide');
+      showFieldError('err-camp', t('roles.err_camp_invalid'));
       valid = false;
     }
 
     const winCondition = winSelect.value;
     if (!winCondition) {
-      showFieldError('err-winCondition', 'Condition de victoire requise');
+      showFieldError('err-winCondition', t('roles.err_win_required'));
       valid = false;
     }
 
     const compat = CAMP_WIN_COMPAT[camp] || [];
     if (winCondition && !compat.includes(winCondition)) {
-      showFieldError('err-winCondition', 'Incompatible avec le camp "' + camp + '"');
+      showFieldError('err-winCondition', t('roles.err_win_incompatible').replace('{camp}', camp));
       valid = false;
     }
 
     const guildId = form.querySelector('#role-guild-id').value;
     if (!guildId) {
-      showFieldError('err-guildId', 'Veuillez sélectionner un serveur');
+      showFieldError('err-guildId', t('roles.err_guild_required'));
       valid = false;
     }
 
@@ -1112,13 +1115,13 @@
         const data = readAdvancedFields(card);
 
         if (!data.id || data.id.length < 1) {
-          card.querySelector('.ab-err-id').textContent = 'ID requis';
+          card.querySelector('.ab-err-id').textContent = t('roles.err_id_required');
           valid = false;
         } else if (!/^[a-z0-9_]+$/.test(data.id)) {
-          card.querySelector('.ab-err-id').textContent = 'Lettres minuscules, chiffres et _ uniquement';
+          card.querySelector('.ab-err-id').textContent = t('roles.err_id_format');
           valid = false;
         } else if (abilityIds.has(data.id)) {
-          card.querySelector('.ab-err-id').textContent = 'ID en double';
+          card.querySelector('.ab-err-id').textContent = t('roles.err_id_duplicate');
           valid = false;
         } else {
           card.querySelector('.ab-err-id').textContent = '';
@@ -1126,14 +1129,14 @@
         abilityIds.add(data.id);
 
         if (!data.type) {
-          card.querySelector('.ab-err-type').textContent = 'Type requis';
+          card.querySelector('.ab-err-type').textContent = t('roles.err_type_required');
           valid = false;
         } else {
           card.querySelector('.ab-err-type').textContent = '';
         }
 
         if (!data.trigger) {
-          card.querySelector('.ab-err-trigger').textContent = 'Trigger requis';
+          card.querySelector('.ab-err-trigger').textContent = t('roles.err_trigger_required');
           valid = false;
         } else {
           card.querySelector('.ab-err-trigger').textContent = '';
@@ -1143,17 +1146,17 @@
           const expected = TYPE_TRIGGER_MAP[data.type];
           if (expected && data.trigger !== expected) {
             card.querySelector('.ab-err-trigger').textContent =
-              'Le type "' + data.type + '" nécessite le trigger "' + expected + '"';
+              t('roles.err_type_trigger_mismatch').replace('{type}', data.type).replace('{trigger}', expected);
             valid = false;
           }
           if (data.type === 'passive' && !PASSIVE_TRIGGERS.includes(data.trigger)) {
-            card.querySelector('.ab-err-trigger').textContent = 'Trigger invalide pour type passive';
+            card.querySelector('.ab-err-trigger').textContent = t('roles.err_trigger_invalid_passive');
             valid = false;
           }
         }
 
         if (!data.effect) {
-          card.querySelector('.ab-err-effect').textContent = 'Effet requis';
+          card.querySelector('.ab-err-effect').textContent = t('roles.err_effect_required');
           valid = false;
         } else {
           card.querySelector('.ab-err-effect').textContent = '';
@@ -1161,24 +1164,24 @@
         }
 
         if (data.charges !== null && (data.charges < 1 || data.charges > 99)) {
-          card.querySelector('.ab-err-general').textContent = 'Charges: entre 1 et 99';
+          card.querySelector('.ab-err-general').textContent = t('roles.err_charges_range');
           valid = false;
         }
 
         if (data.cooldown !== null && (data.cooldown < 1 || data.cooldown > 10)) {
-          card.querySelector('.ab-err-general').textContent = 'Cooldown: entre 1 et 10';
+          card.querySelector('.ab-err-general').textContent = t('roles.err_cooldown_range');
           valid = false;
         }
 
         if (data.effect === 'modify_vote_weight') {
           if (data.parameters.weight === undefined || data.parameters.weight === null || isNaN(data.parameters.weight)) {
-            card.querySelector('.ab-err-general').textContent = 'Le poids du vote est requis';
+            card.querySelector('.ab-err-general').textContent = t('roles.err_vote_weight_required');
             valid = false;
           }
         }
         if (data.effect === 'win_override') {
           if (!data.parameters.condition) {
-            card.querySelector('.ab-err-general').textContent = 'La condition de victoire est requise';
+            card.querySelector('.ab-err-general').textContent = t('roles.err_win_condition_required');
             valid = false;
           }
         }
@@ -1189,14 +1192,14 @@
         const simple = readSimpleFields(card);
 
         if (!simple.when) {
-          card.querySelector('.ab-err-when').textContent = 'Choisissez quand cette capacité s\'active';
+          card.querySelector('.ab-err-when').textContent = t('roles.err_when_required');
           valid = false;
         } else {
           card.querySelector('.ab-err-when').textContent = '';
         }
 
         if (!simple.what) {
-          card.querySelector('.ab-err-what').textContent = 'Choisissez ce que fait cette capacité';
+          card.querySelector('.ab-err-what').textContent = t('roles.err_what_required');
           valid = false;
         } else {
           card.querySelector('.ab-err-what').textContent = '';
@@ -1204,7 +1207,7 @@
         }
 
         if (!simple.who) {
-          card.querySelector('.ab-err-who').textContent = 'Choisissez qui est affecté';
+          card.querySelector('.ab-err-who').textContent = t('roles.err_who_required');
           valid = false;
         } else {
           card.querySelector('.ab-err-who').textContent = '';
@@ -1223,7 +1226,7 @@
         if (simple.chargesMode === 'limited') {
           const c = parseInt(simple.chargesVal, 10);
           if (!c || c < 1 || c > 99) {
-            showGlobalError('Charges invalides pour une capacité (entre 1 et 99)');
+            showGlobalError(t('roles.err_charges_invalid'));
             valid = false;
           }
         }
@@ -1232,7 +1235,7 @@
         if (simple.cooldownMode === 'has_cooldown') {
           const cd = parseInt(simple.cooldownVal, 10);
           if (!cd || cd < 1 || cd > 10) {
-            showGlobalError('Délai de réutilisation invalide (entre 1 et 10)');
+            showGlobalError(t('roles.err_cooldown_invalid'));
             valid = false;
           }
         }
@@ -1241,14 +1244,14 @@
         if (simple.what === 'modify_vote_weight') {
           const weightParam = card.querySelector('.ab-simple-mode .ab-param[data-param-key="weight"]');
           if (weightParam && (weightParam.value === '' || isNaN(parseFloat(weightParam.value)))) {
-            showGlobalError('Le poids du vote est requis');
+            showGlobalError(t('roles.err_vote_weight_required'));
             valid = false;
           }
         }
         if (simple.what === 'win_override') {
           const condParam = card.querySelector('.ab-simple-mode .ab-param[data-param-key="condition"]');
           if (condParam && !condParam.value) {
-            showGlobalError('La condition de victoire est requise');
+            showGlobalError(t('roles.err_win_condition_required'));
             valid = false;
           }
         }
@@ -1258,7 +1261,7 @@
     // Forbidden combos (applies in both modes)
     for (const [a, b] of FORBIDDEN_COMBOS) {
       if (effects.includes(a) && effects.includes(b)) {
-        showGlobalError('Combinaison interdite : ' + a + ' + ' + b);
+        showGlobalError(t('roles.err_forbidden_combo').replace('{a}', a).replace('{b}', b));
         valid = false;
       }
     }
@@ -1274,9 +1277,9 @@
     e.preventDefault();
     if (!validateForm()) return;
 
-    const submitBtn = document.getElementById('btn-submit-role');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Création en cours...';
+    const _submitBtn = document.getElementById('btn-submit-role');
+    _submitBtn.disabled = true;
+    _submitBtn.textContent = editingRoleId ? t('roles.btn_saving') : t('roles.btn_creating');
 
     try {
       const abilities = [];
@@ -1284,26 +1287,29 @@
         abilities.push(readAbilityFromCard(card));
       });
 
-      const payload = {
-        guildId: form.querySelector('#role-guild-id').value,
+      const guildId = editingGuildId || form.querySelector('#role-guild-id').value;
+
+      const roleDefinition = {
         name: form.querySelector('#role-name').value.trim(),
         emoji: form.querySelector('#role-emoji').value.trim() || '\u2753',
         camp: campSelect.value,
         winCondition: winSelect.value,
         description: form.querySelector('#role-description').value.trim(),
         abilities,
-        roleDefinition: {
-          name: form.querySelector('#role-name').value.trim(),
-          emoji: form.querySelector('#role-emoji').value.trim() || '\u2753',
-          camp: campSelect.value,
-          winCondition: winSelect.value,
-          description: form.querySelector('#role-description').value.trim(),
-          abilities,
-        },
       };
 
-      const res = await fetch('/api/roles', {
-        method: 'POST',
+      const payload = {
+        guildId,
+        ...roleDefinition,
+        roleDefinition,
+      };
+
+      const isEdit = !!editingRoleId;
+      const url = isEdit ? '/api/roles/' + editingRoleId : '/api/roles';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
@@ -1314,16 +1320,126 @@
         location.reload();
       } else {
         clearAllErrors();
-        const errs = result.errors || [result.error || 'Erreur inconnue'];
+        const errs = result.errors || [result.error || t('roles.err_unknown')];
         errs.forEach(err => showGlobalError(err));
       }
     } catch (err) {
       clearAllErrors();
-      showGlobalError('Échec de la requête : ' + err.message);
+      showGlobalError(t('roles.err_request_failed') + ' ' + err.message);
     } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Créer le rôle';
+      _submitBtn.disabled = false;
+      _submitBtn.textContent = editingRoleId ? t('roles.btn_save') : t('roles.btn_create');
     }
+  });
+
+  // ═══════════════════════════════════════════════════
+  // Edit Mode State
+  // ═══════════════════════════════════════════════════
+  let editingRoleId = null;
+  let editingGuildId = null;
+  const submitBtn = document.getElementById('btn-submit-role');
+  const createTitle = document.querySelector('.rl-create-title');
+
+  function enterEditMode(roleId, guildId, roleData) {
+    editingRoleId = roleId;
+    editingGuildId = guildId;
+
+    // Update UI to show edit state
+    if (createTitle) createTitle.innerHTML = '✏️ ' + t('roles.edit_title') + ' <em>' + (roleData.name || '') + '</em>';
+    if (submitBtn) submitBtn.textContent = t('roles.btn_save');
+
+    // Show cancel button
+    let cancelBtn = document.getElementById('btn-cancel-edit');
+    if (!cancelBtn) {
+      cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.id = 'btn-cancel-edit';
+      cancelBtn.className = 'btn btn-secondary';
+      cancelBtn.style.marginLeft = '0.5rem';
+      cancelBtn.textContent = t('roles.btn_cancel');
+      cancelBtn.addEventListener('click', exitEditMode);
+      submitBtn.parentElement.insertBefore(cancelBtn, submitBtn.nextSibling);
+    }
+    cancelBtn.style.display = '';
+
+    // Populate form fields
+    form.querySelector('#role-name').value = roleData.name || '';
+    form.querySelector('#role-emoji').value = roleData.emoji || '';
+    const emojiPreview = document.getElementById('emoji-picker-preview');
+    if (emojiPreview) emojiPreview.textContent = roleData.emoji || '❓';
+    campSelect.value = roleData.camp || 'village';
+    winSelect.value = roleData.winCondition || 'village_wins';
+    form.querySelector('#role-description').value = roleData.description || '';
+    const guildSelect = form.querySelector('#role-guild-id');
+    if (guildSelect) {
+      guildSelect.value = guildId;
+      guildSelect.disabled = true; // Can't change guild during edit
+    }
+
+    // Clear existing abilities and populate from role data
+    container.innerHTML = '';
+    abilityIndex = 0;
+    if (roleData.abilities && roleData.abilities.length > 0) {
+      roleData.abilities.forEach(ab => addAbilityCard(ab));
+    }
+    updateAbilityUI();
+
+    // Scroll to the form
+    const panel = document.getElementById('role-builder-panel');
+    if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function exitEditMode() {
+    editingRoleId = null;
+    editingGuildId = null;
+
+    // Reset UI
+    if (createTitle) createTitle.innerHTML = '🔧 ' + t('roles.create_title');
+    if (submitBtn) submitBtn.textContent = t('roles.btn_create');
+    const cancelBtn = document.getElementById('btn-cancel-edit');
+    if (cancelBtn) cancelBtn.style.display = 'none';
+
+    // Reset form
+    form.reset();
+    const emojiPreview = document.getElementById('emoji-picker-preview');
+    if (emojiPreview) emojiPreview.textContent = '❓';
+    const guildSelect = form.querySelector('#role-guild-id');
+    if (guildSelect) guildSelect.disabled = false;
+    container.innerHTML = '';
+    abilityIndex = 0;
+    updateAbilityUI();
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Edit Roles
+  // ═══════════════════════════════════════════════════
+  document.querySelectorAll('.edit-role').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const roleId = btn.dataset.roleId;
+      const guildId = btn.dataset.guildId;
+      btn.disabled = true;
+      btn.textContent = '⏳';
+      try {
+        const res = await fetch('/api/roles/' + roleId + '?guildId=' + encodeURIComponent(guildId));
+        const ct = res.headers.get('content-type') || '';
+        if (!res.ok || !ct.includes('application/json')) {
+          alert(t('roles.alert_unexpected_response') + ' (' + res.status + ')');
+          return;
+        }
+        const result = await res.json();
+        if (result.success && result.data) {
+          enterEditMode(roleId, guildId, result.data);
+        } else {
+          alert(t('roles.alert_error') + ' ' + (result.error || t('roles.err_role_not_found')));
+        }
+      } catch (err) {
+        console.error('Edit role fetch error:', err);
+        alert(t('roles.alert_error') + ' ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '✏️ ' + t('roles.btn_edit');
+      }
+    });
   });
 
   // ═══════════════════════════════════════════════════
@@ -1331,7 +1447,7 @@
   // ═══════════════════════════════════════════════════
   document.querySelectorAll('.delete-role').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!confirm('Supprimer ce rôle personnalisé ?')) return;
+      if (!confirm(t('roles.confirm_delete'))) return;
       const roleId = btn.dataset.roleId;
       const guildId = btn.dataset.guildId;
       try {
@@ -1345,10 +1461,10 @@
           const remaining = document.querySelectorAll('#custom-roles .rl-card');
           if (remaining.length === 0) location.reload();
         } else {
-          alert('Erreur : ' + (result.errors ? result.errors.join(', ') : result.error || 'Erreur inconnue'));
+          alert(t('roles.alert_error') + ' ' + (result.errors ? result.errors.join(', ') : result.error || t('roles.err_unknown')));
         }
       } catch (err) {
-        alert('Erreur : ' + err.message);
+        alert(t('roles.alert_error') + ' ' + err.message);
       }
     });
   });
@@ -1512,16 +1628,25 @@
     const analysis = SE.analyze(abilities, roleContext);
 
     // ── Compact profile lines ──
+    // Map strategic engine labels (French) to i18n keys
+    const TIER_KEYS = { 'Faible': 'strat.tier_weak', 'Modéré': 'strat.tier_moderate', 'Standard': 'strat.tier_standard', 'Puissant': 'strat.tier_powerful', 'Extrême': 'strat.tier_extreme', 'N/A': 'strat.tier_na' };
+    const ORIENT_KEYS = { 'Offensif': 'strat.orient_aggressive', 'Défensif': 'strat.orient_defensive', 'Information': 'strat.orient_information', 'Contrôle': 'strat.orient_control', 'Chaos': 'strat.orient_chaos', 'Hybride': 'strat.orient_hybrid', 'Support': 'strat.orient_support', 'Non défini': 'strat.orient_none' };
+    const RISK_KEYS = { 'Aucun': 'strat.risk_none', 'Faible': 'strat.risk_low', 'Modéré': 'strat.risk_moderate', 'Élevé': 'strat.risk_high', 'Critique': 'strat.risk_critical' };
+
     if (stratPowerLine) {
-      stratPowerLine.textContent = '⚡ Puissance estimée : ' + analysis.power.tier + ' (' + analysis.power.score.toFixed(1) + '/10)';
+      const tierLabel = t(TIER_KEYS[analysis.power.tier] || analysis.power.tier);
+      stratPowerLine.textContent = '⚡ ' + t('strat.power_label') + ' : ' + tierLabel + ' (' + analysis.power.score.toFixed(1) + '/10)';
     }
 
     if (stratOrientLine) {
-      stratOrientLine.textContent = '🎯 Orientation : ' + (analysis.orientation.meta.label || 'Non défini');
+      const orientRaw = analysis.orientation.meta.label || 'Non défini';
+      const orientLabel = t(ORIENT_KEYS[orientRaw] || orientRaw);
+      stratOrientLine.textContent = '🎯 ' + t('strat.orient_label') + ' : ' + orientLabel;
     }
 
     if (stratRiskLine) {
-      stratRiskLine.textContent = '⚠ Risque de stabilité : ' + analysis.risk.level;
+      const riskLabel = t(RISK_KEYS[analysis.risk.level] || analysis.risk.level);
+      stratRiskLine.textContent = '⚠ ' + t('strat.risk_label') + ' : ' + riskLabel;
     }
   }
 

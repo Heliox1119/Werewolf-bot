@@ -249,6 +249,24 @@ class GameDatabase {
         logger.info('Migration: created custom_roles table with ability support');
       }
 
+      // Migration: create mod_audit_log table for persistent moderation history
+      const modAuditTable = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='mod_audit_log'").get();
+      if (!modAuditTable) {
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS mod_audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT NOT NULL,
+            moderator_id TEXT NOT NULL,
+            moderator_name TEXT NOT NULL,
+            action TEXT NOT NULL,
+            details TEXT,
+            created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+          )
+        `);
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_mod_audit_guild ON mod_audit_log(guild_id, created_at)');
+        logger.info('Migration: created mod_audit_log table');
+      }
+
       // Cleanup: remove fake debug players from stats
       this.db.exec("DELETE FROM player_stats WHERE player_id LIKE 'fake_%'");
       this.db.exec("DELETE FROM player_extended_stats WHERE player_id LIKE 'fake_%'");
@@ -723,6 +741,36 @@ class GameDatabase {
       LIMIT ?
     `);
     return stmt.all(game.id, limit).reverse();
+  }
+
+  // ===== MODERATION AUDIT LOG =====
+
+  addModAuditLog(guildId, moderatorId, moderatorName, action, details = null) {
+    try {
+      this.db.prepare(`
+        INSERT INTO mod_audit_log (guild_id, moderator_id, moderator_name, action, details)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(guildId, moderatorId, moderatorName, action, details ? JSON.stringify(details) : null);
+      return true;
+    } catch (err) {
+      logger.error('Failed to add mod audit log', { error: err.message });
+      return false;
+    }
+  }
+
+  getModAuditLog(guildId, limit = 30) {
+    try {
+      const rows = this.db.prepare(
+        'SELECT * FROM mod_audit_log WHERE guild_id = ? ORDER BY created_at DESC LIMIT ?'
+      ).all(guildId, limit);
+      return rows.map(r => {
+        try { r.details = r.details ? JSON.parse(r.details) : {}; } catch { r.details = {}; }
+        return r;
+      });
+    } catch (err) {
+      logger.error('Failed to get mod audit log', { error: err.message });
+      return [];
+    }
   }
 
   // ===== LOVERS =====

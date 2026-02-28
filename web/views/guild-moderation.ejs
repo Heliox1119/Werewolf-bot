@@ -30,7 +30,7 @@
           </div>
           <% if (guild && guild.memberCount) { %>
             <div class="gm-hero-tag gm-tag-members">
-              <span>👥</span> <%= guild.memberCount %> membres
+              <span>👥</span> <%= guild.memberCount %> <span data-i18n="goverview.members">membres</span>
             </div>
           <% } %>
         </div>
@@ -56,8 +56,8 @@
   <div class="gm-tabs" id="gm-tabs" style="animation: panelEnter 0.5s ease-out both; animation-delay: 0.1s;">
     <% games.forEach(function(g, i) { %>
       <button class="gm-tab<%= i === 0 ? ' active' : '' %>" data-game="<%= g.gameId %>">
-        <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>" style="font-size:0.6rem;padding:0.15rem 0.5rem;"><%= g.phase || 'Lobby' %></span>
-        <span class="gm-tab-name"><%= g.guildName || 'Partie' %></span>
+        <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>" style="font-size:0.6rem;padding:0.15rem 0.5rem;" data-i18n="<%= g.phase ? 'phase.' + g.phase : 'fb.lobby' %>"><%= g.phase || 'Lobby' %></span>
+        <span class="gm-tab-name"<% if (!g.guildName) { %> data-i18n="fb.game"<% } %>><%= g.guildName || 'Partie' %></span>
         <span class="gm-tab-count"><%= g.players ? g.players.filter(function(p){ return p.alive; }).length : 0 %>/<%= g.players ? g.players.length : 0 %></span>
       </button>
     <% }); %>
@@ -75,9 +75,9 @@
       <!-- ── Status bar ── -->
       <div class="gm-status-bar" style="animation: panelEnter 0.5s ease-out both; animation-delay: 0.15s;">
         <div class="gm-status-left">
-          <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>"><%= g.phase || 'Lobby' %></span>
-          <% if (g.subPhase) { %><span class="gm-subphase"><%= g.subPhase %></span><% } %>
-          <span class="gm-day"><%= g.dayCount ? 'Jour ' + g.dayCount : '' %></span>
+          <span class="game-phase phase-<%= (g.phase || 'lobby').toLowerCase() %>" data-i18n="<%= g.phase ? 'phase.' + g.phase : 'fb.lobby' %>"><%= g.phase || 'Lobby' %></span>
+          <% if (g.subPhase) { %><span class="gm-subphase" data-i18n="subphase.<%= g.subPhase %>"><%= g.subPhase %></span><% } %>
+          <span class="gm-day"><% if (g.dayCount) { %><span data-i18n="goverview.day_prefix">Jour</span> <%= g.dayCount %><% } %></span>
         </div>
         <div class="gm-status-metrics">
           <div class="gm-status-metric">
@@ -97,10 +97,10 @@
           </div>
         </div>
         <div class="gm-status-actions">
-          <button class="gm-action-btn gm-action-skip" data-mod-action="skip-phase" data-game-id="<%= g.gameId %>" title="Passer à la phase suivante">
+          <button class="gm-action-btn gm-action-skip" data-mod-action="skip-phase" data-game-id="<%= g.gameId %>" title="Passer à la phase suivante" data-i18n-title="gmod.title_skip_phase">
             ⏩ <span data-i18n="gmod.skip_phase">Passer la phase</span>
           </button>
-          <button class="gm-action-btn gm-action-end" data-mod-action="force-end" data-game-id="<%= g.gameId %>" title="Forcer la fin de la partie">
+          <button class="gm-action-btn gm-action-end" data-mod-action="force-end" data-game-id="<%= g.gameId %>" title="Forcer la fin de la partie" data-i18n-title="gmod.title_force_end">
             ⏹️ <span data-i18n="gmod.force_end">Forcer la fin</span>
           </button>
         </div>
@@ -121,14 +121,14 @@
                 <div class="gm-player-info">
                   <span class="gm-player-name"><%= p.username %></span>
                   <div class="gm-player-meta">
-                    <span class="gm-player-role"><%= p.role || '—' %></span>
+                    <span class="gm-player-role"<% if (p.role) { %> data-i18n="role.<%= p.role %>"<% } else { %> data-i18n="fb.no_data"<% } %>><%= p.role || '—' %></span>
                     <% if (p.isCaptain) { %><span class="gm-player-badge gm-badge-captain">👑</span><% } %>
                     <% if (p.inLove) { %><span class="gm-player-badge gm-badge-love">💕</span><% } %>
                   </div>
                 </div>
                 <div class="gm-player-actions">
                   <% if (p.alive) { %>
-                    <button class="gm-kill-btn" data-mod-action="kill-player" data-game-id="<%= g.gameId %>" data-player-id="<%= p.id %>" title="Éliminer">
+                    <button class="gm-kill-btn" data-mod-action="kill-player" data-game-id="<%= g.gameId %>" data-player-id="<%= p.id %>" title="Éliminer" data-i18n-title="gmod.title_eliminate">
                       ☠️
                     </button>
                   <% } else { %>
@@ -142,25 +142,44 @@
 
         <!-- Right Column -->
         <div class="gm-col-right">
-          <!-- Action Log -->
-          <div class="gm-panel gm-panel-log" style="animation: panelEnter 0.6s ease-out both; animation-delay: 0.3s;">
+          <!-- Moderation Audit Log -->
+          <div class="gm-panel gm-panel-audit" style="animation: panelEnter 0.6s ease-out both; animation-delay: 0.3s;">
             <div class="gm-panel-header">
-              <h3 class="gm-panel-title">📜 <span data-i18n="gmod.log">Journal d'actions</span></h3>
-              <div class="gm-log-pulse"></div>
+              <h3 class="gm-panel-title">🛡️ <span data-i18n="gmod.audit_title">Historique de modération</span></h3>
+              <% if (auditLog.length > 0) { %><span class="gm-badge-count"><%= auditLog.length %></span><% } %>
             </div>
-            <div class="gm-log" id="gm-log-<%= g.gameId %>">
-              <% if (g.actionLog && g.actionLog.length > 0) { %>
-                <% g.actionLog.slice(-20).reverse().forEach(function(log, li) { %>
-                  <div class="gm-log-entry" style="animation-delay:<%= 0.35 + li * 0.03 %>s">
-                    <span class="gm-log-time"><%= log.timestamp ? new Date(log.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}) : '' %></span>
-                    <span class="gm-log-text"><%= log.action %></span>
+            <div class="gm-audit-log" id="gm-audit-log">
+              <% if (auditLog.length === 0) { %>
+                <div class="gm-log-empty">
+                  <span>🛡️</span>
+                  <p data-i18n="gmod.no_audit">Aucune action de modération enregistrée</p>
+                  <p class="text-muted" data-i18n="gmod.no_audit_hint">Les actions d'administration s'afficheront ici de manière permanente</p>
+                </div>
+              <% } else { %>
+                <% auditLog.forEach(function(entry, i) {
+                  var icon = entry.action === 'force_end' ? '⏹️' : entry.action === 'skip_phase' ? '⏩' : entry.action === 'kill_player' ? '☠️' : '📝';
+                  var details = entry.details || {};
+                %>
+                  <div class="gm-audit-entry gm-audit-<%= entry.action %>" style="animation-delay:<%= 0.35 + i * 0.04 %>s">
+                    <div class="gm-audit-icon"><%= icon %></div>
+                    <div class="gm-audit-content">
+                      <div class="gm-audit-text">
+                        <strong class="gm-audit-mod"><%= entry.moderator_name %></strong>
+                        <% if (entry.action === 'force_end') { %>
+                          <span data-i18n="gmod.audit_force_end">a forcé la fin de la partie</span>
+                          <% if (details.playerCount) { %><span class="gm-audit-detail">(<%= details.playerCount %> <span data-i18n="gmod.players">joueurs</span>)</span><% } %>
+                        <% } else if (entry.action === 'skip_phase') { %>
+                          <span data-i18n="gmod.audit_skip_phase">a sauté une phase</span>
+                          <% if (details.fromPhase) { %><span class="gm-audit-detail">(<%= details.fromPhase %>)</span><% } %>
+                        <% } else if (entry.action === 'kill_player') { %>
+                          <span data-i18n="gmod.audit_kill_player">a éliminé</span>
+                          <% if (details.targetName) { %><strong class="gm-audit-target"><%= details.targetName %></strong><% } %>
+                        <% } %>
+                      </div>
+                      <span class="gm-audit-time pp-date" data-date-format="datetime" data-timestamp="<%= entry.created_at %>"><%= new Date(entry.created_at * 1000).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) %></span>
+                    </div>
                   </div>
                 <% }); %>
-              <% } else { %>
-                <div class="gm-log-empty">
-                  <span>📋</span>
-                  <p data-i18n="gmod.no_logs">Aucune action enregistrée</p>
-                </div>
               <% } %>
             </div>
           </div>
@@ -172,12 +191,12 @@
             </div>
             <div class="gm-info-grid">
               <div class="gm-info-row">
-                <span class="gm-info-label">Game ID</span>
+                <span class="gm-info-label" data-i18n="gmod.game_id">Game ID</span>
                 <span class="gm-info-value gm-info-mono"><%= g.gameId %></span>
               </div>
               <div class="gm-info-row">
-                <span class="gm-info-label">Phase</span>
-                <span class="gm-info-value"><%= g.phase || 'Lobby' %><%= g.subPhase ? ' / ' + g.subPhase : '' %></span>
+                <span class="gm-info-label" data-i18n="gmod.phase">Phase</span>
+                <span class="gm-info-value"><span data-i18n="<%= g.phase ? 'phase.' + g.phase : 'fb.lobby' %>"><%= g.phase || 'Lobby' %></span><% if (g.subPhase) { %> / <span data-i18n="subphase.<%= g.subPhase %>"><%= g.subPhase %></span><% } %></span>
               </div>
               <div class="gm-info-row">
                 <span class="gm-info-label" data-i18n="gmod.day">Jour</span>
@@ -186,7 +205,7 @@
               <% if (g.rules) { %>
               <div class="gm-info-row">
                 <span class="gm-info-label" data-i18n="gmod.rules">Règles</span>
-                <span class="gm-info-value"><%= g.rules.minPlayers || 5 %>-<%= g.rules.maxPlayers || 10 %> joueurs</span>
+                <span class="gm-info-value"><%= g.rules.minPlayers || 5 %>-<%= g.rules.maxPlayers || 10 %> <span data-i18n="gmod.players">joueurs</span></span>
               </div>
               <% } %>
             </div>
@@ -213,7 +232,7 @@
       <div class="modal-actions" id="modal-actions"></div>
     </div>
     <div class="modal-footer">
-      <a id="modal-profile-link" href="#" class="btn btn-sm btn-primary">📈 <span data-i18n="gmod.view_profile">Voir profil complet</span></a>
+      <a id="modal-profile-link" href="#" onclick="return false" class="btn btn-sm btn-primary">📈 <span data-i18n="gmod.view_profile">Voir profil complet</span></a>
     </div>
   </div>
 </div>

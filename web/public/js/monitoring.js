@@ -4,14 +4,15 @@
  */
 (function() {
   'use strict';
+  const t = (k) => (window.webI18n ? window.webI18n.t(k) : k);
 
   const REFRESH = 30000;
   let timer = null;
   const level = window.__accessLevel || 'public';
 
   const WS_MAP = {
-    0:'READY',1:'CONNECTING',2:'RECONNECTING',3:'IDLE',
-    4:'NEARLY',5:'DISCONNECTED',6:'WAIT_GUILDS',7:'IDENTIFYING',8:'RESUMING'
+    0: t('mon.ws_ready'), 1: t('mon.ws_connecting'), 2: t('mon.ws_reconnecting'), 3: t('mon.ws_idle'),
+    4: t('mon.ws_nearly'), 5: t('mon.ws_disconnected'), 6: t('mon.ws_wait_guilds'), 7: t('mon.ws_identifying'), 8: t('mon.ws_resuming')
   };
 
   /* ── helpers ── */
@@ -99,7 +100,7 @@
         label = d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
       } else {
         const hoursAgo = Math.round(((data.length - 1 - idx) / (data.length - 1)) * 24);
-        label = hoursAgo === 0 ? 'Now' : hoursAgo + 'h';
+        label = hoursAgo === 0 ? t('mon.chart_now') : hoursAgo + t('mon.unit_h');
       }
       ctx.fillText(label, x, H - pad.b + 8);
     }
@@ -217,7 +218,7 @@
       if (data.success) updateUI(data.data);
     } catch (e) {
       console.error('[MON] Fetch error:', e);
-      txt('st-health-text', 'ERROR');
+      txt('st-health-text', t('mon.health_error'));
       const icon = $('st-health-icon');
       if (icon) icon.textContent = '❌';
     }
@@ -237,17 +238,17 @@
       const hRing = $('st-health-ring');
       if (health.status === 'HEALTHY') {
         if (hIcon) hIcon.textContent = '✅';
-        if (hText) hText.textContent = 'HEALTHY';
+        if (hText) hText.textContent = t('mon.health_healthy');
         if (ringEl) ringEl.style.strokeDashoffset = '0'; // full ring
         if (hRing) hRing.style.filter = '';
       } else if (health.status === 'DEGRADED') {
         if (hIcon) hIcon.textContent = '⚠️';
-        if (hText) hText.textContent = 'DEGRADED';
+        if (hText) hText.textContent = t('mon.health_degraded');
         if (ringEl) ringEl.style.strokeDashoffset = String(CIRC * 0.3);
         if (hRing) hRing.style.filter = 'hue-rotate(40deg)';
       } else {
         if (hIcon) hIcon.textContent = '❌';
-        if (hText) hText.textContent = 'UNHEALTHY';
+        if (hText) hText.textContent = t('mon.health_unhealthy');
         if (ringEl) ringEl.style.strokeDashoffset = String(CIRC * 0.75);
         if (hRing) hRing.style.filter = 'hue-rotate(100deg)';
       }
@@ -256,7 +257,7 @@
     /* ── KPI strip ── */
     txt('mon-uptime', d.uptime || '—');
     if (m.discord && m.discord.latency !== undefined) {
-      txt('mon-latency', m.discord.latency + ' ms');
+      txt('mon-latency', m.discord.latency + t('mon.unit_ms'));
     }
     if (m.game) {
       txt('mon-gm-active', m.game.activeGames);
@@ -267,17 +268,17 @@
       if (m.game.gamesCompleted24h !== undefined) txt('mon-gm-completed24', m.game.gamesCompleted24h);
     }
     if (m.system && m.system.memory) {
-      txt('mon-memory', m.system.memory.rss + ' MB');
+      txt('mon-memory', m.system.memory.rss + t('mon.unit_mb'));
     }
 
     /* ── System panel (owner) ── */
     if (m.system && m.system.memory) {
-      txt('mon-sys-rss', m.system.memory.rss + ' MB');
+      txt('mon-sys-rss', m.system.memory.rss + t('mon.unit_mb'));
       if (m.system.memory.heapUsed !== undefined)
-        txt('mon-sys-heap', m.system.memory.heapUsed + ' / ' + m.system.memory.heapTotal + ' MB');
+        txt('mon-sys-heap', m.system.memory.heapUsed + ' / ' + m.system.memory.heapTotal + t('mon.unit_mb'));
       if (m.system.memory.systemFree !== undefined) {
-        txt('mon-sys-ram-free', m.system.memory.systemFree + ' MB');
-        txt('mon-sys-ram-total', m.system.memory.systemTotal + ' MB');
+        txt('mon-sys-ram-free', m.system.memory.systemFree + t('mon.unit_mb'));
+        txt('mon-sys-ram-total', m.system.memory.systemTotal + t('mon.unit_mb'));
       }
       if (m.system.memory.percentage !== undefined) {
         const pct = Math.min(m.system.memory.percentage, 100);
@@ -300,10 +301,10 @@
       if (m.discord.wsStatus !== undefined)
         txt('mon-dc-ws-status', WS_MAP[m.discord.wsStatus] || String(m.discord.wsStatus));
       if (m.discord.latency !== undefined) {
-        txt('mon-dc-latency', m.discord.latency + ' ms');
+        txt('mon-dc-latency', m.discord.latency + t('mon.unit_ms'));
         const pct = Math.min((m.discord.latency / 500) * 100, 100);
         css('mon-latency-bar', 'width', pct + '%');
-        txt('st-lat-pct', m.discord.latency + 'ms');
+        txt('st-lat-pct', m.discord.latency + t('mon.unit_ms'));
         const bEl = $('mon-latency-bar');
         if (bEl) bEl.className = 'st-bar-fill st-bar--blue' + (m.discord.latency > 300 ? ' st-bar--danger' : m.discord.latency > 150 ? ' st-bar--warn' : '');
       }
@@ -314,7 +315,7 @@
       if (m.commands.total !== undefined) txt('mon-cmd-total', m.commands.total.toLocaleString());
       if (m.commands.errors !== undefined) txt('mon-cmd-errors', m.commands.errors);
       if (m.commands.rateLimited !== undefined) txt('mon-cmd-rl', m.commands.rateLimited);
-      if (m.commands.avgResponseTime !== undefined) txt('mon-cmd-avg', m.commands.avgResponseTime + ' ms');
+      if (m.commands.avgResponseTime !== undefined) txt('mon-cmd-avg', m.commands.avgResponseTime + t('mon.unit_ms'));
     }
 
     /* ── Errors (owner) ── */
@@ -335,7 +336,7 @@
             'rgb(6,182,212)', 'rgb(59,130,246)', 'ms');
         }
         const avg = Math.round(history.latency.reduce((a, b) => a + b, 0) / history.latency.length);
-        txt('st-lat-avg', avg + ' ms avg');
+        txt('st-lat-avg', avg + t('mon.avg_ms'));
       }
       if (history.memory && history.memory.length > 1) {
         const panel = $('st-chart-memory') && $('st-chart-memory').closest('.st-panel--chart');
@@ -344,7 +345,7 @@
             'rgb(139,92,246)', 'rgb(16,185,129)', '%');
         }
         const avg = Math.round(history.memory.reduce((a, b) => a + b, 0) / history.memory.length);
-        txt('st-mem-avg', avg + '% avg');
+        txt('st-mem-avg', avg + t('mon.avg_pct'));
       }
     }
 
@@ -371,8 +372,8 @@
       panel.classList.toggle('st-panel--collapsed');
       const tog = panel.querySelector('.st-chart-toggle');
       if (tog) {
-        tog.setAttribute('title', wasCollapsed ? 'Collapse' : 'Expand');
-        tog.setAttribute('aria-label', wasCollapsed ? 'Collapse chart' : 'Expand chart');
+        tog.setAttribute('title', wasCollapsed ? t('mon.collapse') : t('mon.expand'));
+        tog.setAttribute('aria-label', wasCollapsed ? t('mon.collapse_chart') : t('mon.expand_chart'));
       }
       /* Redraw canvas after expand transition completes */
       if (wasCollapsed && lastHistory) {

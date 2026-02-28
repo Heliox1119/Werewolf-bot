@@ -220,7 +220,8 @@ module.exports = function(webServer) {
         guild: guild ? { id: guild.id, name: guild.name, icon: guild.iconURL({ size: 128 }), memberCount: guild.memberCount } : null,
         guildId: req.params.id,
         guildPage: 'moderation',
-        games
+        games,
+        auditLog: db.getModAuditLog(req.params.id, 30)
       });
     } catch (e) {
       res.render('error', { title: 'Error', message: e.message });
@@ -235,7 +236,6 @@ module.exports = function(webServer) {
       if (!guild) return res.redirect('/invite/' + req.params.id);
       const ConfigManager = require('../../utils/config');
       const configMgr = ConfigManager.getInstance();
-      const ROLES = require('../../game/roles');
       const i18n = require('../../utils/i18n');
 
       const enabledRoles = configMgr.getEnabledRoles(req.params.id);
@@ -249,8 +249,6 @@ module.exports = function(webServer) {
         enabledRoles
       };
 
-      const allRoles = Object.values(ROLES);
-
       // Premium check: is the current user premium?
       let isPremium = false;
       let premiumTier = null;
@@ -262,21 +260,14 @@ module.exports = function(webServer) {
         }
       }
 
-      // Role categories
-      const classicRoleNames = ['Loup-Garou', 'Villageois', 'Voyante', 'Sorcière', 'Chasseur'];
-      const premiumRoleNames = ['Loup Blanc', 'Petite Fille', 'Cupidon', 'Salvateur', 'Ancien', 'Idiot du Village', 'Voleur'];
-
       res.render('guild-rules', {
         title: guild ? guild.name : `Guild ${req.params.id}`,
         guild: guild ? { id: guild.id, name: guild.name, icon: guild.iconURL({ size: 128 }), memberCount: guild.memberCount } : null,
         guildId: req.params.id,
         guildPage: 'rules',
         config,
-        allRoles,
         isPremium,
-        premiumTier,
-        classicRoleNames,
-        premiumRoleNames
+        premiumTier
       });
     } catch (e) {
       res.render('error', { title: 'Error', message: e.message });
@@ -482,9 +473,6 @@ module.exports = function(webServer) {
   /** GET /roles — Custom roles editor page (Admin) */
   router.get('/roles', (req, res) => {
     try {
-      const ROLES = require('../../game/roles');
-      const builtIn = Object.entries(ROLES).map(([key, value]) => ({ id: key, name: value, type: 'builtin' }));
-      
       let customRoles = [];
       let schema = {};
       try {
@@ -510,7 +498,6 @@ module.exports = function(webServer) {
 
       res.render('roles', {
         title: 'Roles Editor',
-        builtIn,
         customRoles,
         schema: JSON.stringify(schema),
         isAdmin: req.isAuthenticated && req.isAuthenticated()

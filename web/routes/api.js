@@ -256,6 +256,20 @@ module.exports = function(webServer) {
     }
   });
 
+  /** GET /api/roles/:id — Get a single custom role */
+  router.get('/roles/:id', (req, res) => {
+    try {
+      const guildId = req.query.guildId;
+      if (!guildId) return res.status(400).json({ success: false, error: 'guildId query param is required' });
+      const builder = getRoleBuilder();
+      const role = builder.getRole(parseInt(req.params.id, 10), guildId);
+      if (!role) return res.status(404).json({ success: false, error: 'Role not found' });
+      res.json({ success: true, data: role });
+    } catch (e) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
   /** POST /api/roles — Create a custom role (requires auth + admin) */
   router.post('/roles', requireAuth, (req, res) => {
     try {
@@ -458,6 +472,7 @@ module.exports = function(webServer) {
       game.phase = 'Terminé';
       game.endedAt = Date.now();
       gm.logAction(game, `[ADMIN] Partie forcée à terminer via interface web par ${req.user.username}`);
+      db.addModAuditLog(game.guildId, req.user.id, req.user.username, 'force_end', { gameId: req.params.gameId, playerCount: (game.players || []).length });
       // Announce in Discord
       await sendToGameChannel(guild, game, `⚠️ **Partie terminée de force** par un administrateur via le dashboard web.`);
       // Try to clean up Discord channels
@@ -496,6 +511,7 @@ module.exports = function(webServer) {
       }
       const previousPhase = `${game.phase}/${game.subPhase || '-'}`;
       gm.logAction(game, `[ADMIN] Phase sautée via interface web par ${req.user.username} (${previousPhase})`);
+      db.addModAuditLog(game.guildId, req.user.id, req.user.username, 'skip_phase', { gameId: req.params.gameId, fromPhase: previousPhase });
       // Announce skip in Discord
       await sendToGameChannel(guild, game, `⏭️ **Phase sautée** par un administrateur (${previousPhase}).`);
       // Clear any AFK timeout before advancing
@@ -531,7 +547,7 @@ module.exports = function(webServer) {
 
       const guild = await fetchGuild(game.guildId);
       gm.logAction(game, `[ADMIN] ${player.username} éliminé par le modérateur (${req.user.username})`);
-      // Use the proper kill method (handles lovers, DB sync, events, lockouts)
+      db.addModAuditLog(game.guildId, req.user.id, req.user.username, 'kill_player', { gameId: req.params.gameId, targetId: req.params.playerId, targetName: player.username });
       const collateralDeaths = gm.kill(game.mainChannelId, req.params.playerId);
       // Apply Discord permission lockouts
       try { if (guild) await gm.applyDeadPlayerLockouts(guild); } catch {}

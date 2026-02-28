@@ -3,6 +3,16 @@
  */
 (function() {
   'use strict';
+  const t = (k) => (window.webI18n ? window.webI18n.t(k) : k);
+  function _getLang() { return (document.cookie.match(/lang=(en|fr)/)||[])[1] || 'fr'; }
+  function _fmtTime(date) {
+    const lang = _getLang();
+    const locale = lang === 'en' ? 'en-GB' : 'fr-FR';
+    const opts = lang === 'en'
+      ? { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }
+      : { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+    return date.toLocaleTimeString(locale, opts);
+  }
 
   const page = document.querySelector('.sp-page');
   if (!page) return;
@@ -95,7 +105,7 @@
           markPlayerDead(data.playerId || data.playerName, data.role);
           break;
         case 'gameEnded':
-          addEventToFeed({ event: 'victory', text: `🎉 Game Over! ${data.victor || 'Unknown'} wins!`, className: 'event-victory' });
+          addEventToFeed({ event: 'victory', text: t('sp.game_over').replace('{victor}', data.victor || t('fb.unknown')), className: 'event-victory' });
           break;
       }
     });
@@ -121,11 +131,11 @@
     const dayEl = document.getElementById('game-day');
 
     if (phaseEl && phase) {
-      phaseEl.textContent = phase;
+      phaseEl.textContent = t('phase.' + phase);
       phaseEl.className = `sp-phase game-phase phase-${phase.toLowerCase()}`;
     }
-    if (subEl) subEl.textContent = subPhase || '';
-    if (dayEl && dayCount) dayEl.textContent = 'Jour ' + dayCount;
+    if (subEl) subEl.textContent = subPhase ? t('subphase.' + subPhase) : '';
+    if (dayEl && dayCount) dayEl.textContent = t('sp.day_prefix') + ' ' + dayCount;
   }
 
   function updatePlayers(snapshot) {
@@ -181,7 +191,7 @@
       if (p.id && p.id.startsWith('fake_')) {
         const fakeBadge = document.createElement('span');
         fakeBadge.className = 'sp-badge-fake';
-        fakeBadge.textContent = 'BOT';
+        fakeBadge.textContent = t('sp.badge_bot');
         info.appendChild(fakeBadge);
       }
 
@@ -190,13 +200,14 @@
       if (!p.alive && p.role) {
         const roleTag = document.createElement('span');
         roleTag.className = 'sp-role-tag';
-        roleTag.textContent = p.role;
+        roleTag.setAttribute('data-i18n', 'role.' + p.role);
+        roleTag.textContent = t('role.' + p.role);
         tags.appendChild(roleTag);
       }
       if (p.isCaptain) {
         const badge = document.createElement('span');
         badge.className = 'sp-badge-tag';
-        badge.textContent = '👑 Capitaine';
+        badge.textContent = t('sp.badge_captain');
         tags.appendChild(badge);
       }
       if (p.inLove) {
@@ -235,7 +246,7 @@
       // Divider
       const divider = document.createElement('div');
       divider.className = 'sp-graveyard-divider';
-      divider.innerHTML = `<span>☠️ Cimetière (${dead.length})</span>`;
+      divider.innerHTML = `<span>${t('sp.graveyard')} (${dead.length})</span>`;
       panel.appendChild(divider);
 
       // Graveyard list
@@ -271,13 +282,18 @@
         if (d.id && d.id.startsWith('fake_')) {
           const badge = document.createElement('span');
           badge.className = 'sp-badge-fake';
-          badge.textContent = 'BOT';
+          badge.textContent = t('sp.badge_bot');
           row.appendChild(badge);
         }
 
         const role = document.createElement('span');
         role.className = 'sp-grave-role';
-        role.textContent = d.role || '?';
+        if (d.role) {
+          role.setAttribute('data-i18n', 'role.' + d.role);
+          role.textContent = t('role.' + d.role);
+        } else {
+          role.textContent = '?';
+        }
         row.appendChild(role);
 
         const chevron = document.createElement('span');
@@ -301,7 +317,7 @@
     // Update additional info panels if needed
     const started = document.getElementById('game-started');
     if (started && snapshot.startedAt) {
-      started.textContent = new Date(snapshot.startedAt).toLocaleTimeString();
+      started.textContent = _fmtTime(new Date(snapshot.startedAt));
     }
   }
 
@@ -318,7 +334,8 @@
           if (tags && !tags.querySelector('.sp-role-tag')) {
             const span = document.createElement('span');
             span.className = 'sp-role-tag';
-            span.textContent = role;
+            span.setAttribute('data-i18n', 'role.' + role);
+            span.textContent = t('role.' + role);
             tags.insertBefore(span, tags.firstChild);
           }
         }
@@ -340,16 +357,16 @@
     const evType = data.event === 'playerKilled' ? 'kill' : data.event === 'phaseChanged' ? 'phase' : data.event === 'gameEnded' ? 'victory' : 'info';
     div.className = `sp-event sp-ev-${evType}`;
 
-    const time = data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+    const time = data.timestamp ? _fmtTime(new Date(data.timestamp)) : _fmtTime(new Date());
     let text = data.text || '';
     if (!text) {
       switch (data.event) {
-        case 'phaseChanged': text = `Phase → ${data.phase}${data.subPhase ? ' (' + data.subPhase + ')' : ''}`; break;
-        case 'playerKilled': text = `💀 ${data.username || data.playerName || 'A player'} was killed (${data.role || '?'})`; break;
-        case 'playerJoined': text = `👋 A player joined (${data.playerCount || '?'} total)`; break;
-        case 'gameStarted': text = '🎮 Game started!'; break;
-        case 'gameEnded': text = `🏆 ${data.victor || 'Someone'} wins!`; break;
-        case 'actionLog': text = `📝 ${data.action || 'Action'}`; break;
+        case 'phaseChanged': text = t('sp.evt_phase') + ' ' + t('phase.' + (data.phase)) + (data.subPhase ? ' (' + t('subphase.' + data.subPhase) + ')' : ''); break;
+        case 'playerKilled': text = `💀 ${data.username || data.playerName || t('sp.evt_a_player')} ${t('sp.evt_killed')} (${data.role ? t('role.' + data.role) : '?'})`; break;
+        case 'playerJoined': text = `👋 ${t('sp.evt_joined')} (${data.playerCount || '?'} ${t('sp.total')})`; break;
+        case 'gameStarted': text = t('sp.evt_started'); break;
+        case 'gameEnded': text = `🏆 ${data.victor || t('sp.evt_someone')} ${t('sp.evt_wins')}`; break;
+        case 'actionLog': text = `📝 ${data.action || t('sp.evt_action')}`; break;
         default: text = data.event;
       }
     }

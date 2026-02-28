@@ -1,5 +1,5 @@
 /**
- * Werewolf Bot — Web Dashboard Server v3.4.1
+ * Werewolf Bot — Web Dashboard Server v3.5.0
  * 
  * Express + Socket.IO server providing:
  * - Discord OAuth2 authentication
@@ -12,13 +12,17 @@ const express = require('express');
 const http = require('http');
 const { Server: SocketIO } = require('socket.io');
 const session = require('express-session');
+const SqliteStore = require('better-sqlite3-session-store')(session);
+const Database = require('better-sqlite3');
 const passport = require('passport');
 const DiscordStrategy = require('passport-discord').Strategy;
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
+const fs = require('fs');
 const { game: logger } = require('../utils/logger');
+const roleData = require('../game/roleData');
 
 class WebServer {
   constructor(options = {}) {
@@ -103,13 +107,23 @@ class WebServer {
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
 
-    // Session
-    const sessionSecret = process.env.SESSION_SECRET;
-    if (!sessionSecret) {
-      logger.warn('⚠️  SESSION_SECRET env var not set — using random secret (sessions will not persist across restarts)');
+    // Session — resolve a stable secret that survives restarts
+    const dataDir = path.join(__dirname, '..', 'data');
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
     }
+    const sessionSecret = this._resolveSessionSecret(dataDir);
+
+    // Persistent SQLite session store
+    const sessionDb = new Database(path.join(dataDir, 'sessions.db'));
+    sessionDb.pragma('journal_mode = WAL');
+
     this.sessionMiddleware = session({
-      secret: sessionSecret || require('crypto').randomBytes(32).toString('hex'),
+      store: new SqliteStore({
+        client: sessionDb,
+        expired: { clear: true, intervalMs: 15 * 60 * 1000 } // purge expired every 15 min
+      }),
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 } // 7 days
@@ -132,8 +146,45 @@ class WebServer {
     this.app.use((req, res, next) => {
       res.locals.user = req.user || null;
       res.locals.botName = this.client?.user?.username || 'Werewolf Bot';
+      res.locals.roleData = roleData;
       next();
     });
+  }
+
+  // ==================== SESSION SECRET ====================
+
+  /**
+   * Resolve a stable session secret:
+   * 1. Use SESSION_SECRET env var if set
+   * 2. Otherwise read/create data/.session-secret file (auto-generated once)
+   */
+  _resolveSessionSecret(dataDir) {
+    if (process.env.SESSION_SECRET) {
+      return process.env.SESSION_SECRET;
+    }
+
+    const secretFile = path.join(dataDir, '.session-secret');
+    try {
+      if (fs.existsSync(secretFile)) {
+        const stored = fs.readFileSync(secretFile, 'utf8').trim();
+        if (stored.length >= 32) {
+          logger.info('🔑 Session secret loaded from data/.session-secret');
+          return stored;
+        }
+      }
+    } catch (err) {
+      logger.warn('⚠️  Could not read session secret file, generating new one', { error: err.message });
+    }
+
+    // Generate and persist a new secret
+    const newSecret = require('crypto').randomBytes(48).toString('hex');
+    try {
+      fs.writeFileSync(secretFile, newSecret, { mode: 0o600 });
+      logger.info('🔑 Generated and saved new session secret to data/.session-secret');
+    } catch (err) {
+      logger.warn('⚠️  Could not save session secret file — sessions will not survive restarts', { error: err.message });
+    }
+    return newSecret;
   }
 
   // ==================== DISCORD OAUTH2 ====================
@@ -344,17 +395,24 @@ class WebServer {
     this.gameManager.on('gameEvent', (data) => {
       const { event, gameId, guildId } = data;
 
-      // Buffer event for late-joining spectators (max 200 events per game)
+      // Sanitize event for spectators: strip role information that should be secret
+      const spectatorData = this._sanitizeForSpectators(data);
+
+      // Buffer sanitized event for late-joining spectators (max 200 events per game)
       if (!this.gameEventBuffers.has(gameId)) {
         this.gameEventBuffers.set(gameId, []);
       }
       const buffer = this.gameEventBuffers.get(gameId);
-      buffer.push(data);
+      if (spectatorData) {
+        buffer.push(spectatorData);
+      }
       if (buffer.length > 200) buffer.shift();
       console.log(`[event-buffer] gameId=${gameId} event=${event} bufferSize=${buffer.length}`);
 
-      // Broadcast to spectators of this game
-      this.io.to(`game:${gameId}`).emit('gameEvent', data);
+      // Broadcast sanitized event to spectators of this game
+      if (spectatorData) {
+        this.io.to(`game:${gameId}`).emit('gameEvent', spectatorData);
+      }
 
       // Broadcast to guild dashboard room (strictly scoped + throttled)
       if (guildId) {
@@ -385,6 +443,31 @@ class WebServer {
         }, 60000); // Keep room for 1 minute after end
       }
     });
+  }
+
+  /**
+   * Sanitize a game event for spectator consumption.
+   * - Strips role assignments from actionLog ("username => role")
+   * - Removes per-player role data from gameStarted
+   * - Returns null if the event should be completely hidden from spectators
+   */
+  _sanitizeForSpectators(data) {
+    const { event } = data;
+
+    // Filter out role-assignment action logs (format: "Username => RoleName")
+    if (event === 'actionLog' && data.text) {
+      if (/=>/.test(data.text)) return null;
+    }
+
+    // Strip roles from gameStarted player list
+    if (event === 'gameStarted' && data.players) {
+      return {
+        ...data,
+        players: data.players.map(p => ({ id: p.id, username: p.username }))
+      };
+    }
+
+    return data;
   }
 
   /**

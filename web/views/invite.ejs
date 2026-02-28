@@ -9,7 +9,7 @@
     <div class="iv-hero-moon"></div>
   </div>
   <div class="iv-hero-inner">
-    <div class="iv-hero-badge">🐺 WEREWOLF BOT</div>
+    <div class="iv-hero-badge" data-i18n="invite.badge">🐺 WEREWOLF BOT</div>
     <h1 class="iv-hero-title">
       <span class="iv-title-line" data-i18n="invite.hero_line1">La nuit tombe sur</span>
       <span class="iv-title-guild"><%= guildName %></span>
@@ -37,10 +37,62 @@
   </div>
 </section>
 
+<!-- ═══ ROLE CAROUSEL ═══ -->
+<section class="iv-roles">
+  <div class="iv-section-head">
+    <span class="iv-section-tag" data-i18n="invite.tag_roles">🎭 Les rôles</span>
+    <h2 class="iv-section-title" data-i18n="invite.roles_title">Qui serez-vous cette nuit ?</h2>
+  </div>
+  <div class="iv-roles-track">
+    <div class="iv-roles-slider" id="iv-roles-slider">
+      <%
+        var campIcons  = { village: '🏡', wolves: '🐺', solo: '⚔️' };
+        var campLabels = { village: 'Village', wolves: 'Loups', solo: 'Solo' };
+        var carouselOrder = ['WEREWOLF','SEER','WITCH','HUNTER','CUPID','WHITE_WOLF','SALVATEUR','THIEF','VILLAGER','PETITE_FILLE','ANCIEN','IDIOT'];
+        carouselOrder.forEach(function(rid, idx) {
+          var role = roleData.getRoleById(rid);
+          if (!role) return;
+      %>
+        <div class="iv-role-card" style="--i:<%= idx %>">
+          <img src="/static/img/roles/<%= role.image %>" alt="<%= role.name.fr %>" class="iv-role-img" loading="lazy">
+          <span class="iv-role-name" data-i18n="role.name.<%= rid.toLowerCase() %>"><%= role.name.fr %></span>
+          <span class="iv-role-camp iv-camp-<%= role.camp %>" data-i18n="invite.camp_<%= role.camp %>"><%= campIcons[role.camp] %> <%= campLabels[role.camp] %></span>
+        </div>
+      <% }); %>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CARD DECK DRAW — PREMIUM ═══ -->
+<section class="iv-deck">
+  <div class="iv-section-head">
+    <span class="iv-section-tag" data-i18n="invite.tag_discovery">🃏 Découverte</span>
+    <h2 class="iv-section-title" data-i18n="invite.deck_title">Sélectionnez une carte</h2>
+    <p class="iv-section-sub" data-i18n="invite.deck_sub">Découvrez les rôles du jeu en piochant dans le deck.</p>
+  </div>
+  <div class="ivd-stage">
+    <div class="ivd-deck-wrap">
+      <div class="ivd-deck" id="ivd-deck">
+        <div class="ivd-card ivd-c1"></div>
+        <div class="ivd-card ivd-c2"></div>
+        <div class="ivd-card ivd-c3"></div>
+        <div class="ivd-card ivd-c4"></div>
+        <div class="ivd-card ivd-c5"></div>
+        <div class="ivd-card ivd-ctop"></div>
+      </div>
+      <div class="ivd-glow" id="ivd-glow"></div>
+    </div>
+    <button class="ivd-btn" id="ivd-btn" type="button">
+      <span class="ivd-btn-icon">🎴</span>
+      <span class="ivd-btn-text" data-i18n="invite.deck_draw">Sélectionnez une carte</span>
+    </button>
+  </div>
+</section>
+
 <!-- ═══ FEATURES SHOWCASE ═══ -->
 <section class="iv-features">
   <div class="iv-section-head">
-    <span class="iv-section-tag">✨ Fonctionnalités</span>
+    <span class="iv-section-tag" data-i18n="invite.tag_features">✨ Fonctionnalités</span>
     <h2 class="iv-section-title" data-i18n="invite.features_title">Tout pour une expérience parfaite</h2>
     <p class="iv-section-sub" data-i18n="invite.features_sub">Un bot complet, pensé pour le fun et la compétition.</p>
   </div>
@@ -90,109 +142,11 @@
   </div>
 </section>
 
-<!-- ═══ ROLE CAROUSEL ═══ -->
-<section class="iv-roles">
-  <div class="iv-section-head">
-    <span class="iv-section-tag">🎭 Les rôles</span>
-    <h2 class="iv-section-title" data-i18n="invite.roles_title">Qui serez-vous cette nuit ?</h2>
-  </div>
-  <div class="iv-roles-track">
-    <div class="iv-roles-slider" id="iv-roles-slider">
-      <div class="iv-role-card" style="--i:0">
-        <img src="/static/img/roles/loupSimple.webp" alt="Loup-Garou" class="iv-role-img" loading="lazy">
-        <span class="iv-role-name">Loup-Garou</span>
-        <span class="iv-role-camp iv-camp-wolves">🐺 Loups</span>
-      </div>
-      <div class="iv-role-card" style="--i:1">
-        <img src="/static/img/roles/voyante.webp" alt="Voyante" class="iv-role-img" loading="lazy">
-        <span class="iv-role-name">Voyante</span>
-        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
-      </div>
-      <div class="iv-role-card" style="--i:2">
-        <img src="/static/img/roles/sorciere.png" alt="Sorcière" class="iv-role-img" loading="lazy">
-        <span class="iv-role-name">Sorcière</span>
-        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
-      </div>
-      <div class="iv-role-card" style="--i:3">
-        <img src="/static/img/roles/chasseur.webp" alt="Chasseur" class="iv-role-img" loading="lazy">
-        <span class="iv-role-name">Chasseur</span>
-        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
-      </div>
-      <div class="iv-role-card" style="--i:4">
-        <img src="/static/img/roles/cupidon.webp" alt="Cupidon" class="iv-role-img" loading="lazy">
-        <span class="iv-role-name">Cupidon</span>
-        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
-      </div>
-      <div class="iv-role-card" style="--i:5">
-        <img src="/static/img/roles/loupBlanc.webp" alt="Loup Blanc" class="iv-role-img" loading="lazy">
-        <span class="iv-role-name">Loup Blanc</span>
-        <span class="iv-role-camp iv-camp-wolves">🐺 Loups</span>
-      </div>
-      <div class="iv-role-card" style="--i:6">
-        <img src="/static/img/roles/salvateur.webp" alt="Salvateur" class="iv-role-img" loading="lazy">
-        <span class="iv-role-name">Salvateur</span>
-        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
-      </div>
-      <div class="iv-role-card" style="--i:7">
-        <img src="/static/img/roles/voleur.webp" alt="Voleur" class="iv-role-img" loading="lazy">
-        <span class="iv-role-name">Voleur</span>
-        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
-      </div>
-      <div class="iv-role-card" style="--i:8">
-        <img src="/static/img/roles/villageois.webp" alt="Villageois" class="iv-role-img" loading="lazy">
-        <span class="iv-role-name">Villageois</span>
-        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
-      </div>
-      <div class="iv-role-card" style="--i:9">
-        <img src="/static/img/roles/petiteFille.webp" alt="Petite Fille" class="iv-role-img" loading="lazy">
-        <span class="iv-role-name">Petite Fille</span>
-        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
-      </div>
-      <div class="iv-role-card" style="--i:10">
-        <img src="/static/img/roles/ancien.webp" alt="Ancien" class="iv-role-img" loading="lazy">
-        <span class="iv-role-name">Ancien</span>
-        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
-      </div>
-      <div class="iv-role-card" style="--i:11">
-        <img src="/static/img/roles/idiot.webp" alt="Idiot du Village" class="iv-role-img" loading="lazy">
-        <span class="iv-role-name">Idiot du Village</span>
-        <span class="iv-role-camp iv-camp-village">🏡 Village</span>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ CARD DECK DRAW — PREMIUM ═══ -->
-<section class="iv-deck">
-  <div class="iv-section-head">
-    <span class="iv-section-tag">🃏 Découverte</span>
-    <h2 class="iv-section-title">Sélectionnez une carte</h2>
-    <p class="iv-section-sub">Découvrez les rôles du jeu en piochant dans le deck.</p>
-  </div>
-  <div class="ivd-stage">
-    <div class="ivd-deck-wrap">
-      <div class="ivd-deck" id="ivd-deck">
-        <div class="ivd-card ivd-c1"></div>
-        <div class="ivd-card ivd-c2"></div>
-        <div class="ivd-card ivd-c3"></div>
-        <div class="ivd-card ivd-c4"></div>
-        <div class="ivd-card ivd-c5"></div>
-        <div class="ivd-card ivd-ctop"></div>
-      </div>
-      <div class="ivd-glow" id="ivd-glow"></div>
-    </div>
-    <button class="ivd-btn" id="ivd-btn" type="button">
-      <span class="ivd-btn-icon">🎴</span>
-      <span class="ivd-btn-text">Sélectionnez une carte</span>
-    </button>
-  </div>
-</section>
-
 <!-- Card reveal modal -->
 <div class="ivd-overlay" id="ivd-overlay">
   <div class="ivd-smoke" id="ivd-smoke"></div>
   <div class="ivd-modal" id="ivd-modal">
-    <button class="ivd-modal-close" id="ivd-modal-close" type="button" aria-label="Fermer">&times;</button>
+    <button class="ivd-modal-close" id="ivd-modal-close" type="button" aria-label="Fermer" data-i18n-aria-label="ui.close">&times;</button>
     <div class="ivd-modal-card">
       <img src="" alt="" class="ivd-modal-img" id="ivd-modal-img">
       <div class="ivd-modal-card-glow"></div>
@@ -205,7 +159,7 @@
     </div>
     <button class="ivd-btn ivd-btn-redraw" id="ivd-btn-redraw" type="button">
       <span class="ivd-btn-icon">🎴</span>
-      <span class="ivd-btn-text">Tirer une nouvelle carte</span>
+      <span class="ivd-btn-text" data-i18n="invite.deck_redraw">Tirer une nouvelle carte</span>
     </button>
   </div>
 </div>
@@ -213,7 +167,7 @@
 <!-- ═══ PERMISSIONS ═══ -->
 <section class="iv-perms">
   <div class="iv-section-head">
-    <span class="iv-section-tag">🔒 Permissions</span>
+    <span class="iv-section-tag" data-i18n="invite.tag_perms">🔒 Permissions</span>
     <h2 class="iv-section-title" data-i18n="invite.perms_title">Droits requis</h2>
     <p class="iv-section-sub" data-i18n="invite.perms_sub">Le bot ne demande que les permissions strictement nécessaires au jeu.</p>
   </div>
@@ -314,20 +268,23 @@
 /* ── Card Deck Draw — Premium cinematic ── */
 (function() {
   'use strict';
+  var t = function(k) { return window.webI18n ? window.webI18n.t(k) : k; };
+
+  var CAMP_KEYS = { wolves: 'iv.camp_wolves', village: 'iv.camp_village', solo: 'iv.camp_solo' };
 
   var ROLES = [
-    { name: 'Loup-Garou', camp: 'wolves', campLabel: '🐺 Loups', img: 'loupSimple.webp', cmd: '/kill @joueur', desc: 'Chaque nuit, les loups-garous se réunissent pour dévorer un villageois. Ils doivent rester discrets pour ne pas être démasqués.' },
-    { name: 'Villageois', camp: 'village', campLabel: '🏡 Village', img: 'villageois.webp', cmd: '/vote @joueur', desc: 'Un simple villageois sans pouvoir spécial. Il doit user de logique et d\'intuition pour démasquer les loups-garous.' },
-    { name: 'Voyante', camp: 'village', campLabel: '🏡 Village', img: 'voyante.webp', cmd: '/see @joueur', desc: 'Chaque nuit, la voyante peut sonder l\'âme d\'un joueur et découvrir sa véritable identité.' },
-    { name: 'Sorcière', camp: 'village', campLabel: '🏡 Village', img: 'sorciere.png', cmd: '/potion vie|mort @joueur', desc: 'Elle possède deux potions : une de guérison et une d\'empoisonnement, chacune utilisable une seule fois.' },
-    { name: 'Chasseur', camp: 'village', campLabel: '🏡 Village', img: 'chasseur.webp', cmd: '/shoot @joueur', desc: 'En mourant, le chasseur tire une dernière balle et emporte un joueur de son choix dans la tombe.' },
-    { name: 'Loup Blanc', camp: 'solo', campLabel: '⚡ Solitaire', img: 'loupBlanc.webp', cmd: '/kill @joueur', desc: 'Un loup solitaire qui joue pour lui-même. Une nuit sur deux, il peut dévorer un autre loup-garou.' },
-    { name: 'Petite Fille', camp: 'village', campLabel: '🏡 Village', img: 'petiteFille.webp', cmd: '/listen', desc: 'Curieuse et intrépide, elle peut espionner le conseil des loups-garous pendant la nuit.' },
-    { name: 'Cupidon', camp: 'village', campLabel: '🏡 Village', img: 'cupidon.webp', cmd: '/love @j1 @j2', desc: 'Au début de la partie, Cupidon désigne deux amoureux liés par le destin. Si l\'un meurt, l\'autre le suit.' },
-    { name: 'Salvateur', camp: 'village', campLabel: '🏡 Village', img: 'salvateur.webp', cmd: '/protect @joueur', desc: 'Chaque nuit, il place un joueur sous sa protection, le rendant invulnérable à l\'attaque des loups.' },
-    { name: 'Ancien', camp: 'village', campLabel: '🏡 Village', img: 'ancien.webp', cmd: '/vote @joueur', desc: 'Sa sagesse lui confère une résistance exceptionnelle : il survit à la première attaque des loups-garous.' },
-    { name: 'Idiot du Village', camp: 'village', campLabel: '🏡 Village', img: 'idiot.webp', cmd: '/vote @joueur', desc: 'S\'il est désigné par le vote du village, il est révélé et gracié mais perd définitivement son droit de vote.' },
-    { name: 'Voleur', camp: 'village', campLabel: '🏡 Village', img: 'voleur.webp', cmd: '/steal @carte', desc: 'Au début de la partie, il découvre deux cartes et peut en choisir une pour échanger son rôle.' }
+    { nameKey: 'iv.role_werewolf', camp: 'wolves', img: 'loupSimple.webp', cmd: '/kill @joueur', descKey: 'iv.desc_werewolf' },
+    { nameKey: 'iv.role_villager', camp: 'village', img: 'villageois.webp', cmd: '/vote @joueur', descKey: 'iv.desc_villager' },
+    { nameKey: 'iv.role_seer', camp: 'village', img: 'voyante.webp', cmd: '/see @joueur', descKey: 'iv.desc_seer' },
+    { nameKey: 'iv.role_witch', camp: 'village', img: 'sorciere.png', cmd: '/potion vie|mort @joueur', descKey: 'iv.desc_witch' },
+    { nameKey: 'iv.role_hunter', camp: 'village', img: 'chasseur.webp', cmd: '/shoot @joueur', descKey: 'iv.desc_hunter' },
+    { nameKey: 'iv.role_white_wolf', camp: 'solo', img: 'loupBlanc.webp', cmd: '/kill @joueur', descKey: 'iv.desc_white_wolf' },
+    { nameKey: 'iv.role_little_girl', camp: 'village', img: 'petiteFille.webp', cmd: '/listen', descKey: 'iv.desc_little_girl' },
+    { nameKey: 'iv.role_cupid', camp: 'village', img: 'cupidon.webp', cmd: '/love @j1 @j2', descKey: 'iv.desc_cupid' },
+    { nameKey: 'iv.role_guardian', camp: 'village', img: 'salvateur.webp', cmd: '/protect @joueur', descKey: 'iv.desc_guardian' },
+    { nameKey: 'iv.role_elder', camp: 'village', img: 'ancien.webp', cmd: '/vote @joueur', descKey: 'iv.desc_elder' },
+    { nameKey: 'iv.role_idiot', camp: 'village', img: 'idiot.webp', cmd: '/vote @joueur', descKey: 'iv.desc_idiot' },
+    { nameKey: 'iv.role_thief', camp: 'village', img: 'voleur.webp', cmd: '/steal @carte', descKey: 'iv.desc_thief' }
   ];
 
   var CAMP_CSS = { wolves: 'ivd-camp-wolves', village: 'ivd-camp-village', solo: 'ivd-camp-solo' };
@@ -406,12 +363,15 @@
 
         setTimeout(function() {
           // Populate modal
+          var roleName = t(role.nameKey);
+          var roleDesc = t(role.descKey);
+          var campLabel = t(CAMP_KEYS[role.camp] || role.camp);
           imgEl.src = '/static/img/roles/' + role.img;
-          imgEl.alt = role.name;
-          nameEl.textContent = role.name;
-          campEl.textContent = role.campLabel;
+          imgEl.alt = roleName;
+          nameEl.textContent = roleName;
+          campEl.textContent = campLabel;
           campEl.className = 'ivd-modal-camp ' + (CAMP_CSS[role.camp] || '');
-          descEl.textContent = role.desc;
+          descEl.textContent = roleDesc;
           if (role.cmd) {
             cmdEl.textContent = role.cmd;
             cmdEl.style.display = '';
