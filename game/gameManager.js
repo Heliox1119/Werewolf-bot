@@ -1694,8 +1694,12 @@ class GameManager extends EventEmitter {
           break;
         case PHASES.VOTE:
         default:
-          this._setSubPhase(state, PHASES.LOUPS);
-          result.announce = t('phase.night_wolves_wake');
+          // Dead branch safety: advanceSubPhase is never called from VOTE;
+          // transitionToNight handles DAY→NIGHT via its own path.
+          // Guard: log and no-op to prevent an incoherent state (phase=DAY, subPhase=LOUPS).
+          logger.warn('advanceSubPhase reached VOTE/default — unexpected, no-op', {
+            phase: state.phase, subPhase: state.subPhase, channelId: state.mainChannelId
+          });
           break;
       }
       return result;
