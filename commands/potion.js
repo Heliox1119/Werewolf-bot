@@ -4,7 +4,7 @@ const ROLES = require("../game/roles");
 const PHASES = require("../game/phases");
 const { safeReply } = require("../utils/interaction");
 const { isInGameCategory } = require("../utils/validators");
-const { t, translateRole } = require('../utils/i18n');
+const { t } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -178,15 +178,7 @@ module.exports = {
     }
 
     if (game.phase === PHASES.NIGHT) {
-      if (gameManager.hasAliveRealRole(game, ROLES.SEER)) {
-        await gameManager.runAtomic(game.mainChannelId, (state) => {
-          gameManager._setSubPhase(state, PHASES.VOYANTE);
-        });
-        await gameManager.announcePhase(interaction.guild, game, t('phase.seer_wakes'));
-        gameManager.startNightAfkTimeout(interaction.guild, game);
-      } else {
-        await gameManager.transitionToDay(interaction.guild, game);
-      }
+      await gameManager.advanceSubPhase(interaction.guild, game);
     }
   }
 };

@@ -110,7 +110,7 @@ describe('Commande /potion', () => {
     game.players.push(createMockPlayer({ id: 'witch1', role: ROLES.WITCH, alive: true }));
     gameManager.clearNightAfkTimeout = jest.fn();
     gameManager.logAction = jest.fn();
-    gameManager.transitionToDay = jest.fn();
+    gameManager.advanceSubPhase = jest.fn();
     gameManager.announcePhase = jest.fn();
     gameManager.startNightAfkTimeout = jest.fn();
 
@@ -150,7 +150,7 @@ describe('Commande /potion', () => {
     );
     gameManager.clearNightAfkTimeout = jest.fn();
     gameManager.logAction = jest.fn();
-    gameManager.transitionToDay = jest.fn();
+    gameManager.advanceSubPhase = jest.fn();
     gameManager.announcePhase = jest.fn();
     gameManager.startNightAfkTimeout = jest.fn();
 
@@ -209,13 +209,14 @@ describe('Commande /potion', () => {
     gameManager.logAction = jest.fn();
     gameManager.announcePhase = jest.fn();
     gameManager.startNightAfkTimeout = jest.fn();
+    gameManager.advanceSubPhase = jest.fn();
 
     const interaction = createMockInteraction({ commandName: 'potion', channelId: 'ch-witch', userId: 'witch1' });
     interaction.options.getString = jest.fn(() => 'life');
 
     await potionCommand.execute(interaction);
 
-    expect(game.subPhase).toBe(PHASES.VOYANTE);
-    expect(gameManager.announcePhase).toHaveBeenCalled();
+    // Verify advanceSubPhase was called (centralized chain)
+    expect(gameManager.advanceSubPhase).toHaveBeenCalledWith(interaction.guild, game);
   });
 });

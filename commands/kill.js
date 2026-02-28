@@ -146,14 +146,14 @@ module.exports = {
       await safeReply(interaction, { content: t('cmd.kill.consensus', { name: killResult.victimName }), flags: MessageFlags.Ephemeral });
 
       // Auto-chain to next night role
-      await this.advanceFromWolves(interaction.guild, game, killResult.victimName);
+      await this.advanceFromWolves(interaction.guild, game);
     } else {
       if (killResult.mode === 'plurality') {
         await wolvesChannel.send(t('cmd.kill.pack_chose', { name: killResult.victimName }));
         await safeReply(interaction, { content: t('cmd.kill.all_voted', { name: killResult.victimName }), flags: MessageFlags.Ephemeral });
 
         // Auto-chain to next night role
-        await this.advanceFromWolves(interaction.guild, game, killResult.victimName);
+        await this.advanceFromWolves(interaction.guild, game);
       } else {
         await safeReply(interaction, { content: t('cmd.kill.vote_pending', { name: target.username, n: killResult.votesForTarget, m: majorityNeeded }), flags: MessageFlags.Ephemeral });
       }
@@ -161,47 +161,10 @@ module.exports = {
   },
 
   /**
-   * Advance from LOUPS phase: LOUP_BLANC (odd nights) → SORCIERE → VOYANTE → REVEIL
+   * Advance from LOUPS phase — delegates to the single-source-of-truth advanceSubPhase().
    */
-  async advanceFromWolves(guild, game, victimName) {
-    // Vérifier si le Loup Blanc se réveille (nuits impaires, dayCount >= 1)
-    const isOddNight = (game.dayCount || 0) % 2 === 1;
-    if (isOddNight && gameManager.hasAliveRealRole(game, ROLES.WHITE_WOLF)) {
-      await gameManager.runAtomic(game.mainChannelId, (state) => {
-        gameManager._setSubPhase(state, PHASES.LOUP_BLANC);
-      });
-      await gameManager.announcePhase(guild, game, t('phase.white_wolf_wakes'));
-      gameManager.notifyTurn(guild, game, ROLES.WHITE_WOLF);
-      gameManager.startNightAfkTimeout(guild, game);
-      return;
-    }
-
-    if (gameManager.hasAliveRealRole(game, ROLES.WITCH)) {
-      await gameManager.runAtomic(game.mainChannelId, (state) => {
-        gameManager._setSubPhase(state, PHASES.SORCIERE);
-      });
-      // Informer la sorcière de la victime dans son channel privé
-      if (game.witchChannelId) {
-        try {
-          const witchChannel = await guild.channels.fetch(game.witchChannelId);
-          await witchChannel.send(t('cmd.kill.witch_notify', { name: victimName }));
-        } catch (e) { /* ignore */ }
-      }
-      await gameManager.announcePhase(guild, game, t('phase.witch_wakes'));
-      gameManager.startNightAfkTimeout(guild, game);
-      return;
-    }
-
-    if (gameManager.hasAliveRealRole(game, ROLES.SEER)) {
-      await gameManager.runAtomic(game.mainChannelId, (state) => {
-        gameManager._setSubPhase(state, PHASES.VOYANTE);
-      });
-      await gameManager.announcePhase(guild, game, t('phase.seer_wakes'));
-      gameManager.startNightAfkTimeout(guild, game);
-      return;
-    }
-
-    await gameManager.transitionToDay(guild, game);
+  async advanceFromWolves(guild, game) {
+    await gameManager.advanceSubPhase(guild, game);
   },
 
   /**
@@ -248,32 +211,7 @@ module.exports = {
 
     await safeReply(interaction, { content: t('cmd.kill.white_wolf_success', { name: target.username }), flags: MessageFlags.Ephemeral });
 
-    // Avancer vers la sous-phase suivante (SORCIERE ou VOYANTE ou jour)
-    if (gameManager.hasAliveRealRole(game, ROLES.WITCH)) {
-      await gameManager.runAtomic(game.mainChannelId, (state) => {
-        gameManager._setSubPhase(state, PHASES.SORCIERE);
-      });
-      if (game.witchChannelId && game.nightVictim) {
-        try {
-          const nightVictimPlayer = game.players.find(p => p.id === game.nightVictim);
-          const witchChannel = await interaction.guild.channels.fetch(game.witchChannelId);
-          await witchChannel.send(t('cmd.kill.witch_notify', { name: nightVictimPlayer ? nightVictimPlayer.username : '???' }));
-        } catch (e) { /* ignore */ }
-      }
-      await gameManager.announcePhase(interaction.guild, game, t('phase.witch_wakes'));
-      gameManager.startNightAfkTimeout(interaction.guild, game);
-      return;
-    }
-
-    if (gameManager.hasAliveRealRole(game, ROLES.SEER)) {
-      await gameManager.runAtomic(game.mainChannelId, (state) => {
-        gameManager._setSubPhase(state, PHASES.VOYANTE);
-      });
-      await gameManager.announcePhase(interaction.guild, game, t('phase.seer_wakes'));
-      gameManager.startNightAfkTimeout(interaction.guild, game);
-      return;
-    }
-
-    await gameManager.transitionToDay(interaction.guild, game);
+    // Advance to next sub-phase via centralized logic
+    await gameManager.advanceSubPhase(interaction.guild, game);
   }
 };

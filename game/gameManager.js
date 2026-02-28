@@ -1584,7 +1584,7 @@ class GameManager extends EventEmitter {
     const hasRole = (g, r) => useReal ? this.hasAliveRealRole(g, r) : this.hasAliveAnyRole(g, r);
 
     const outcome = await this.runAtomic(game.mainChannelId, (state) => {
-      const result = { announce: null, notifyRole: null, timer: null, stopListenRelay: false };
+      const result = { announce: null, notifyRole: null, timer: null, stopListenRelay: false, notifyWitchVictim: false };
       switch (state.subPhase) {
         case PHASES.VOLEUR:
           if (hasRole(state, ROLES.CUPID) && (!state.lovers || state.lovers.length === 0)) {
@@ -1628,6 +1628,7 @@ class GameManager extends EventEmitter {
             this._setSubPhase(state, PHASES.SORCIERE);
             result.announce = t('phase.witch_wakes');
             result.notifyRole = ROLES.WITCH;
+            result.notifyWitchVictim = true;
           } else if (hasRole(state, ROLES.SEER) && !state.villageRolesPowerless) {
             this._setSubPhase(state, PHASES.VOYANTE);
             result.announce = t('phase.seer_wakes');
@@ -1643,6 +1644,7 @@ class GameManager extends EventEmitter {
             this._setSubPhase(state, PHASES.SORCIERE);
             result.announce = t('phase.witch_wakes');
             result.notifyRole = ROLES.WITCH;
+            result.notifyWitchVictim = true;
           } else if (hasRole(state, ROLES.SEER) && !state.villageRolesPowerless) {
             this._setSubPhase(state, PHASES.VOYANTE);
             result.announce = t('phase.seer_wakes');
@@ -1706,6 +1708,13 @@ class GameManager extends EventEmitter {
     });
 
     if (outcome.stopListenRelay) await this.stopListenRelay(game);
+    if (outcome.notifyWitchVictim && game.witchChannelId && game.nightVictim) {
+      try {
+        const victimPlayer = game.players.find(p => p.id === game.nightVictim);
+        const witchChannel = await guild.channels.fetch(game.witchChannelId);
+        await witchChannel.send(t('cmd.kill.witch_notify', { name: victimPlayer ? victimPlayer.username : '???' }));
+      } catch (e) { /* ignore */ }
+    }
     if (outcome.announce) await this.announcePhase(guild, game, outcome.announce);
     if (outcome.notifyRole) this.notifyTurn(guild, game, outcome.notifyRole);
     if (outcome.timer === 'captain') {
