@@ -1582,6 +1582,16 @@ class GameManager extends EventEmitter {
     } else if (outcome.timer === 'day_vote') {
       this.startDayTimeout(guild, game, 'vote');
     }
+
+    // Centralized night phase chaining:
+    // If we reached REVEIL during night → transition to day
+    // If we landed on a night action subphase → start AFK timeout
+    if (game.phase === PHASES.NIGHT && game.subPhase === PHASES.REVEIL) {
+      await this.transitionToDay(guild, game);
+    } else if (game.phase === PHASES.NIGHT && [PHASES.VOLEUR, PHASES.CUPIDON, PHASES.LOUPS, PHASES.LOUP_BLANC, PHASES.SORCIERE, PHASES.VOYANTE, PHASES.SALVATEUR].includes(game.subPhase)) {
+      this.startNightAfkTimeout(guild, game);
+    }
+
     this.scheduleSave();
   }
 
@@ -1631,6 +1641,9 @@ class GameManager extends EventEmitter {
         } else if (currentSub === PHASES.LOUP_BLANC) {
           await this.sendLogged(mainChannel, t('game.afk_white_wolf'), { type: 'afkTimeout' });
           this.logAction(game, 'AFK timeout: loup blanc');
+        } else if (currentSub === PHASES.CUPIDON) {
+          await this.sendLogged(mainChannel, t('game.afk_cupid') || '⏰ Cupidon n\'a pas agi à temps.', { type: 'afkTimeout' });
+          this.logAction(game, 'AFK timeout: cupidon');
         } else if (currentSub === PHASES.VOLEUR) {
           await this.sendLogged(mainChannel, t('game.afk_thief'), { type: 'afkTimeout' });
           this.logAction(game, 'AFK timeout: voleur');
@@ -1639,14 +1652,7 @@ class GameManager extends EventEmitter {
         }
 
         await this.advanceSubPhase(guild, game);
-
-        // Si on est encore en nuit avec une sous-phase qui attend une action, relancer le timer
-        if (game.phase === PHASES.NIGHT && [PHASES.VOLEUR, PHASES.LOUPS, PHASES.LOUP_BLANC, PHASES.SORCIERE, PHASES.VOYANTE, PHASES.SALVATEUR].includes(game.subPhase)) {
-          this.startNightAfkTimeout(guild, game);
-        } else if (game.subPhase === PHASES.REVEIL) {
-          // Transition vers le jour
-          await this.transitionToDay(guild, game);
-        }
+        // REVEIL→Day chain + AFK restart are now handled inside advanceSubPhase
       } catch (e) {
         logger.error('Night AFK timeout error', { error: e.message });
       }
@@ -2073,7 +2079,7 @@ class GameManager extends EventEmitter {
     } catch (e) { logger.warn('Failed to send village night message', { error: e.message }); }
 
     // 6. Lancer le timeout AFK si on est en sous-phase qui attend une action
-    if ([PHASES.VOLEUR, PHASES.LOUPS, PHASES.SALVATEUR].includes(game.subPhase)) {
+    if ([PHASES.VOLEUR, PHASES.CUPIDON, PHASES.LOUPS, PHASES.SALVATEUR].includes(game.subPhase)) {
       this.startNightAfkTimeout(guild, game);
     }
 

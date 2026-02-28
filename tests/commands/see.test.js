@@ -159,7 +159,6 @@ describe('Commande /see', () => {
     gameManager.advanceSubPhase = jest.fn(async () => {
       game.subPhase = PHASES.REVEIL;
     });
-    gameManager.transitionToDay = jest.fn();
 
     const interaction = createMockInteraction({ commandName: 'see', channelId: 'ch-seer', userId: 'seer1' });
     interaction.options.getUser = jest.fn(() => ({ id: 'target1', username: 'Target' }));
@@ -167,6 +166,6 @@ describe('Commande /see', () => {
     await seeCommand.execute(interaction);
 
     expect(gameManager.advanceSubPhase).toHaveBeenCalled();
-    expect(gameManager.transitionToDay).toHaveBeenCalled();
+    // transitionToDay is now called inside advanceSubPhase (centralized), not by see.js
   });
 });

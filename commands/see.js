@@ -97,12 +97,8 @@ module.exports = {
     }
 
     if (game.phase === PHASES.NIGHT) {
-      // Passer par advanceSubPhase (VOYANTE → REVEIL → DAY)
+      // advanceSubPhase handles REVEIL → transitionToDay automatically
       await gameManager.advanceSubPhase(interaction.guild, game);
-      // Si on est en REVEIL, transitionner vers le jour
-      if (game.subPhase === PHASES.REVEIL) {
-        await gameManager.transitionToDay(interaction.guild, game);
-      }
     }
   }
 };
