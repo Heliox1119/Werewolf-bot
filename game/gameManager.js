@@ -1467,15 +1467,18 @@ class GameManager extends EventEmitter {
       return;
     }
 
+    const useReal = game.skipFakePhases;
+    const hasRole = useReal ? this.hasAliveRealRole.bind(this) : this.hasAliveAnyRole.bind(this);
+
     const outcome = await this.runAtomic(game.mainChannelId, (state) => {
       const result = { announce: null, notifyRole: null, timer: null, stopListenRelay: false };
       switch (state.subPhase) {
         case PHASES.VOLEUR:
-          if (this.hasAliveRealRole(state, ROLES.CUPID) && (!state.lovers || state.lovers.length === 0)) {
+          if (hasRole(state, ROLES.CUPID) && (!state.lovers || state.lovers.length === 0)) {
             this._setSubPhase(state, PHASES.CUPIDON);
             result.announce = t('phase.cupid_wakes');
             result.notifyRole = ROLES.CUPID;
-          } else if (this.hasAliveRealRole(state, ROLES.SALVATEUR) && !state.villageRolesPowerless) {
+          } else if (hasRole(state, ROLES.SALVATEUR) && !state.villageRolesPowerless) {
             this._setSubPhase(state, PHASES.SALVATEUR);
             result.announce = t('phase.salvateur_wakes');
             result.notifyRole = ROLES.SALVATEUR;
@@ -1486,7 +1489,7 @@ class GameManager extends EventEmitter {
           }
           break;
         case PHASES.CUPIDON:
-          if (this.hasAliveRealRole(state, ROLES.SALVATEUR) && !state.villageRolesPowerless) {
+          if (hasRole(state, ROLES.SALVATEUR) && !state.villageRolesPowerless) {
             this._setSubPhase(state, PHASES.SALVATEUR);
             result.announce = t('phase.salvateur_wakes');
             result.notifyRole = ROLES.SALVATEUR;
@@ -1504,15 +1507,15 @@ class GameManager extends EventEmitter {
         case PHASES.LOUPS: {
           result.stopListenRelay = true;
           const isOddNight = (state.dayCount || 0) % 2 === 1;
-          if (isOddNight && this.hasAliveRealRole(state, ROLES.WHITE_WOLF)) {
+          if (isOddNight && hasRole(state, ROLES.WHITE_WOLF)) {
             this._setSubPhase(state, PHASES.LOUP_BLANC);
             result.announce = t('phase.white_wolf_wakes');
             result.notifyRole = ROLES.WHITE_WOLF;
-          } else if (this.hasAliveRealRole(state, ROLES.WITCH) && !state.villageRolesPowerless) {
+          } else if (hasRole(state, ROLES.WITCH) && !state.villageRolesPowerless) {
             this._setSubPhase(state, PHASES.SORCIERE);
             result.announce = t('phase.witch_wakes');
             result.notifyRole = ROLES.WITCH;
-          } else if (this.hasAliveRealRole(state, ROLES.SEER) && !state.villageRolesPowerless) {
+          } else if (hasRole(state, ROLES.SEER) && !state.villageRolesPowerless) {
             this._setSubPhase(state, PHASES.VOYANTE);
             result.announce = t('phase.seer_wakes');
             result.notifyRole = ROLES.SEER;
@@ -1523,11 +1526,11 @@ class GameManager extends EventEmitter {
           break;
         }
         case PHASES.LOUP_BLANC:
-          if (this.hasAliveRealRole(state, ROLES.WITCH) && !state.villageRolesPowerless) {
+          if (hasRole(state, ROLES.WITCH) && !state.villageRolesPowerless) {
             this._setSubPhase(state, PHASES.SORCIERE);
             result.announce = t('phase.witch_wakes');
             result.notifyRole = ROLES.WITCH;
-          } else if (this.hasAliveRealRole(state, ROLES.SEER) && !state.villageRolesPowerless) {
+          } else if (hasRole(state, ROLES.SEER) && !state.villageRolesPowerless) {
             this._setSubPhase(state, PHASES.VOYANTE);
             result.announce = t('phase.seer_wakes');
             result.notifyRole = ROLES.SEER;
@@ -1537,7 +1540,7 @@ class GameManager extends EventEmitter {
           }
           break;
         case PHASES.SORCIERE:
-          if (this.hasAliveRealRole(state, ROLES.SEER) && !state.villageRolesPowerless) {
+          if (hasRole(state, ROLES.SEER) && !state.villageRolesPowerless) {
             this._setSubPhase(state, PHASES.VOYANTE);
             result.announce = t('phase.seer_wakes');
             result.notifyRole = ROLES.SEER;
@@ -1556,11 +1559,11 @@ class GameManager extends EventEmitter {
           const captainDead = !captain || !captain.alive;
           if ((isFirstDay && !state.captainId) || captainDead) {
             state.captainId = null;
-            this._setSubPhase(state, PHASES.VOTE_CAPITAINE);
+            this._setSubPhase(state, PHASES.VOTE_CAPITAINE, { allowOutsideAtomic: true });
             result.announce = t('phase.captain_vote_announce');
             result.timer = 'captain';
           } else {
-            this._setSubPhase(state, PHASES.DELIBERATION);
+            this._setSubPhase(state, PHASES.DELIBERATION, { allowOutsideAtomic: true });
             result.announce = t('phase.deliberation_announce');
             result.timer = 'day_deliberation';
           }
@@ -2629,10 +2632,12 @@ class GameManager extends EventEmitter {
 
     const gameChannelNames = [
       'village', '🏘️-village', '🏘-village',
-      'loups', 'wolves', '🐺-loups', '🐺-wolves',
+      'loups', 'wolves', '🐺-loups', '🐺-wolves', 
       'voyante', 'seer', '🔮-voyante', '🔮-seer',
       'sorciere', 'witch', '🧪-sorciere', '🧪-witch',
       'cupidon', 'cupid', '❤️-cupidon', '❤️-cupid', '❤-cupidon', '❤-cupid',
+      'salvateur', '🛡️-salvateur', '🛡-salvateur',
+      'spectateurs', 'spectators', '👻-spectateurs', '👻-spectators',
       'partie', 'voice', '🎤-partie', '🎤-voice'
     ];
 
