@@ -1,20 +1,27 @@
+const { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } = require('discord.js');
 const { t } = require('../utils/i18n');
 const gameManager = require('../game/gameManager');
 
 module.exports = {
-  name: 'debug-toggle-fakephases',
-  description: 'Active/désactive les phases pour les bots/fake joueurs',
+  data: new SlashCommandBuilder()
+    .setName('debug-toggle-fakephases')
+    .setDescription('🐛 [DEBUG] Active/désactive les phases pour les bots/fake joueurs')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
   async execute(interaction) {
-    if (!interaction.member?.permissions?.has('ADMINISTRATOR')) {
-      await interaction.reply({ content: 'Permission refusée.', ephemeral: true });
+    if (!interaction.member.permissions.has('Administrator')) {
+      await interaction.reply({ content: t('error.admin_only'), flags: MessageFlags.Ephemeral });
       return;
     }
-    const game = gameManager.getGameByChannel(interaction.channelId);
+    const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
-      await interaction.reply({ content: 'Aucune partie active.', ephemeral: true });
+      await interaction.reply({ content: t('error.no_game'), flags: MessageFlags.Ephemeral });
       return;
     }
     game.skipFakePhases = !game.skipFakePhases;
-    await interaction.reply({ content: `Phases des bots/fake joueurs: ${game.skipFakePhases ? 'désactivées (skip)' : 'activées (jouées)'}` });
+    const status = game.skipFakePhases
+      ? '⏭️ Phases des bots/fake joueurs: **désactivées** (skip automatique)'
+      : '▶️ Phases des bots/fake joueurs: **activées** (jouées normalement)';
+    await interaction.reply({ content: status });
   }
 };

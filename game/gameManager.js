@@ -867,6 +867,34 @@ class GameManager extends EventEmitter {
     return this.getAliveRealPlayersByRole(game, role).length > 0;
   }
 
+  hasAliveAnyRole(game, role) {
+    return game.players.some(p => p.alive && p.role === role);
+  }
+
+  // Map night subphase → role responsible for acting
+  _subPhaseToRole(subPhase) {
+    switch (subPhase) {
+      case PHASES.VOLEUR: return ROLES.THIEF;
+      case PHASES.CUPIDON: return ROLES.CUPID;
+      case PHASES.SALVATEUR: return ROLES.SALVATEUR;
+      case PHASES.LOUPS: return ROLES.WEREWOLF;
+      case PHASES.LOUP_BLANC: return ROLES.WHITE_WOLF;
+      case PHASES.SORCIERE: return ROLES.WITCH;
+      case PHASES.VOYANTE: return ROLES.SEER;
+      default: return null;
+    }
+  }
+
+  // Returns true if the current subphase should be auto-skipped
+  // because the role holder is a fake player and skipFakePhases is on
+  _shouldAutoSkipSubPhase(game) {
+    if (!game.skipFakePhases) return false;
+    const role = this._subPhaseToRole(game.subPhase);
+    if (!role) return false;
+    // Skip if the role exists but ONLY on fake players (no real player has it)
+    return this.hasAliveAnyRole(game, role) && !this.hasAliveRealRole(game, role);
+  }
+
   /**
    * Announce a player's role when they die (themed embed with role image)
    */
@@ -1138,6 +1166,7 @@ class GameManager extends EventEmitter {
     const release = await this.gameMutex.acquire(game.mainChannelId);
     const snapshot = this._createStateSnapshot(game);
     this.clearDayTimeout(game);
+    let shouldAutoSkip = false;
 
     try {
       // Re-check after acquiring lock
@@ -1234,8 +1263,11 @@ class GameManager extends EventEmitter {
 
       await this.sendLogged(mainChannel, t('game.night_falls'), { type: 'transitionToNight' });
 
-      // Lancer le timeout AFK pour les loups
-      this.startNightAfkTimeout(guild, game);
+      // Lancer le timeout AFK ou auto-skip si sous-phase d'un fake player
+      const shouldAutoSkip = this._shouldAutoSkipSubPhase(game);
+      if (!shouldAutoSkip) {
+        this.startNightAfkTimeout(guild, game);
+      }
 
       this.syncGameToDb(game.mainChannelId, { throwOnError: true });
 
@@ -1244,6 +1276,12 @@ class GameManager extends EventEmitter {
       throw error;
     } finally {
       release();
+    }
+
+    // Auto-skip after mutex is released (avoids deadlock with advanceSubPhase→runAtomic)
+    if (shouldAutoSkip) {
+      logger.info('Auto-skipping night subphase after transitionToNight (fake player)', { subPhase: game.subPhase, channelId: game.mainChannelId });
+      await this.advanceSubPhase(guild, game);
     }
   }
 
@@ -1601,11 +1639,17 @@ class GameManager extends EventEmitter {
 
     // Centralized night phase chaining:
     // If we reached REVEIL during night → transition to day
-    // If we landed on a night action subphase → start AFK timeout
+    // If we landed on a night action subphase → auto-skip if fake, or start AFK timeout
     if (game.phase === PHASES.NIGHT && game.subPhase === PHASES.REVEIL) {
       await this.transitionToDay(guild, game);
     } else if (game.phase === PHASES.NIGHT && [PHASES.VOLEUR, PHASES.CUPIDON, PHASES.LOUPS, PHASES.LOUP_BLANC, PHASES.SORCIERE, PHASES.VOYANTE, PHASES.SALVATEUR].includes(game.subPhase)) {
-      this.startNightAfkTimeout(guild, game);
+      if (this._shouldAutoSkipSubPhase(game)) {
+        // Role only held by fake players → auto-advance
+        logger.info('Auto-skipping subphase (fake player)', { subPhase: game.subPhase, channelId: game.mainChannelId });
+        await this.advanceSubPhase(guild, game);
+      } else {
+        this.startNightAfkTimeout(guild, game);
+      }
     }
 
     this.scheduleSave();
@@ -2096,7 +2140,12 @@ class GameManager extends EventEmitter {
 
     // 6. Lancer le timeout AFK si on est en sous-phase qui attend une action
     if ([PHASES.VOLEUR, PHASES.CUPIDON, PHASES.LOUPS, PHASES.SALVATEUR].includes(game.subPhase)) {
-      this.startNightAfkTimeout(guild, game);
+      if (this._shouldAutoSkipSubPhase(game)) {
+        logger.info('Auto-skipping initial subphase (fake player)', { subPhase: game.subPhase, channelId: game.mainChannelId });
+        await this.advanceSubPhase(guild, game);
+      } else {
+        this.startNightAfkTimeout(guild, game);
+      }
     }
 
     return true;
