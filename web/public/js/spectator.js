@@ -4,7 +4,15 @@
 (function() {
   'use strict';
   const t = (k) => (window.webI18n ? window.webI18n.t(k) : k);
-  function _getLang() { return (document.cookie.match(/lang=(en|fr)/)||[])[1] || 'fr'; }
+  function _getLang() { return (document.cookie.match(/lang=(en|fr)/)||[])[1] || (window.webI18n && window.webI18n.getLang ? window.webI18n.getLang() : 'fr'); }
+
+  // Ensure webI18n translations are loaded before using t()
+  function _ensureTranslations() {
+    if (window.webI18n && window.webI18n.loadTranslations) {
+      return window.webI18n.loadTranslations(_getLang());
+    }
+    return Promise.resolve();
+  }
   function _fmtTime(date) {
     const lang = _getLang();
     const locale = lang === 'en' ? 'en-GB' : 'fr-FR';
@@ -37,7 +45,10 @@
   // In-memory event list (survives within a PJAX session, repopulated from WS or storage)
   let eventCache = loadEventsFromStorage();
 
-  function init(socket) {
+  async function init(socket) {
+    // Wait for translations to be loaded before processing any WS data
+    await _ensureTranslations();
+
     console.log('[spectator] init() called, gameId:', gameId, 'socket connected:', socket.connected);
 
     // Remove old listeners (prevents duplicates on PJAX re-navigation)
