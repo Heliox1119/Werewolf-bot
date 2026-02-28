@@ -628,6 +628,7 @@ module.exports = {
     thief_wakes: "The Thief wakes up...",
     witch_wakes: "The witch wakes up...",
     seer_wakes: "The seer wakes up...",
+    cupid_wakes: "Cupid wakes up...",
     salvateur_wakes: "The Salvateur wakes up...",
     village_wakes: "The village wakes up...",
     captain_vote_announce: "🗳️ Captain vote! Use `/captainvote @player` — when everyone has voted, the captain is elected automatically.",
