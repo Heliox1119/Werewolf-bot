@@ -1,5 +1,40 @@
 # 📝 Changelog - Werewolf Bot
 
+## [3.5.1] - 2026-03-01 - Resilience Hardening — Ready to GUI
+
+### 🛡️ Reboot Resilience — Full State Persistence
+- **Persist `hunter_must_shoot_id`** — Hunter shoot prompt survives reboot, timer re-armed on recovery
+- **Persist `captain_tiebreak_ids`** (JSON) — Captain tiebreak candidates survive reboot, timer re-armed on recovery
+- **Persist `no_kill_cycles`** counter — AFK convergence counter restored from DB after restart
+- **Persist `idiot_revealed`** flag on players table — Idiot du Village keeps lost vote right after reboot
+- **Persist & restore wolf/captain votes** — Wolf and captain votes saved to `votes` table, conditionally restored based on phase/subPhase on recovery
+- **Re-arm all timers on restart** — Night AFK, day deliberation/vote, captain vote, hunter shoot, captain tiebreak timers all re-armed with elapsed-time offset
+
+### 🐛 Bug Fixes
+- **AFK infinite loop** — Added `MAX_NO_KILL_CYCLES: 3` with `endGameByInactivity()` forcing a draw after 3 consecutive no-kill nights
+- **Vote during captain election** — Added `subPhase !== PHASES.VOTE` guard in `/vote` preventing village votes during `VOTE_CAPITAINE`
+
+### 🗄️ Database Migrations
+- `games.hunter_must_shoot_id TEXT` — Stores hunter player ID awaiting shoot
+- `games.captain_tiebreak_ids TEXT` — JSON array of tied captain candidate IDs
+- `games.no_kill_cycles INTEGER DEFAULT 0` — Counter of consecutive no-kill nights
+- `players.idiot_revealed BOOLEAN DEFAULT 0` — Whether Idiot du Village has been revealed
+
+### 🧪 Tests
+- **456 tests** across 26 suites — all passing
+- Vote subPhase guard test added
+
+### 📄 Files Modified
+- **game/gameManager.js** — `syncGameToDb`, `loadState`, `endGameByInactivity`, `advanceSubPhase` persistence hooks
+- **database/db.js** — 4 new column migrations, `updateGame`/`updatePlayer` mappings
+- **database/schema.sql** — 4 new columns added
+- **commands/kill.js** — Wolf vote persistence via `addVoteIfChanged`
+- **commands/vote.js** — SubPhase guard + captain vote persistence
+- **index.js** — Timer re-arm logic for all 5 timer types on recovery
+- **locales/en.js** / **locales/fr.js** — `game.ended_inactivity` i18n keys
+
+---
+
 ## [3.5.0] - 2026-02-28 - i18n Engine Rewrite & Persistent Sessions
 
 ### 🌐 i18n Engine — Architecture Separation

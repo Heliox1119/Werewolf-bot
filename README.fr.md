@@ -5,12 +5,12 @@
 
 Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion vocale automatique, audio d'ambiance et lobby interactif.
 
-![Version](https://img.shields.io/badge/version-3.5.0-blue)
+![Version](https://img.shields.io/badge/version-3.5.1-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)
-![Tests](https://img.shields.io/badge/tests-268%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-456%20passed-brightgreen)
 
 ---
 
@@ -118,7 +118,7 @@ Un bot Discord complet pour jouer au **Loup-Garou de Thiercelieux** avec gestion
 - **Gestion d'erreurs robuste** — safeReply, graceful shutdown, zero crash en production
 - **Réconciliation de guildes** — Purge auto des données de serveurs quittés au démarrage
 - **Sécurité des permissions bot** — Le bot conserve ViewChannel + ManageChannels sur tous les channels cachés
-- **268 tests automatisés** — 23 suites, 0 failures
+- **456 tests automatisés** — 26 suites, 0 failures
 - **Thèmes d'embed** — 4 palettes de couleurs, commande `/theme`, 12 couleurs sémantiques
 
 ---
@@ -360,7 +360,7 @@ Werewolf-bot/
 │   └── alerts.js           # Alertes webhook
 ├── Dockerfile              # Build Docker multi-stage
 ├── docker-compose.yml      # Compose production-ready
-├── tests/                  # 268 tests Jest
+├── tests/                  # 456 tests Jest
 ├── audio/                  # Sons d'ambiance (.mp3)
 └── img/                    # Images des rôles
 ```
@@ -381,6 +381,7 @@ npm run clear-commands      # Réinitialiser les commandes Discord
 
 | Version | Highlights |
 |---------|-----------|
+| **v3.5.1** | 🛡️ Renforcement résilience : persistance complète de l'état au reboot (hunter/tiebreak/votes/idiot), fix convergence AFK, garde subPhase vote, ré-armement 5 timers, 456 tests |
 | **v3.5.0** | 🌐 Réécriture moteur i18n (traductions JSON externes), sessions persistantes (store SQLite + secret auto-généré), 456 tests |
 | **v3.4.1** | 🎨 Refonte visuelle : système de lueur ambiante global, redesign page joueur, UX spectateur, deck de cartes invitation, panneaux dashboard |
 | **v3.4.0** | 🎨 Refonte complète de l'interface web (navigation PJAX, dashboard centre de commandes, vue serveur, classement podium, wiki docs, page d'invitation landing), `/setup wizard` interactif, garde `/create`, fix nettoyage channels multi-guild, réconciliation de guildes, 268 tests |
@@ -429,4 +430,4 @@ Détails complets : [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-**Version** : 3.5.0 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **Docker** : ready · **License** : ISC
+**Version** : 3.5.1 · **Node.js** : ≥ 16.9.0 · **Discord.js** : ^14.25.1 · **Docker** : ready · **License** : ISC

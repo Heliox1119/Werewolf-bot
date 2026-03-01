@@ -5,12 +5,12 @@
 
 A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice management, ambient audio and interactive lobby.
 
-![Version](https://img.shields.io/badge/version-3.5.0-blue)
+![Version](https://img.shields.io/badge/version-3.5.1-blue)
 ![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)
-![Tests](https://img.shields.io/badge/tests-268%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-456%20passed-brightgreen)
 
 ---
 
@@ -118,7 +118,7 @@ A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice ma
 - **Robust error handling** — safeReply, graceful shutdown, zero crash in production
 - **Guild reconciliation** — Auto-purge stale guild data on startup when bot leaves a server
 - **Bot permission safety** — Bot retains ViewChannel + ManageChannels on all hidden game channels
-- **268 automated tests** — 23 suites, 0 failures
+- **456 automated tests** — 26 suites, 0 failures
 - **Embed themes** — 4 color palettes, `/theme` command, 12 semantic colors
 
 ---
@@ -360,7 +360,7 @@ Werewolf-bot/
 │   └── alerts.js           # Webhook alerts
 ├── Dockerfile              # Multi-stage Docker build
 ├── docker-compose.yml      # Production-ready compose
-├── tests/                  # 251 Jest tests
+├── tests/                  # 456 Jest tests
 ├── audio/                  # Ambient sounds (.mp3)
 └── img/                    # Role images
 ```
@@ -381,6 +381,7 @@ npm run clear-commands      # Reset Discord commands
 
 | Version | Highlights |
 |---------|-----------|
+| **v3.5.1** | 🛡️ Resilience hardening: full reboot state persistence (hunter/tiebreak/votes/idiot), AFK convergence fix, vote subPhase guard, 5 timer re-arms, 456 tests |
 | **v3.5.0** | 🌐 i18n engine rewrite (external JSON translations), persistent sessions (SQLite store + auto-generated secret), 456 tests |
 | **v3.4.1** | 🎨 Visual overhaul: global ambient glow system, player page redesign, spectator UX, invite card deck, dashboard data panels |
 | **v3.4.0** | 🎨 Complete web interface redesign (PJAX navigation, command center dashboard, guild overview, podium leaderboard, wiki docs, invite landing page), interactive `/setup wizard`, `/create` setup guard, multi-guild channel cleanup fix, guild reconciliation, 268 tests |
@@ -429,4 +430,4 @@ Full details: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-**Version**: 3.5.0 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **Docker**: ready · **License**: ISC
+**Version**: 3.5.1 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **Docker**: ready · **License**: ISC
