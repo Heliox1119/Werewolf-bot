@@ -3,8 +3,9 @@
  *
  * Validates:
  * - Each of the 7 role panel builders (wolves, seer, witch, cupid, salvateur, white_wolf, thief)
- * - Phase/subPhase field presence
- * - Timer display / absence
+ * - Description-first layout: context + timer + action hint in description
+ * - Only role-specific data uses fields (pack_members, potions, wolf_victim, etc.)
+ * - Timer display / absence in description
  * - Context logic ("your turn" vs "waiting for" vs "day rest" vs "game ended")
  * - Witch: potion status, victim display
  * - Cupid: lovers display, done state
@@ -87,6 +88,15 @@ function createTestGame(overrides = {}) {
 
 const TIMER = { type: 'night-afk:Loups', remainingMs: 60000, totalMs: 120000 };
 const NO_TIMER = null;
+
+function getDescription(embed) {
+  return embed.toJSON().description || '';
+}
+
+function getFooter(embed) {
+  const f = embed.toJSON().footer;
+  return f ? f.text : '';
+}
 
 function getEmbedFields(embed) {
   const json = embed.toJSON();
@@ -213,65 +223,87 @@ describe('buildWolvesPanel', () => {
     expect(field.value).toContain('Grace'); // White Wolf is also in the pack
   });
 
-  test('shows phase fields', () => {
-    const embed = buildWolvesPanel(createTestGame(), TIMER, 'g1');
-    expect(getFieldByName(embed, 'gui.phase')).toBeDefined();
-    expect(getFieldByName(embed, 'gui.sub_phase')).toBeDefined();
-    expect(getFieldByName(embed, 'gui.day')).toBeDefined();
-  });
-
-  test('shows timer when active', () => {
-    const embed = buildWolvesPanel(createTestGame(), TIMER, 'g1');
-    expect(getFieldByName(embed, 'gui.timer')).toBeDefined();
-  });
-
-  test('no timer field when no timer', () => {
-    const embed = buildWolvesPanel(createTestGame(), NO_TIMER, 'g1');
-    expect(getFieldByName(embed, 'gui.timer')).toBeUndefined();
-  });
-
-  test('shows action hint when wolves turn', () => {
+  test('description contains context (your turn during LOUPS)', () => {
     const game = createTestGame({ subPhase: PHASES.LOUPS });
     const embed = buildWolvesPanel(game, NO_TIMER, 'g1');
-    const hintField = getEmbedFields(embed).find(f => f.value.includes('role_panel.wolves_action_hint'));
-    expect(hintField).toBeDefined();
+    expect(getDescription(embed)).toContain('gui.your_turn');
+  });
+
+  test('description contains waiting when not wolves turn', () => {
+    const game = createTestGame({ subPhase: PHASES.VOYANTE });
+    const embed = buildWolvesPanel(game, NO_TIMER, 'g1');
+    expect(getDescription(embed)).toContain('gui.waiting_for');
+  });
+
+  test('shows timer in description when active', () => {
+    const embed = buildWolvesPanel(createTestGame(), TIMER, 'g1');
+    const desc = getDescription(embed);
+    expect(desc).toContain('1:00');
+    expect(desc).toContain('⏱');
+  });
+
+  test('no timer in description when no timer', () => {
+    const embed = buildWolvesPanel(createTestGame(), NO_TIMER, 'g1');
+    expect(getDescription(embed)).not.toContain('⏱');
+  });
+
+  test('shows action hint in description when wolves turn', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUPS });
+    const embed = buildWolvesPanel(game, NO_TIMER, 'g1');
+    expect(getDescription(embed)).toContain('role_panel.wolves_action_hint');
   });
 
   test('no action hint when not wolves turn', () => {
     const game = createTestGame({ subPhase: PHASES.VOYANTE });
     const embed = buildWolvesPanel(game, NO_TIMER, 'g1');
-    const hintField = getEmbedFields(embed).find(f => f.value && f.value.includes('role_panel.wolves_action_hint'));
-    expect(hintField).toBeUndefined();
+    expect(getDescription(embed)).not.toContain('role_panel.wolves_action_hint');
+  });
+
+  test('has NO gui.phase/gui.sub_phase/gui.day fields (description-only)', () => {
+    const embed = buildWolvesPanel(createTestGame(), TIMER, 'g1');
+    expect(getFieldByName(embed, 'gui.phase')).toBeUndefined();
+    expect(getFieldByName(embed, 'gui.sub_phase')).toBeUndefined();
+    expect(getFieldByName(embed, 'gui.day')).toBeUndefined();
   });
 });
 
 // ─── Seer Panel ───────────────────────────────────────────────────
 
 describe('buildSeerPanel', () => {
-  test('shows context field', () => {
-    const embed = buildSeerPanel(createTestGame(), NO_TIMER, 'g1');
-    expect(getFieldByName(embed, 'gui.context')).toBeDefined();
-  });
-
-  test('shows action hint when seer turn', () => {
+  test('description contains context during seer turn', () => {
     const game = createTestGame({ subPhase: PHASES.VOYANTE });
     const embed = buildSeerPanel(game, NO_TIMER, 'g1');
-    const hintField = getEmbedFields(embed).find(f => f.value && f.value.includes('role_panel.seer_action_hint'));
-    expect(hintField).toBeDefined();
+    expect(getDescription(embed)).toContain('gui.your_turn');
+  });
+
+  test('description contains waiting when not seer turn', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUPS });
+    const embed = buildSeerPanel(game, NO_TIMER, 'g1');
+    expect(getDescription(embed)).toContain('gui.waiting_for');
+  });
+
+  test('shows action hint in description when seer turn', () => {
+    const game = createTestGame({ subPhase: PHASES.VOYANTE });
+    const embed = buildSeerPanel(game, NO_TIMER, 'g1');
+    expect(getDescription(embed)).toContain('role_panel.seer_action_hint');
   });
 
   test('no action hint when not seer turn', () => {
     const game = createTestGame({ subPhase: PHASES.LOUPS });
     const embed = buildSeerPanel(game, NO_TIMER, 'g1');
-    const hintField = getEmbedFields(embed).find(f => f.value && f.value.includes('role_panel.seer_action_hint'));
-    expect(hintField).toBeUndefined();
+    expect(getDescription(embed)).not.toContain('role_panel.seer_action_hint');
+  });
+
+  test('has no fields (seer has no role-specific data)', () => {
+    const embed = buildSeerPanel(createTestGame(), NO_TIMER, 'g1');
+    expect(getEmbedFields(embed)).toHaveLength(0);
   });
 });
 
 // ─── Witch Panel ──────────────────────────────────────────────────
 
 describe('buildWitchPanel', () => {
-  test('shows potion status', () => {
+  test('shows potion status field', () => {
     const embed = buildWitchPanel(createTestGame(), NO_TIMER, 'g1');
     const field = getFieldByName(embed, 'role_panel.potions');
     expect(field).toBeDefined();
@@ -306,38 +338,35 @@ describe('buildWitchPanel', () => {
     expect(getFieldByName(embed, 'role_panel.wolf_victim')).toBeUndefined();
   });
 
-  test('shows action hint during witch turn', () => {
+  test('shows action hint in description during witch turn', () => {
     const game = createTestGame({ subPhase: PHASES.SORCIERE });
     const embed = buildWitchPanel(game, NO_TIMER, 'g1');
-    const hintField = getEmbedFields(embed).find(f => f.value && f.value.includes('role_panel.witch_action_hint'));
-    expect(hintField).toBeDefined();
+    expect(getDescription(embed)).toContain('role_panel.witch_action_hint');
+  });
+
+  test('no action hint when not witch turn', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUPS });
+    const embed = buildWitchPanel(game, NO_TIMER, 'g1');
+    expect(getDescription(embed)).not.toContain('role_panel.witch_action_hint');
   });
 });
 
 // ─── Cupid Panel ──────────────────────────────────────────────────
 
 describe('buildCupidPanel', () => {
-  test('shows "your turn" when cupid phase and no lovers', () => {
+  test('shows "your turn" in description when cupid phase and no lovers', () => {
     const game = createTestGame({ subPhase: PHASES.CUPIDON, lovers: [] });
     const embed = buildCupidPanel(game, NO_TIMER, 'g1');
-    const ctx = getFieldByName(embed, 'gui.context');
-    expect(ctx.value).toContain('gui.your_turn');
+    expect(getDescription(embed)).toContain('gui.your_turn');
   });
 
-  test('shows "done" when lovers are chosen', () => {
-    const game = createTestGame({ subPhase: PHASES.CUPIDON, lovers: [['p1', 'p2']] });
-    // lovers.length >= 2 check: lovers is [[p1,p2]] which is length 1
-    // The code checks lovers.length >= 2 — let me check...
-    // Actually looking at the code: const lovers = game.lovers || []; const loversDone = lovers.length >= 2;
-    // game.lovers is [['p1','p2']] — length is 1. But in the actual game state, lovers is stored differently.
-    // Let me use flat lovers: ['p1', 'p2']
-    const game2 = createTestGame({ subPhase: PHASES.CUPIDON, lovers: ['p1', 'p2'] });
-    const embed = buildCupidPanel(game2, NO_TIMER, 'g1');
-    const ctx = getFieldByName(embed, 'gui.context');
-    expect(ctx.value).toContain('role_panel.cupid_done');
+  test('shows "done" in description when lovers are chosen', () => {
+    const game = createTestGame({ subPhase: PHASES.CUPIDON, lovers: ['p1', 'p2'] });
+    const embed = buildCupidPanel(game, NO_TIMER, 'g1');
+    expect(getDescription(embed)).toContain('role_panel.cupid_done');
   });
 
-  test('shows lover names when done', () => {
+  test('shows lover names as field when done', () => {
     const game = createTestGame({ subPhase: PHASES.LOUPS, lovers: ['p1', 'p2'] });
     const embed = buildCupidPanel(game, NO_TIMER, 'g1');
     const field = getFieldByName(embed, 'role_panel.lovers');
@@ -352,11 +381,16 @@ describe('buildCupidPanel', () => {
     expect(getFieldByName(embed, 'role_panel.lovers')).toBeUndefined();
   });
 
-  test('shows action hint during cupid turn', () => {
+  test('shows action hint in description during cupid turn', () => {
     const game = createTestGame({ subPhase: PHASES.CUPIDON, lovers: [] });
     const embed = buildCupidPanel(game, NO_TIMER, 'g1');
-    const hintField = getEmbedFields(embed).find(f => f.value && f.value.includes('role_panel.cupid_action_hint'));
-    expect(hintField).toBeDefined();
+    expect(getDescription(embed)).toContain('role_panel.cupid_action_hint');
+  });
+
+  test('no action hint when lovers already chosen (done state)', () => {
+    const game = createTestGame({ subPhase: PHASES.CUPIDON, lovers: ['p1', 'p2'] });
+    const embed = buildCupidPanel(game, NO_TIMER, 'g1');
+    expect(getDescription(embed)).not.toContain('role_panel.cupid_action_hint');
   });
 });
 
@@ -378,11 +412,16 @@ describe('buildSalvateurPanel', () => {
     expect(field.value).toContain('—');
   });
 
-  test('shows action hint during salvateur turn', () => {
+  test('shows action hint in description during salvateur turn', () => {
     const game = createTestGame({ subPhase: PHASES.SALVATEUR });
     const embed = buildSalvateurPanel(game, NO_TIMER, 'g1');
-    const hintField = getEmbedFields(embed).find(f => f.value && f.value.includes('role_panel.salvateur_action_hint'));
-    expect(hintField).toBeDefined();
+    expect(getDescription(embed)).toContain('role_panel.salvateur_action_hint');
+  });
+
+  test('no action hint when not salvateur turn', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUPS });
+    const embed = buildSalvateurPanel(game, NO_TIMER, 'g1');
+    expect(getDescription(embed)).not.toContain('role_panel.salvateur_action_hint');
   });
 });
 
@@ -404,11 +443,16 @@ describe('buildWhiteWolfPanel', () => {
     expect(field.value).toContain('role_panel.white_wolf_rest_night');
   });
 
-  test('shows action hint during white wolf turn', () => {
+  test('shows action hint in description during white wolf turn', () => {
     const game = createTestGame({ subPhase: PHASES.LOUP_BLANC });
     const embed = buildWhiteWolfPanel(game, NO_TIMER, 'g1');
-    const hintField = getEmbedFields(embed).find(f => f.value && f.value.includes('role_panel.white_wolf_action_hint'));
-    expect(hintField).toBeDefined();
+    expect(getDescription(embed)).toContain('role_panel.white_wolf_action_hint');
+  });
+
+  test('no action hint when not white wolf turn', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUPS });
+    const embed = buildWhiteWolfPanel(game, NO_TIMER, 'g1');
+    expect(getDescription(embed)).not.toContain('role_panel.white_wolf_action_hint');
   });
 });
 
@@ -445,18 +489,22 @@ describe('buildThiefPanel', () => {
     expect(getFieldByName(embed, 'role_panel.thief_cards')).toBeUndefined();
   });
 
-  test('shows "done" after thief phase', () => {
+  test('shows "done" in description after thief phase during NIGHT', () => {
     const game = createTestGame({ subPhase: PHASES.LOUPS, thiefExtraRoles: [] });
     const embed = buildThiefPanel(game, NO_TIMER, 'g1');
-    const ctx = getFieldByName(embed, 'gui.context');
-    expect(ctx.value).toContain('role_panel.thief_done');
+    expect(getDescription(embed)).toContain('role_panel.thief_done');
   });
 
-  test('shows action hint during thief turn with cards', () => {
+  test('shows action hint in description during thief turn with cards', () => {
     const game = createTestGame({ subPhase: PHASES.VOLEUR, thiefExtraRoles: [ROLES.SEER, ROLES.HUNTER] });
     const embed = buildThiefPanel(game, NO_TIMER, 'g1');
-    const hintField = getEmbedFields(embed).find(f => f.value && f.value.includes('role_panel.thief_action_hint'));
-    expect(hintField).toBeDefined();
+    expect(getDescription(embed)).toContain('role_panel.thief_action_hint');
+  });
+
+  test('no action hint when no cards even during thief turn', () => {
+    const game = createTestGame({ subPhase: PHASES.VOLEUR, thiefExtraRoles: [] });
+    const embed = buildThiefPanel(game, NO_TIMER, 'g1');
+    expect(getDescription(embed)).not.toContain('role_panel.thief_action_hint');
   });
 });
 
@@ -493,6 +541,14 @@ describe('Panel consistency', () => {
     const json = embed.toJSON();
     expect(json.color).toBeDefined();
   });
+
+  test.each(roleKeys)('%s panel has NO gui.phase/gui.sub_phase/gui.day fields', (roleKey) => {
+    const game = createTestGame();
+    const embed = buildRolePanel(roleKey, game, TIMER, 'g1');
+    expect(getFieldByName(embed, 'gui.phase')).toBeUndefined();
+    expect(getFieldByName(embed, 'gui.sub_phase')).toBeUndefined();
+    expect(getFieldByName(embed, 'gui.day')).toBeUndefined();
+  });
 });
 
 // ─── Day & Ended state across all panels ──────────────────────────
@@ -500,28 +556,67 @@ describe('Panel consistency', () => {
 describe('Day state across panels', () => {
   const roleKeys = Object.keys(PANEL_BUILDERS);
 
-  test.each(roleKeys)('%s panel shows day rest during DAY', (roleKey) => {
+  test.each(roleKeys)('%s panel shows day rest in description during DAY', (roleKey) => {
     const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.DELIBERATION });
     const embed = buildRolePanel(roleKey, game, NO_TIMER, 'g1');
-    const ctx = getFieldByName(embed, 'gui.context');
-    expect(ctx).toBeDefined();
-    // Cupid with lovers shows "done", all others show "day rest"
+    const desc = getDescription(embed);
+    // Cupid with lovers shows "done", thief during DAY might show regular context
     if (roleKey === 'cupid' && game.lovers.length >= 2) {
-      expect(ctx.value).toContain('role_panel.cupid_done');
-    } else if (roleKey === 'thief') {
-      // After thief phase (which it is during DAY), shows regular day context
-      expect(ctx.value).toContain('role_panel.day_rest');
+      expect(desc).toContain('role_panel.cupid_done');
     } else {
-      expect(ctx.value).toContain('role_panel.day_rest');
+      expect(desc).toContain('role_panel.day_rest');
     }
   });
 
-  test.each(roleKeys)('%s panel shows game ended during ENDED', (roleKey) => {
+  test.each(roleKeys)('%s panel shows game ended in description during ENDED', (roleKey) => {
     const game = createTestGame({ phase: PHASES.ENDED });
     const embed = buildRolePanel(roleKey, game, NO_TIMER, 'g1');
-    const ctx = getFieldByName(embed, 'gui.context');
-    expect(ctx).toBeDefined();
-    // Cupid and thief have special done states but ENDED overrides all
-    expect(ctx.value).toContain('role_panel.game_ended');
+    const desc = getDescription(embed);
+    // Cupid with lovers: cupid_done override. Thief: thief_done override when thiefPhaseOver && NIGHT.
+    // During ENDED, phase is ENDED not NIGHT so thief goes through buildRoleDescription which shows game_ended.
+    // Cupid: loversDone check runs first, but lovers is empty in test game, so falls through to buildRoleDescription.
+    expect(desc).toContain('role_panel.game_ended');
+  });
+});
+
+// ─── Timer in description across all panels ───────────────────────
+
+describe('Timer in description across panels', () => {
+  // Thief has a "done" override during NIGHT when subPhase !== VOLEUR,
+  // which skips the timer. So we exclude thief from the generic test
+  // and test it separately.
+  const roleKeysExceptThief = Object.keys(PANEL_BUILDERS).filter(k => k !== 'thief');
+
+  test.each(roleKeysExceptThief)('%s panel shows timer when provided', (roleKey) => {
+    const game = createTestGame();
+    const embed = buildRolePanel(roleKey, game, TIMER, 'g1');
+    const desc = getDescription(embed);
+    expect(desc).toContain('⏱');
+    expect(desc).toContain('1:00');
+  });
+
+  test('thief panel shows timer during VOLEUR subPhase', () => {
+    const game = createTestGame({ subPhase: PHASES.VOLEUR, thiefExtraRoles: [ROLES.SEER, ROLES.HUNTER] });
+    const embed = buildThiefPanel(game, TIMER, 'g1');
+    const desc = getDescription(embed);
+    expect(desc).toContain('⏱');
+    expect(desc).toContain('1:00');
+  });
+
+  test('thief panel omits timer during done state', () => {
+    // Default game: NIGHT + LOUPS subphase → thief is "done"
+    const game = createTestGame();
+    const embed = buildThiefPanel(game, TIMER, 'g1');
+    expect(getDescription(embed)).not.toContain('⏱');
+  });
+
+  const roleKeys = Object.keys(PANEL_BUILDERS);
+
+  test.each(roleKeys)('%s panel omits timer when null', (roleKey) => {
+    // Use VOLEUR subPhase so thief doesn't enter done override
+    const game = createTestGame({ subPhase: PHASES.VOLEUR });
+    const embed = buildRolePanel(roleKey, game, NO_TIMER, 'g1');
+    const desc = getDescription(embed);
+    expect(desc).not.toContain('⏱');
   });
 });

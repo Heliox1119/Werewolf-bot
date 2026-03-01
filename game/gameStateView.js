@@ -1,6 +1,10 @@
 /**
  * game/gameStateView.js — Pure read-only embed builders for the game GUI.
  *
+ * DESIGN PHILOSOPHY — "Cinematic, not Dashboard":
+ * Each embed is a scene, not a spreadsheet.
+ * Description-first layout, minimal fields, breathing room.
+ *
  * ABSOLUTE CONSTRAINTS:
  * ❌ No buttons or action components
  * ❌ No database writes
@@ -17,6 +21,9 @@ const PHASES = require('./phases');
 const ROLES = require('./roles');
 const { t, translatePhase, translateRole } = require('../utils/i18n');
 const { getColor } = require('../utils/theme');
+
+// ─── Separator ────────────────────────────────────────────────────
+const SEP = '━━━━━━━━━━━━━━━━━━━━';
 
 // ─── SubPhase → Active Roles mapping ──────────────────────────────
 // null  = all alive players are active (village-wide actions)
@@ -115,8 +122,6 @@ function getAnimationFrame(now) {
 
 /**
  * Build an animated timer progress bar with a "shimmer" effect.
- * A bright segment (▓) travels across the filled portion of a dark bar (█)
- * on each refresh tick, creating a ripple animation.
  * @param {number} remainingMs
  * @param {number} totalMs
  * @param {number} length  Bar character count (default 12)
@@ -158,7 +163,6 @@ function getAnimatedSubPhaseEmoji(subPhase, now) {
 
 /**
  * Phase emoji used during a Night↔Day transition window.
- * Shows a sunrise/sunset emoji for ~30 s after the phase flip.
  * @param {string} phase      Current main phase
  * @param {number|null} lastPhaseChangeAt  game._lastPhaseChangeAt timestamp
  * @param {number} [now] Timestamp override
@@ -175,7 +179,6 @@ function getTransitionEmoji(phase, lastPhaseChangeAt, now) {
 
 /**
  * Embed colour during a Night↔Day transition window.
- * Sunrise = warm orange, Sunset = deep navy.
  * @param {string} phase
  * @param {number|null} lastPhaseChangeAt
  * @param {string} guildId
@@ -191,11 +194,31 @@ function getTransitionColor(phase, lastPhaseChangeAt, guildId, now) {
   return getPhaseColor(phase, guildId);
 }
 
-// ─── Status Panel (public, visible to everyone) ──────────────────
+// ─── Status Panel (/status command) ──────────────────────────────
+//
+// This is the DETAILED view — accessed on demand via /status.
+// Shows player lists, counts, captain. Complements the cinematic village panel.
 
 /**
- * Build the main game status embed.
- * Shows: phase, subPhase, dayCount, active timer, alive/dead counts, player list.
+ * Build the game status embed (detailed, on-demand).
+ *
+ * Layout:
+ * ┌─────────────────────────────────┐
+ * │  🌙  Game Status — Day 2       │
+ * ├─────────────────────────────────┤
+ * │  *Night Phase — Wolves*         │   ← Description: phase context
+ * │                                 │
+ * │  ━━━━━━━━━━━━━━━━━━━━           │
+ * │  ⏱ 1:30  █████▓░░░░░           │
+ * ├─────────────────────────────────┤
+ * │  ✅ Alive (3)    │ 💀 Dead (1) │   ← Fields: player lists
+ * │  Alice 👑        │ ~~Charlie~~ │
+ * │  Bob             │             │
+ * │  Diana           │             │
+ * ├─────────────────────────────────┤
+ * │  🔄 Auto-updating              │
+ * └─────────────────────────────────┘
+ *
  * @param {object} game      Game state object (read-only)
  * @param {object|null} timerInfo  { type, remainingMs, totalMs } or null
  * @param {string} guildId
@@ -210,72 +233,85 @@ function buildStatusEmbed(game, timerInfo, guildId) {
   const phaseEmoji = getPhaseEmoji(phase);
   const subPhaseEmoji = getSubPhaseEmoji(subPhase);
 
-  const embed = new EmbedBuilder()
-    .setTitle(`${phaseEmoji} ${t('gui.panel_title', {}, guildId)}`)
-    .setColor(getPhaseColor(phase, guildId))
-    .setTimestamp();
+  // ── Title ──
+  const title = `${phaseEmoji}  ${t('gui.panel_title', {}, guildId)} ━━━ ${t('gui.day', {}, guildId)} ${dayCount}`;
 
-  // Phase / SubPhase / Day
-  embed.addFields(
-    { name: t('gui.phase', {}, guildId), value: `${phaseEmoji} **${translatePhase(phase)}**`, inline: true },
-    { name: t('gui.sub_phase', {}, guildId), value: `${subPhaseEmoji} **${translatePhase(subPhase)}**`, inline: true },
-    { name: t('gui.day', {}, guildId), value: `📅 **${dayCount}**`, inline: true }
-  );
+  // ── Description: phase + sub-phase + timer ──
+  const descLines = [
+    '',
+    `**${phaseEmoji} ${translatePhase(phase)}** — ${subPhaseEmoji} ${translatePhase(subPhase)}`,
+  ];
 
   // Timer
   if (timerInfo && timerInfo.remainingMs > 0) {
     const bar = buildProgressBar(timerInfo.remainingMs, timerInfo.totalMs, 12);
     const timeStr = formatTimeRemaining(timerInfo.remainingMs);
-    embed.addFields({
-      name: `⏱️ ${t('gui.timer', {}, guildId)}`,
-      value: `**${timeStr}** ${bar}`,
-      inline: false
-    });
+    descLines.push('');
+    descLines.push(`⏱ **${timeStr}**  ${bar}`);
   }
 
-  // Counts + Captain
+  const embed = new EmbedBuilder()
+    .setTitle(title)
+    .setDescription(descLines.join('\n'))
+    .setColor(getPhaseColor(phase, guildId))
+    .setTimestamp();
+
+  // ── Captain ──
   const captainText = game.captainId
     ? (() => { const cap = (game.players || []).find(p => p.id === game.captainId); return cap ? cap.username : '—'; })()
     : '—';
 
-  embed.addFields(
-    { name: `🧑 ${t('gui.alive', {}, guildId)}`, value: `**${alive.length}**`, inline: true },
-    { name: `💀 ${t('gui.dead', {}, guildId)}`, value: `**${dead.length}**`, inline: true },
-    { name: `👑 ${t('gui.captain', {}, guildId)}`, value: captainText, inline: true }
-  );
-
-  // Alive player list
+  // ── Player lists (fields) ──
   if (alive.length > 0) {
     const aliveList = alive.map(p => {
       const cap = p.id === game.captainId ? ' 👑' : '';
-      return `✅ ${p.username}${cap}`;
+      return `${p.username}${cap}`;
     }).join('\n');
     embed.addFields({
-      name: `${t('gui.alive_list', {}, guildId)} (${alive.length})`,
+      name: `✅ ${t('gui.alive', {}, guildId)} (${alive.length})`,
       value: aliveList.slice(0, 1024),
-      inline: true
+      inline: true,
     });
   }
 
-  // Dead player list
   if (dead.length > 0) {
-    const deadList = dead.map(p => `💀 ~~${p.username}~~`).join('\n');
+    const deadList = dead.map(p => `~~${p.username}~~`).join('\n');
     embed.addFields({
-      name: `${t('gui.dead_list', {}, guildId)} (${dead.length})`,
+      name: `💀 ${t('gui.dead', {}, guildId)} (${dead.length})`,
       value: deadList.slice(0, 1024),
-      inline: true
+      inline: true,
     });
   }
 
-  embed.setFooter({ text: t('gui.footer', {}, guildId) });
+  // ── Footer ──
+  const footerParts = [`👑 ${t('gui.captain', {}, guildId)}: ${captainText}`];
+  embed.setFooter({ text: footerParts.join('  ·  ') });
   return embed;
 }
 
 // ─── Player View (private / ephemeral) ───────────────────────────
+//
+// Minimal, dramatic. Role identity + context. No clutter.
 
 /**
  * Build the private player view embed.
- * Shows: role, alive/dead, contextual message (your turn / waiting for X).
+ *
+ * Layout:
+ * ┌─────────────────────────────────┐
+ * │  🎭  Your Role                  │
+ * ├─────────────────────────────────┤
+ * │                                 │
+ * │  You are **Werewolf**           │
+ * │                                 │
+ * │  ━━━━━━━━━━━━━━━━━━━━           │
+ * │  🟢 It's your turn to act!     │
+ * │  ⏱ 1:00                        │
+ * │                                 │
+ * │  💘 You are in love 💕          │   (only if applicable)
+ * ├─────────────────────────────────┤
+ * │  👁️ Private view               │
+ * └─────────────────────────────────┘
+ *
  * @param {object} game
  * @param {string} playerId
  * @param {object|null} timerInfo
@@ -286,22 +322,16 @@ function buildPlayerEmbed(game, playerId, timerInfo, guildId) {
   const player = (game.players || []).find(p => p.id === playerId);
   if (!player) return null;
 
-  const embed = new EmbedBuilder()
-    .setTitle(`🎭 ${t('gui.player_title', {}, guildId)}`)
-    .setColor(player.alive ? 0x57F287 : 0xED4245)
-    .setTimestamp();
+  const statusText = player.alive
+    ? `✅ ${t('gui.alive_status', {}, guildId)}`
+    : `💀 ${t('gui.dead_status', {}, guildId)}`;
 
-  // Role + Status
-  embed.addFields(
-    { name: t('gui.your_role', {}, guildId), value: `**${translateRole(player.role)}**`, inline: true },
-    {
-      name: t('gui.your_status', {}, guildId),
-      value: player.alive
-        ? `✅ ${t('gui.alive_status', {}, guildId)}`
-        : `💀 ${t('gui.dead_status', {}, guildId)}`,
-      inline: true
-    }
-  );
+  // ── Description ──
+  const descLines = [
+    '',
+    `${t('gui.your_role', {}, guildId)}: **${translateRole(player.role)}**`,
+    statusText,
+  ];
 
   // Contextual message — only for alive players in an active game
   if (player.alive && game.phase !== PHASES.ENDED) {
@@ -309,51 +339,66 @@ function buildPlayerEmbed(game, playerId, timerInfo, guildId) {
     let contextMsg;
 
     if (activeRoles === null) {
-      // Village-wide action (deliberation, vote, captain vote)
       contextMsg = `🟢 ${t('gui.your_turn', {}, guildId)}`;
     } else if (activeRoles && activeRoles.includes(player.role)) {
-      // This player's role is currently active
       contextMsg = `🟢 ${t('gui.your_turn', {}, guildId)}`;
     } else {
-      // Waiting for another role/phase
       const waitingFor = translatePhase(game.subPhase);
       contextMsg = `⏳ ${t('gui.waiting_for', { name: waitingFor }, guildId)}`;
     }
 
-    embed.addFields({
-      name: t('gui.context', {}, guildId),
-      value: contextMsg,
-      inline: false
-    });
+    descLines.push('');
+    descLines.push(SEP);
+    descLines.push(contextMsg);
 
-    // Timer display
+    // Timer
     if (timerInfo && timerInfo.remainingMs > 0) {
-      embed.addFields({
-        name: `⏱️ ${t('gui.timer', {}, guildId)}`,
-        value: `**${formatTimeRemaining(timerInfo.remainingMs)}**`,
-        inline: true
-      });
+      descLines.push(`⏱ **${formatTimeRemaining(timerInfo.remainingMs)}**`);
     }
   }
 
   // Love indicator
   if (player.inLove) {
-    embed.addFields({
-      name: '💘',
-      value: t('gui.in_love', {}, guildId),
-      inline: true
-    });
+    descLines.push('');
+    descLines.push(`💘 ${t('gui.in_love', {}, guildId)}`);
   }
+
+  const embed = new EmbedBuilder()
+    .setTitle(`🎭 ${t('gui.player_title', {}, guildId)}`)
+    .setDescription(descLines.join('\n'))
+    .setColor(player.alive ? 0x57F287 : 0xED4245)
+    .setTimestamp();
 
   embed.setFooter({ text: t('gui.player_footer', {}, guildId) });
   return embed;
 }
 
 // ─── Spectator View (no roles revealed) ──────────────────────────
+//
+// Atmospheric overview: phase + timer + compact player counts.
+// No roles. No progression bar. Description-first.
 
 /**
  * Build the spectator view embed.
- * Shows: phase, subPhase, dayCount, timer, player list (NO roles), progression.
+ *
+ * Layout:
+ * ┌─────────────────────────────────┐
+ * │  🌙  Spectator View             │
+ * ├─────────────────────────────────┤
+ * │                                 │
+ * │  **Night** — 🐺 Wolves         │
+ * │                                 │
+ * │  ━━━━━━━━━━━━━━━━━━━━           │
+ * │  ⏱ 0:45  ▓▓▓▓░░░░░░           │
+ * ├─────────────────────────────────┤
+ * │  ✅ Alive (3)  │ 💀 Dead (1)   │
+ * │  Alice 👑      │ ~~Charlie~~   │
+ * │  Bob           │               │
+ * │  Diana         │               │
+ * ├─────────────────────────────────┤
+ * │  👻 Spectator mode              │
+ * └─────────────────────────────────┘
+ *
  * @param {object} game
  * @param {object|null} timerInfo
  * @param {string} guildId
@@ -365,63 +410,52 @@ function buildSpectatorEmbed(game, timerInfo, guildId) {
   const dayCount = game.dayCount || 0;
   const alive = (game.players || []).filter(p => p.alive);
   const dead = (game.players || []).filter(p => !p.alive);
-  const total = (game.players || []).length;
   const phaseEmoji = getPhaseEmoji(phase);
   const subPhaseEmoji = getSubPhaseEmoji(subPhase);
 
-  const embed = new EmbedBuilder()
-    .setTitle(`${phaseEmoji} ${t('gui.spectator_title', {}, guildId)}`)
-    .setColor(getPhaseColor(phase, guildId))
-    .setTimestamp();
+  // ── Title ──
+  const title = `${phaseEmoji}  ${t('gui.spectator_title', {}, guildId)}`;
 
-  // Phase row
-  embed.addFields(
-    { name: t('gui.phase', {}, guildId), value: `${phaseEmoji} **${translatePhase(phase)}**`, inline: true },
-    { name: t('gui.sub_phase', {}, guildId), value: `${subPhaseEmoji} **${translatePhase(subPhase)}**`, inline: true },
-    { name: t('gui.day', {}, guildId), value: `📅 **${dayCount}**`, inline: true }
-  );
+  // ── Description ──
+  const descLines = [
+    '',
+    `**${phaseEmoji} ${translatePhase(phase)}** — ${subPhaseEmoji} ${translatePhase(subPhase)}`,
+    `${t('gui.day', {}, guildId)} ${dayCount}`,
+  ];
 
   // Timer
   if (timerInfo && timerInfo.remainingMs > 0) {
     const bar = buildProgressBar(timerInfo.remainingMs, timerInfo.totalMs, 12);
     const timeStr = formatTimeRemaining(timerInfo.remainingMs);
-    embed.addFields({
-      name: `⏱️ ${t('gui.timer', {}, guildId)}`,
-      value: `**${timeStr}** ${bar}`,
-      inline: false
-    });
+    descLines.push('');
+    descLines.push(`⏱ **${timeStr}**  ${bar}`);
   }
 
-  // Player lists (NO ROLES — spectator-safe)
+  const embed = new EmbedBuilder()
+    .setTitle(title)
+    .setDescription(descLines.join('\n'))
+    .setColor(getPhaseColor(phase, guildId))
+    .setTimestamp();
+
+  // ── Player lists (NO ROLES — spectator-safe) ──
   if (alive.length > 0) {
     const aliveList = alive.map(p => {
       const cap = p.id === game.captainId ? ' 👑' : '';
-      return `• ${p.username}${cap}`;
+      return `${p.username}${cap}`;
     }).join('\n');
     embed.addFields({
-      name: `🧑 ${t('gui.alive', {}, guildId)} (${alive.length})`,
+      name: `✅ ${t('gui.alive', {}, guildId)} (${alive.length})`,
       value: aliveList.slice(0, 1024),
-      inline: true
+      inline: true,
     });
   }
 
   if (dead.length > 0) {
-    const deadList = dead.map(p => `• ~~${p.username}~~`).join('\n');
+    const deadList = dead.map(p => `~~${p.username}~~`).join('\n');
     embed.addFields({
       name: `💀 ${t('gui.dead', {}, guildId)} (${dead.length})`,
       value: deadList.slice(0, 1024),
-      inline: true
-    });
-  }
-
-  // Progression bar
-  if (total > 0) {
-    const pct = Math.round((dead.length / total) * 100);
-    const bar = buildProgressBar(total - dead.length, total, 12);
-    embed.addFields({
-      name: t('gui.progression', {}, guildId),
-      value: `${bar} ${pct}% ${t('gui.eliminated', {}, guildId)}`,
-      inline: false
+      inline: true,
     });
   }
 

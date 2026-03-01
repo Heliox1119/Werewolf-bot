@@ -1,6 +1,11 @@
 /**
  * game/roleChannelView.js — Persistent, read-only embed panels for role channels.
  *
+ * DESIGN PHILOSOPHY — "Cinematic, not Dashboard":
+ * Each role panel is a scene — atmospheric, focused, dramatic.
+ * Description-first layout. Phase/SubPhase/Day are NOT repeated as fields.
+ * Only role-specific data gets a field. Context + timer live in description.
+ *
  * ABSOLUTE CONSTRAINTS:
  * ❌ No buttons or action components
  * ❌ No database writes
@@ -17,13 +22,14 @@ const ROLES = require('./roles');
 const { t, translatePhase, translateRole } = require('../utils/i18n');
 const {
   formatTimeRemaining,
-  buildProgressBar,
   getPhaseColor,
-  getPhaseEmoji,
   getSubPhaseEmoji,
   buildAnimatedTimerBar,
   getAnimatedSubPhaseEmoji,
 } = require('./gameStateView');
+
+// ─── Separator ────────────────────────────────────────────────────
+const SEP = '━━━━━━━━━━━━━━━━━━━━';
 
 // ─── Role→Channel mapping helpers ──────────────────────────────────
 
@@ -52,28 +58,7 @@ function getRoleChannels(game) {
   return result;
 }
 
-// ─── Shared header helper ──────────────────────────────────────────
-
-function addPhaseFields(embed, game, timerInfo, guildId) {
-  const phaseEmoji = getPhaseEmoji(game.phase);
-  const subPhaseEmoji = getAnimatedSubPhaseEmoji(game.subPhase);
-
-  embed.addFields(
-    { name: t('gui.phase', {}, guildId), value: `${phaseEmoji} **${translatePhase(game.phase)}**`, inline: true },
-    { name: t('gui.sub_phase', {}, guildId), value: `${subPhaseEmoji} **${translatePhase(game.subPhase)}**`, inline: true },
-    { name: t('gui.day', {}, guildId), value: `📅 **${game.dayCount || 0}**`, inline: true }
-  );
-
-  if (timerInfo && timerInfo.remainingMs > 0) {
-    const bar = buildAnimatedTimerBar(timerInfo.remainingMs, timerInfo.totalMs, 12);
-    const timeStr = formatTimeRemaining(timerInfo.remainingMs);
-    embed.addFields({
-      name: `⏱️ ${t('gui.timer', {}, guildId)}`,
-      value: `**${timeStr}** ${bar}`,
-      inline: false
-    });
-  }
-}
+// ─── Shared helpers ────────────────────────────────────────────────
 
 /**
  * Check whether the given role key is currently the active sub-phase.
@@ -91,6 +76,10 @@ function isRoleTurn(game, roleKey) {
   return (map[roleKey] || []).includes(game.subPhase);
 }
 
+/**
+ * Build the context string for a role panel.
+ * Shows: game ended / day rest / your turn / waiting for.
+ */
 function buildContextField(game, roleKey, guildId) {
   if (game.phase === PHASES.ENDED) {
     return `🏁 ${t('role_panel.game_ended', {}, guildId)}`;
@@ -105,6 +94,34 @@ function buildContextField(game, roleKey, guildId) {
   return `⏳ ${t('gui.waiting_for', { name: waitingFor }, guildId)}`;
 }
 
+/**
+ * Build the description block shared by all role panels.
+ * Contains: context line + timer (if active) + optional action hint.
+ */
+function buildRoleDescription(game, timerInfo, roleKey, guildId, hint) {
+  const subEmoji = getAnimatedSubPhaseEmoji(game.subPhase);
+  const context = buildContextField(game, roleKey, guildId);
+  const lines = [
+    '',
+    `${subEmoji}  ${context}`,
+  ];
+
+  // Timer (only when active)
+  if (timerInfo && timerInfo.remainingMs > 0) {
+    const bar = buildAnimatedTimerBar(timerInfo.remainingMs, timerInfo.totalMs, 12);
+    const timeStr = formatTimeRemaining(timerInfo.remainingMs);
+    lines.push(`⏱ **${timeStr}**  ${bar}`);
+  }
+
+  // Action hint (only when it's this role's turn)
+  if (hint && isRoleTurn(game, roleKey)) {
+    lines.push('');
+    lines.push(`-# ${hint}`);
+  }
+
+  return lines.join('\n');
+}
+
 // ─── Wolves Panel ──────────────────────────────────────────────────
 
 function buildWolvesPanel(game, timerInfo, guildId) {
@@ -115,24 +132,20 @@ function buildWolvesPanel(game, timerInfo, guildId) {
     ? wolves.map(w => `🐺 **${w.username}**`).join('\n')
     : '—';
 
+  const desc = buildRoleDescription(game, timerInfo, 'wolves', guildId,
+    t('role_panel.wolves_action_hint', {}, guildId));
+
   const embed = new EmbedBuilder()
     .setTitle(`🐺 ${t('role_panel.wolves_title', {}, guildId)}`)
+    .setDescription(desc)
     .setColor(getPhaseColor(game.phase, guildId))
     .setTimestamp();
 
-  addPhaseFields(embed, game, timerInfo, guildId);
-
-  embed.addFields(
-    { name: t('role_panel.pack_members', {}, guildId), value: wolfList, inline: false },
-    { name: t('gui.context', {}, guildId), value: buildContextField(game, 'wolves', guildId), inline: false }
-  );
-
-  const hint = isRoleTurn(game, 'wolves')
-    ? t('role_panel.wolves_action_hint', {}, guildId)
-    : '';
-  if (hint) {
-    embed.addFields({ name: '\u200b', value: `-# ${hint}`, inline: false });
-  }
+  embed.addFields({
+    name: t('role_panel.pack_members', {}, guildId),
+    value: wolfList,
+    inline: false,
+  });
 
   embed.setFooter({ text: t('role_panel.footer', {}, guildId) });
   return embed;
@@ -141,23 +154,14 @@ function buildWolvesPanel(game, timerInfo, guildId) {
 // ─── Seer Panel ────────────────────────────────────────────────────
 
 function buildSeerPanel(game, timerInfo, guildId) {
+  const desc = buildRoleDescription(game, timerInfo, 'seer', guildId,
+    t('role_panel.seer_action_hint', {}, guildId));
+
   const embed = new EmbedBuilder()
     .setTitle(`🔮 ${t('role_panel.seer_title', {}, guildId)}`)
+    .setDescription(desc)
     .setColor(getPhaseColor(game.phase, guildId))
     .setTimestamp();
-
-  addPhaseFields(embed, game, timerInfo, guildId);
-
-  embed.addFields(
-    { name: t('gui.context', {}, guildId), value: buildContextField(game, 'seer', guildId), inline: false }
-  );
-
-  const hint = isRoleTurn(game, 'seer')
-    ? t('role_panel.seer_action_hint', {}, guildId)
-    : '';
-  if (hint) {
-    embed.addFields({ name: '\u200b', value: `-# ${hint}`, inline: false });
-  }
 
   embed.setFooter({ text: t('role_panel.footer', {}, guildId) });
   return embed;
@@ -169,18 +173,22 @@ function buildWitchPanel(game, timerInfo, guildId) {
   const potions = game.witchPotions || { life: true, death: true };
   const lifeEmoji = potions.life ? '✅' : '❌';
   const deathEmoji = potions.death ? '✅' : '❌';
-  const potionStatus = `${lifeEmoji} ${t('role_panel.potion_life', {}, guildId)}  •  ${deathEmoji} ${t('role_panel.potion_death', {}, guildId)}`;
+  const potionStatus = `${lifeEmoji} ${t('role_panel.potion_life', {}, guildId)}  ·  ${deathEmoji} ${t('role_panel.potion_death', {}, guildId)}`;
+
+  const desc = buildRoleDescription(game, timerInfo, 'witch', guildId,
+    t('role_panel.witch_action_hint', {}, guildId));
 
   const embed = new EmbedBuilder()
     .setTitle(`🧪 ${t('role_panel.witch_title', {}, guildId)}`)
+    .setDescription(desc)
     .setColor(getPhaseColor(game.phase, guildId))
     .setTimestamp();
 
-  addPhaseFields(embed, game, timerInfo, guildId);
-
-  embed.addFields(
-    { name: t('role_panel.potions', {}, guildId), value: potionStatus, inline: false }
-  );
+  embed.addFields({
+    name: t('role_panel.potions', {}, guildId),
+    value: potionStatus,
+    inline: false,
+  });
 
   // Show victim info only during witch's turn
   if (isRoleTurn(game, 'witch') && game.nightVictim) {
@@ -189,20 +197,9 @@ function buildWitchPanel(game, timerInfo, guildId) {
       embed.addFields({
         name: t('role_panel.wolf_victim', {}, guildId),
         value: `💀 **${victim.username}**`,
-        inline: false
+        inline: false,
       });
     }
-  }
-
-  embed.addFields(
-    { name: t('gui.context', {}, guildId), value: buildContextField(game, 'witch', guildId), inline: false }
-  );
-
-  const hint = isRoleTurn(game, 'witch')
-    ? t('role_panel.witch_action_hint', {}, guildId)
-    : '';
-  if (hint) {
-    embed.addFields({ name: '\u200b', value: `-# ${hint}`, inline: false });
   }
 
   embed.setFooter({ text: t('role_panel.footer', {}, guildId) });
@@ -215,34 +212,36 @@ function buildCupidPanel(game, timerInfo, guildId) {
   const lovers = game.lovers || [];
   const loversDone = lovers.length >= 2;
 
+  // Override context when lovers are chosen
+  let desc;
+  if (loversDone) {
+    const subEmoji = getAnimatedSubPhaseEmoji(game.subPhase);
+    const lines = [
+      '',
+      `${subEmoji}  ✅ ${t('role_panel.cupid_done', {}, guildId)}`,
+    ];
+    desc = lines.join('\n');
+  } else {
+    desc = buildRoleDescription(game, timerInfo, 'cupid', guildId,
+      t('role_panel.cupid_action_hint', {}, guildId));
+  }
+
   const embed = new EmbedBuilder()
     .setTitle(`💘 ${t('role_panel.cupid_title', {}, guildId)}`)
+    .setDescription(desc)
     .setColor(getPhaseColor(game.phase, guildId))
     .setTimestamp();
-
-  addPhaseFields(embed, game, timerInfo, guildId);
 
   if (loversDone) {
     const names = lovers.map(id => {
       const p = (game.players || []).find(pl => pl.id === id);
       return p ? `💕 **${p.username}**` : id;
     }).join('  &  ');
-    embed.addFields({ name: t('role_panel.lovers', {}, guildId), value: names, inline: false });
-  }
-
-  embed.addFields(
-    { name: t('gui.context', {}, guildId), value: loversDone
-      ? `✅ ${t('role_panel.cupid_done', {}, guildId)}`
-      : buildContextField(game, 'cupid', guildId),
-      inline: false
-    }
-  );
-
-  const hint = (!loversDone && isRoleTurn(game, 'cupid'))
-    ? t('role_panel.cupid_action_hint', {}, guildId)
-    : '';
-  if (hint) {
-    embed.addFields({ name: '\u200b', value: `-# ${hint}`, inline: false });
+    embed.addFields({
+      name: t('role_panel.lovers', {}, guildId),
+      value: names,
+      inline: false,
+    });
   }
 
   embed.setFooter({ text: t('role_panel.footer', {}, guildId) });
@@ -256,24 +255,20 @@ function buildSalvateurPanel(game, timerInfo, guildId) {
     ? (() => { const p = (game.players || []).find(pl => pl.id === game.lastProtectedPlayerId); return p ? p.username : '—'; })()
     : '—';
 
+  const desc = buildRoleDescription(game, timerInfo, 'salvateur', guildId,
+    t('role_panel.salvateur_action_hint', {}, guildId));
+
   const embed = new EmbedBuilder()
     .setTitle(`🛡️ ${t('role_panel.salvateur_title', {}, guildId)}`)
+    .setDescription(desc)
     .setColor(getPhaseColor(game.phase, guildId))
     .setTimestamp();
 
-  addPhaseFields(embed, game, timerInfo, guildId);
-
-  embed.addFields(
-    { name: t('role_panel.last_protected', {}, guildId), value: `🚫 **${lastProtected}**`, inline: false },
-    { name: t('gui.context', {}, guildId), value: buildContextField(game, 'salvateur', guildId), inline: false }
-  );
-
-  const hint = isRoleTurn(game, 'salvateur')
-    ? t('role_panel.salvateur_action_hint', {}, guildId)
-    : '';
-  if (hint) {
-    embed.addFields({ name: '\u200b', value: `-# ${hint}`, inline: false });
-  }
+  embed.addFields({
+    name: t('role_panel.last_protected', {}, guildId),
+    value: `🚫 **${lastProtected}**`,
+    inline: false,
+  });
 
   embed.setFooter({ text: t('role_panel.footer', {}, guildId) });
   return embed;
@@ -284,28 +279,24 @@ function buildSalvateurPanel(game, timerInfo, guildId) {
 function buildWhiteWolfPanel(game, timerInfo, guildId) {
   const isOddNight = (game.dayCount || 0) % 2 === 1;
 
+  const desc = buildRoleDescription(game, timerInfo, 'white_wolf', guildId,
+    t('role_panel.white_wolf_action_hint', {}, guildId));
+
   const embed = new EmbedBuilder()
     .setTitle(`🐺🔪 ${t('role_panel.white_wolf_title', {}, guildId)}`)
+    .setDescription(desc)
     .setColor(getPhaseColor(game.phase, guildId))
     .setTimestamp();
-
-  addPhaseFields(embed, game, timerInfo, guildId);
 
   const nightInfo = isOddNight
     ? `🔴 ${t('role_panel.white_wolf_hunt_night', {}, guildId)}`
     : `⚪ ${t('role_panel.white_wolf_rest_night', {}, guildId)}`;
 
-  embed.addFields(
-    { name: t('role_panel.night_type', {}, guildId), value: nightInfo, inline: false },
-    { name: t('gui.context', {}, guildId), value: buildContextField(game, 'white_wolf', guildId), inline: false }
-  );
-
-  const hint = isRoleTurn(game, 'white_wolf')
-    ? t('role_panel.white_wolf_action_hint', {}, guildId)
-    : '';
-  if (hint) {
-    embed.addFields({ name: '\u200b', value: `-# ${hint}`, inline: false });
-  }
+  embed.addFields({
+    name: t('role_panel.night_type', {}, guildId),
+    value: nightInfo,
+    inline: false,
+  });
 
   embed.setFooter({ text: t('role_panel.footer', {}, guildId) });
   return embed;
@@ -316,21 +307,35 @@ function buildWhiteWolfPanel(game, timerInfo, guildId) {
 function buildThiefPanel(game, timerInfo, guildId) {
   const cards = game.thiefExtraRoles || [];
   const hasCards = cards.length === 2;
+  const thiefPhaseOver = game.subPhase !== PHASES.VOLEUR;
+
+  // Override context when thief is done
+  let desc;
+  if (thiefPhaseOver && game.phase === PHASES.NIGHT) {
+    const subEmoji = getAnimatedSubPhaseEmoji(game.subPhase);
+    const lines = [
+      '',
+      `${subEmoji}  ✅ ${t('role_panel.thief_done', {}, guildId)}`,
+    ];
+    desc = lines.join('\n');
+  } else {
+    desc = buildRoleDescription(game, timerInfo, 'thief', guildId,
+      (hasCards ? t('role_panel.thief_action_hint', {}, guildId) : null));
+  }
 
   const embed = new EmbedBuilder()
     .setTitle(`🎭 ${t('role_panel.thief_title', {}, guildId)}`)
+    .setDescription(desc)
     .setColor(getPhaseColor(game.phase, guildId))
     .setTimestamp();
-
-  addPhaseFields(embed, game, timerInfo, guildId);
 
   if (hasCards) {
     const card1 = translateRole(cards[0]);
     const card2 = translateRole(cards[1]);
     embed.addFields({
       name: t('role_panel.thief_cards', {}, guildId),
-      value: `🃏 **${card1}**  •  🃏 **${card2}**`,
-      inline: false
+      value: `🃏 **${card1}**  ·  🃏 **${card2}**`,
+      inline: false,
     });
 
     const bothWolves = (cards[0] === ROLES.WEREWOLF || cards[0] === ROLES.WHITE_WOLF) &&
@@ -339,26 +344,9 @@ function buildThiefPanel(game, timerInfo, guildId) {
       embed.addFields({
         name: '⚠️',
         value: t('role_panel.thief_must_take', {}, guildId),
-        inline: false
+        inline: false,
       });
     }
-  }
-
-  // After the thief phase, the thief has already chosen (or kept their role)
-  const thiefPhaseOver = game.subPhase !== PHASES.VOLEUR;
-  embed.addFields({
-    name: t('gui.context', {}, guildId),
-    value: (thiefPhaseOver && game.phase === PHASES.NIGHT)
-      ? `✅ ${t('role_panel.thief_done', {}, guildId)}`
-      : buildContextField(game, 'thief', guildId),
-    inline: false
-  });
-
-  const hint = (isRoleTurn(game, 'thief') && hasCards)
-    ? t('role_panel.thief_action_hint', {}, guildId)
-    : '';
-  if (hint) {
-    embed.addFields({ name: '\u200b', value: `-# ${hint}`, inline: false });
   }
 
   embed.setFooter({ text: t('role_panel.footer', {}, guildId) });
@@ -406,5 +394,4 @@ module.exports = {
   // Re-export for testing
   isRoleTurn,
   buildContextField,
-  addPhaseFields,
 };

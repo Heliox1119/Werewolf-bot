@@ -3,10 +3,12 @@
  *
  * Validates:
  * - Embed structure correctness for all 3 views (status, player, spectator)
+ * - Description-first layout: phase/timer in description, player lists in fields
  * - Timer display / absence
  * - Role-activation context logic ("your turn" vs "waiting for")
  * - Spectator view does NOT leak roles
  * - Helper functions (formatTime, progressBar, emojis, colors)
+ * - Animation helpers
  */
 
 const PHASES = require('../../game/phases');
@@ -70,6 +72,15 @@ function createTestGame(overrides = {}) {
     ],
     ...overrides,
   };
+}
+
+function getDescription(embed) {
+  return embed.toJSON().description || '';
+}
+
+function getFooter(embed) {
+  const f = embed.toJSON().footer;
+  return f ? f.text : '';
 }
 
 function embedFields(embed) {
@@ -224,97 +235,77 @@ describe('SUB_PHASE_ACTIVE_ROLES', () => {
 // ─── buildStatusEmbed ─────────────────────────────────────────────
 
 describe('buildStatusEmbed', () => {
-  test('returns an embed with phase, subPhase, day fields', () => {
+  test('returns an embed with title containing panel_title and day count', () => {
     const game = createTestGame();
     const embed = buildStatusEmbed(game, null, 'g123');
     const json = embed.toJSON();
-
     expect(json.title).toContain('gui.panel_title');
-
-    const phaseField = findField(embed, 'gui.phase');
-    expect(phaseField).toBeDefined();
-    expect(phaseField.value).toContain(PHASES.NIGHT);
-
-    const subField = findField(embed, 'gui.sub_phase');
-    expect(subField).toBeDefined();
-    expect(subField.value).toContain(PHASES.LOUPS);
-
-    const dayField = findField(embed, 'gui.day');
-    expect(dayField).toBeDefined();
-    expect(dayField.value).toContain('2');
+    expect(json.title).toContain('gui.day');
+    expect(json.title).toContain('2');
   });
 
-  test('shows timer when provided', () => {
+  test('description contains phase and sub-phase names', () => {
+    const game = createTestGame();
+    const embed = buildStatusEmbed(game, null, 'g123');
+    const desc = getDescription(embed);
+    expect(desc).toContain(PHASES.NIGHT);
+    expect(desc).toContain(PHASES.LOUPS);
+  });
+
+  test('shows timer in description when provided', () => {
     const game = createTestGame();
     const timerInfo = { type: 'night-afk', remainingMs: 90_000, totalMs: 120_000 };
     const embed = buildStatusEmbed(game, timerInfo, 'g123');
-
-    const timerField = findField(embed, 'gui.timer');
-    expect(timerField).toBeDefined();
-    expect(timerField.value).toContain('1:30');
-    expect(timerField.value).toContain('▓'); // progress bar
+    const desc = getDescription(embed);
+    expect(desc).toContain('1:30');
+    expect(desc).toContain('▓'); // progress bar
   });
 
   test('does not show timer when null', () => {
     const game = createTestGame();
     const embed = buildStatusEmbed(game, null, 'g123');
-
-    const timerField = findField(embed, 'gui.timer');
-    expect(timerField).toBeUndefined();
+    const desc = getDescription(embed);
+    expect(desc).not.toContain('⏱');
   });
 
   test('does not show timer when remainingMs is 0', () => {
     const game = createTestGame();
     const embed = buildStatusEmbed(game, { type: 'x', remainingMs: 0, totalMs: 120_000 }, 'g123');
-
-    const timerField = findField(embed, 'gui.timer');
-    expect(timerField).toBeUndefined();
+    const desc = getDescription(embed);
+    expect(desc).not.toContain('⏱');
   });
 
-  test('shows correct alive/dead counts', () => {
+  test('shows alive player list as a field', () => {
     const game = createTestGame();
     const embed = buildStatusEmbed(game, null, 'g123');
-
-    // 3 alive players, 1 dead
-    const aliveField = embedFields(embed).find(f => f.name.includes('gui.alive') && f.inline === true && f.value.includes('3'));
+    const aliveField = findField(embed, 'gui.alive');
     expect(aliveField).toBeDefined();
-  });
-
-  test('shows captain name', () => {
-    const game = createTestGame();
-    const embed = buildStatusEmbed(game, null, 'g123');
-
-    const captainField = findField(embed, 'gui.captain');
-    expect(captainField).toBeDefined();
-    expect(captainField.value).toContain('Alice');
-  });
-
-  test('shows — when no captain', () => {
-    const game = createTestGame({ captainId: null });
-    const embed = buildStatusEmbed(game, null, 'g123');
-
-    const captainField = findField(embed, 'gui.captain');
-    expect(captainField.value).toBe('—');
-  });
-
-  test('shows alive player list with captain badge', () => {
-    const game = createTestGame();
-    const embed = buildStatusEmbed(game, null, 'g123');
-
-    const listField = findField(embed, 'gui.alive_list');
-    expect(listField).toBeDefined();
-    expect(listField.value).toContain('Alice');
-    expect(listField.value).toContain('👑'); // captain badge
-    expect(listField.value).toContain('Bob');
+    expect(aliveField.value).toContain('Alice');
+    expect(aliveField.value).toContain('👑'); // captain badge
+    expect(aliveField.value).toContain('Bob');
   });
 
   test('shows dead player list with strikethrough', () => {
     const game = createTestGame();
     const embed = buildStatusEmbed(game, null, 'g123');
-
-    const deadField = findField(embed, 'gui.dead_list');
+    const deadField = findField(embed, 'gui.dead');
     expect(deadField).toBeDefined();
     expect(deadField.value).toContain('~~Charlie~~');
+  });
+
+  test('shows captain name in footer', () => {
+    const game = createTestGame();
+    const embed = buildStatusEmbed(game, null, 'g123');
+    const footer = getFooter(embed);
+    expect(footer).toContain('gui.captain');
+    expect(footer).toContain('Alice');
+  });
+
+  test('shows — when no captain', () => {
+    const game = createTestGame({ captainId: null });
+    const embed = buildStatusEmbed(game, null, 'g123');
+    const footer = getFooter(embed);
+    expect(footer).toContain('—');
   });
 
   test('uses NIGHT color', () => {
@@ -335,18 +326,11 @@ describe('buildStatusEmbed', () => {
     expect(embed.toJSON().color).toBe(0xED4245);
   });
 
-  test('has auto-update footer', () => {
-    const game = createTestGame();
-    const embed = buildStatusEmbed(game, null, 'g123');
-    expect(embed.toJSON().footer.text).toContain('gui.footer');
-  });
-
   test('handles empty players array', () => {
     const game = createTestGame({ players: [], dead: [] });
     const embed = buildStatusEmbed(game, null, 'g123');
     expect(embed).toBeDefined();
-    // No alive/dead list fields
-    const listField = findField(embed, 'gui.alive_list');
+    const listField = findField(embed, 'gui.alive');
     expect(listField).toBeUndefined();
   });
 });
@@ -360,150 +344,114 @@ describe('buildPlayerEmbed', () => {
     expect(embed).toBeNull();
   });
 
-  test('shows role for known player', () => {
+  test('description shows role for known player', () => {
     const game = createTestGame();
     const embed = buildPlayerEmbed(game, 'p1', null, 'g123');
-
-    const roleField = findField(embed, 'gui.your_role');
-    expect(roleField).toBeDefined();
-    expect(roleField.value).toContain(ROLES.WEREWOLF);
+    const desc = getDescription(embed);
+    expect(desc).toContain(ROLES.WEREWOLF);
   });
 
   test('shows alive status with green color', () => {
     const game = createTestGame();
     const embed = buildPlayerEmbed(game, 'p1', null, 'g123');
-    const json = embed.toJSON();
-
-    expect(json.color).toBe(0x57F287);
-    const statusField = findField(embed, 'gui.your_status');
-    expect(statusField.value).toContain('gui.alive_status');
+    expect(embed.toJSON().color).toBe(0x57F287);
+    expect(getDescription(embed)).toContain('gui.alive_status');
   });
 
   test('shows dead status with red color', () => {
     const game = createTestGame();
     const embed = buildPlayerEmbed(game, 'p3', null, 'g123');
-    const json = embed.toJSON();
-
-    expect(json.color).toBe(0xED4245);
-    const statusField = findField(embed, 'gui.your_status');
-    expect(statusField.value).toContain('gui.dead_status');
+    expect(embed.toJSON().color).toBe(0xED4245);
+    expect(getDescription(embed)).toContain('gui.dead_status');
   });
 
   test('shows "your turn" for wolf during LOUPS phase', () => {
     const game = createTestGame({ phase: PHASES.NIGHT, subPhase: PHASES.LOUPS });
     const embed = buildPlayerEmbed(game, 'p1', null, 'g123');
-
-    const contextField = findField(embed, 'gui.context');
-    expect(contextField).toBeDefined();
-    expect(contextField.value).toContain('gui.your_turn');
+    expect(getDescription(embed)).toContain('gui.your_turn');
   });
 
   test('shows "waiting" for seer during LOUPS phase', () => {
     const game = createTestGame({ phase: PHASES.NIGHT, subPhase: PHASES.LOUPS });
     const embed = buildPlayerEmbed(game, 'p2', null, 'g123');
-
-    const contextField = findField(embed, 'gui.context');
-    expect(contextField).toBeDefined();
-    expect(contextField.value).toContain('gui.waiting_for');
+    expect(getDescription(embed)).toContain('gui.waiting_for');
   });
 
   test('shows "your turn" for seer during VOYANTE phase', () => {
     const game = createTestGame({ phase: PHASES.NIGHT, subPhase: PHASES.VOYANTE });
     const embed = buildPlayerEmbed(game, 'p2', null, 'g123');
-
-    const contextField = findField(embed, 'gui.context');
-    expect(contextField.value).toContain('gui.your_turn');
+    expect(getDescription(embed)).toContain('gui.your_turn');
   });
 
   test('shows "your turn" for all alive during VOTE', () => {
     const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.VOTE });
-    // Bob (seer, alive) should be active during village-wide vote
     const embed = buildPlayerEmbed(game, 'p2', null, 'g123');
-
-    const contextField = findField(embed, 'gui.context');
-    expect(contextField.value).toContain('gui.your_turn');
+    expect(getDescription(embed)).toContain('gui.your_turn');
   });
 
   test('shows "your turn" for all alive during DELIBERATION', () => {
     const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.DELIBERATION });
     const embed = buildPlayerEmbed(game, 'p4', null, 'g123');
-
-    const contextField = findField(embed, 'gui.context');
-    expect(contextField.value).toContain('gui.your_turn');
+    expect(getDescription(embed)).toContain('gui.your_turn');
   });
 
   test('shows "your turn" for all alive during VOTE_CAPITAINE', () => {
     const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.VOTE_CAPITAINE });
     const embed = buildPlayerEmbed(game, 'p1', null, 'g123');
-
-    const contextField = findField(embed, 'gui.context');
-    expect(contextField.value).toContain('gui.your_turn');
+    expect(getDescription(embed)).toContain('gui.your_turn');
   });
 
   test('shows "waiting" during REVEIL (empty = transition)', () => {
     const game = createTestGame({ phase: PHASES.NIGHT, subPhase: PHASES.REVEIL });
     const embed = buildPlayerEmbed(game, 'p1', null, 'g123');
-
-    const contextField = findField(embed, 'gui.context');
-    expect(contextField.value).toContain('gui.waiting_for');
+    expect(getDescription(embed)).toContain('gui.waiting_for');
   });
 
   test('no context for dead player', () => {
     const game = createTestGame();
     const embed = buildPlayerEmbed(game, 'p3', null, 'g123');
-
-    const contextField = findField(embed, 'gui.context');
-    expect(contextField).toBeUndefined();
+    expect(getDescription(embed)).not.toContain('gui.your_turn');
+    expect(getDescription(embed)).not.toContain('gui.waiting_for');
   });
 
   test('no context for ENDED phase', () => {
     const game = createTestGame({ phase: PHASES.ENDED });
     const embed = buildPlayerEmbed(game, 'p1', null, 'g123');
-
-    const contextField = findField(embed, 'gui.context');
-    expect(contextField).toBeUndefined();
+    expect(getDescription(embed)).not.toContain('gui.your_turn');
+    expect(getDescription(embed)).not.toContain('gui.waiting_for');
   });
 
-  test('shows timer when provided and player is alive', () => {
+  test('shows timer in description when provided and player is alive', () => {
     const game = createTestGame();
     const timerInfo = { type: 'night-afk', remainingMs: 60_000, totalMs: 120_000 };
     const embed = buildPlayerEmbed(game, 'p1', timerInfo, 'g123');
-
-    const timerField = findField(embed, 'gui.timer');
-    expect(timerField).toBeDefined();
-    expect(timerField.value).toContain('1:00');
+    expect(getDescription(embed)).toContain('1:00');
   });
 
   test('no timer for dead player', () => {
     const game = createTestGame();
     const timerInfo = { type: 'night-afk', remainingMs: 60_000, totalMs: 120_000 };
     const embed = buildPlayerEmbed(game, 'p3', timerInfo, 'g123');
-
-    const timerField = findField(embed, 'gui.timer');
-    expect(timerField).toBeUndefined();
+    expect(getDescription(embed)).not.toContain('⏱');
   });
 
   test('shows love indicator for in-love player', () => {
     const game = createTestGame();
     const embed = buildPlayerEmbed(game, 'p4', null, 'g123');
-
-    const loveField = findField(embed, '💘');
-    expect(loveField).toBeDefined();
-    expect(loveField.value).toContain('gui.in_love');
+    expect(getDescription(embed)).toContain('gui.in_love');
+    expect(getDescription(embed)).toContain('💘');
   });
 
   test('no love indicator for non-in-love player', () => {
     const game = createTestGame();
     const embed = buildPlayerEmbed(game, 'p1', null, 'g123');
-
-    const loveField = findField(embed, '💘');
-    expect(loveField).toBeUndefined();
+    expect(getDescription(embed)).not.toContain('gui.in_love');
   });
 
   test('has private footer', () => {
     const game = createTestGame();
     const embed = buildPlayerEmbed(game, 'p1', null, 'g123');
-    expect(embed.toJSON().footer.text).toContain('gui.player_footer');
+    expect(getFooter(embed)).toContain('gui.player_footer');
   });
 });
 
@@ -513,20 +461,17 @@ describe('buildSpectatorEmbed', () => {
   test('does NOT contain any role names', () => {
     const game = createTestGame();
     const embed = buildSpectatorEmbed(game, null, 'g123');
-    const json = embed.toJSON();
-
-    const allText = JSON.stringify(json);
+    const allText = JSON.stringify(embed.toJSON());
     expect(allText).not.toContain(ROLES.WEREWOLF);
     expect(allText).not.toContain(ROLES.SEER);
     expect(allText).not.toContain(ROLES.VILLAGER);
     expect(allText).not.toContain(ROLES.WITCH);
   });
 
-  test('shows player names', () => {
+  test('shows player names in fields', () => {
     const game = createTestGame();
     const embed = buildSpectatorEmbed(game, null, 'g123');
     const allText = JSON.stringify(embed.toJSON());
-
     expect(allText).toContain('Alice');
     expect(allText).toContain('Bob');
     expect(allText).toContain('Charlie');
@@ -536,8 +481,7 @@ describe('buildSpectatorEmbed', () => {
   test('shows dead with strikethrough', () => {
     const game = createTestGame();
     const embed = buildSpectatorEmbed(game, null, 'g123');
-
-    const deadField = embedFields(embed).find(f => f.name.includes('gui.dead'));
+    const deadField = findField(embed, 'gui.dead');
     expect(deadField).toBeDefined();
     expect(deadField.value).toContain('~~Charlie~~');
   });
@@ -545,54 +489,46 @@ describe('buildSpectatorEmbed', () => {
   test('shows captain badge on alive list', () => {
     const game = createTestGame();
     const embed = buildSpectatorEmbed(game, null, 'g123');
-
-    const aliveField = embedFields(embed).find(f => f.name.includes('gui.alive'));
+    const aliveField = findField(embed, 'gui.alive');
     expect(aliveField).toBeDefined();
     expect(aliveField.value).toContain('👑');
   });
 
-  test('shows phase/subPhase/day', () => {
+  test('description has phase and sub-phase', () => {
     const game = createTestGame();
     const embed = buildSpectatorEmbed(game, null, 'g123');
-
-    expect(findField(embed, 'gui.phase')).toBeDefined();
-    expect(findField(embed, 'gui.sub_phase')).toBeDefined();
-    expect(findField(embed, 'gui.day')).toBeDefined();
+    const desc = getDescription(embed);
+    expect(desc).toContain(PHASES.NIGHT);
+    expect(desc).toContain(PHASES.LOUPS);
   });
 
-  test('shows timer when provided', () => {
+  test('description has day count', () => {
+    const game = createTestGame();
+    const embed = buildSpectatorEmbed(game, null, 'g123');
+    const desc = getDescription(embed);
+    expect(desc).toContain('gui.day');
+    expect(desc).toContain('2');
+  });
+
+  test('shows timer in description when provided', () => {
     const game = createTestGame();
     const timerInfo = { type: 'night-afk', remainingMs: 45_000, totalMs: 120_000 };
     const embed = buildSpectatorEmbed(game, timerInfo, 'g123');
-
-    const timerField = findField(embed, 'gui.timer');
-    expect(timerField).toBeDefined();
-    expect(timerField.value).toContain('0:45');
+    const desc = getDescription(embed);
+    expect(desc).toContain('0:45');
   });
 
   test('no timer when null', () => {
     const game = createTestGame();
     const embed = buildSpectatorEmbed(game, null, 'g123');
-
-    const timerField = findField(embed, 'gui.timer');
-    expect(timerField).toBeUndefined();
-  });
-
-  test('shows progression bar', () => {
-    const game = createTestGame();
-    const embed = buildSpectatorEmbed(game, null, 'g123');
-
-    const progField = findField(embed, 'gui.progression');
-    expect(progField).toBeDefined();
-    expect(progField.value).toContain('gui.eliminated');
-    expect(progField.value).toContain('▓');
-    expect(progField.value).toContain('25%'); // 1 dead out of 4
+    const desc = getDescription(embed);
+    expect(desc).not.toContain('⏱');
   });
 
   test('has spectator footer', () => {
     const game = createTestGame();
     const embed = buildSpectatorEmbed(game, null, 'g123');
-    expect(embed.toJSON().footer.text).toContain('gui.spectator_footer');
+    expect(getFooter(embed)).toContain('gui.spectator_footer');
   });
 
   test('uses night color', () => {
@@ -601,24 +537,11 @@ describe('buildSpectatorEmbed', () => {
     expect(embed.toJSON().color).toBe(0x2C2F33);
   });
 
-  test('handles all dead (100% eliminated)', () => {
-    const game = createTestGame({
-      players: [
-        { id: 'p1', username: 'Alice', role: ROLES.WEREWOLF, alive: false, inLove: false },
-        { id: 'p2', username: 'Bob', role: ROLES.VILLAGER, alive: false, inLove: false },
-      ],
-    });
-    const embed = buildSpectatorEmbed(game, null, 'g123');
-    const progField = findField(embed, 'gui.progression');
-    expect(progField.value).toContain('100%');
-  });
-
   test('handles no players', () => {
     const game = createTestGame({ players: [] });
     const embed = buildSpectatorEmbed(game, null, 'g123');
-    // Should not crash, no player list fields
     expect(embed).toBeDefined();
-    const aliveField = embedFields(embed).find(f => f.name.includes('gui.alive'));
+    const aliveField = findField(embed, 'gui.alive');
     expect(aliveField).toBeUndefined();
   });
 });
@@ -706,8 +629,8 @@ describe('buildAnimatedTimerBar', () => {
   });
 
   test('shimmer position changes with different frames', () => {
-    const bar1 = buildAnimatedTimerBar(60000, 60000, 10, 0);       // frame 0
-    const bar2 = buildAnimatedTimerBar(60000, 60000, 10, 5000);    // frame 1
+    const bar1 = buildAnimatedTimerBar(60000, 60000, 10, 0);
+    const bar2 = buildAnimatedTimerBar(60000, 60000, 10, 5000);
     expect(bar1).not.toBe(bar2);
   });
 
@@ -727,13 +650,13 @@ describe('buildAnimatedTimerBar', () => {
 
 describe('getAnimatedSubPhaseEmoji', () => {
   test('returns base emoji on even frames', () => {
-    const emoji = getAnimatedSubPhaseEmoji(PHASES.LOUPS, 0); // frame 0 (even)
+    const emoji = getAnimatedSubPhaseEmoji(PHASES.LOUPS, 0);
     expect(emoji).toBe('🐺');
     expect(emoji).not.toContain('✨');
   });
 
   test('returns emoji + sparkle on odd frames', () => {
-    const emoji = getAnimatedSubPhaseEmoji(PHASES.LOUPS, 5000); // frame 1 (odd)
+    const emoji = getAnimatedSubPhaseEmoji(PHASES.LOUPS, 5000);
     expect(emoji).toContain('🐺');
     expect(emoji).toContain('✨');
   });
@@ -756,7 +679,7 @@ describe('getAnimatedSubPhaseEmoji', () => {
 describe('getTransitionEmoji', () => {
   test('returns sunrise 🌅 during DAY transition window', () => {
     const now = 10_000;
-    const lastChange = 5_000; // 5 s ago — within 30 s window
+    const lastChange = 5_000;
     expect(getTransitionEmoji(PHASES.DAY, lastChange, now)).toBe('🌅');
   });
 
@@ -768,7 +691,7 @@ describe('getTransitionEmoji', () => {
 
   test('returns normal emoji after transition window expires', () => {
     const now = 100_000;
-    const lastChange = 10_000; // 90 s ago — past 30 s window
+    const lastChange = 10_000;
     expect(getTransitionEmoji(PHASES.DAY, lastChange, now)).toBe('☀️');
     expect(getTransitionEmoji(PHASES.NIGHT, lastChange, now)).toBe('🌙');
   });
@@ -796,9 +719,7 @@ describe('getTransitionColor', () => {
 
   test('returns normal color after transition window', () => {
     const now = 100_000;
-    // DAY normal color
     expect(getTransitionColor(PHASES.DAY, 10_000, 'g1', now)).toBe(0xF9A825);
-    // NIGHT normal color
     expect(getTransitionColor(PHASES.NIGHT, 10_000, 'g1', now)).toBe(0x2C2F33);
   });
 
