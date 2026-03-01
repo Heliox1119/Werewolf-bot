@@ -250,30 +250,6 @@
 
 ---
 
-## 🗺️ Roadmap
-
-### ✅ v3.5.0 — i18n Engine Rewrite & Persistent Sessions *(released 2026-02-28)*
-### ✅ v3.5.1 — Resilience Hardening *(released 2026-03-01)*
-
-### v3.6.0 — GUI & Web Dashboard Overhaul
-- 🖥️ Full web-based game management GUI (create, configure, monitor games from browser)
-- 📊 Advanced analytics: role win rates, player heatmaps, game duration trends
-- 🎨 Premium theme packs (custom card backs, ambient sounds, embed colors)
-- 🐺 Custom roles: full gameplay integration (web editor → game engine)
-- 📱 Mobile-optimized responsive web interface
-
-### v3.7.0 — Social & Community
-- 🏆 Season system with monthly resets and rewards
-- 🏅 Tournaments mode with brackets and seeding
-- 🔗 Cross-guild leaderboard and global rankings
-- 🎙️ In-game voice effects (distortion, reverb per role)
-
-### v4.0.0 — Next Generation
-- 🤖 AI-powered game balancing (role distribution based on player skill)
-- 🎮 New game modes: Speed Werewolf, One Night, Custom Scenarios
-- 🌐 Full localization: ES, DE, PT, IT, JA
-- 📦 Plugin system for community-made roles and mechanics
-
 ## [3.3.0] - 2026-02-24 - Production Readiness & Stability Hardening
 
 ### ✅ Reliability & Determinism
@@ -1275,11 +1251,38 @@ const voiceChannel = guild.channels.cache.get(voiceChannelId) ||
 - [x] Re-arm timers après loadState()
 - [x] 11 nouveaux tests FSM + snapshot (200 total)
 
-### v3.4.0 (Planned)
-- [ ] Support de langues communautaires
-- [ ] Tableau de bord avancé avec graphiques (Chart.js)
-- [ ] Système de tournois
-- [ ] API webhooks pour intégrations tierces
+### v3.2.0 – v3.4.1 (✅ Terminé)
+- [x] GameMutex, FSM transitions, sync transactionnelle, dirty flag
+- [x] Crash simulation matrix, startup lock, WebSocket isolation
+- [x] Refonte complète interface web (PJAX, dashboard, guild, podium, wiki, invite)
+- [x] Refonte visuelle globale (ambient glow, player page, spectator UX, card deck)
+- [x] Composable ability engine pour rôles custom
+
+### v3.5.0 – v3.5.1 (✅ Terminé)
+- [x] Réécriture moteur i18n (JSON externes) + sessions persistantes SQLite
+- [x] Résilience complète au reboot (hunter/tiebreak/votes/idiot/no-kill cycles)
+- [x] Ré-armement de tous les timers au redémarrage
+- [x] Fix convergence AFK (MAX_NO_KILL_CYCLES=3) + garde subPhase vote
+- [x] 456 tests, 26 suites
+
+### v3.6.0 (Planned) — GUI & Web Dashboard Overhaul
+- [ ] Interface web complète de gestion des parties (créer, configurer, monitorer depuis le navigateur)
+- [ ] Analytics avancées : taux de victoire par rôle, heatmaps joueurs, tendances durée
+- [ ] Thèmes premium (dos de cartes custom, sons d'ambiance, couleurs d'embeds)
+- [ ] Rôles custom : intégration gameplay complète (éditeur web → moteur de jeu)
+- [ ] Interface web responsive mobile
+
+### v3.7.0 (Planned) — Social & Community
+- [ ] Système de saisons avec resets mensuels et récompenses
+- [ ] Mode tournois avec brackets et seeding
+- [ ] Classement cross-guild et rankings globaux
+- [ ] Effets vocaux en jeu (distorsion, reverb par rôle)
+
+### v4.0.0 (Planned) — Next Generation
+- [ ] Équilibrage IA (distribution des rôles selon le skill)
+- [ ] Nouveaux modes de jeu : Speed Werewolf, One Night, Custom Scenarios
+- [ ] Localisation complète : ES, DE, PT, IT, JA
+- [ ] Système de plugins pour rôles et mécaniques communautaires
 
 ---
 
