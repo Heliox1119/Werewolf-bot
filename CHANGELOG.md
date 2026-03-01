@@ -1265,8 +1265,8 @@ const voiceChannel = guild.channels.cache.get(voiceChannelId) ||
 - [x] Fix convergence AFK (MAX_NO_KILL_CYCLES=3) + garde subPhase vote
 - [x] 456 tests, 26 suites
 
-### v3.6.0 (Planned) — GUI & Web Dashboard Overhaul
-- [ ] Interface web complète de gestion des parties (créer, configurer, monitorer depuis le navigateur)
+### v3.6.0 (Planned) — GUI Actions & Dashboard Overhaul
+- [ ] Interface GUI Discord pour chaque commande d'action (boutons, menus déroulants, modals) remplaçant les commandes slash en jeu
 - [ ] Analytics avancées : taux de victoire par rôle, heatmaps joueurs, tendances durée
 - [ ] Thèmes premium (dos de cartes custom, sons d'ambiance, couleurs d'embeds)
 - [ ] Rôles custom : intégration gameplay complète (éditeur web → moteur de jeu)
