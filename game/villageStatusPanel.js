@@ -1,12 +1,28 @@
 /**
- * game/villageStatusPanel.js — Persistent master GUI panel for #village.
+ * game/villageStatusPanel.js — Definitive master GUI panel for #village.
  *
- * DESIGN PHILOSOPHY — "Cinematic, not Dashboard":
- * - The embed IS the stage. Phase = understood in < 1 second.
- * - HERO narration in the description — bold, short, iconic.
- * - Timer only when relevant. Counts ultra-compact in footer.
- * - NO player lists (moved to /status). NO tables. NO clutter.
- * - Embed color, title emoji, and narration change with the phase.
+ * DESIGN PHILOSOPHY — Immersive Village Board:
+ * ┌──────────────────────────────────────────────────┐
+ * │ 🌙 NUIT — Jour 3                                │  ← HEADER: phase + day
+ * ├──────────────────────────────────────────────────┤
+ * │ [━━━━━━ villageNuit.png ━━━━━━]                  │  ← IMAGE: ambiance
+ * │                                                  │
+ * │ *Des hurlements déchirent la nuit.*              │  ← NARRATION (strophe)
+ * │ *Les Loups rôdent et choisissent…*               │
+ * │                                                  │
+ * │ ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌                   │
+ * │ 🐺  Les Loups choisissent leur victime…          │  ← FOCUS LINE
+ * │                                                  │
+ * │ > ⏱ **1:30**  █████▓░░░░░                       │  ← TIMER (blockquote)
+ * │                                                  │
+ * ├──────────────────────────────────────────────────┤
+ * │ 📊 État du jeu              │ ✅ Villageois      │  ← FIELDS: state + players
+ * │ 👥 6 · ☠️ 2 · 📅 3 · 👑 Ali │ ✅ Alice 👑        │
+ * │                              │ ✅ Bob             │
+ * │                              │ ✅ Diana           │
+ * ├──────────────────────────────────────────────────┤
+ * │ 🔄 Mise à jour automatique                       │  ← FOOTER
+ * └──────────────────────────────────────────────────┘
  *
  * ABSOLUTE CONSTRAINTS:
  * ❌ No buttons or action components
@@ -31,13 +47,29 @@ const {
 } = require('./gameStateView');
 
 // ─── Separator (light dashed — separates without blocking visual flow) ──
-const SEP = '╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌';
+const SEP = '╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌';
+
+// ─── Phase image mapping ──────────────────────────────────────────
+
+const PHASE_IMAGES = {
+  [PHASES.NIGHT]: 'villageNuit.png',
+  [PHASES.DAY]:   'villageJour.png',
+};
+
+/**
+ * Get the image filename for the current phase.
+ * @param {string} phase
+ * @returns {string|null}  Filename (e.g. 'villageNuit.png') or null for ENDED.
+ */
+function getPhaseImage(phase) {
+  return PHASE_IMAGES[phase] || null;
+}
 
 // ─── Narration line ───────────────────────────────────────────────
 
 /**
- * Build the atmospheric HERO narration — ONE sentence, cinematic, iconic.
- * This is the centerpiece of the embed description.
+ * Build the atmospheric HERO narration — cinematic, iconic.
+ * May contain \n for a 2-line strophe (split at locale level).
  * Derived ONLY from (phase + subPhase). Never reveals secrets.
  *
  * @param {object} game
@@ -135,27 +167,55 @@ function buildFocusMessage(game, guildId) {
   }
 }
 
+// ─── Player list builder ──────────────────────────────────────────
+
+/**
+ * Build the alive player list — compact, no roles, captain badge.
+ * @param {object} game
+ * @returns {string}
+ */
+function buildPlayerList(game) {
+  const alive = (game.players || []).filter(p => p.alive);
+  if (alive.length === 0) return '—';
+  return alive.map(p => {
+    const badge = p.id === game.captainId ? ' 👑' : '';
+    return `✅ ${p.username}${badge}`;
+  }).join('\n');
+}
+
+// ─── Game state summary builder ───────────────────────────────────
+
+/**
+ * Build ultra-compact game state — one field value.
+ * @param {object} game
+ * @param {string} guildId
+ * @returns {string}
+ */
+function buildGameState(game, guildId) {
+  const alive = (game.players || []).filter(p => p.alive);
+  const dead = (game.players || []).filter(p => !p.alive);
+  const dayCount = game.dayCount || 0;
+
+  const captainName = game.captainId
+    ? (() => {
+        const cap = (game.players || []).find(p => p.id === game.captainId);
+        return cap ? cap.username : '—';
+      })()
+    : '—';
+
+  const lines = [
+    `👥 ${t('gui.alive', {}, guildId)} : **${alive.length}**`,
+    `☠️ ${t('gui.dead', {}, guildId)} : **${dead.length}**`,
+    `📅 ${t('gui.day', {}, guildId)} : **${dayCount}**`,
+    `👑 ${t('gui.captain', {}, guildId)} : **${captainName}**`,
+  ];
+  return lines.join('\n');
+}
+
 // ─── Master Embed Builder ─────────────────────────────────────────
 
 /**
- * Build the PREMIUM village master embed — cinematic, minimal, iconic.
- *
- * Layout (max visual breathing room):
- * ┌──────────────────────────────────────────┐
- * │  🌙  NUIT  ·  Jour 3                     │  ← Title: phase · day
- * ├──────────────────────────────────────────┤
- * │                                          │
- * │  *Des hurlements déchirent la nuit.*     │  ← Narration (italic,
- * │  *Les Loups rôdent et choisissent…*      │     multi-line strophe)
- * │                                          │
- * │  ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌                  │
- * │  🐺  Les Loups choisissent leur victime… │  ← Focus line
- * │                                          │
- * │  > ⏱ **1:30**  █████▓░░░░░              │  ← Timer (blockquote)
- * │                                          │
- * ├──────────────────────────────────────────┤
- * │  👥 6 vivants  ·  💀 2  ·  👑 Alice      │  ← Footer: ultra-compact
- * └──────────────────────────────────────────┘
+ * Build the DEFINITIVE village master embed.
  *
  * @param {object} game        Game state (read-only)
  * @param {object|null} timerInfo  { type, remainingMs, totalMs } or null
@@ -165,8 +225,6 @@ function buildFocusMessage(game, guildId) {
 function buildVillageMasterEmbed(game, timerInfo, guildId) {
   const phase = game.phase;
   const dayCount = game.dayCount || 0;
-  const alive = (game.players || []).filter(p => p.alive);
-  const dead = (game.players || []).filter(p => !p.alive);
   const lastChange = game._lastPhaseChangeAt || null;
 
   // ── Phase visuals (animated during transition window) ──
@@ -174,13 +232,16 @@ function buildVillageMasterEmbed(game, timerInfo, guildId) {
   const embedColor = getTransitionColor(phase, lastChange, guildId);
   const subEmoji   = getAnimatedSubPhaseEmoji(game.subPhase);
 
-  // ── Title: "{emoji}  PHASE  ·  Day N" ──
+  // ── Title: "{emoji} PHASE — Jour N" ──
   const phaseLabel = translatePhase(phase).toUpperCase();
   const title = phase === PHASES.ENDED
     ? `${titleEmoji}  ${t('village_panel.title_ended', {}, guildId)}`
-    : `${titleEmoji}  ${phaseLabel}  ·  ${t('gui.day', {}, guildId)} ${dayCount}`;
+    : `${titleEmoji}  ${phaseLabel} — ${t('gui.day', {}, guildId)} ${dayCount}`;
 
-  // ── Description: cinematic narration block ──
+  // ── Image: phase-driven ambiance ──
+  const imageFile = getPhaseImage(phase);
+
+  // ── Description: narration + separator + focus + timer ──
   const narration = buildNarrationLine(game, guildId);
   const focus = buildFocusMessage(game, guildId);
 
@@ -210,21 +271,30 @@ function buildVillageMasterEmbed(game, timerInfo, guildId) {
     .setColor(embedColor)
     .setTimestamp();
 
-  // ── Footer: ultra-compact status line ──
-  const captainName = game.captainId
-    ? (() => {
-        const cap = (game.players || []).find(p => p.id === game.captainId);
-        return cap ? cap.username : null;
-      })()
-    : null;
+  // ── Image: phase ambiance (only for active phases) ──
+  if (imageFile) {
+    embed.setImage(`attachment://${imageFile}`);
+  }
 
-  const footerParts = [
-    `👥 ${alive.length} ${t('gui.alive', {}, guildId)}`,
-    `💀 ${dead.length}`,
-  ];
-  if (captainName && phase !== PHASES.ENDED) footerParts.push(`👑 ${captainName}`);
+  // ── Field: Game State (compact inline) ──
+  embed.addFields({
+    name: `📊 ${t('village_panel.state_header', {}, guildId)}`,
+    value: buildGameState(game, guildId),
+    inline: true,
+  });
 
-  embed.setFooter({ text: footerParts.join('  ·  ') });
+  // ── Field: Alive Players list ──
+  const alivePlayers = (game.players || []).filter(p => p.alive);
+  if (alivePlayers.length > 0) {
+    embed.addFields({
+      name: `🏘️ ${t('village_panel.players_header', {}, guildId)}`,
+      value: buildPlayerList(game),
+      inline: true,
+    });
+  }
+
+  // ── Footer ──
+  embed.setFooter({ text: t('village_panel.footer', {}, guildId) });
   return embed;
 }
 
@@ -232,4 +302,7 @@ module.exports = {
   buildVillageMasterEmbed,
   buildFocusMessage,
   buildNarrationLine,
+  buildPlayerList,
+  buildGameState,
+  getPhaseImage,
 };

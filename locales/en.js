@@ -1073,5 +1073,8 @@ module.exports = {
     narration_witch: "Candlelight flickers in a hidden cottage.\nThe Witch examines her potions…",
     narration_seer: "The stars align.\nThe Seer peers into the crystal ball…",
     narration_wakeup: "Dawn breaks.\nThe village holds its breath… who survived the night?",
+    // Field headers for definitive village panel
+    state_header: "Game State",
+    players_header: "Villagers",
   },
 };

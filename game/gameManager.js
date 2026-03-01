@@ -1058,14 +1058,21 @@ class GameManager extends EventEmitter {
   async _postVillageMasterPanel(guild, game) {
     // Guard: never post if a panel already exists for this game
     if (this.villagePanels.has(game.mainChannelId) && this.villagePanels.get(game.mainChannelId)) return;
-    const { buildVillageMasterEmbed } = require('./villageStatusPanel');
+    const { buildVillageMasterEmbed, getPhaseImage } = require('./villageStatusPanel');
+    const { AttachmentBuilder } = require('discord.js');
     const channelId = game.villageChannelId || game.mainChannelId;
     try {
       const channel = await guild.channels.fetch(channelId);
       if (!channel) return;
       const timerInfo = this.getTimerInfo(game.mainChannelId);
       const embed = buildVillageMasterEmbed(game, timerInfo, game.guildId);
-      const msg = await channel.send({ embeds: [embed] });
+      const sendPayload = { embeds: [embed] };
+      const imageFile = getPhaseImage(game.phase);
+      if (imageFile) {
+        const imagePath = path.join(__dirname, '..', 'img', imageFile);
+        sendPayload.files = [new AttachmentBuilder(imagePath, { name: imageFile })];
+      }
+      const msg = await channel.send(sendPayload);
       this.villagePanels.set(game.mainChannelId, msg);
       // Auto-pin so the panel stays at the top
       try { await msg.pin(); } catch (_) { /* ignore pin failures */ }
@@ -1114,10 +1121,19 @@ class GameManager extends EventEmitter {
     }
 
     try {
-      const { buildVillageMasterEmbed } = require('./villageStatusPanel');
+      const { buildVillageMasterEmbed, getPhaseImage } = require('./villageStatusPanel');
+      const { AttachmentBuilder } = require('discord.js');
       const timerInfo = this.getTimerInfo(gameChannelId);
       const embed = buildVillageMasterEmbed(game, timerInfo, game.guildId);
-      await msg.edit({ embeds: [embed] });
+      const editPayload = { embeds: [embed] };
+      const imageFile = getPhaseImage(game.phase);
+      if (imageFile) {
+        const imagePath = path.join(__dirname, '..', 'img', imageFile);
+        editPayload.files = [new AttachmentBuilder(imagePath, { name: imageFile })];
+      } else {
+        editPayload.files = [];
+      }
+      await msg.edit(editPayload);
     } catch (_) {
       // Message deleted or inaccessible — remove reference
       this.villagePanels.delete(gameChannelId);

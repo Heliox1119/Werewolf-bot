@@ -1,17 +1,18 @@
 /**
- * Tests for game/villageStatusPanel.js — Cinematic master GUI panel for #village.
+ * Tests for game/villageStatusPanel.js — Definitive master GUI panel for #village.
  *
  * Validates:
  * - buildFocusMessage for every phase/subPhase (night, day, ended)
  * - buildNarrationLine for every phase/subPhase (atmospheric narrative)
- * - buildVillageMasterEmbed structure (title, description, color, footer, timestamp)
- * - Description-first layout: narration + focus + timer all in description
- * - No fields (pure description layout)
+ * - buildVillageMasterEmbed structure (title, description, fields, image, footer, timestamp)
+ * - Definitive layout: narration + focus + timer in description, state + players in fields
+ * - Image: phase-driven ambiance (villageNuit.png / villageJour.png)
  * - No secret information leaks (no roles in embed)
  * - Timer presence / absence in description
- * - Footer: compact alive/dead/captain
+ * - Footer: simple auto-updating text
  * - Phase color adaptation & animation transitions
  * - Edge cases (empty players, no captain, no dead)
+ * - getPhaseImage, buildPlayerList, buildGameState unit tests
  */
 
 const PHASES = require('../../game/phases');
@@ -37,6 +38,9 @@ const {
   buildVillageMasterEmbed,
   buildFocusMessage,
   buildNarrationLine,
+  buildPlayerList,
+  buildGameState,
+  getPhaseImage,
 } = require('../../game/villageStatusPanel');
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -252,13 +256,10 @@ describe('buildVillageMasterEmbed — structure', () => {
     expect(embed.toJSON().timestamp).toBeDefined();
   });
 
-  test('has footer with alive/dead counts', () => {
+  test('has footer with auto-updating text', () => {
     const embed = buildVillageMasterEmbed(createTestGame(), NO_TIMER, 'g1');
     const footer = getFooter(embed);
-    expect(footer).toContain('👥');
-    expect(footer).toContain('3'); // 3 alive
-    expect(footer).toContain('💀');
-    expect(footer).toContain('1'); // 1 dead
+    expect(footer).toContain('village_panel.footer');
   });
 
   test('has description with narration', () => {
@@ -280,17 +281,49 @@ describe('buildVillageMasterEmbed — structure', () => {
     expect(desc).toContain('*village_panel.narration_wolves*');
   });
 
-  test('has NO embed fields (description-only layout)', () => {
+  test('has 2 embed fields (state + players) for active game', () => {
     const embed = buildVillageMasterEmbed(createTestGame(), TIMER, 'g1');
     const fields = embed.toJSON().fields || [];
-    expect(fields).toHaveLength(0);
+    expect(fields).toHaveLength(2);
+    expect(fields[0].name).toContain('village_panel.state_header');
+    expect(fields[1].name).toContain('village_panel.players_header');
   });
 
-  test('title uses · separator between phase and day', () => {
+  test('has only state field when no alive players', () => {
+    const game = createTestGame({ players: [] });
+    const embed = buildVillageMasterEmbed(game, TIMER, 'g1');
+    const fields = embed.toJSON().fields || [];
+    expect(fields).toHaveLength(1);
+    expect(fields[0].name).toContain('village_panel.state_header');
+  });
+
+  test('title uses — em-dash separator between phase and day', () => {
     const embed = buildVillageMasterEmbed(createTestGame(), NO_TIMER, 'g1');
     const title = embed.toJSON().title;
-    expect(title).toContain(' · ');
-    expect(title).not.toContain('━━━');
+    expect(title).toContain(' — ');
+    expect(title).not.toContain(' · ');
+  });
+
+  test('sets image attachment for NIGHT phase', () => {
+    const embed = buildVillageMasterEmbed(createTestGame({ phase: PHASES.NIGHT }), NO_TIMER, 'g1');
+    const json = embed.toJSON();
+    expect(json.image).toBeDefined();
+    expect(json.image.url).toBe('attachment://villageNuit.png');
+  });
+
+  test('sets image attachment for DAY phase', () => {
+    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.DELIBERATION });
+    const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
+    const json = embed.toJSON();
+    expect(json.image).toBeDefined();
+    expect(json.image.url).toBe('attachment://villageJour.png');
+  });
+
+  test('no image for ENDED phase', () => {
+    const game = createTestGame({ phase: PHASES.ENDED });
+    const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
+    const json = embed.toJSON();
+    expect(json.image).toBeUndefined();
   });
 });
 
@@ -362,49 +395,27 @@ describe('buildVillageMasterEmbed — narration + focus in description', () => {
   });
 });
 
-// ─── Footer: counts & captain ─────────────────────────────────────
+// ─── Footer: simple auto-update text ──────────────────────────────
 
-describe('buildVillageMasterEmbed — footer counts & captain', () => {
-  test('footer shows alive count', () => {
+describe('buildVillageMasterEmbed — footer', () => {
+  test('footer is simple auto-updating text', () => {
     const embed = buildVillageMasterEmbed(createTestGame(), NO_TIMER, 'g1');
     const footer = getFooter(embed);
-    expect(footer).toContain('3'); // 3 alive
-    expect(footer).toContain('gui.alive');
+    expect(footer).toContain('village_panel.footer');
   });
 
-  test('footer shows dead count', () => {
+  test('footer does NOT contain alive/dead counts (moved to state field)', () => {
     const embed = buildVillageMasterEmbed(createTestGame(), NO_TIMER, 'g1');
     const footer = getFooter(embed);
-    expect(footer).toContain('💀');
-    expect(footer).toContain('1'); // 1 dead
+    expect(footer).not.toContain('👥');
+    expect(footer).not.toContain('💀');
   });
 
-  test('footer shows captain name', () => {
+  test('footer does NOT contain captain info (moved to state field)', () => {
     const embed = buildVillageMasterEmbed(createTestGame(), NO_TIMER, 'g1');
     const footer = getFooter(embed);
-    expect(footer).toContain('👑');
-    expect(footer).toContain('Alice');
-  });
-
-  test('footer hides captain during ENDED phase', () => {
-    const game = createTestGame({ phase: PHASES.ENDED });
-    const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
-    const footer = getFooter(embed);
     expect(footer).not.toContain('👑');
-  });
-
-  test('footer has no captain badge when no captain', () => {
-    const game = createTestGame({ captainId: null });
-    const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
-    const footer = getFooter(embed);
-    expect(footer).not.toContain('👑');
-  });
-
-  test('footer has no captain badge when captain not found', () => {
-    const game = createTestGame({ captainId: 'nonexistent' });
-    const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
-    const footer = getFooter(embed);
-    expect(footer).not.toContain('👑');
+    expect(footer).not.toContain('Alice');
   });
 });
 
@@ -420,13 +431,22 @@ describe('buildVillageMasterEmbed — no secrets', () => {
     expect(json).not.toContain(ROLES.VILLAGER);
   });
 
-  test('does not contain player names (no player lists in master panel)', () => {
+  test('player names appear in fields (player list), not in description', () => {
     const embed = buildVillageMasterEmbed(createTestGame(), NO_TIMER, 'g1');
     const desc = getDescription(embed);
+    // Names must NOT be in description (narration/focus area)
     expect(desc).not.toContain('Alice');
     expect(desc).not.toContain('Bob');
-    expect(desc).not.toContain('Charlie');
     expect(desc).not.toContain('Diana');
+    // But alive names MUST be in the players field
+    const fields = embed.toJSON().fields || [];
+    const playersField = fields.find(f => f.name.includes('village_panel.players_header'));
+    expect(playersField).toBeDefined();
+    expect(playersField.value).toContain('Alice');
+    expect(playersField.value).toContain('Bob');
+    expect(playersField.value).toContain('Diana');
+    // Dead player must NOT appear
+    expect(playersField.value).not.toContain('Charlie');
   });
 });
 
@@ -470,7 +490,11 @@ describe('buildVillageMasterEmbed — edge cases', () => {
   test('handles null captainId', () => {
     const game = createTestGame({ captainId: null });
     const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
-    expect(getFooter(embed)).not.toContain('👑');
+    // State field should show captain as '—'
+    const fields = embed.toJSON().fields || [];
+    const stateField = fields.find(f => f.name.includes('village_panel.state_header'));
+    expect(stateField).toBeDefined();
+    expect(stateField.value).toContain('—');
   });
 
   test('title changes with phase emoji (day)', () => {
@@ -483,6 +507,152 @@ describe('buildVillageMasterEmbed — edge cases', () => {
     const game = createTestGame({ phase: PHASES.ENDED });
     const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
     expect(embed.toJSON().title).toContain('🏁');
+  });
+});
+
+// ─── getPhaseImage ────────────────────────────────────────────────
+
+describe('getPhaseImage', () => {
+  test('returns villageNuit.png for NIGHT', () => {
+    expect(getPhaseImage(PHASES.NIGHT)).toBe('villageNuit.png');
+  });
+
+  test('returns villageJour.png for DAY', () => {
+    expect(getPhaseImage(PHASES.DAY)).toBe('villageJour.png');
+  });
+
+  test('returns null for ENDED', () => {
+    expect(getPhaseImage(PHASES.ENDED)).toBeNull();
+  });
+
+  test('returns null for unknown phase', () => {
+    expect(getPhaseImage('mystery')).toBeNull();
+  });
+});
+
+// ─── buildPlayerList ──────────────────────────────────────────────
+
+describe('buildPlayerList', () => {
+  test('lists alive players with ✅ prefix', () => {
+    const game = createTestGame();
+    const list = buildPlayerList(game);
+    expect(list).toContain('✅ Alice');
+    expect(list).toContain('✅ Bob');
+    expect(list).toContain('✅ Diana');
+  });
+
+  test('does not list dead players', () => {
+    const game = createTestGame();
+    const list = buildPlayerList(game);
+    expect(list).not.toContain('Charlie');
+  });
+
+  test('shows captain badge 👑 next to captain', () => {
+    const game = createTestGame(); // captainId = 'p1' = Alice
+    const list = buildPlayerList(game);
+    expect(list).toContain('Alice 👑');
+  });
+
+  test('no captain badge for non-captain players', () => {
+    const game = createTestGame();
+    const list = buildPlayerList(game);
+    expect(list).not.toContain('Bob 👑');
+    expect(list).not.toContain('Diana 👑');
+  });
+
+  test('returns em-dash for empty players', () => {
+    const game = createTestGame({ players: [] });
+    expect(buildPlayerList(game)).toBe('—');
+  });
+
+  test('returns em-dash when all players are dead', () => {
+    const game = createTestGame({
+      players: [
+        { id: 'p1', username: 'Alice', role: ROLES.WEREWOLF, alive: false },
+        { id: 'p2', username: 'Bob', role: ROLES.SEER, alive: false },
+      ],
+    });
+    expect(buildPlayerList(game)).toBe('—');
+  });
+});
+
+// ─── buildGameState ───────────────────────────────────────────────
+
+describe('buildGameState', () => {
+  test('shows alive count', () => {
+    const state = buildGameState(createTestGame(), 'g1');
+    expect(state).toContain('👥');
+    expect(state).toContain('**3**'); // 3 alive
+  });
+
+  test('shows dead count', () => {
+    const state = buildGameState(createTestGame(), 'g1');
+    expect(state).toContain('☠️');
+    expect(state).toContain('**1**'); // 1 dead
+  });
+
+  test('shows day count', () => {
+    const state = buildGameState(createTestGame(), 'g1');
+    expect(state).toContain('📅');
+    expect(state).toContain('**2**'); // dayCount = 2
+  });
+
+  test('shows captain name', () => {
+    const state = buildGameState(createTestGame(), 'g1');
+    expect(state).toContain('👑');
+    expect(state).toContain('**Alice**');
+  });
+
+  test('shows em-dash when no captain', () => {
+    const state = buildGameState(createTestGame({ captainId: null }), 'g1');
+    expect(state).toContain('👑');
+    expect(state).toContain('**—**');
+  });
+
+  test('shows em-dash when captain not found in players', () => {
+    const state = buildGameState(createTestGame({ captainId: 'nonexistent' }), 'g1');
+    expect(state).toContain('👑');
+    expect(state).toContain('**—**');
+  });
+
+  test('handles empty players', () => {
+    const state = buildGameState(createTestGame({ players: [] }), 'g1');
+    expect(state).toContain('**0**'); // 0 alive
+  });
+});
+
+// ─── State + Players fields in embed ──────────────────────────────
+
+describe('buildVillageMasterEmbed — state & players fields', () => {
+  test('state field contains alive/dead/day/captain', () => {
+    const embed = buildVillageMasterEmbed(createTestGame(), NO_TIMER, 'g1');
+    const fields = embed.toJSON().fields || [];
+    const stateField = fields.find(f => f.name.includes('village_panel.state_header'));
+    expect(stateField).toBeDefined();
+    expect(stateField.value).toContain('👥');
+    expect(stateField.value).toContain('☠️');
+    expect(stateField.value).toContain('📅');
+    expect(stateField.value).toContain('👑');
+    expect(stateField.inline).toBe(true);
+  });
+
+  test('players field shows alive players only', () => {
+    const embed = buildVillageMasterEmbed(createTestGame(), NO_TIMER, 'g1');
+    const fields = embed.toJSON().fields || [];
+    const playersField = fields.find(f => f.name.includes('village_panel.players_header'));
+    expect(playersField).toBeDefined();
+    expect(playersField.value).toContain('Alice');
+    expect(playersField.value).toContain('Bob');
+    expect(playersField.value).toContain('Diana');
+    expect(playersField.value).not.toContain('Charlie'); // dead
+    expect(playersField.inline).toBe(true);
+  });
+
+  test('players field has captain badge', () => {
+    const embed = buildVillageMasterEmbed(createTestGame(), NO_TIMER, 'g1');
+    const fields = embed.toJSON().fields || [];
+    const playersField = fields.find(f => f.name.includes('village_panel.players_header'));
+    expect(playersField.value).toContain('Alice 👑');
   });
 });
 
