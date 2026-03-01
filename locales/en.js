@@ -1042,6 +1042,7 @@ module.exports = {
     title: "Village Panel",
     footer: "🔄 Auto-updating — Village Panel",
     focus_header: "Current Action",
+    narration_header: "Narration",
     // Dynamic focus messages (no secrets!)
     focus_ended: "The game is over.",
     focus_deliberation: "The village is deliberating…",
@@ -1057,5 +1058,20 @@ module.exports = {
     focus_seer: "The Seer is consulting the stars…",
     focus_wakeup: "The village is waking up…",
     focus_waiting: "Waiting…",
+    // Atmospheric narration lines (derived from phase + subPhase)
+    narration_ended: "🏁 The tale has come to an end.",
+    narration_day: "☀️ The sun shines over the village. The villagers discuss in the town square.",
+    narration_captain_vote: "☀️ A new leader must be chosen. The village gathers for the captain election.",
+    narration_deliberation: "☀️ The village debates heatedly. Who among them hides a dark secret?",
+    narration_vote: "☀️ Silence falls. It is time to point fingers and cast your votes.",
+    narration_night: "🌙 Night falls over the village. The shadows come alive…",
+    narration_thief: "🌙 Under cover of darkness, the Thief sneaks between the houses…",
+    narration_cupid: "🌙 Night falls… Cupid draws his bow and two hearts ignite in the dark.",
+    narration_salvateur: "🌙 The night is dangerous. The Salvateur stands guard, ready to protect.",
+    narration_wolves: "🌙 Howls echo through the night. The Wolves prowl and choose their prey…",
+    narration_white_wolf: "🌙 Among the pack, a pale shadow moves alone. The White Wolf hunts its own kind…",
+    narration_witch: "🌙 Candlelight flickers in a hidden cottage. The Witch examines her potions…",
+    narration_seer: "🌙 The stars align. The Seer peers into the crystal ball…",
+    narration_wakeup: "🌅 Dawn breaks. The village holds its breath… who survived the night?",
   },
 };

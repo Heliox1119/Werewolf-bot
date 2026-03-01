@@ -2235,8 +2235,7 @@ class GameManager extends EventEmitter {
             state.wolfVotes = null;
             this.db.clearVotes(game.mainChannelId, 'wolves', state.dayCount || 0);
           });
-          // Wolves AFK is a major narrative event (no victim) — keep in channel
-          await this.sendLogged(mainChannel, t('game.afk_wolves'), { type: 'afkTimeout' });
+          // Wolves AFK — narrative suppressed, visible via village GUI narration panel
           this.logAction(game, 'AFK timeout: loups');
         } else if (currentSub === PHASES.SORCIERE) {
           // Suppressed: visible via /status panel
@@ -2324,13 +2323,9 @@ class GameManager extends EventEmitter {
       try {
         if (game.phase !== PHASES.DAY) return;
 
-        const mainChannel = game.villageChannelId
-          ? await guild.channels.fetch(game.villageChannelId)
-          : await guild.channels.fetch(game.mainChannelId);
-
         if (type === 'deliberation') {
           // End of deliberation → move to vote phase
-          await this.sendLogged(mainChannel, t('game.afk_deliberation'), { type: 'afkTimeout' });
+          // Narrative suppressed — village GUI narration panel shows the transition
           await this.runAtomic(game.mainChannelId, (state) => {
             this.logAction(state, 'Timeout: fin de la délibération');
             this._setSubPhase(state, PHASES.VOTE);
@@ -2339,7 +2334,7 @@ class GameManager extends EventEmitter {
           this.startDayTimeout(guild, game, 'vote');
         } else {
           // End of vote → transition to night (even with 0 votes)
-          await this.sendLogged(mainChannel, t('game.afk_vote'), { type: 'afkTimeout' });
+          // Narrative suppressed — village GUI narration panel shows the transition
           this.logAction(game, 'Timeout: fin du vote');
           await this.transitionToNight(guild, game);
         }

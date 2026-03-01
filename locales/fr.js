@@ -1042,6 +1042,7 @@ module.exports = {
     title: "Panneau du Village",
     footer: "🔄 Mise à jour automatique — Panneau Village",
     focus_header: "En cours",
+    narration_header: "Narration",
     // Dynamic focus messages (no secrets!)
     focus_ended: "La partie est terminée.",
     focus_deliberation: "Le village délibère…",
@@ -1057,5 +1058,20 @@ module.exports = {
     focus_seer: "La Voyante consulte les étoiles…",
     focus_wakeup: "Le village se réveille…",
     focus_waiting: "En attente…",
+    // Atmospheric narration lines (derived from phase + subPhase)
+    narration_ended: "🏁 Le récit touche à sa fin.",
+    narration_day: "☀️ Le soleil brille sur le village. Les villageois discutent sur la place.",
+    narration_captain_vote: "☀️ Un nouveau chef doit être choisi. Le village se réunit pour élire son capitaine.",
+    narration_deliberation: "☀️ Le village débat avec ardeur. Qui parmi eux cache un sombre secret ?",
+    narration_vote: "☀️ Le silence se fait. Il est temps de pointer du doigt et de voter.",
+    narration_night: "🌙 La nuit tombe sur le village. Les ombres s'animent…",
+    narration_thief: "🌙 Sous le couvert de la nuit, le Voleur se faufile entre les maisons…",
+    narration_cupid: "🌙 La nuit tombe… Cupidon bande son arc et deux cœurs s'embrasent dans l'obscurité.",
+    narration_salvateur: "🌙 La nuit est dangereuse. Le Salvateur monte la garde, prêt à protéger.",
+    narration_wolves: "🌙 Des hurlements déchirent la nuit. Les Loups rôdent et choisissent leur proie…",
+    narration_white_wolf: "🌙 Parmi la meute, une ombre pâle se déplace seule. Le Loup Blanc chasse les siens…",
+    narration_witch: "🌙 Une bougie vacille dans une chaumière cachée. La Sorcière examine ses potions…",
+    narration_seer: "🌙 Les étoiles s'alignent. La Voyante scrute sa boule de cristal…",
+    narration_wakeup: "🌅 L'aube se lève. Le village retient son souffle… qui a survécu à la nuit ?",
   },
 };

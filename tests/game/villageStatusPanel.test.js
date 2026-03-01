@@ -3,7 +3,8 @@
  *
  * Validates:
  * - buildFocusMessage for every phase/subPhase (night, day, ended)
- * - buildVillageMasterEmbed structure (title, phase fields, timer, focus, counts, players, footer)
+ * - buildNarrationLine for every phase/subPhase (atmospheric narrative)
+ * - buildVillageMasterEmbed structure (title, phase fields, timer, narration+focus, counts, players, footer)
  * - No secret information leaks (no roles in embed fields)
  * - Timer presence / absence
  * - Captain display
@@ -34,6 +35,7 @@ jest.mock('../../utils/theme', () => ({
 const {
   buildVillageMasterEmbed,
   buildFocusMessage,
+  buildNarrationLine,
 } = require('../../game/villageStatusPanel');
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -204,9 +206,9 @@ describe('buildVillageMasterEmbed — structure', () => {
     expect(findField(embed, 'gui.day').value).toContain('2');
   });
 
-  test('has focus header field', () => {
+  test('has narration header field', () => {
     const embed = buildVillageMasterEmbed(createTestGame(), NO_TIMER, 'g1');
-    expect(findField(embed, 'village_panel.focus_header')).toBeDefined();
+    expect(findField(embed, 'village_panel.narration_header')).toBeDefined();
   });
 });
 
@@ -238,34 +240,48 @@ describe('buildVillageMasterEmbed — timer', () => {
   });
 });
 
-// ─── Focus section ────────────────────────────────────────────────
+// ─── Narration + Focus section ───────────────────────────────────────────
 
-describe('buildVillageMasterEmbed — focus section', () => {
+describe('buildVillageMasterEmbed — narration + focus section', () => {
   test('shows wolves focus during LOUPS', () => {
     const embed = buildVillageMasterEmbed(createTestGame({ subPhase: PHASES.LOUPS }), NO_TIMER, 'g1');
-    const focus = findField(embed, 'village_panel.focus_header');
-    expect(focus.value).toContain('village_panel.focus_wolves');
+    const narr = findField(embed, 'village_panel.narration_header');
+    expect(narr.value).toContain('village_panel.focus_wolves');
   });
 
   test('shows vote focus during VOTE', () => {
     const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.VOTE });
     const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
-    const focus = findField(embed, 'village_panel.focus_header');
-    expect(focus.value).toContain('village_panel.focus_vote');
+    const narr = findField(embed, 'village_panel.narration_header');
+    expect(narr.value).toContain('village_panel.focus_vote');
   });
 
   test('shows ended focus during ENDED', () => {
     const game = createTestGame({ phase: PHASES.ENDED });
     const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
-    const focus = findField(embed, 'village_panel.focus_header');
-    expect(focus.value).toContain('village_panel.focus_ended');
+    const narr = findField(embed, 'village_panel.narration_header');
+    expect(narr.value).toContain('village_panel.focus_ended');
   });
 
   test('shows seer focus during VOYANTE', () => {
     const game = createTestGame({ subPhase: PHASES.VOYANTE });
     const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
-    const focus = findField(embed, 'village_panel.focus_header');
-    expect(focus.value).toContain('village_panel.focus_seer');
+    const narr = findField(embed, 'village_panel.narration_header');
+    expect(narr.value).toContain('village_panel.focus_seer');
+  });
+
+  test('narration line is included in the embed field', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUPS });
+    const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
+    const narr = findField(embed, 'village_panel.narration_header');
+    expect(narr.value).toContain('village_panel.narration_wolves');
+  });
+
+  test('narration and focus are on separate lines', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUPS });
+    const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
+    const narr = findField(embed, 'village_panel.narration_header');
+    expect(narr.value).toContain('\n');
   });
 });
 
@@ -573,5 +589,82 @@ describe('gameManager village panel integration', () => {
     gameManager.destroy();
     expect(gameManager.villagePanels.size).toBe(0);
     expect(gameManager._villagePanelTimers.size).toBe(0);
+  });
+});
+
+// ─── buildNarrationLine ───────────────────────────────────────────
+
+describe('buildNarrationLine', () => {
+  // Phase-level narration
+  test('returns ended narration for ENDED phase', () => {
+    const game = createTestGame({ phase: PHASES.ENDED });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_ended');
+  });
+
+  // Day sub-phases
+  test('returns captain vote narration during VOTE_CAPITAINE', () => {
+    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.VOTE_CAPITAINE });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_captain_vote');
+  });
+
+  test('returns deliberation narration during DELIBERATION', () => {
+    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.DELIBERATION });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_deliberation');
+  });
+
+  test('returns vote narration during VOTE', () => {
+    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.VOTE });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_vote');
+  });
+
+  test('returns day narration for unknown day sub-phase', () => {
+    const game = createTestGame({ phase: PHASES.DAY, subPhase: 'unknown' });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_day');
+  });
+
+  // Night sub-phases
+  test('returns thief narration during VOLEUR', () => {
+    const game = createTestGame({ subPhase: PHASES.VOLEUR });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_thief');
+  });
+
+  test('returns cupid narration during CUPIDON', () => {
+    const game = createTestGame({ subPhase: PHASES.CUPIDON });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_cupid');
+  });
+
+  test('returns salvateur narration during SALVATEUR', () => {
+    const game = createTestGame({ subPhase: PHASES.SALVATEUR });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_salvateur');
+  });
+
+  test('returns wolves narration during LOUPS', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUPS });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_wolves');
+  });
+
+  test('returns white wolf narration during LOUP_BLANC', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUP_BLANC });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_white_wolf');
+  });
+
+  test('returns witch narration during SORCIERE', () => {
+    const game = createTestGame({ subPhase: PHASES.SORCIERE });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_witch');
+  });
+
+  test('returns seer narration during VOYANTE', () => {
+    const game = createTestGame({ subPhase: PHASES.VOYANTE });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_seer');
+  });
+
+  test('returns wakeup narration during REVEIL', () => {
+    const game = createTestGame({ subPhase: PHASES.REVEIL });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_wakeup');
+  });
+
+  test('returns generic night narration for unknown night sub-phase', () => {
+    const game = createTestGame({ subPhase: 'mystery' });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_night');
   });
 });

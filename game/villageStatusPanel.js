@@ -80,6 +80,58 @@ function buildFocusMessage(game, guildId) {
   }
 }
 
+// ─── Narrative line ───────────────────────────────────────────────
+
+/**
+ * Build the atmospheric narrative line derived ONLY from (phase + subPhase).
+ * This replaces ALL channel.send() narrative messages (night falls, day breaks, etc.).
+ * Recalculated on every GUI refresh — never creates a new message.
+ *
+ * @param {object} game
+ * @param {string} guildId
+ * @returns {string}
+ */
+function buildNarrationLine(game, guildId) {
+  if (game.phase === PHASES.ENDED) {
+    return t('village_panel.narration_ended', {}, guildId);
+  }
+
+  if (game.phase === PHASES.DAY) {
+    switch (game.subPhase) {
+      case PHASES.VOTE_CAPITAINE:
+        return t('village_panel.narration_captain_vote', {}, guildId);
+      case PHASES.DELIBERATION:
+        return t('village_panel.narration_deliberation', {}, guildId);
+      case PHASES.VOTE:
+        return t('village_panel.narration_vote', {}, guildId);
+      default:
+        return t('village_panel.narration_day', {}, guildId);
+    }
+  }
+
+  // Night
+  switch (game.subPhase) {
+    case PHASES.VOLEUR:
+      return t('village_panel.narration_thief', {}, guildId);
+    case PHASES.CUPIDON:
+      return t('village_panel.narration_cupid', {}, guildId);
+    case PHASES.SALVATEUR:
+      return t('village_panel.narration_salvateur', {}, guildId);
+    case PHASES.LOUPS:
+      return t('village_panel.narration_wolves', {}, guildId);
+    case PHASES.LOUP_BLANC:
+      return t('village_panel.narration_white_wolf', {}, guildId);
+    case PHASES.SORCIERE:
+      return t('village_panel.narration_witch', {}, guildId);
+    case PHASES.VOYANTE:
+      return t('village_panel.narration_seer', {}, guildId);
+    case PHASES.REVEIL:
+      return t('village_panel.narration_wakeup', {}, guildId);
+    default:
+      return t('village_panel.narration_night', {}, guildId);
+  }
+}
+
 // ─── Master Embed Builder ─────────────────────────────────────────
 
 /**
@@ -136,11 +188,12 @@ function buildVillageMasterEmbed(game, timerInfo, guildId) {
     });
   }
 
-  // ── 📣 Dynamic Focus ──
+  // ── � Narration ──
+  const narration = buildNarrationLine(game, guildId);
   const focusMsg = buildFocusMessage(game, guildId);
   embed.addFields({
-    name: `📣 ${t('village_panel.focus_header', {}, guildId)}`,
-    value: focusMsg,
+    name: `📜 ${t('village_panel.narration_header', {}, guildId)}`,
+    value: `${narration}\n${focusMsg}`,
     inline: false,
   });
 
@@ -200,4 +253,5 @@ function buildVillageMasterEmbed(game, timerInfo, guildId) {
 module.exports = {
   buildVillageMasterEmbed,
   buildFocusMessage,
+  buildNarrationLine,
 };
