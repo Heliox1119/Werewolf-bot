@@ -83,4 +83,16 @@ describe('FSM integrity', () => {
     expect(result).toBe(PHASES.ENDED);
     expect(game.phase).toBe(phaseBefore);
   });
+
+  test('_setPhase sets _lastPhaseChangeAt timestamp', async () => {
+    const game = createMinimalGame(gameManager, 'fsm-phase-ts');
+    const before = Date.now();
+
+    await gameManager.runAtomic(game.mainChannelId, (state) => {
+      gameManager._setPhase(state, PHASES.ENDED);
+    });
+
+    expect(game._lastPhaseChangeAt).toBeGreaterThanOrEqual(before);
+    expect(game._lastPhaseChangeAt).toBeLessThanOrEqual(Date.now());
+  });
 });

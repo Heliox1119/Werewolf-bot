@@ -15,7 +15,15 @@ const { EmbedBuilder } = require('discord.js');
 const PHASES = require('./phases');
 const ROLES = require('./roles');
 const { t, translatePhase, translateRole } = require('../utils/i18n');
-const { formatTimeRemaining, buildProgressBar, getPhaseColor, getPhaseEmoji, getSubPhaseEmoji } = require('./gameStateView');
+const {
+  formatTimeRemaining,
+  buildProgressBar,
+  getPhaseColor,
+  getPhaseEmoji,
+  getSubPhaseEmoji,
+  buildAnimatedTimerBar,
+  getAnimatedSubPhaseEmoji,
+} = require('./gameStateView');
 
 // ─── Role→Channel mapping helpers ──────────────────────────────────
 
@@ -48,7 +56,7 @@ function getRoleChannels(game) {
 
 function addPhaseFields(embed, game, timerInfo, guildId) {
   const phaseEmoji = getPhaseEmoji(game.phase);
-  const subPhaseEmoji = getSubPhaseEmoji(game.subPhase);
+  const subPhaseEmoji = getAnimatedSubPhaseEmoji(game.subPhase);
 
   embed.addFields(
     { name: t('gui.phase', {}, guildId), value: `${phaseEmoji} **${translatePhase(game.phase)}**`, inline: true },
@@ -57,7 +65,7 @@ function addPhaseFields(embed, game, timerInfo, guildId) {
   );
 
   if (timerInfo && timerInfo.remainingMs > 0) {
-    const bar = buildProgressBar(timerInfo.remainingMs, timerInfo.totalMs, 12);
+    const bar = buildAnimatedTimerBar(timerInfo.remainingMs, timerInfo.totalMs, 12);
     const timeStr = formatTimeRemaining(timerInfo.remainingMs);
     embed.addFields({
       name: `⏱️ ${t('gui.timer', {}, guildId)}`,

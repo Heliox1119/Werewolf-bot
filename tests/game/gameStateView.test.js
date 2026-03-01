@@ -38,6 +38,13 @@ const {
   getPhaseColor,
   formatTimeRemaining,
   buildProgressBar,
+  // Animation helpers
+  getAnimationFrame,
+  buildAnimatedTimerBar,
+  getAnimatedSubPhaseEmoji,
+  getTransitionEmoji,
+  getTransitionColor,
+  TRANSITION_DURATION_MS,
   SUB_PHASE_ACTIVE_ROLES,
 } = require('../../game/gameStateView');
 
@@ -652,5 +659,156 @@ describe('getTimerInfo (gameManager)', () => {
     expect(info.remainingMs).toBeGreaterThan(0);
     expect(info.remainingMs).toBeLessThanOrEqual(60_000);
     expect(info.totalMs).toBe(120_000);
+  });
+});
+
+// ─── Animation Helpers ────────────────────────────────────────────
+
+describe('getAnimationFrame', () => {
+  test('returns integer 0-5', () => {
+    const frame = getAnimationFrame(0);
+    expect(Number.isInteger(frame)).toBe(true);
+    expect(frame).toBeGreaterThanOrEqual(0);
+    expect(frame).toBeLessThanOrEqual(5);
+  });
+
+  test('cycles every 5 seconds', () => {
+    const f0 = getAnimationFrame(0);
+    const f1 = getAnimationFrame(5000);
+    const f2 = getAnimationFrame(10000);
+    expect(f0).not.toBe(f1);
+    expect(f1).not.toBe(f2);
+  });
+
+  test('wraps around after 6 frames (30 s)', () => {
+    const f0 = getAnimationFrame(0);
+    const fWrap = getAnimationFrame(30_000);
+    expect(f0).toBe(fWrap);
+  });
+});
+
+describe('buildAnimatedTimerBar', () => {
+  test('returns all empty when totalMs is 0', () => {
+    expect(buildAnimatedTimerBar(0, 0, 10)).toBe('░'.repeat(10));
+  });
+
+  test('returns all empty when remainingMs is 0', () => {
+    expect(buildAnimatedTimerBar(0, 60000, 10)).toBe('░'.repeat(10));
+  });
+
+  test('full bar contains one shimmer character', () => {
+    const bar = buildAnimatedTimerBar(60000, 60000, 10, 0);
+    expect(bar).toHaveLength(10);
+    const shimmerCount = (bar.match(/▓/g) || []).length;
+    const fillCount = (bar.match(/█/g) || []).length;
+    expect(shimmerCount).toBe(1);
+    expect(fillCount).toBe(9);
+  });
+
+  test('shimmer position changes with different frames', () => {
+    const bar1 = buildAnimatedTimerBar(60000, 60000, 10, 0);       // frame 0
+    const bar2 = buildAnimatedTimerBar(60000, 60000, 10, 5000);    // frame 1
+    expect(bar1).not.toBe(bar2);
+  });
+
+  test('partial bar has correct filled/empty ratio', () => {
+    const bar = buildAnimatedTimerBar(30000, 60000, 10, 0);
+    const filled = (bar.match(/[█▓]/g) || []).length;
+    const empty = (bar.match(/░/g) || []).length;
+    expect(filled).toBe(5);
+    expect(empty).toBe(5);
+  });
+
+  test('bar length matches requested length', () => {
+    expect(buildAnimatedTimerBar(60000, 60000, 16, 0)).toHaveLength(16);
+    expect(buildAnimatedTimerBar(30000, 60000, 8, 0)).toHaveLength(8);
+  });
+});
+
+describe('getAnimatedSubPhaseEmoji', () => {
+  test('returns base emoji on even frames', () => {
+    const emoji = getAnimatedSubPhaseEmoji(PHASES.LOUPS, 0); // frame 0 (even)
+    expect(emoji).toBe('🐺');
+    expect(emoji).not.toContain('✨');
+  });
+
+  test('returns emoji + sparkle on odd frames', () => {
+    const emoji = getAnimatedSubPhaseEmoji(PHASES.LOUPS, 5000); // frame 1 (odd)
+    expect(emoji).toContain('🐺');
+    expect(emoji).toContain('✨');
+  });
+
+  test('alternates between frames', () => {
+    const even = getAnimatedSubPhaseEmoji(PHASES.VOYANTE, 0);
+    const odd = getAnimatedSubPhaseEmoji(PHASES.VOYANTE, 5000);
+    expect(even).not.toBe(odd);
+  });
+
+  test('works for all known sub-phases', () => {
+    for (const sp of PHASES.SUB_PHASES) {
+      const emoji = getAnimatedSubPhaseEmoji(sp, 0);
+      expect(typeof emoji).toBe('string');
+      expect(emoji.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('getTransitionEmoji', () => {
+  test('returns sunrise 🌅 during DAY transition window', () => {
+    const now = 10_000;
+    const lastChange = 5_000; // 5 s ago — within 30 s window
+    expect(getTransitionEmoji(PHASES.DAY, lastChange, now)).toBe('🌅');
+  });
+
+  test('returns new moon 🌑 during NIGHT transition window', () => {
+    const now = 10_000;
+    const lastChange = 5_000;
+    expect(getTransitionEmoji(PHASES.NIGHT, lastChange, now)).toBe('🌑');
+  });
+
+  test('returns normal emoji after transition window expires', () => {
+    const now = 100_000;
+    const lastChange = 10_000; // 90 s ago — past 30 s window
+    expect(getTransitionEmoji(PHASES.DAY, lastChange, now)).toBe('☀️');
+    expect(getTransitionEmoji(PHASES.NIGHT, lastChange, now)).toBe('🌙');
+  });
+
+  test('returns normal emoji when lastPhaseChangeAt is null', () => {
+    expect(getTransitionEmoji(PHASES.DAY, null, 10_000)).toBe('☀️');
+    expect(getTransitionEmoji(PHASES.NIGHT, null, 10_000)).toBe('🌙');
+  });
+
+  test('ENDED always returns flag', () => {
+    expect(getTransitionEmoji(PHASES.ENDED, Date.now(), Date.now())).toBe('🏁');
+  });
+});
+
+describe('getTransitionColor', () => {
+  test('returns sunrise orange during DAY transition', () => {
+    const now = 10_000;
+    expect(getTransitionColor(PHASES.DAY, 5_000, 'g1', now)).toBe(0xFF8C00);
+  });
+
+  test('returns sunset navy during NIGHT transition', () => {
+    const now = 10_000;
+    expect(getTransitionColor(PHASES.NIGHT, 5_000, 'g1', now)).toBe(0x1A1A2E);
+  });
+
+  test('returns normal color after transition window', () => {
+    const now = 100_000;
+    // DAY normal color
+    expect(getTransitionColor(PHASES.DAY, 10_000, 'g1', now)).toBe(0xF9A825);
+    // NIGHT normal color
+    expect(getTransitionColor(PHASES.NIGHT, 10_000, 'g1', now)).toBe(0x2C2F33);
+  });
+
+  test('returns normal color when lastPhaseChangeAt is null', () => {
+    expect(getTransitionColor(PHASES.DAY, null, 'g1', 10_000)).toBe(0xF9A825);
+  });
+});
+
+describe('TRANSITION_DURATION_MS', () => {
+  test('is 30 seconds', () => {
+    expect(TRANSITION_DURATION_MS).toBe(30_000);
   });
 });

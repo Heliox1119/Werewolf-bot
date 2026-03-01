@@ -622,6 +622,7 @@ class GameManager extends EventEmitter {
       this._assertAtomic(game.mainChannelId);
     }
     game.phase = newPhase;
+    game._lastPhaseChangeAt = Date.now();
     this.markDirty(game.mainChannelId);
   }
 
@@ -812,6 +813,7 @@ class GameManager extends EventEmitter {
       disableVoiceMute: options.disableVoiceMute || false,
       _activeTimerType: null,
       _lastMutationAt: Date.now(),
+      _lastPhaseChangeAt: null,   // timestamp of last Night↔Day transition (drives transition visual)
       stuckStatus: 'OK',
       uiMode: 'GUI_MASTER'  // GUI is the sole visual source of truth (no loose text for phase/status)
     });
@@ -1206,7 +1208,7 @@ class GameManager extends EventEmitter {
       if (timerInfo && timerInfo.remainingMs > 0) {
         this._refreshVillageMasterPanel(gameChannelId).catch(() => {});
       }
-    }, 15_000);
+    }, 5_000); // 5 s tick for smooth animated timer bar
     this._villagePanelTimers.set(gameChannelId, intervalId);
   }
 

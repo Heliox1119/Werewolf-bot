@@ -96,6 +96,101 @@ function buildProgressBar(filled, total, length = 10) {
   return '▓'.repeat(filledCount) + '░'.repeat(emptyCount);
 }
 
+// ─── Animation Helpers ────────────────────────────────────────────
+// All animation is server-side via embed edits (no client JS).
+// Each refresh tick produces a slightly different visual frame.
+
+/** Duration (ms) during which a transition visual is shown after a phase change. */
+const TRANSITION_DURATION_MS = 30_000;
+
+/**
+ * Compute an animation frame index from Date.now().
+ * Changes every ~5 seconds, cycling 0-5.
+ * @param {number} [now] - override for testing
+ * @returns {number}
+ */
+function getAnimationFrame(now) {
+  return Math.floor((now ?? Date.now()) / 5000) % 6;
+}
+
+/**
+ * Build an animated timer progress bar with a "shimmer" effect.
+ * A bright segment (▓) travels across the filled portion of a dark bar (█)
+ * on each refresh tick, creating a ripple animation.
+ * @param {number} remainingMs
+ * @param {number} totalMs
+ * @param {number} length  Bar character count (default 12)
+ * @param {number} [now]   Timestamp override for testing
+ * @returns {string}
+ */
+function buildAnimatedTimerBar(remainingMs, totalMs, length = 12, now) {
+  if (!totalMs || totalMs <= 0) return '░'.repeat(length);
+  const ratio = Math.max(0, Math.min(1, remainingMs / totalMs));
+  const filledCount = Math.round(ratio * length);
+  const emptyCount = length - filledCount;
+  if (filledCount === 0) return '░'.repeat(length);
+
+  const frame = getAnimationFrame(now);
+  const shimmerPos = frame % filledCount;
+
+  const chars = [];
+  for (let i = 0; i < filledCount; i++) {
+    chars.push(i === shimmerPos ? '▓' : '█');
+  }
+  for (let i = 0; i < emptyCount; i++) {
+    chars.push('░');
+  }
+  return chars.join('');
+}
+
+/**
+ * Return a pulsing sub-phase emoji for the currently active role.
+ * Alternates between the base emoji and base+sparkle on each tick.
+ * @param {string} subPhase
+ * @param {number} [now]  Timestamp override for testing
+ * @returns {string}
+ */
+function getAnimatedSubPhaseEmoji(subPhase, now) {
+  const base = getSubPhaseEmoji(subPhase);
+  const frame = getAnimationFrame(now);
+  return frame % 2 === 0 ? base : `${base}✨`;
+}
+
+/**
+ * Phase emoji used during a Night↔Day transition window.
+ * Shows a sunrise/sunset emoji for ~30 s after the phase flip.
+ * @param {string} phase      Current main phase
+ * @param {number|null} lastPhaseChangeAt  game._lastPhaseChangeAt timestamp
+ * @param {number} [now] Timestamp override
+ * @returns {string}
+ */
+function getTransitionEmoji(phase, lastPhaseChangeAt, now) {
+  const _now = now ?? Date.now();
+  if (lastPhaseChangeAt && (_now - lastPhaseChangeAt) < TRANSITION_DURATION_MS) {
+    if (phase === PHASES.DAY)   return '🌅';
+    if (phase === PHASES.NIGHT) return '🌑';
+  }
+  return getPhaseEmoji(phase);
+}
+
+/**
+ * Embed colour during a Night↔Day transition window.
+ * Sunrise = warm orange, Sunset = deep navy.
+ * @param {string} phase
+ * @param {number|null} lastPhaseChangeAt
+ * @param {string} guildId
+ * @param {number} [now]
+ * @returns {number}
+ */
+function getTransitionColor(phase, lastPhaseChangeAt, guildId, now) {
+  const _now = now ?? Date.now();
+  if (lastPhaseChangeAt && (_now - lastPhaseChangeAt) < TRANSITION_DURATION_MS) {
+    if (phase === PHASES.DAY)   return 0xFF8C00; // sunrise orange
+    if (phase === PHASES.NIGHT) return 0x1A1A2E; // sunset navy
+  }
+  return getPhaseColor(phase, guildId);
+}
+
 // ─── Status Panel (public, visible to everyone) ──────────────────
 
 /**
@@ -343,5 +438,12 @@ module.exports = {
   getPhaseColor,
   formatTimeRemaining,
   buildProgressBar,
+  // Animation helpers
+  getAnimationFrame,
+  buildAnimatedTimerBar,
+  getAnimatedSubPhaseEmoji,
+  getTransitionEmoji,
+  getTransitionColor,
+  TRANSITION_DURATION_MS,
   SUB_PHASE_ACTIVE_ROLES,
 };

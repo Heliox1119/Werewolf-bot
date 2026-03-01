@@ -668,3 +668,74 @@ describe('buildNarrationLine', () => {
     expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_night');
   });
 });
+
+// ─── Animated embed features ─────────────────────────────────────
+
+describe('buildVillageMasterEmbed — animation', () => {
+  test('uses animated timer bar (contains █ shimmer character)', () => {
+    const embed = buildVillageMasterEmbed(createTestGame(), TIMER, 'g1');
+    const timerField = findField(embed, 'gui.timer');
+    expect(timerField).toBeDefined();
+    // Animated bar uses █ (filled) + ▓ (shimmer) instead of only ▓
+    expect(timerField.value).toMatch(/[█▓]/);
+  });
+
+  test('sub-phase field uses animated emoji (may include sparkle)', () => {
+    const embed = buildVillageMasterEmbed(createTestGame(), NO_TIMER, 'g1');
+    const spField = findField(embed, 'gui.sub_phase');
+    // Value should contain base emoji (🐺 for LOUPS) and possibly ✨
+    expect(spField.value).toContain('🐺');
+  });
+
+  test('title shows sunrise 🌅 during day transition window', () => {
+    const game = createTestGame({
+      phase: PHASES.DAY,
+      subPhase: PHASES.DELIBERATION,
+      _lastPhaseChangeAt: Date.now(), // just changed
+    });
+    const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
+    const json = embed.toJSON();
+    expect(json.title).toContain('🌅');
+  });
+
+  test('title shows normal ☀️ after transition window', () => {
+    const game = createTestGame({
+      phase: PHASES.DAY,
+      subPhase: PHASES.DELIBERATION,
+      _lastPhaseChangeAt: Date.now() - 60_000, // 60 s ago = past window
+    });
+    const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
+    const json = embed.toJSON();
+    expect(json.title).toContain('☀️');
+  });
+
+  test('color is sunrise orange during day transition', () => {
+    const game = createTestGame({
+      phase: PHASES.DAY,
+      subPhase: PHASES.DELIBERATION,
+      _lastPhaseChangeAt: Date.now(),
+    });
+    const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
+    expect(embed.toJSON().color).toBe(0xFF8C00);
+  });
+
+  test('color is sunset navy during night transition', () => {
+    const game = createTestGame({
+      phase: PHASES.NIGHT,
+      subPhase: PHASES.LOUPS,
+      _lastPhaseChangeAt: Date.now(),
+    });
+    const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
+    expect(embed.toJSON().color).toBe(0x1A1A2E);
+  });
+
+  test('color returns to normal after transition expires', () => {
+    const game = createTestGame({
+      phase: PHASES.NIGHT,
+      subPhase: PHASES.LOUPS,
+      _lastPhaseChangeAt: Date.now() - 60_000,
+    });
+    const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
+    expect(embed.toJSON().color).toBe(0x2C2F33); // normal night color
+  });
+});

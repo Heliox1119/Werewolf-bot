@@ -25,6 +25,11 @@ const {
   getPhaseColor,
   getPhaseEmoji,
   getSubPhaseEmoji,
+  // Animation helpers (server-side embed-edit animations)
+  buildAnimatedTimerBar,
+  getAnimatedSubPhaseEmoji,
+  getTransitionEmoji,
+  getTransitionColor,
 } = require('./gameStateView');
 
 // ─── Dynamic Focus ────────────────────────────────────────────────
@@ -162,12 +167,17 @@ function buildVillageMasterEmbed(game, timerInfo, guildId) {
   const dayCount = game.dayCount || 0;
   const alive = (game.players || []).filter(p => p.alive);
   const dead = (game.players || []).filter(p => !p.alive);
-  const phaseEmoji = getPhaseEmoji(phase);
-  const subPhaseEmoji = getSubPhaseEmoji(subPhase);
+  const lastChange = game._lastPhaseChangeAt || null;
+
+  // ── Animated visuals (change on each embed edit → flipbook effect) ──
+  const titleEmoji     = getTransitionEmoji(phase, lastChange);
+  const embedColor     = getTransitionColor(phase, lastChange, guildId);
+  const phaseEmoji     = getTransitionEmoji(phase, lastChange);
+  const subPhaseEmoji  = getAnimatedSubPhaseEmoji(subPhase);
 
   const embed = new EmbedBuilder()
-    .setTitle(`${phaseEmoji} ${t('village_panel.title', {}, guildId)}`)
-    .setColor(getPhaseColor(phase, guildId))
+    .setTitle(`${titleEmoji} ${t('village_panel.title', {}, guildId)}`)
+    .setColor(embedColor)
     .setTimestamp();
 
   // ── Phase / SubPhase / Day ──
@@ -177,9 +187,9 @@ function buildVillageMasterEmbed(game, timerInfo, guildId) {
     { name: t('gui.day', {}, guildId), value: `📅 **${dayCount}**`, inline: true },
   );
 
-  // ── Timer ──
+  // ── Timer (animated shimmer bar) ──
   if (timerInfo && timerInfo.remainingMs > 0) {
-    const bar = buildProgressBar(timerInfo.remainingMs, timerInfo.totalMs, 12);
+    const bar = buildAnimatedTimerBar(timerInfo.remainingMs, timerInfo.totalMs, 12);
     const timeStr = formatTimeRemaining(timerInfo.remainingMs);
     embed.addFields({
       name: `⏱️ ${t('gui.timer', {}, guildId)}`,
