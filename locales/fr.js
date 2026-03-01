@@ -1037,6 +1037,21 @@ module.exports = {
     thief_done: "Le rôle a été choisi.",
     thief_action_hint: "Utilisez `/steal` pour voir et choisir une carte.",
     thief_keep_btn: "Garder mon rôle",
+    // Bouton skip générique
+    skip_btn: "Passer",
+    // Menu de sélection des loups
+    wolves_select_ph: "Choisissez une victime…",
+    // Menu de sélection du Loup Blanc
+    ww_select_ph: "Choisissez un loup à dévorer…",
+    // Menu de sélection de la Voyante
+    seer_select_ph: "Choisissez un joueur à inspecter…",
+    // Menu de sélection du Salvateur
+    salvateur_select_ph: "Choisissez un joueur à protéger…",
+    // Boutons & menu de la Sorcière
+    witch_save_btn: "Sauver la victime",
+    witch_death_ph: "Choisissez un joueur à empoisonner…",
+    // Multi-sélection de Cupidon
+    cupid_select_ph: "Choisissez deux joueurs à lier…",
   },
 
   // ==================== PANNEAU VILLAGE (GUI MAÎTRE) ====================

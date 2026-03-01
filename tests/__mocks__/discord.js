@@ -293,11 +293,13 @@ class MockButtonBuilder {
 
 class MockStringSelectMenuBuilder {
   constructor() {
-    this.data = { customId: null, placeholder: null, options: [] };
+    this.data = { customId: null, placeholder: null, options: [], minValues: 1, maxValues: 1 };
   }
   setCustomId(id) { this.data.customId = id; return this; }
   setPlaceholder(ph) { this.data.placeholder = ph; return this; }
   addOptions(options) { this.data.options.push(...(Array.isArray(options) ? options : [options])); return this; }
+  setMinValues(n) { this.data.minValues = n; return this; }
+  setMaxValues(n) { this.data.maxValues = n; return this; }
 }
 
 const ButtonStyle = {

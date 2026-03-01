@@ -1037,6 +1037,21 @@ module.exports = {
     thief_done: "The role has been chosen.",
     thief_action_hint: "Use `/steal` to see and choose a card.",
     thief_keep_btn: "Keep my role",
+    // Generic skip button
+    skip_btn: "Skip",
+    // Wolves select menu
+    wolves_select_ph: "Choose a victim…",
+    // White Wolf select menu
+    ww_select_ph: "Choose a wolf to devour…",
+    // Seer select menu
+    seer_select_ph: "Choose a player to inspect…",
+    // Salvateur select menu
+    salvateur_select_ph: "Choose a player to protect…",
+    // Witch buttons & select
+    witch_save_btn: "Save the victim",
+    witch_death_ph: "Choose a player to poison…",
+    // Cupid multi-select
+    cupid_select_ph: "Choose two players to link…",
   },
 
   // ==================== VILLAGE PANEL (MASTER GUI) ====================

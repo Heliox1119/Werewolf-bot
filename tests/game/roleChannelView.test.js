@@ -42,6 +42,12 @@ const {
   buildRolePanel,
   buildRolePanelComponents,
   buildThiefButtons,
+  buildWolvesComponents,
+  buildWhiteWolfComponents,
+  buildSeerComponents,
+  buildSalvateurComponents,
+  buildWitchComponents,
+  buildCupidComponents,
   buildWolvesPanel,
   buildSeerPanel,
   buildWitchPanel,
@@ -797,11 +803,32 @@ describe('buildRolePanelComponents', () => {
     expect(components).toHaveLength(1);
   });
 
-  test('returns empty array for non-thief role keys', () => {
-    const game = createTestGame({ subPhase: PHASES.VOLEUR });
+  test('returns wolves select menu during LOUPS', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUPS });
+    const components = buildRolePanelComponents('wolves', game, 'g1');
+    expect(components.length).toBeGreaterThan(0);
+  });
+
+  test('returns seer select + skip during VOYANTE', () => {
+    const game = createTestGame({ subPhase: PHASES.VOYANTE });
+    const components = buildRolePanelComponents('seer', game, 'g1');
+    expect(components.length).toBe(2); // select + skip
+  });
+
+  test('returns witch buttons during SORCIERE', () => {
+    const game = createTestGame({ subPhase: PHASES.SORCIERE });
+    const components = buildRolePanelComponents('witch', game, 'g1');
+    expect(components.length).toBeGreaterThan(0);
+  });
+
+  test('returns empty array for wolves when subPhase is not LOUPS', () => {
+    const game = createTestGame({ subPhase: PHASES.VOYANTE });
     expect(buildRolePanelComponents('wolves', game, 'g1')).toEqual([]);
+  });
+
+  test('returns empty array for seer when subPhase is not VOYANTE', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUPS });
     expect(buildRolePanelComponents('seer', game, 'g1')).toEqual([]);
-    expect(buildRolePanelComponents('witch', game, 'g1')).toEqual([]);
   });
 
   test('returns empty array for thief when subPhase is past VOLEUR', () => {
@@ -811,5 +838,259 @@ describe('buildRolePanelComponents', () => {
     });
     const components = buildRolePanelComponents('thief', game, 'g1');
     expect(components).toEqual([]);
+  });
+});
+
+// ─── Wolves Components ─────────────────────────────────────────────
+
+describe('buildWolvesComponents', () => {
+
+  test('returns select menu with non-wolf alive targets during LOUPS', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUPS });
+    const rows = buildWolvesComponents(game, 'g1');
+    expect(rows).toHaveLength(1);
+    const menu = rows[0].components[0];
+    expect(menu.data.custom_id).toBe('wolves_kill');
+    // Should include alive non-wolves only
+    const ids = menu.options.map(o => o.data.value);
+    expect(ids).not.toContain('p1'); // werewolf
+    expect(ids).not.toContain('p7'); // white wolf
+    expect(ids).toContain('p2');     // seer
+    expect(ids).toContain('p4');     // villager
+  });
+
+  test('returns empty when not NIGHT', () => {
+    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.LOUPS });
+    expect(buildWolvesComponents(game, 'g1')).toEqual([]);
+  });
+
+  test('returns empty when subPhase is not LOUPS', () => {
+    const game = createTestGame({ subPhase: PHASES.VOYANTE });
+    expect(buildWolvesComponents(game, 'g1')).toEqual([]);
+  });
+
+  test('returns empty when no non-wolf targets', () => {
+    const game = createTestGame({
+      subPhase: PHASES.LOUPS,
+      players: [
+        { id: 'w1', username: 'W1', role: ROLES.WEREWOLF, alive: true },
+        { id: 'w2', username: 'W2', role: ROLES.WHITE_WOLF, alive: true },
+      ],
+    });
+    expect(buildWolvesComponents(game, 'g1')).toEqual([]);
+  });
+});
+
+// ─── White Wolf Components ─────────────────────────────────────────
+
+describe('buildWhiteWolfComponents', () => {
+
+  test('returns select menu with regular wolves during LOUP_BLANC', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUP_BLANC });
+    const rows = buildWhiteWolfComponents(game, 'g1');
+    expect(rows.length).toBe(2); // select + skip
+    const menu = rows[0].components[0];
+    expect(menu.data.custom_id).toBe('ww_kill');
+    const ids = menu.options.map(o => o.data.value);
+    expect(ids).toContain('p1'); // werewolf
+    expect(ids).not.toContain('p7'); // white wolf (self)
+  });
+
+  test('shows skip button', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUP_BLANC });
+    const rows = buildWhiteWolfComponents(game, 'g1');
+    const skipBtn = rows[rows.length - 1].components[0];
+    expect(skipBtn.data.customId || skipBtn.data.custom_id).toBe('ww_skip');
+  });
+
+  test('returns only skip when no regular wolves alive', () => {
+    const game = createTestGame({
+      subPhase: PHASES.LOUP_BLANC,
+      players: [
+        { id: 'p7', username: 'Grace', role: ROLES.WHITE_WOLF, alive: true },
+        { id: 'p2', username: 'Bob', role: ROLES.SEER, alive: true },
+      ],
+    });
+    const rows = buildWhiteWolfComponents(game, 'g1');
+    expect(rows).toHaveLength(1); // only skip button
+  });
+
+  test('returns empty when not in LOUP_BLANC subPhase', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUPS });
+    expect(buildWhiteWolfComponents(game, 'g1')).toEqual([]);
+  });
+});
+
+// ─── Seer Components ───────────────────────────────────────────────
+
+describe('buildSeerComponents', () => {
+
+  test('returns select menu + skip during VOYANTE', () => {
+    const game = createTestGame({ subPhase: PHASES.VOYANTE });
+    const rows = buildSeerComponents(game, 'g1');
+    expect(rows).toHaveLength(2);
+    expect(rows[0].components[0].data.custom_id).toBe('seer_see');
+    expect(rows[1].components[0].data.customId || rows[1].components[0].data.custom_id).toBe('seer_skip');
+  });
+
+  test('select lists all alive players', () => {
+    const game = createTestGame({ subPhase: PHASES.VOYANTE });
+    const rows = buildSeerComponents(game, 'g1');
+    const alivePlayers = game.players.filter(p => p.alive);
+    expect(rows[0].components[0].options).toHaveLength(alivePlayers.length);
+  });
+
+  test('returns empty when not VOYANTE', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUPS });
+    expect(buildSeerComponents(game, 'g1')).toEqual([]);
+  });
+});
+
+// ─── Salvateur Components ──────────────────────────────────────────
+
+describe('buildSalvateurComponents', () => {
+
+  test('returns select menu + skip during SALVATEUR', () => {
+    const game = createTestGame({ subPhase: PHASES.SALVATEUR });
+    const rows = buildSalvateurComponents(game, 'g1');
+    expect(rows).toHaveLength(2);
+    expect(rows[0].components[0].data.custom_id).toBe('salvateur_protect');
+  });
+
+  test('excludes self from targets', () => {
+    const game = createTestGame({ subPhase: PHASES.SALVATEUR });
+    const rows = buildSalvateurComponents(game, 'g1');
+    const ids = rows[0].components[0].options.map(o => o.data.value);
+    expect(ids).not.toContain('p6'); // salvateur
+  });
+
+  test('excludes lastProtectedPlayerId from targets', () => {
+    const game = createTestGame({
+      subPhase: PHASES.SALVATEUR,
+      lastProtectedPlayerId: 'p2',
+    });
+    const rows = buildSalvateurComponents(game, 'g1');
+    const ids = rows[0].components[0].options.map(o => o.data.value);
+    expect(ids).not.toContain('p2');
+    expect(ids).not.toContain('p6'); // self
+  });
+
+  test('returns empty when not SALVATEUR subPhase', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUPS });
+    expect(buildSalvateurComponents(game, 'g1')).toEqual([]);
+  });
+});
+
+// ─── Witch Components ──────────────────────────────────────────────
+
+describe('buildWitchComponents', () => {
+
+  test('returns button row + death select during SORCIERE', () => {
+    const game = createTestGame({
+      subPhase: PHASES.SORCIERE,
+      witchPotions: { life: true, death: true },
+      nightVictim: 'p4',
+    });
+    const rows = buildWitchComponents(game, 'g1');
+    expect(rows.length).toBe(2); // buttons + death select
+    const btnRow = rows[0];
+    const ids = btnRow.components.map(c => c.data.customId || c.data.custom_id);
+    expect(ids).toContain('witch_life');
+    expect(ids).toContain('witch_skip');
+  });
+
+  test('save button is disabled when no life potion', () => {
+    const game = createTestGame({
+      subPhase: PHASES.SORCIERE,
+      witchPotions: { life: false, death: true },
+    });
+    const rows = buildWitchComponents(game, 'g1');
+    const saveBtn = rows[0].components.find(c =>
+      (c.data.customId || c.data.custom_id) === 'witch_life'
+    );
+    expect(saveBtn.data.disabled).toBe(true);
+  });
+
+  test('save button is disabled when no nightVictim', () => {
+    const game = createTestGame({
+      subPhase: PHASES.SORCIERE,
+      witchPotions: { life: true, death: true },
+      nightVictim: null,
+    });
+    const rows = buildWitchComponents(game, 'g1');
+    const saveBtn = rows[0].components.find(c =>
+      (c.data.customId || c.data.custom_id) === 'witch_life'
+    );
+    expect(saveBtn.data.disabled).toBe(true);
+  });
+
+  test('no death select menu when death potion used', () => {
+    const game = createTestGame({
+      subPhase: PHASES.SORCIERE,
+      witchPotions: { life: true, death: false },
+    });
+    const rows = buildWitchComponents(game, 'g1');
+    expect(rows).toHaveLength(1); // only button row
+  });
+
+  test('death select excludes witch from options', () => {
+    const game = createTestGame({
+      subPhase: PHASES.SORCIERE,
+      witchPotions: { life: true, death: true },
+    });
+    const rows = buildWitchComponents(game, 'g1');
+    // death select is the second row
+    const deathMenu = rows[1].components[0];
+    const ids = deathMenu.options.map(o => o.data.value);
+    expect(ids).not.toContain('p3'); // witch
+  });
+
+  test('returns empty when not SORCIERE', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUPS });
+    expect(buildWitchComponents(game, 'g1')).toEqual([]);
+  });
+});
+
+// ─── Cupid Components ──────────────────────────────────────────────
+
+describe('buildCupidComponents', () => {
+
+  test('returns multi-select + skip during CUPIDON', () => {
+    const game = createTestGame({ subPhase: PHASES.CUPIDON, lovers: [] });
+    const rows = buildCupidComponents(game, 'g1');
+    expect(rows).toHaveLength(2);
+    const menu = rows[0].components[0];
+    expect(menu.data.custom_id).toBe('cupid_love');
+    expect(menu.data.min_values).toBe(2);
+    expect(menu.data.max_values).toBe(2);
+  });
+
+  test('lists all alive players', () => {
+    const game = createTestGame({ subPhase: PHASES.CUPIDON, lovers: [] });
+    const rows = buildCupidComponents(game, 'g1');
+    const aliveCount = game.players.filter(p => p.alive).length;
+    expect(rows[0].components[0].options).toHaveLength(aliveCount);
+  });
+
+  test('returns empty when lovers already chosen', () => {
+    const game = createTestGame({
+      subPhase: PHASES.CUPIDON,
+      lovers: [['p1', 'p2']],
+    });
+    expect(buildCupidComponents(game, 'g1')).toEqual([]);
+  });
+
+  test('returns empty when not CUPIDON', () => {
+    const game = createTestGame({ subPhase: PHASES.LOUPS, lovers: [] });
+    expect(buildCupidComponents(game, 'g1')).toEqual([]);
+  });
+
+  test('returns empty when fewer than 2 alive players', () => {
+    const game = createTestGame({
+      subPhase: PHASES.CUPIDON,
+      lovers: [],
+      players: [{ id: 'p1', username: 'Only', role: ROLES.CUPID, alive: true }],
+    });
+    expect(buildCupidComponents(game, 'g1')).toEqual([]);
   });
 });

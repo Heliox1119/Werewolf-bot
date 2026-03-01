@@ -15,7 +15,7 @@
  * Panels are posted ONCE per channel and EDITED on state changes.
  */
 
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const PHASES = require('./phases');
 const ROLES = require('./roles');
 const { t, translatePhase, translateRole } = require('../utils/i18n');
@@ -454,6 +454,234 @@ function buildThiefButtons(game, guildId) {
   return [row];
 }
 
+// ─── Wolves Components (Select Menu) ───────────────────────────────
+
+/**
+ * Build the ActionRow with a player select menu for wolves.
+ * Shown ONLY when it is NIGHT + subPhase === LOUPS.
+ * Lists alive non-wolf players.
+ */
+function buildWolvesComponents(game, guildId) {
+  if (game.phase !== PHASES.NIGHT) return [];
+  if (game.subPhase !== PHASES.LOUPS) return [];
+
+  const targets = (game.players || []).filter(
+    p => p.alive && p.role !== ROLES.WEREWOLF && p.role !== ROLES.WHITE_WOLF
+  );
+  if (targets.length === 0) return [];
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('wolves_kill')
+    .setPlaceholder(t('role_panel.wolves_select_ph', {}, guildId))
+    .addOptions(targets.map(p => ({
+      label: p.username,
+      value: p.id,
+    })));
+
+  return [new ActionRowBuilder().addComponents(menu)];
+}
+
+// ─── White Wolf Components (Select Menu) ───────────────────────────
+
+/**
+ * Build the ActionRow with a player select menu for the White Wolf.
+ * Shown ONLY when it is NIGHT + subPhase === LOUP_BLANC.
+ * Lists alive regular werewolves (not self).
+ */
+function buildWhiteWolfComponents(game, guildId) {
+  if (game.phase !== PHASES.NIGHT) return [];
+  if (game.subPhase !== PHASES.LOUP_BLANC) return [];
+
+  const whiteWolf = (game.players || []).find(
+    p => p.role === ROLES.WHITE_WOLF && p.alive
+  );
+  const targets = (game.players || []).filter(
+    p => p.alive && p.role === ROLES.WEREWOLF && (!whiteWolf || p.id !== whiteWolf.id)
+  );
+
+  const rows = [];
+
+  if (targets.length > 0) {
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId('ww_kill')
+      .setPlaceholder(t('role_panel.ww_select_ph', {}, guildId))
+      .addOptions(targets.map(p => ({
+        label: p.username,
+        value: p.id,
+      })));
+    rows.push(new ActionRowBuilder().addComponents(menu));
+  }
+
+  // Skip button for White Wolf
+  rows.push(new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('ww_skip')
+      .setLabel(`⏭️ ${t('role_panel.skip_btn', {}, guildId)}`)
+      .setStyle(ButtonStyle.Secondary)
+  ));
+
+  return rows;
+}
+
+// ─── Seer Components (Select Menu + Skip) ──────────────────────────
+
+/**
+ * Build the ActionRows for the Seer.
+ * Row 1: Select menu with all alive players.
+ * Row 2: Skip button.
+ */
+function buildSeerComponents(game, guildId) {
+  if (game.phase !== PHASES.NIGHT) return [];
+  if (game.subPhase !== PHASES.VOYANTE) return [];
+
+  const targets = (game.players || []).filter(p => p.alive);
+  if (targets.length === 0) return [];
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('seer_see')
+    .setPlaceholder(t('role_panel.seer_select_ph', {}, guildId))
+    .addOptions(targets.map(p => ({
+      label: p.username,
+      value: p.id,
+    })));
+
+  const skipRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('seer_skip')
+      .setLabel(`⏭️ ${t('role_panel.skip_btn', {}, guildId)}`)
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  return [new ActionRowBuilder().addComponents(menu), skipRow];
+}
+
+// ─── Salvateur Components (Select Menu + Skip) ─────────────────────
+
+/**
+ * Build the ActionRows for the Salvateur.
+ * Row 1: Select menu with alive players (exclude self + last-protected).
+ * Row 2: Skip button.
+ */
+function buildSalvateurComponents(game, guildId) {
+  if (game.phase !== PHASES.NIGHT) return [];
+  if (game.subPhase !== PHASES.SALVATEUR) return [];
+
+  const salvateurPlayer = (game.players || []).find(
+    p => p.role === ROLES.SALVATEUR && p.alive
+  );
+  const targets = (game.players || []).filter(p => {
+    if (!p.alive) return false;
+    if (salvateurPlayer && p.id === salvateurPlayer.id) return false;
+    if (game.lastProtectedPlayerId && p.id === game.lastProtectedPlayerId) return false;
+    return true;
+  });
+  if (targets.length === 0) return [];
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('salvateur_protect')
+    .setPlaceholder(t('role_panel.salvateur_select_ph', {}, guildId))
+    .addOptions(targets.map(p => ({
+      label: p.username,
+      value: p.id,
+    })));
+
+  const skipRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('salvateur_skip')
+      .setLabel(`⏭️ ${t('role_panel.skip_btn', {}, guildId)}`)
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  return [new ActionRowBuilder().addComponents(menu), skipRow];
+}
+
+// ─── Witch Components (Buttons + Death Select) ─────────────────────
+
+/**
+ * Build the ActionRows for the Witch.
+ * Row 1: 💚 Save (disabled if no life potion / no victim) + ⏭️ Skip
+ * Row 2: Death target select (hidden if no death potion).
+ */
+function buildWitchComponents(game, guildId) {
+  if (game.phase !== PHASES.NIGHT) return [];
+  if (game.subPhase !== PHASES.SORCIERE) return [];
+
+  const potions = game.witchPotions || { life: true, death: true };
+  const canSave = potions.life && !!game.nightVictim;
+
+  const btnRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('witch_life')
+      .setLabel(`💚 ${t('role_panel.witch_save_btn', {}, guildId)}`)
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(!canSave),
+    new ButtonBuilder()
+      .setCustomId('witch_skip')
+      .setLabel(`⏭️ ${t('role_panel.skip_btn', {}, guildId)}`)
+      .setStyle(ButtonStyle.Secondary),
+  );
+
+  const rows = [btnRow];
+
+  if (potions.death) {
+    const witchPlayer = (game.players || []).find(
+      p => p.role === ROLES.WITCH && p.alive
+    );
+    const targets = (game.players || []).filter(
+      p => p.alive && (!witchPlayer || p.id !== witchPlayer.id)
+    );
+    if (targets.length > 0) {
+      const menu = new StringSelectMenuBuilder()
+        .setCustomId('witch_death')
+        .setPlaceholder(`💀 ${t('role_panel.witch_death_ph', {}, guildId)}`)
+        .addOptions(targets.map(p => ({
+          label: p.username,
+          value: p.id,
+        })));
+      rows.push(new ActionRowBuilder().addComponents(menu));
+    }
+  }
+
+  return rows;
+}
+
+// ─── Cupid Components (Multi-Select + Skip) ────────────────────────
+
+/**
+ * Build the ActionRows for Cupid.
+ * Row 1: Multi-select menu (pick exactly 2 players).
+ * Row 2: Skip button.
+ */
+function buildCupidComponents(game, guildId) {
+  if (game.phase !== PHASES.NIGHT) return [];
+  if (game.subPhase !== PHASES.CUPIDON) return [];
+  if (game.lovers && game.lovers.length > 0) return [];
+
+  const targets = (game.players || []).filter(p => p.alive);
+  if (targets.length < 2) return [];
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('cupid_love')
+    .setPlaceholder(t('role_panel.cupid_select_ph', {}, guildId))
+    .addOptions(targets.map(p => ({
+      label: p.username,
+      value: p.id,
+    })));
+
+  // Discord select menu minValues/maxValues
+  menu.setMinValues(2);
+  menu.setMaxValues(2);
+
+  const skipRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('cupid_skip')
+      .setLabel(`⏭️ ${t('role_panel.skip_btn', {}, guildId)}`)
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  return [new ActionRowBuilder().addComponents(menu), skipRow];
+}
+
 /**
  * Build the component rows for a given role key.
  * Returns an empty array for roles that have no interactive buttons (yet).
@@ -464,7 +692,13 @@ function buildThiefButtons(game, guildId) {
  * @returns {ActionRowBuilder[]}
  */
 function buildRolePanelComponents(roleKey, game, guildId) {
-  if (roleKey === 'thief') return buildThiefButtons(game, guildId);
+  if (roleKey === 'thief')      return buildThiefButtons(game, guildId);
+  if (roleKey === 'wolves')     return buildWolvesComponents(game, guildId);
+  if (roleKey === 'white_wolf') return buildWhiteWolfComponents(game, guildId);
+  if (roleKey === 'seer')       return buildSeerComponents(game, guildId);
+  if (roleKey === 'salvateur')  return buildSalvateurComponents(game, guildId);
+  if (roleKey === 'witch')      return buildWitchComponents(game, guildId);
+  if (roleKey === 'cupid')      return buildCupidComponents(game, guildId);
   return [];
 }
 
@@ -476,6 +710,12 @@ module.exports = {
   buildRolePanel,
   buildRolePanelComponents,
   buildThiefButtons,
+  buildWolvesComponents,
+  buildWhiteWolfComponents,
+  buildSeerComponents,
+  buildSalvateurComponents,
+  buildWitchComponents,
+  buildCupidComponents,
   buildWolvesPanel,
   buildSeerPanel,
   buildWitchPanel,

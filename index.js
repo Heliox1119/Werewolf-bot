@@ -631,8 +631,9 @@ client.on("interactionCreate", async interaction => {
   if (interaction.isButton()) {
     const { safeDefer } = require('./utils/interaction');
 
-    // ── Thief role buttons (ephemeral defer) ──
-    if (interaction.customId.startsWith('thief_')) {
+    // ── Role action buttons (ephemeral defer) ──
+    const ROLE_BTN_PREFIXES = ['thief_', 'witch_', 'seer_', 'salvateur_', 'cupid_', 'ww_'];
+    if (ROLE_BTN_PREFIXES.some(p => interaction.customId.startsWith(p))) {
       try {
         const deferred = await safeDefer(interaction, { flags: MessageFlags.Ephemeral });
         if (!deferred) return; // interaction expired
@@ -640,8 +641,13 @@ client.on("interactionCreate", async interaction => {
         if (err.code === 10062) return;
         throw err;
       }
-      const { handleThiefButton } = require('./interactions/thiefButtons');
-      await handleThiefButton(interaction);
+      if (interaction.customId.startsWith('thief_')) {
+        const { handleThiefButton } = require('./interactions/thiefButtons');
+        await handleThiefButton(interaction);
+      } else {
+        const { handleNightButton } = require('./interactions/nightActions');
+        await handleNightButton(interaction);
+      }
       return;
     }
 
@@ -956,6 +962,24 @@ client.on("interactionCreate", async interaction => {
     }
 
     // Suppression de la gestion des anciens boutons help (plus de pagination)
+  }
+
+  // ── Select menus for night role actions ──
+  if (interaction.isStringSelectMenu()) {
+    const ROLE_SELECT_IDS = ['wolves_kill', 'ww_kill', 'seer_see', 'salvateur_protect', 'witch_death', 'cupid_love'];
+    if (ROLE_SELECT_IDS.includes(interaction.customId)) {
+      const { safeDefer } = require('./utils/interaction');
+      try {
+        const deferred = await safeDefer(interaction, { flags: MessageFlags.Ephemeral });
+        if (!deferred) return;
+      } catch (err) {
+        if (err.code === 10062) return;
+        throw err;
+      }
+      const { handleNightSelect } = require('./interactions/nightActions');
+      await handleNightSelect(interaction);
+      return;
+    }
   }
   }
 });
