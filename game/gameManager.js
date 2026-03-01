@@ -46,6 +46,7 @@ class GameManager extends EventEmitter {
     this.statusPanels = new Map(); // channelId -> { villageMsg, spectatorMsg }
     this.rolePanels = new Map();   // gameChannelId -> { wolves: msg, seer: msg, witch: msg, ... }
     this.villagePanels = new Map();      // gameChannelId -> Discord Message
+    this.spectatorPanels = new Map();    // gameChannelId -> Discord Message (auto-posted in spectator channel)
     this._villagePanelTimers = new Map(); // gameChannelId -> intervalId (15s tick)
     this._testMode = options.testMode ?? process.env.NODE_ENV === 'test';
     this._failurePoints = new Map();
@@ -505,6 +506,7 @@ class GameManager extends EventEmitter {
     this.lobbyTimeouts.clear();
     this.statusPanels.clear();
     this.rolePanels.clear();
+    this.spectatorPanels.clear();
     // Stop all village panel timer ticks
     for (const intervalId of this._villagePanelTimers.values()) {
       clearInterval(intervalId);
@@ -599,6 +601,8 @@ class GameManager extends EventEmitter {
     });
     game.subPhase = newSubPhase;
     this.markDirty(game.mainChannelId);
+    // Emit subPhaseChanged so all GUI panels refresh automatically
+    this._emitGameEvent(game, 'subPhaseChanged', { from, subPhase: newSubPhase });
   }
 
   _setPhase(game, newPhase, options = {}) {
@@ -873,16 +877,29 @@ class GameManager extends EventEmitter {
         ...data
       });
     } catch (e) { /* never let event emission crash the bot */ }
-    // Auto-refresh status panels on state changes (fire-and-forget)
-    if (['phaseChanged', 'playerKilled', 'gameEnded', 'gameStarted'].includes(eventName)) {
-      setImmediate(() => this._refreshStatusPanels(game.mainChannelId).catch(() => {}));
-      setImmediate(() => this._refreshRolePanels(game.mainChannelId).catch(() => {}));
-      setImmediate(() => this._refreshVillageMasterPanel(game.mainChannelId).catch(() => {}));
+    // Auto-refresh ALL GUI panels on any visible state change (fire-and-forget)
+    const GUI_EVENTS = ['phaseChanged', 'subPhaseChanged', 'playerKilled', 'gameEnded', 'gameStarted', 'voteCompleted', 'captainElected'];
+    if (GUI_EVENTS.includes(eventName)) {
+      setImmediate(() => this._refreshAllGui(game.mainChannelId).catch(() => {}));
     }
-    // Also refresh village master on broader events (vote, captain, etc.)
-    if (['voteCompleted', 'captainElected', 'subPhaseChanged'].includes(eventName)) {
-      setImmediate(() => this._refreshVillageMasterPanel(game.mainChannelId).catch(() => {}));
-    }
+  }
+
+  // ─── Unified GUI Refresh Orchestrator ───────────────────────────
+
+  /**
+   * Refresh ALL GUI panels for a game: village master, role channels, spectator, /status panels.
+   * Pure read-only — no game state mutation, no DB writes, no business logic.
+   * Called automatically on every visible state change via _emitGameEvent.
+   * @param {string} gameChannelId  mainChannelId of the game
+   */
+  async _refreshAllGui(gameChannelId) {
+    // Fire all refreshes in parallel (independent, idempotent)
+    await Promise.allSettled([
+      this._refreshVillageMasterPanel(gameChannelId),
+      this._refreshRolePanels(gameChannelId),
+      this._refreshStatusPanels(gameChannelId),
+      this._refreshSpectatorPanel(gameChannelId),
+    ]);
   }
 
   /**
@@ -1077,6 +1094,71 @@ class GameManager extends EventEmitter {
       // Message deleted or inaccessible — remove reference
       this.villagePanels.delete(gameChannelId);
       this._stopVillagePanelTick(gameChannelId);
+    }
+  }
+
+  /**
+   * Post the persistent spectator GUI panel in the spectator channel.
+   * Called once at game start. The panel is then auto-refreshed on state changes.
+   * @param {Guild} guild
+   * @param {object} game
+   */
+  async _postSpectatorPanel(guild, game) {
+    if (!game.spectatorChannelId) return;
+    try {
+      const channel = await guild.channels.fetch(game.spectatorChannelId);
+      if (!channel) return;
+      const { buildSpectatorEmbed } = require('./gameStateView');
+      const timerInfo = this.getTimerInfo(game.mainChannelId);
+      const embed = buildSpectatorEmbed(game, timerInfo, game.guildId);
+      const msg = await channel.send({ embeds: [embed] });
+      this.spectatorPanels.set(game.mainChannelId, msg);
+      // Auto-pin so the panel stays visible
+      try { await msg.pin(); } catch (_) { /* ignore pin failures */ }
+    } catch (e) {
+      logger.warn('Failed to post spectator panel', { channelId: game.spectatorChannelId, error: e.message });
+    }
+  }
+
+  /**
+   * Refresh the persistent spectator panel (edit in place).
+   * If the panel is missing (e.g. after bot restart), re-posts it.
+   * @param {string} gameChannelId  mainChannelId of the game
+   */
+  async _refreshSpectatorPanel(gameChannelId) {
+    const game = this.games.get(gameChannelId);
+    if (!game) return;
+    if (!game.spectatorChannelId) return;
+
+    // If no panel registered (reboot recovery), try to recreate
+    if (!this.spectatorPanels.has(gameChannelId)) {
+      if (game.phase === PHASES.ENDED) return; // Don't recreate for ended games
+      try {
+        const client = require.main?.exports?.client || this.client;
+        if (client && game.guildId) {
+          const guild = await client.guilds.fetch(game.guildId);
+          if (guild) await this._postSpectatorPanel(guild, game);
+        }
+      } catch (e) {
+        logger.warn('Failed to re-post spectator panel after reboot', { gameChannelId, error: e.message });
+      }
+      return;
+    }
+
+    const msg = this.spectatorPanels.get(gameChannelId);
+    if (!msg) {
+      this.spectatorPanels.delete(gameChannelId);
+      return;
+    }
+
+    try {
+      const { buildSpectatorEmbed } = require('./gameStateView');
+      const timerInfo = this.getTimerInfo(gameChannelId);
+      const embed = buildSpectatorEmbed(game, timerInfo, game.guildId);
+      await msg.edit({ embeds: [embed] });
+    } catch (_) {
+      // Message deleted or inaccessible — remove reference
+      this.spectatorPanels.delete(gameChannelId);
     }
   }
 
@@ -1352,7 +1434,8 @@ class GameManager extends EventEmitter {
         ? await guild.channels.fetch(game.villageChannelId)
         : await guild.channels.fetch(game.mainChannelId);
 
-      await this.sendLogged(mainChannel, t('game.day_begins'), { type: 'transitionToDay' });
+      // Day begins — village master GUI panel focus section shows this automatically.
+      // Narrative message suppressed (replaced by persistent GUI panel).
 
       // Collecter les morts de la nuit pour vérifier le chasseur après
       const nightDeaths = [];
@@ -1588,6 +1671,9 @@ class GameManager extends EventEmitter {
         }
       }
 
+      // Emit voteCompleted so GUI panels refresh after village vote resolution
+      this._emitGameEvent(game, 'voteCompleted', { voteSnapshot });
+
       // Appliquer les lockouts de channels pour les joueurs morts
       await this.applyDeadPlayerLockouts(guild);
 
@@ -1622,7 +1708,8 @@ class GameManager extends EventEmitter {
         this.playAmbience(game.voiceChannelId, 'night_ambience.mp3');
       }
 
-      await this.sendLogged(mainChannel, t('game.night_falls'), { type: 'transitionToNight' });
+      // Night falls — village master GUI panel focus section shows this automatically.
+      // Narrative message suppressed (replaced by persistent GUI panel).
 
       // Lancer le timeout AFK ou auto-skip si sous-phase d'un fake player
       shouldAutoSkip = this._shouldAutoSkipSubPhase(game);
@@ -2087,17 +2174,12 @@ class GameManager extends EventEmitter {
   }
 
   // Annonce la sous-phase dans le channel village
-  // Night sub-phase micro-states ("X se réveille...") are suppressed:
-  // the /status panel already displays the current sub-phase in real-time.
+  // ALL sub-phase micro-states are now suppressed:
+  // the village master panel displays the current phase/sub-phase in real-time
+  // with a dynamic focus section ("📣 En cours").
   async announcePhase(guild, game, message) {
-    if (!game.villageChannelId) return;
-    // Suppress night sub-phase announcements — visible via status panel
-    if (game.phase === PHASES.NIGHT) return;
-    try {
-      const channel = await guild.channels.fetch(game.villageChannelId);
-      const hint = t('gui.status_hint');
-      await this.sendLogged(channel, `**${message}**\n${hint}`, { type: 'announcePhase', phase: game.phase, subPhase: game.subPhase });
-    } catch (e) { /* ignore */ }
+    // Suppress all sub-phase announcements — replaced by village master GUI panel
+    return;
   }
 
   // --- Night AFK timeout ---
@@ -2517,6 +2599,9 @@ class GameManager extends EventEmitter {
 
     // 5b. Post the persistent village master GUI panel
     await this._postVillageMasterPanel(guild, game);
+
+    // 5c. Post the persistent spectator GUI panel
+    await this._postSpectatorPanel(guild, game);
 
     // 6. Lancer le timeout AFK si on est en sous-phase qui attend une action
     if ([PHASES.VOLEUR, PHASES.CUPIDON, PHASES.LOUPS, PHASES.SALVATEUR].includes(game.subPhase)) {
@@ -3216,7 +3301,7 @@ class GameManager extends EventEmitter {
     if (!target) return { ok: false, reason: "target_not_found" };
     if (!target.alive) return { ok: false, reason: "target_dead" };
 
-    return this.runAtomic(channelId, (state) => {
+    const result = await this.runAtomic(channelId, (state) => {
       const prev = state.captainVoters.get(voterId);
       if (prev) {
         state.captainVotes.set(prev, (state.captainVotes.get(prev) || 1) - 1);
@@ -3257,6 +3342,11 @@ class GameManager extends EventEmitter {
 
       return { ok: true, allVoted: true, resolution: { ok: true, winnerId, username: winner.username, wasTie, tied: wasTie ? tied : undefined } };
     });
+    // Emit captainElected so GUI panels refresh
+    if (result && result.allVoted && result.resolution?.ok) {
+      this._emitGameEvent(game, 'captainElected', { captainId: result.resolution.winnerId });
+    }
+    return result;
   }
 
   /**
@@ -3268,7 +3358,7 @@ class GameManager extends EventEmitter {
     if (game.captainId) return { ok: false, reason: "already_set" };
     if (game.subPhase !== PHASES.VOTE_CAPITAINE) return { ok: false, reason: "wrong_phase" };
 
-    return this.runAtomic(channelId, (state) => {
+    const result = await this.runAtomic(channelId, (state) => {
       const entries = Array.from(state.captainVotes.entries());
       if (entries.length === 0) return { ok: false, reason: "no_votes" };
 
@@ -3293,6 +3383,11 @@ class GameManager extends EventEmitter {
       this.clearCaptainVoteTimeout(state);
       return { ok: true, winnerId, username: winner.username, wasTie, tied: wasTie ? tied : undefined };
     });
+    // Emit captainElected so GUI panels refresh
+    if (result && result.ok) {
+      this._emitGameEvent(game, 'captainElected', { captainId: result.winnerId });
+    }
+    return result;
   }
 
   // Alias pour compatibilité des tests et du timeout
