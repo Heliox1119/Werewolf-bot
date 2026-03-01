@@ -992,6 +992,7 @@ module.exports = {
     progression: "Progression",
     eliminated: "éliminés",
     no_game: "Aucune partie en cours dans ce salon.",
+    status_refreshed: "✅ Panneaux GUI actualisés.",
     status_hint: "-# 📊 Tableau de bord : `/status`",
   },
 

@@ -812,7 +812,8 @@ class GameManager extends EventEmitter {
       disableVoiceMute: options.disableVoiceMute || false,
       _activeTimerType: null,
       _lastMutationAt: Date.now(),
-      stuckStatus: 'OK'
+      stuckStatus: 'OK',
+      uiMode: 'GUI_MASTER'  // GUI is the sole visual source of truth (no loose text for phase/status)
     });
 
     // Démarrer le timeout de lobby zombie (1h)
@@ -1292,7 +1293,34 @@ class GameManager extends EventEmitter {
     return '[unknown]';
   }
 
+  /**
+   * Send a message to a channel, with logging.
+   *
+   * GUI_MASTER architecture: only game-event messages are allowed in public
+   * channels. Phase, subPhase, timer, and player-status information MUST be
+   * displayed exclusively through the persistent GUI panels (village master,
+   * role channels, spectator). Any send whose context.type is not in the
+   * ALLOWED_SEND_TYPES set is blocked and logged as a warning.
+   */
+  static ALLOWED_SEND_TYPES = new Set([
+    // One-time game event announces (deaths, reveals, votes, end)
+    'nightVictim', 'witchKill', 'whiteWolfKill', 'loverDeath', 'hunterDeath',
+    'witchSave', 'salvateurSave', 'ancienSurvives', 'ancienFinalDeath', 'ancienPowerDrain',
+    'dayVoteResult', 'voteTie', 'idiotRevealed',
+    'captainAutoElected', 'captainRandomNoVotes', 'captainTiebreakTimeout',
+    'hunterTimeout', 'victory', 'drawByInactivity', 'summary',
+  ]);
+
   async sendLogged(channel, payload, context = {}) {
+    // GUI_MASTER guard: block/warn sends that carry phase/status information
+    if (context.type && !GameManager.ALLOWED_SEND_TYPES.has(context.type)) {
+      logger.warn('GUI_MASTER: blocked channel send (narrative/status)', {
+        channelId: channel?.id,
+        type: context.type,
+        content: this.formatPayloadSummary(payload)
+      });
+      return null;
+    }
     try {
       logger.info('Channel send', {
         channelId: channel?.id,
@@ -2609,21 +2637,9 @@ class GameManager extends EventEmitter {
       await this._postRolePanels(guild, game);
     } catch (e) { logger.warn('Failed to post role panels', { error: e.message }); }
 
-    // 5. Message dans le channel village
+    // 5. Village master GUI panel replaces all narrative text.
+    //    (Legacy nightStart message suppressed — GUI_MASTER architecture)
     await updateProgress(t('progress.done'));
-    try {
-      const villageChannel = game.villageChannelId
-        ? await guild.channels.fetch(game.villageChannelId)
-        : await guild.channels.fetch(game.mainChannelId);
-
-      const nightMsg = game.subPhase === PHASES.VOLEUR
-        ? t('game.night_start_thief')
-        : game.subPhase === PHASES.CUPIDON
-          ? t('game.night_start_cupid')
-          : t('game.night_start_default');
-
-      await this.sendLogged(villageChannel, nightMsg, { type: 'nightStart' });
-    } catch (e) { logger.warn('Failed to send village night message', { error: e.message }); }
 
     // 5b. Post the persistent village master GUI panel
     await this._postVillageMasterPanel(guild, game);

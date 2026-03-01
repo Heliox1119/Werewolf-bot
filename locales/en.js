@@ -992,6 +992,7 @@ module.exports = {
     progression: "Progression",
     eliminated: "eliminated",
     no_game: "No game in progress in this channel.",
+    status_refreshed: "✅ GUI panels refreshed.",
     status_hint: "-# 📊 Dashboard: `/status`",
   },
 

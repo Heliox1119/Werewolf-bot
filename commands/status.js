@@ -3,13 +3,19 @@ const gameManager = require("../game/gameManager");
 const { isInGameCategory } = require("../utils/validators");
 const { safeReply } = require("../utils/interaction");
 const { t } = require('../utils/i18n');
-const { buildStatusEmbed, buildPlayerEmbed, buildSpectatorEmbed } = require('../game/gameStateView');
+const { buildPlayerEmbed } = require('../game/gameStateView');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("status")
     .setDescription("Voir l'état de la partie / Game status panel"),
 
+  /**
+   * GUI_MASTER architecture: /status does NOT create any new public message.
+   * It forces an immediate refresh of all existing GUI panels (village master,
+   * role channels, spectator) and replies with an ephemeral confirmation.
+   * Optionally shows the private player view (role + contextual info).
+   */
   async execute(interaction) {
     // Vérification catégorie
     if (!await isInGameCategory(interaction)) {
@@ -27,31 +33,16 @@ module.exports = {
     const isSpectator = interaction.channelId === game.spectatorChannelId;
     const player = game.players.find(p => p.id === interaction.user.id);
 
-    // Choose embed based on channel context
-    const embed = isSpectator
-      ? buildSpectatorEmbed(game, timerInfo, guildId)
-      : buildStatusEmbed(game, timerInfo, guildId);
-
-    // Send public status embed (visible to all, registered for auto-update)
-    await safeReply(interaction, { embeds: [embed] });
-
-    // Register panel for auto-update on state changes + auto-pin
+    // Force-refresh all existing GUI panels (edit in place, no new messages)
     try {
-      const msg = await interaction.fetchReply();
-      if (msg) {
-        if (!gameManager.statusPanels.has(game.mainChannelId)) {
-          gameManager.statusPanels.set(game.mainChannelId, {});
-        }
-        const ref = gameManager.statusPanels.get(game.mainChannelId);
-        if (isSpectator) {
-          ref.spectatorMsg = msg;
-        } else {
-          ref.villageMsg = msg;
-        }
-        // Auto-pin the status panel so it stays visible
-        try { await msg.pin(); } catch (_) { /* ignore pin failures (permissions, already pinned) */ }
-      }
-    } catch (_) { /* ignore fetch failures */ }
+      await gameManager._refreshAllGui(game.mainChannelId);
+    } catch (_) { /* ignore refresh failures */ }
+
+    // Ephemeral confirmation — no public message created
+    await safeReply(interaction, {
+      content: t('gui.status_refreshed'),
+      flags: MessageFlags.Ephemeral,
+    });
 
     // Ephemeral player view (follow-up, only for game participants)
     if (player && !isSpectator) {
