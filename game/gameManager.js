@@ -45,6 +45,8 @@ class GameManager extends EventEmitter {
     this._timerEpochs = new Map(); // channelId -> number
     this.statusPanels = new Map(); // channelId -> { villageMsg, spectatorMsg }
     this.rolePanels = new Map();   // gameChannelId -> { wolves: msg, seer: msg, witch: msg, ... }
+    this.villagePanels = new Map();      // gameChannelId -> Discord Message
+    this._villagePanelTimers = new Map(); // gameChannelId -> intervalId (15s tick)
     this._testMode = options.testMode ?? process.env.NODE_ENV === 'test';
     this._failurePoints = new Map();
     this.stuckGameThresholdMs = TIMEOUTS.STUCK_GAME_THRESHOLD;
@@ -503,6 +505,12 @@ class GameManager extends EventEmitter {
     this.lobbyTimeouts.clear();
     this.statusPanels.clear();
     this.rolePanels.clear();
+    // Stop all village panel timer ticks
+    for (const intervalId of this._villagePanelTimers.values()) {
+      clearInterval(intervalId);
+    }
+    this._villagePanelTimers.clear();
+    this.villagePanels.clear();
     // Save state (force all) and close DB
     this.saveState(true);
     this.gameMutex.destroy();
@@ -869,6 +877,11 @@ class GameManager extends EventEmitter {
     if (['phaseChanged', 'playerKilled', 'gameEnded', 'gameStarted'].includes(eventName)) {
       setImmediate(() => this._refreshStatusPanels(game.mainChannelId).catch(() => {}));
       setImmediate(() => this._refreshRolePanels(game.mainChannelId).catch(() => {}));
+      setImmediate(() => this._refreshVillageMasterPanel(game.mainChannelId).catch(() => {}));
+    }
+    // Also refresh village master on broader events (vote, captain, etc.)
+    if (['voteCompleted', 'captainElected', 'subPhaseChanged'].includes(eventName)) {
+      setImmediate(() => this._refreshVillageMasterPanel(game.mainChannelId).catch(() => {}));
     }
   }
 
@@ -989,6 +1002,111 @@ class GameManager extends EventEmitter {
 
     if (!anyAlive) {
       this.rolePanels.delete(gameChannelId);
+    }
+  }
+
+  // ─── Village Master Panel ─────────────────────────────────────────
+
+  /**
+   * Post the persistent village master GUI panel in #village.
+   * Called once at game start — the message is then edited, never reposted.
+   * Auto-pinned so it stays visible above narrative messages.
+   * @param {Guild} guild
+   * @param {object} game
+   */
+  async _postVillageMasterPanel(guild, game) {
+    const { buildVillageMasterEmbed } = require('./villageStatusPanel');
+    const channelId = game.villageChannelId || game.mainChannelId;
+    try {
+      const channel = await guild.channels.fetch(channelId);
+      if (!channel) return;
+      const timerInfo = this.getTimerInfo(game.mainChannelId);
+      const embed = buildVillageMasterEmbed(game, timerInfo, game.guildId);
+      const msg = await channel.send({ embeds: [embed] });
+      this.villagePanels.set(game.mainChannelId, msg);
+      // Auto-pin so the panel stays at the top
+      try { await msg.pin(); } catch (_) { /* ignore pin failures */ }
+      // Start timer tick for live timer display (every 15s)
+      this._startVillagePanelTick(game.mainChannelId);
+    } catch (e) {
+      logger.warn('Failed to post village master panel', { channelId, error: e.message });
+    }
+  }
+
+  /**
+   * Refresh the village master panel (edit in place).
+   * If the panel is missing (e.g. after bot restart), re-posts it.
+   * @param {string} gameChannelId  mainChannelId of the game
+   */
+  async _refreshVillageMasterPanel(gameChannelId) {
+    const game = this.games.get(gameChannelId);
+    if (!game) return;
+
+    // On game end, do one final refresh then stop the tick
+    if (game.phase === PHASES.ENDED) {
+      this._stopVillagePanelTick(gameChannelId);
+    }
+
+    // If no panel (reboot recovery), try to recreate
+    if (!this.villagePanels.has(gameChannelId)) {
+      if (game.phase === PHASES.ENDED) return; // Don't recreate for ended games
+      try {
+        const client = require.main?.exports?.client || this.client;
+        if (client && game.guildId) {
+          const guild = await client.guilds.fetch(game.guildId);
+          if (guild) await this._postVillageMasterPanel(guild, game);
+        }
+      } catch (e) {
+        logger.warn('Failed to re-post village master panel after reboot', { gameChannelId, error: e.message });
+      }
+      return;
+    }
+
+    const msg = this.villagePanels.get(gameChannelId);
+    if (!msg) {
+      this.villagePanels.delete(gameChannelId);
+      return;
+    }
+
+    try {
+      const { buildVillageMasterEmbed } = require('./villageStatusPanel');
+      const timerInfo = this.getTimerInfo(gameChannelId);
+      const embed = buildVillageMasterEmbed(game, timerInfo, game.guildId);
+      await msg.edit({ embeds: [embed] });
+    } catch (_) {
+      // Message deleted or inaccessible — remove reference
+      this.villagePanels.delete(gameChannelId);
+      this._stopVillagePanelTick(gameChannelId);
+    }
+  }
+
+  /**
+   * Start a periodic refresh (every 15s) so the timer display stays live.
+   * The tick only triggers an edit if a timer is active, to avoid spam.
+   * @param {string} gameChannelId
+   */
+  _startVillagePanelTick(gameChannelId) {
+    // Don't start twice
+    if (this._villagePanelTimers.has(gameChannelId)) return;
+    const intervalId = setInterval(() => {
+      // Only refresh if there's an active timer to update
+      const timerInfo = this.getTimerInfo(gameChannelId);
+      if (timerInfo && timerInfo.remainingMs > 0) {
+        this._refreshVillageMasterPanel(gameChannelId).catch(() => {});
+      }
+    }, 15_000);
+    this._villagePanelTimers.set(gameChannelId, intervalId);
+  }
+
+  /**
+   * Stop the periodic timer tick for a game.
+   * @param {string} gameChannelId
+   */
+  _stopVillagePanelTick(gameChannelId) {
+    const intervalId = this._villagePanelTimers.get(gameChannelId);
+    if (intervalId) {
+      clearInterval(intervalId);
+      this._villagePanelTimers.delete(gameChannelId);
     }
   }
 
@@ -2396,6 +2514,9 @@ class GameManager extends EventEmitter {
 
       await this.sendLogged(villageChannel, nightMsg, { type: 'nightStart' });
     } catch (e) { logger.warn('Failed to send village night message', { error: e.message }); }
+
+    // 5b. Post the persistent village master GUI panel
+    await this._postVillageMasterPanel(guild, game);
 
     // 6. Lancer le timeout AFK si on est en sous-phase qui attend une action
     if ([PHASES.VOLEUR, PHASES.CUPIDON, PHASES.LOUPS, PHASES.SALVATEUR].includes(game.subPhase)) {

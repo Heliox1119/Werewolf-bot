@@ -1036,4 +1036,26 @@ module.exports = {
     thief_done: "Le rôle a été choisi.",
     thief_action_hint: "Utilisez `/steal` pour voir et choisir une carte.",
   },
+
+  // ==================== PANNEAU VILLAGE (GUI MAÎTRE) ====================
+  village_panel: {
+    title: "Panneau du Village",
+    footer: "🔄 Mise à jour automatique — Panneau Village",
+    focus_header: "En cours",
+    // Dynamic focus messages (no secrets!)
+    focus_ended: "La partie est terminée.",
+    focus_deliberation: "Le village délibère…",
+    focus_vote: "Le village vote pour éliminer un suspect…",
+    focus_captain_vote: "Élection du capitaine en cours…",
+    focus_day: "Le village est éveillé.",
+    focus_thief: "Le Voleur choisit son rôle…",
+    focus_cupid: "Cupidon est en train d'agir…",
+    focus_salvateur: "Le Salvateur protège quelqu'un…",
+    focus_wolves: "Les Loups choisissent leur victime…",
+    focus_white_wolf: "Le Loup Blanc rôde dans l'ombre…",
+    focus_witch: "La Sorcière prépare ses potions…",
+    focus_seer: "La Voyante consulte les étoiles…",
+    focus_wakeup: "Le village se réveille…",
+    focus_waiting: "En attente…",
+  },
 };

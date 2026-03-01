@@ -1036,4 +1036,26 @@ module.exports = {
     thief_done: "The role has been chosen.",
     thief_action_hint: "Use `/steal` to see and choose a card.",
   },
+
+  // ==================== VILLAGE PANEL (MASTER GUI) ====================
+  village_panel: {
+    title: "Village Panel",
+    footer: "🔄 Auto-updating — Village Panel",
+    focus_header: "Current Action",
+    // Dynamic focus messages (no secrets!)
+    focus_ended: "The game is over.",
+    focus_deliberation: "The village is deliberating…",
+    focus_vote: "The village is voting to eliminate a suspect…",
+    focus_captain_vote: "Captain election in progress…",
+    focus_day: "The village is awake.",
+    focus_thief: "The Thief is choosing a role…",
+    focus_cupid: "Cupid is at work…",
+    focus_salvateur: "The Salvateur is protecting someone…",
+    focus_wolves: "The Wolves are choosing their victim…",
+    focus_white_wolf: "The White Wolf lurks in the shadows…",
+    focus_witch: "The Witch is preparing her potions…",
+    focus_seer: "The Seer is consulting the stars…",
+    focus_wakeup: "The village is waking up…",
+    focus_waiting: "Waiting…",
+  },
 };
