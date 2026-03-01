@@ -24,7 +24,8 @@ const TIMEOUTS = {
   CAPTAIN_TIEBREAK: 60_000,            // 60s pour le départage capitaine
   RECENT_COMMAND_WINDOW: 5_000,        // 5s
   RECENT_COMMAND_CLEANUP: 30_000,      // 30s
-  RECENT_COMMAND_INTERVAL: 60_000      // 60s interval de nettoyage
+  RECENT_COMMAND_INTERVAL: 60_000,     // 60s interval de nettoyage
+  MAX_NO_KILL_CYCLES: 3                // 3 cycles jour/nuit sans mort → draw automatique
 };
 
 class GameManager extends EventEmitter {
@@ -337,6 +338,7 @@ class GameManager extends EventEmitter {
             state.captainId = random.id;
             state.captainVotes.clear();
             state.captainVoters.clear();
+            this.db.clearVotes(game.mainChannelId, 'captain', state.dayCount || 0);
             return { id: random.id, username: random.username };
           });
           if (randomResult) {
@@ -1327,6 +1329,21 @@ class GameManager extends EventEmitter {
         return;
       }
 
+      // --- Détection de cycles sans élimination (convergence anti-AFK) ---
+      const aliveNow = game.players.filter(p => p.alive).length;
+      if (game._aliveAtNightStart !== undefined && aliveNow === game._aliveAtNightStart) {
+        game._noKillCycles = (game._noKillCycles || 0) + 1;
+        this.logAction(game, `Cycle sans élimination (${game._noKillCycles}/${TIMEOUTS.MAX_NO_KILL_CYCLES})`);
+      } else {
+        game._noKillCycles = 0;
+      }
+      game._aliveAtNightStart = aliveNow;
+
+      if (game._noKillCycles >= TIMEOUTS.MAX_NO_KILL_CYCLES) {
+        await this.endGameByInactivity(guild, game, mainChannel);
+        return;
+      }
+
       // Maintenant on passe à la nuit
       game._captainTiebreak = null;
       const newPhase = await this.nextPhase(guild, game, { skipAtomic: true });
@@ -1357,6 +1374,69 @@ class GameManager extends EventEmitter {
     if (shouldAutoSkip) {
       logger.info('Auto-skipping night subphase after transitionToNight (fake player)', { subPhase: game.subPhase, channelId: game.mainChannelId });
       await this.advanceSubPhase(guild, game);
+    }
+  }
+
+  /**
+   * Force-end a game as a draw due to consecutive no-kill cycles (100% AFK convergence).
+   * Called while holding the gameMutex from transitionToNight (phase is still DAY).
+   */
+  async endGameByInactivity(guild, game, mainChannel) {
+    if (game.phase === PHASES.ENDED) return;
+    const snapshot = this._createStateSnapshot(game);
+    const victorDisplay = t('game.victory_draw_display') || 'draw';
+
+    this._setPhase(game, PHASES.ENDED, { allowOutsideAtomic: true });
+    game.endedAt = Date.now();
+    this.clearGameTimers(game);
+    this.logAction(game, `Partie terminée: match nul par inactivité (${game._noKillCycles} cycles sans élimination)`);
+
+    try { this.db.saveGameHistory(game, 'draw'); } catch (e) { /* ignore */ }
+
+    await this.updateVoicePerms(guild, game);
+
+    if (game.voiceChannelId) {
+      this.playAmbience(game.voiceChannelId, 'victory_villagers.mp3');
+    }
+
+    await this.sendLogged(mainChannel, t('game.draw_by_inactivity'), { type: 'drawByInactivity' });
+
+    try {
+      const MetricsCollector = require('../monitoring/metrics');
+      const metrics = MetricsCollector.getInstance();
+      metrics.recordGameCompleted();
+    } catch {}
+
+    // Stats: nobody wins in inactivity draw
+    try {
+      for (const p of game.players) {
+        this.db.updatePlayerStats(p.id, p.username, {
+          games_played: 1,
+          games_won: 0,
+          times_killed: p.alive ? 0 : 1,
+          times_survived: p.alive ? 1 : 0,
+          favorite_role: p.role || null
+        }, game.guildId);
+      }
+    } catch (e) {
+      this.logAction(game, `Erreur stats joueurs: ${e.message}`);
+    }
+
+    await this.sendGameSummary(guild, game, victorDisplay, mainChannel);
+
+    this._emitGameEvent(game, 'gameEnded', {
+      victor: 'draw',
+      victorDisplay,
+      players: game.players.map(p => ({ id: p.id, username: p.username, role: p.role, alive: p.alive })),
+      dayCount: game.dayCount,
+      duration: game.endedAt - game.startedAt
+    });
+
+    try {
+      this.syncGameToDb(game.mainChannelId, { throwOnError: true });
+    } catch (error) {
+      this._restoreStateSnapshot(game, snapshot);
+      throw error;
     }
   }
 
@@ -1774,6 +1854,7 @@ class GameManager extends EventEmitter {
           await this.runAtomic(game.mainChannelId, (state) => {
             if (state.phase !== PHASES.NIGHT || state.subPhase !== PHASES.LOUPS) return;
             state.wolfVotes = null;
+            this.db.clearVotes(game.mainChannelId, 'wolves', state.dayCount || 0);
           });
           await this.sendLogged(mainChannel, t('game.afk_wolves'), { type: 'afkTimeout' });
           this.logAction(game, 'AFK timeout: loups');
@@ -2052,6 +2133,8 @@ class GameManager extends EventEmitter {
     });
 
     game.startedAt = Date.now();
+    game._aliveAtNightStart = game.players.filter(p => p.alive).length;
+    game._noKillCycles = 0;
 
     // Clear lobby timeout — game is now active
     this.clearLobbyTimeout(channelId);
@@ -2895,6 +2978,7 @@ class GameManager extends EventEmitter {
       if (state.phase === PHASES.NIGHT) {
         state.nightVictim = null;
         state.wolfVotes = null;
+        this.db.clearVotes(state.mainChannelId, 'wolves', state.dayCount || 0);
       }
 
       return state.phase;
@@ -2937,6 +3021,7 @@ class GameManager extends EventEmitter {
 
       state.captainVoters.set(voterId, targetId);
       state.captainVotes.set(targetId, (state.captainVotes.get(targetId) || 0) + 1);
+      this.db.addVoteIfChanged(channelId, voterId, targetId, 'captain', state.dayCount || 0);
 
       const alivePlayers = state.players.filter(p => p.alive);
       const allVoted = alivePlayers.length > 0 && alivePlayers.every(p => state.captainVoters.has(p.id));
@@ -2963,6 +3048,7 @@ class GameManager extends EventEmitter {
       state.captainId = winnerId;
       state.captainVotes.clear();
       state.captainVoters.clear();
+      this.db.clearVotes(channelId, 'captain', state.dayCount || 0);
       this.clearCaptainVoteTimeout(state);
 
       return { ok: true, allVoted: true, resolution: { ok: true, winnerId, username: winner.username, wasTie, tied: wasTie ? tied : undefined } };
@@ -2999,6 +3085,7 @@ class GameManager extends EventEmitter {
       state.captainId = winnerId;
       state.captainVotes.clear();
       state.captainVoters.clear();
+      this.db.clearVotes(channelId, 'captain', state.dayCount || 0);
       this.clearCaptainVoteTimeout(state);
       return { ok: true, winnerId, username: winner.username, wasTie, tied: wasTie ? tied : undefined };
     });
@@ -3283,6 +3370,9 @@ class GameManager extends EventEmitter {
         protectedPlayerId: game.protectedPlayerId || null,
         lastProtectedPlayerId: game.lastProtectedPlayerId || null,
         villageRolesPowerless: game.villageRolesPowerless ? 1 : 0,
+        hunterMustShootId: game._hunterMustShoot || null,
+        captainTiebreakIds: game._captainTiebreak ? JSON.stringify(game._captainTiebreak) : null,
+        noKillCycles: game._noKillCycles || 0,
         listenHintsGiven: JSON.stringify(game.listenHintsGiven || []),
         thiefExtraRoles: JSON.stringify(game.thiefExtraRoles || []),
         // v3.5 — ability engine runtime state
@@ -3310,7 +3400,8 @@ class GameManager extends EventEmitter {
         self.db.updatePlayer(channelId, player.id, {
           role: player.role,
           alive: player.alive,
-          inLove: player.inLove || false
+          inLove: player.inLove || false,
+          idiotRevealed: player.idiotRevealed || false
         });
       }
     });
@@ -3406,6 +3497,8 @@ class GameManager extends EventEmitter {
           protectedPlayerId: dbGame.protected_player_id || null,
           lastProtectedPlayerId: dbGame.last_protected_player_id || null,
           villageRolesPowerless: dbGame.village_roles_powerless === 1,
+          _hunterMustShoot: dbGame.hunter_must_shoot_id || null,
+          _captainTiebreak: dbGame.captain_tiebreak_ids ? JSON.parse(dbGame.captain_tiebreak_ids) : null,
           listenRelayUserId: null, // Runtime-only (relay dies on restart)
           listenHintsGiven: JSON.parse(dbGame.listen_hints_given || '[]'),
           thiefExtraRoles: JSON.parse(dbGame.thief_extra_roles || '[]'),
@@ -3419,7 +3512,9 @@ class GameManager extends EventEmitter {
           disableVoiceMute: dbGame.disable_voice_mute === 1,
           _activeTimerType: null,
           _lastMutationAt: Date.now(),
-          stuckStatus: 'OK'
+          stuckStatus: 'OK',
+          _aliveAtNightStart: players.filter(p => p.alive).length,
+          _noKillCycles: dbGame.no_kill_cycles || 0
         };
 
         // v3.5 — Restore ability engine runtime state
@@ -3449,6 +3544,47 @@ class GameManager extends EventEmitter {
         if (ancienPlayer && ancienPlayer.alive) {
           const ancienUsedLife = actionLog.some(a => a.text && a.text.includes('vie supplémentaire'));
           ancienPlayer.ancienExtraLife = !ancienUsedLife;
+        }
+
+        // v3.5.1 — Restore in-progress votes from DB based on current phase/subPhase
+        try {
+          const round = game.dayCount || 0;
+          if (game.phase === PHASES.DAY && game.subPhase === PHASES.VOTE) {
+            const dbVoterMap = this.db.getVotes(channelId, 'village', round);
+            if (dbVoterMap.size > 0) {
+              game.voteVoters = dbVoterMap;
+              game.votes = new Map();
+              game._voteIncrements = new Map();
+              for (const [voterId, targetId] of dbVoterMap) {
+                const isCaptain = game.captainId && game.captainId === voterId;
+                const increment = isCaptain ? 2 : 1;
+                game._voteIncrements.set(voterId, increment);
+                game.votes.set(targetId, (game.votes.get(targetId) || 0) + increment);
+              }
+              logger.debug('Restored village votes from DB', { channelId, count: dbVoterMap.size });
+            }
+          } else if (game.phase === PHASES.DAY && game.subPhase === PHASES.VOTE_CAPITAINE && !game.captainId) {
+            const dbVoterMap = this.db.getVotes(channelId, 'captain', round);
+            if (dbVoterMap.size > 0) {
+              game.captainVoters = dbVoterMap;
+              game.captainVotes = new Map();
+              for (const [, targetId] of dbVoterMap) {
+                game.captainVotes.set(targetId, (game.captainVotes.get(targetId) || 0) + 1);
+              }
+              logger.debug('Restored captain votes from DB', { channelId, count: dbVoterMap.size });
+            }
+          } else if (game.phase === PHASES.NIGHT && game.subPhase === PHASES.LOUPS) {
+            const dbVoterMap = this.db.getVotes(channelId, 'wolves', round);
+            if (dbVoterMap.size > 0) {
+              game.wolfVotes = new Map();
+              for (const [wolfId, targetId] of dbVoterMap) {
+                game.wolfVotes.set(wolfId, targetId);
+              }
+              logger.debug('Restored wolf votes from DB', { channelId, count: dbVoterMap.size });
+            }
+          }
+        } catch (e) {
+          logger.warn('Failed to restore votes from DB', { channelId, error: e.message });
         }
         
         this.games.set(channelId, game);

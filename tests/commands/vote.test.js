@@ -41,6 +41,7 @@ describe('Commande /vote', () => {
     gameManager.create(channelId);
     const game = gameManager.games.get(channelId);
     game.phase = options.phase || PHASES.DAY;
+    game.subPhase = options.subPhase || PHASES.VOTE;
     game.villageChannelId = options.villageChannelId || 'ch-village';
     game.mainChannelId = channelId;
     game.dayCount = options.dayCount || 1;

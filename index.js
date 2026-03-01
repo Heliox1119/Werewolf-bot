@@ -366,6 +366,18 @@ client.once("clientReady", async () => {
                 logger.debug('Re-armed captain vote timeout for restored game', { channelId });
               }
             }
+
+            // Re-arm hunter shoot timeout if hunter was waiting to shoot
+            if (game._hunterMustShoot) {
+              gameManager.startHunterTimeout(guild, game, game._hunterMustShoot);
+              logger.debug('Re-armed hunter shoot timeout for restored game', { channelId, hunterId: game._hunterMustShoot });
+            }
+
+            // Re-arm captain tiebreak timeout if tiebreak was in progress
+            if (game._captainTiebreak && Array.isArray(game._captainTiebreak) && game._captainTiebreak.length > 0) {
+              gameManager.startCaptainTiebreakTimeout(guild, game);
+              logger.debug('Re-armed captain tiebreak timeout for restored game', { channelId, tiedIds: game._captainTiebreak });
+            }
           }
         }
       } catch (err) {

@@ -90,6 +90,9 @@ class MockGameDatabase {
       protectedPlayerId: 'protected_player_id',
       lastProtectedPlayerId: 'last_protected_player_id',
       villageRolesPowerless: 'village_roles_powerless',
+      hunterMustShootId: 'hunter_must_shoot_id',
+      captainTiebreakIds: 'captain_tiebreak_ids',
+      noKillCycles: 'no_kill_cycles',
       listenHintsGiven: 'listen_hints_given',
       thiefExtraRoles: 'thief_extra_roles',
       phase: 'phase',
@@ -166,6 +169,7 @@ class MockGameDatabase {
     if (updates.role !== undefined) player.role = updates.role;
     if (updates.alive !== undefined) player.alive = updates.alive;
     if (updates.inLove !== undefined) player.inLove = updates.inLove;
+    if (updates.idiotRevealed !== undefined) player.idiotRevealed = updates.idiotRevealed;
     
     return true;
   }

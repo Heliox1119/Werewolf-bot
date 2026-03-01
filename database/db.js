@@ -107,6 +107,10 @@ class GameDatabase {
         this.db.exec('ALTER TABLE players ADD COLUMN has_shot BOOLEAN DEFAULT 0');
         logger.info('Migration: added has_shot column to players');
       }
+      if (!playerColumns.includes('idiot_revealed')) {
+        this.db.exec('ALTER TABLE players ADD COLUMN idiot_revealed BOOLEAN DEFAULT 0');
+        logger.info('Migration: added idiot_revealed column to players');
+      }
 
       // Ensure idempotent uniqueness for actor/night/action logs
       this.db.exec(`
@@ -209,6 +213,24 @@ class GameDatabase {
       this.db.exec('CREATE INDEX IF NOT EXISTS idx_player_stats_username ON player_stats(username)');
 
       // ─── v3.5 — Ability Engine migrations ─────────────────────────────────
+
+      // v3.5.1 — Persist hunter shoot flag across reboots
+      if (!columns.includes('hunter_must_shoot_id')) {
+        this.db.exec('ALTER TABLE games ADD COLUMN hunter_must_shoot_id TEXT');
+        logger.info('Migration: added hunter_must_shoot_id column to games');
+      }
+
+      // v3.5.1 — Persist captain tiebreak state across reboots
+      if (!columns.includes('captain_tiebreak_ids')) {
+        this.db.exec('ALTER TABLE games ADD COLUMN captain_tiebreak_ids TEXT');
+        logger.info('Migration: added captain_tiebreak_ids column to games');
+      }
+
+      // v3.5.1 — Persist AFK no-kill cycle counter across reboots
+      if (!columns.includes('no_kill_cycles')) {
+        this.db.exec('ALTER TABLE games ADD COLUMN no_kill_cycles INTEGER DEFAULT 0');
+        logger.info('Migration: added no_kill_cycles column to games');
+      }
 
       // Add ability_state_json to games table for persisting ability runtime state
       if (!columns.includes('ability_state_json')) {
@@ -371,6 +393,12 @@ class GameDatabase {
       villageRolesPowerless: 'village_roles_powerless',
       listenHintsGiven: 'listen_hints_given',
       thiefExtraRoles: 'thief_extra_roles',
+      // v3.5.1 — hunter shoot persistence
+      hunterMustShootId: 'hunter_must_shoot_id',
+      // v3.5.1 — captain tiebreak persistence
+      captainTiebreakIds: 'captain_tiebreak_ids',
+      // v3.5.1 — AFK no-kill cycles persistence
+      noKillCycles: 'no_kill_cycles',
       // v3.5 — ability engine state
       abilityStateJson: 'ability_state_json'
     };
@@ -435,7 +463,7 @@ class GameDatabase {
     if (!game) return [];
 
     const stmt = this.db.prepare(`
-      SELECT user_id as id, username, role, alive, in_love as inLove, has_shot as hasShot
+      SELECT user_id as id, username, role, alive, in_love as inLove, has_shot as hasShot, idiot_revealed as idiotRevealed
       FROM players WHERE game_id = ?
       ORDER BY joined_at
     `);
@@ -464,6 +492,10 @@ class GameDatabase {
     if (updates.hasShot !== undefined) {
       fields.push('has_shot = ?');
       values.push(updates.hasShot ? 1 : 0);
+    }
+    if (updates.idiotRevealed !== undefined) {
+      fields.push('idiot_revealed = ?');
+      values.push(updates.idiotRevealed ? 1 : 0);
     }
 
     if (fields.length === 0) return false;

@@ -46,6 +46,9 @@ CREATE TABLE IF NOT EXISTS games (
   protected_player_id TEXT,
   last_protected_player_id TEXT,
   village_roles_powerless BOOLEAN DEFAULT 0,
+  hunter_must_shoot_id TEXT,
+  captain_tiebreak_ids TEXT,
+  no_kill_cycles INTEGER DEFAULT 0,
   listen_hints_given TEXT DEFAULT '[]',
   thief_extra_roles TEXT DEFAULT '[]',
   
@@ -77,6 +80,7 @@ CREATE TABLE IF NOT EXISTS players (
   alive BOOLEAN DEFAULT 1,
   in_love BOOLEAN DEFAULT 0,
   has_shot BOOLEAN DEFAULT 0,
+  idiot_revealed BOOLEAN DEFAULT 0,
   
   -- Métadonnées
   joined_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),

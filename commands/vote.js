@@ -140,6 +140,12 @@ module.exports = {
       return;
     }
 
+    // --- Guard: only allow regular votes during VOTE subPhase ---
+    if (game.subPhase !== PHASES.VOTE) {
+      await safeReply(interaction, { content: t('error.vote_not_vote_phase'), flags: MessageFlags.Ephemeral });
+      return;
+    }
+
     if (!game.voteVoters) {
       game.voteVoters = new Map();
     }

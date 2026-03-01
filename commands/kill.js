@@ -94,6 +94,7 @@ module.exports = {
       killResult = await gameManager.runAtomic(game.mainChannelId, () => {
         if (!game.wolfVotes) game.wolfVotes = new Map(); // wolfId -> targetId
         game.wolfVotes.set(interaction.user.id, target.id);
+        gameManager.db.addVoteIfChanged(game.mainChannelId, interaction.user.id, target.id, 'wolves', game.dayCount || 0);
 
         const votesForTarget = [...game.wolfVotes.values()].filter(v => v === target.id).length;
         let finalVictim = null;
@@ -119,6 +120,7 @@ module.exports = {
           const victimPlayer = game.players.find(p => p.id === finalVictim);
           game.nightVictim = finalVictim;
           game.wolfVotes = null;
+          gameManager.db.clearVotes(game.mainChannelId, 'wolves', game.dayCount || 0);
           gameManager.clearNightAfkTimeout(game);
           const victimName = victimPlayer ? victimPlayer.username : finalVictim;
           gameManager.logAction(game, `Loups choisissent: ${victimName} (${mode === 'consensus' ? `consensus ${votesForTarget}/${totalWolves}` : 'pluralité'})`);
