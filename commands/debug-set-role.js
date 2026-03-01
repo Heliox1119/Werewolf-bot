@@ -56,9 +56,12 @@ module.exports = {
       return;
     }
 
+    // Defer early — permission updates take several seconds
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
     const game = gameManager.getGameByChannelId(interaction.channelId);
     if (!game) {
-      await interaction.reply({ content: t('error.no_game'), flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: t('error.no_game') });
       return;
     }
 
@@ -68,7 +71,7 @@ module.exports = {
 
     const player = game.players.find(p => p.id === target.id);
     if (!player) {
-      await interaction.reply({ content: t('cmd.debug_set_role.player_not_found'), flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: t('cmd.debug_set_role.player_not_found') });
       return;
     }
 
@@ -79,9 +82,8 @@ module.exports = {
     await gameManager.updateChannelPermissions(interaction.guild, game);
     await gameManager.updateVoicePerms(interaction.guild, game);
 
-    await interaction.reply({
-      content: t('cmd.debug_set_role.success', { name: target.username, role: newRole }),
-      flags: MessageFlags.Ephemeral
+    await interaction.editReply({
+      content: t('cmd.debug_set_role.success', { name: target.username, role: newRole })
     });
   }
 };

@@ -181,20 +181,20 @@ client.once("clientReady", async () => {
   const commandsJson = client.commands.map(cmd => cmd.data.toJSON());
 
   try {
-    // Toujours enregistrer les commandes globalement (propagation ~1h pour les nouveaux serveurs)
-    await rest.put(
-      Routes.applicationCommands(process.env.CLIENT_ID),
-      { body: commandsJson }
-    );
-    logger.success("✅ Slash commands registered (global)", { count: client.commands.size });
-
-    // Si GUILD_ID défini, ajouter aussi en guild pour accès instantané (dev/test)
+    // Si GUILD_ID défini, enregistrer en guild uniquement (instantané, pas de doublons)
     if (process.env.GUILD_ID) {
       await rest.put(
         Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
         { body: commandsJson }
       );
-      logger.success("✅ Slash commands also registered (guild instant)", { guildId: process.env.GUILD_ID });
+      logger.success("✅ Slash commands registered (guild instant)", { guildId: process.env.GUILD_ID, count: client.commands.size });
+    } else {
+      // Pas de GUILD_ID → enregistrement global (propagation ~1h pour les nouveaux serveurs)
+      await rest.put(
+        Routes.applicationCommands(process.env.CLIENT_ID),
+        { body: commandsJson }
+      );
+      logger.success("✅ Slash commands registered (global)", { count: client.commands.size });
     }
 
     // Auto-enregistrer les commandes quand le bot rejoint un nouveau serveur
