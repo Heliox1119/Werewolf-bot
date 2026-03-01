@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS games (
   captain_tiebreak_ids TEXT,
   no_kill_cycles INTEGER DEFAULT 0,
   listen_hints_given TEXT DEFAULT '[]',
+  little_girl_exposure INTEGER DEFAULT 0,
+  little_girl_exposed BOOLEAN DEFAULT 0,
   thief_extra_roles TEXT DEFAULT '[]',
   
   -- Métadonnées

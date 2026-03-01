@@ -92,6 +92,7 @@ function createTestGame(overrides = {}) {
     salvateurChannelId: 'slc1',
     whiteWolfChannelId: 'wwc1',
     thiefChannelId: 'tc1',
+    wolvesVoteState: { round: 1, votes: new Map(), resolved: false },
     ...overrides,
   };
 }
@@ -876,6 +877,14 @@ describe('buildWolvesComponents', () => {
         { id: 'w1', username: 'W1', role: ROLES.WEREWOLF, alive: true },
         { id: 'w2', username: 'W2', role: ROLES.WHITE_WOLF, alive: true },
       ],
+    });
+    expect(buildWolvesComponents(game, 'g1')).toEqual([]);
+  });
+
+  test('returns empty when wolves vote is resolved', () => {
+    const game = createTestGame({
+      subPhase: PHASES.LOUPS,
+      wolvesVoteState: { round: 1, votes: new Map(), resolved: true },
     });
     expect(buildWolvesComponents(game, 'g1')).toEqual([]);
   });

@@ -94,6 +94,18 @@ describe('Night role guards', () => {
       expect(validateWolfKill(mkInteraction(), 'v1').ok).toBe(false);
     });
 
+    it('fails when wolves vote is already resolved', () => {
+      gameManager.getGameByChannelId.mockReturnValue(createMockGame({
+        wolvesChannelId: 'wolves-ch', phase: PHASES.NIGHT, subPhase: PHASES.LOUPS,
+        players: [
+          createMockPlayer({ id: 'wolf1', role: ROLES.WEREWOLF }),
+          createMockPlayer({ id: 'v1', role: ROLES.VILLAGER }),
+        ],
+        wolvesVoteState: { round: 1, votes: new Map(), resolved: true },
+      }));
+      expect(validateWolfKill(mkInteraction(), 'v1').ok).toBe(false);
+    });
+
     it('succeeds with valid wolf and target', () => {
       const wolf = createMockPlayer({ id: 'wolf1', role: ROLES.WEREWOLF });
       const villager = createMockPlayer({ id: 'v1', role: ROLES.VILLAGER });

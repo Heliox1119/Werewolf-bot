@@ -9,7 +9,7 @@ describe('roleHelpers', () => {
       expect(getRoleDescription(ROLES.SEER)).toContain('voyante');
       expect(getRoleDescription(ROLES.WITCH)).toContain('sorciere');
       expect(getRoleDescription(ROLES.HUNTER)).toContain('shoot');
-      expect(getRoleDescription(ROLES.PETITE_FILLE)).toContain('listen');
+      expect(getRoleDescription(ROLES.PETITE_FILLE)).toContain('couter');
       expect(getRoleDescription(ROLES.CUPID)).toContain('love');
     });
 

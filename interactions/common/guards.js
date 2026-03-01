@@ -115,6 +115,10 @@ function validateWolfKill(interaction, targetId) {
   if (game.subPhase !== PHASES.LOUPS) {
     return { ok: false, message: t('error.not_wolves_turn') };
   }
+  // Prevent votes after the round is resolved
+  if (game.wolvesVoteState && game.wolvesVoteState.resolved) {
+    return { ok: false, message: t('error.wolves_already_resolved') };
+  }
 
   const player = game.players.find(p => p.id === interaction.user.id);
   if (!player || !player.alive) {
@@ -420,10 +424,9 @@ function validateSkip(interaction, expectedRole, expectedPhase, label) {
 // ─── Little Girl Listen ─────────────────────────────────────────────
 
 /**
- * Validate a Little Girl listen action (ephemeral button).
- * Mirrors commands/listen.js guard chain.
- * Note: unlike channel-based guards, this uses player lookup across all games
- * because the Little Girl acts from the village channel, not a private channel.
+ * Validate a Little Girl listen action (village panel button).
+ * New mechanic: ephemeral button in village channel, once per night,
+ * with exposure tracking and permanent reveal.
  *
  * @param {ButtonInteraction} interaction  Already deferred (ephemeral).
  * @returns {{ ok: true, game: object, player: object } | { ok: false, message: string }}
@@ -460,8 +463,11 @@ function validateLittleGirlListen(interaction) {
   if (!game.wolvesChannelId) {
     return { ok: false, message: t('error.wolves_channel_missing') };
   }
-  if (game.listenRelayUserId === interaction.user.id) {
-    return { ok: false, message: t('error.already_listening') };
+  if (game.littleGirlListenedThisNight) {
+    return { ok: false, message: t('error.already_listened_tonight') };
+  }
+  if (game.littleGirlExposed) {
+    return { ok: false, message: t('error.lgirl_exposed') };
   }
 
   return { ok: true, game, player };

@@ -467,23 +467,7 @@ class GameManager extends EventEmitter {
     }
   }
 
-  /**
-   * Arrête le relais d'écoute de la Petite Fille et la notifie
-   */
-  async stopListenRelay(game) {
-    if (!game.listenRelayUserId) return;
-    try {
-      // Tenter de notifier la petite fille que l'écoute est terminée
-      const client = require.main?.exports?.client;
-      if (client) {
-        const user = await client.users.fetch(game.listenRelayUserId);
-        await user.send(t('cmd.listen.relay_ended'));
-      }
-    } catch (e) {
-      // ignore DM errors
-    }
-    game.listenRelayUserId = null;
-  }
+
 
   // Nettoyage global (pour shutdown propre)
   destroy() {
@@ -804,8 +788,11 @@ class GameManager extends EventEmitter {
       protectedPlayerId: null,
       lastProtectedPlayerId: null,
       villageRolesPowerless: false,
-      listenRelayUserId: null,
+      wolvesVoteState: require('./wolfVoteEngine').createWolvesVoteState(),
       listenHintsGiven: [],
+      littleGirlExposureLevel: 0,
+      littleGirlListenedThisNight: false,
+      littleGirlExposed: false,
       rules: { minPlayers, maxPlayers },
       actionLog: [],
       startedAt: null,
@@ -916,50 +903,10 @@ class GameManager extends EventEmitter {
       this._refreshRolePanels(gameChannelId),
       this._refreshStatusPanels(gameChannelId),
       this._refreshSpectatorPanel(gameChannelId),
-      this._sendEphemeralRolePrompts(gameChannelId),
     ]);
   }
 
-  /**
-   * Send DM prompts with action buttons to roles that act from the village
-   * channel (no private channel). Pure GUI — no game state mutation.
-   * Idempotent: tracks sent prompts per subPhase to avoid duplicates.
-   * @param {string} gameChannelId
-   */
-  async _sendEphemeralRolePrompts(gameChannelId) {
-    const game = this.games.get(gameChannelId);
-    if (!game || game.phase === PHASES.ENDED) return;
 
-    // Only trigger during LOUPS subPhase (Little Girl)
-    if (game.phase !== PHASES.NIGHT || game.subPhase !== PHASES.LOUPS) return;
-
-    const ROLES_REQ = require('./roles');
-    const petiteFille = game.players.find(
-      p => p.alive && p.role === ROLES_REQ.PETITE_FILLE && !game.villageRolesPowerless
-    );
-    if (!petiteFille) return;
-
-    // Idempotent: don't re-send if already prompted this subPhase cycle
-    const promptKey = `lgirl:${game.dayCount}:${game.subPhase}`;
-    if (!this._ephemeralPromptsSent) this._ephemeralPromptsSent = new Map();
-    const sentSet = this._ephemeralPromptsSent.get(gameChannelId) || new Set();
-    if (sentSet.has(promptKey)) return;
-    sentSet.add(promptKey);
-    this._ephemeralPromptsSent.set(gameChannelId, sentSet);
-
-    try {
-      const { buildLittleGirlPrompt } = require('../interactions/ephemeralRoleActions/littleGirlListen');
-      const client = require.main?.exports?.client || this.client;
-      if (!client) return;
-      const user = await client.users.fetch(petiteFille.id);
-      if (user) {
-        const prompt = buildLittleGirlPrompt(game.guildId);
-        await user.send(prompt);
-      }
-    } catch (e) {
-      logger.debug('Failed to send ephemeral prompt to Little Girl', { error: e.message });
-    }
-  }
 
   /**
    * Auto-refresh registered status panel messages (read-only, no game mutation).
@@ -1111,6 +1058,36 @@ class GameManager extends EventEmitter {
   // ─── Village Master Panel ─────────────────────────────────────────
 
   /**
+   * Build interactive button components for the village master panel.
+   * Currently: Little Girl listen button during LOUPS subPhase.
+   * @param {object} game
+   * @returns {ActionRowBuilder[]}
+   */
+  _buildVillagePanelComponents(game) {
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+    const ROLES_REQ = require('./roles');
+    const rows = [];
+
+    // Little Girl listen button during LOUPS subPhase
+    if (game.phase === PHASES.NIGHT && game.subPhase === PHASES.LOUPS) {
+      const petiteFille = game.players.find(
+        p => p.alive && p.role === ROLES_REQ.PETITE_FILLE && !game.villageRolesPowerless
+      );
+      if (petiteFille && !game.littleGirlExposed) {
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('lgirl_listen')
+            .setLabel(t('role_panel.lgirl_listen_btn', {}, game.guildId))
+            .setStyle(ButtonStyle.Secondary)
+        );
+        rows.push(row);
+      }
+    }
+
+    return rows;
+  }
+
+  /**
    * Post the persistent village master GUI panel in #village.
    * Called once at game start — the message is then edited, never reposted.
    * Auto-pinned so it stays visible above narrative messages.
@@ -1129,6 +1106,8 @@ class GameManager extends EventEmitter {
       const timerInfo = this.getTimerInfo(game.mainChannelId);
       const embed = buildVillageMasterEmbed(game, timerInfo, game.guildId);
       const sendPayload = { embeds: [embed] };
+      const components = this._buildVillagePanelComponents(game);
+      if (components.length > 0) sendPayload.components = components;
       const imageFile = getPhaseImage(game.phase);
       if (imageFile) {
         const imagePath = path.join(__dirname, '..', 'img', imageFile);
@@ -1188,6 +1167,8 @@ class GameManager extends EventEmitter {
       const timerInfo = this.getTimerInfo(gameChannelId);
       const embed = buildVillageMasterEmbed(game, timerInfo, game.guildId);
       const editPayload = { embeds: [embed] };
+      // Village panel components (Little Girl listen button during LOUPS)
+      editPayload.components = this._buildVillagePanelComponents(game);
       const imageFile = getPhaseImage(game.phase);
       if (imageFile) {
         const imagePath = path.join(__dirname, '..', 'img', imageFile);
@@ -1354,13 +1335,17 @@ class GameManager extends EventEmitter {
       rules: game.rules,
       wolfWinCondition: (() => { try { const c = require('../utils/config').getInstance(); return c.getWolfWinCondition(game.guildId || null); } catch { return 'majority'; } })(),
       // Additional state fields
-      wolfVotes: game.wolfVotes || null,
+      wolvesVoteState: game.wolvesVoteState
+        ? { round: game.wolvesVoteState.round, votes: game.wolvesVoteState.votes ? Object.fromEntries(game.wolvesVoteState.votes) : {}, resolved: game.wolvesVoteState.resolved }
+        : { round: 1, votes: {}, resolved: false },
       protectedPlayerId: game.protectedPlayerId || null,
       witchKillTarget: game.witchKillTarget || null,
       witchSave: game.witchSave || false,
       whiteWolfKillTarget: game.whiteWolfKillTarget || null,
       thiefExtraRoles: game.thiefExtraRoles || [],
-      listenRelayUserId: game.listenRelayUserId || null,
+      littleGirlExposureLevel: game.littleGirlExposureLevel || 0,
+      littleGirlListenedThisNight: game.littleGirlListenedThisNight || false,
+      littleGirlExposed: game.littleGirlExposed || false,
       disableVoiceMute: game.disableVoiceMute || false
     };
   }
@@ -1838,6 +1823,7 @@ class GameManager extends EventEmitter {
 
       // Maintenant on passe à la nuit
       game._captainTiebreak = null;
+      game.littleGirlListenedThisNight = false; // Reset per-night Little Girl flag
       const newPhase = await this.nextPhase(guild, game, { skipAtomic: true });
       if (newPhase !== PHASES.NIGHT) return;
 
@@ -2157,7 +2143,7 @@ class GameManager extends EventEmitter {
     const hasRole = (g, r) => useReal ? this.hasAliveRealRole(g, r) : this.hasAliveAnyRole(g, r);
 
     const outcome = await this.runAtomic(game.mainChannelId, (state) => {
-      const result = { announce: null, notifyRole: null, timer: null, stopListenRelay: false, notifyWitchVictim: false };
+      const result = { announce: null, notifyRole: null, timer: null, notifyWitchVictim: false };
       switch (state.subPhase) {
         case PHASES.VOLEUR:
           if (hasRole(state, ROLES.CUPID) && (!state.lovers || state.lovers.length === 0)) {
@@ -2191,7 +2177,6 @@ class GameManager extends EventEmitter {
           result.notifyRole = ROLES.WEREWOLF;
           break;
         case PHASES.LOUPS: {
-          result.stopListenRelay = true;
           const isOddNight = (state.dayCount || 0) % 2 === 1;
           if (isOddNight && hasRole(state, ROLES.WHITE_WOLF)) {
             this._setSubPhase(state, PHASES.LOUP_BLANC);
@@ -2280,7 +2265,6 @@ class GameManager extends EventEmitter {
       return result;
     });
 
-    if (outcome.stopListenRelay) await this.stopListenRelay(game);
     // Witch victim notification is now displayed in the witch role panel (auto-refreshed)
     if (outcome.announce) await this.announcePhase(guild, game, outcome.announce);
     if (outcome.notifyRole) this.notifyTurn(guild, game, outcome.notifyRole);
@@ -2340,10 +2324,19 @@ class GameManager extends EventEmitter {
         if (currentSub === PHASES.LOUPS) {
           await this.runAtomic(game.mainChannelId, (state) => {
             if (state.phase !== PHASES.NIGHT || state.subPhase !== PHASES.LOUPS) return;
-            state.wolfVotes = null;
+            const { resolveOnTimeout, getAliveWolves } = require('./wolfVoteEngine');
+            const outcome = resolveOnTimeout(state.wolvesVoteState);
+            if (outcome.action === 'already_resolved') return;
+            if (outcome.action === 'kill') {
+              state.nightVictim = outcome.targetId;
+              const victim = state.players.find(p => p.id === outcome.targetId);
+              this.logAction(state, `AFK timeout loups: pluralité → ${victim ? victim.username : outcome.targetId}`);
+              this.db.addNightAction(state.mainChannelId, state.dayCount || 0, 'kill', 'wolves-timeout', outcome.targetId);
+            } else {
+              this.logAction(state, 'AFK timeout loups: aucun consensus → personne ne meurt');
+            }
             this.db.clearVotes(game.mainChannelId, 'wolves', state.dayCount || 0);
           });
-          // Wolves AFK — narrative suppressed, visible via village GUI narration panel
           this.logAction(game, 'AFK timeout: loups');
         } else if (currentSub === PHASES.SORCIERE) {
           // Suppressed: visible via /status panel
@@ -3400,7 +3393,7 @@ class GameManager extends EventEmitter {
 
       if (state.phase === PHASES.NIGHT) {
         state.nightVictim = null;
-        state.wolfVotes = null;
+        state.wolvesVoteState = require('./wolfVoteEngine').createWolvesVoteState();
         this.db.clearVotes(state.mainChannelId, 'wolves', state.dayCount || 0);
       }
 
@@ -3807,6 +3800,8 @@ class GameManager extends EventEmitter {
         captainTiebreakIds: game._captainTiebreak ? JSON.stringify(game._captainTiebreak) : null,
         noKillCycles: game._noKillCycles || 0,
         listenHintsGiven: JSON.stringify(game.listenHintsGiven || []),
+        littleGirlExposureLevel: game.littleGirlExposureLevel || 0,
+        littleGirlExposed: game.littleGirlExposed ? 1 : 0,
         thiefExtraRoles: JSON.stringify(game.thiefExtraRoles || []),
         // v3.5 — ability engine runtime state
         abilityStateJson: game._abilityState
@@ -3932,8 +3927,11 @@ class GameManager extends EventEmitter {
           villageRolesPowerless: dbGame.village_roles_powerless === 1,
           _hunterMustShoot: dbGame.hunter_must_shoot_id || null,
           _captainTiebreak: dbGame.captain_tiebreak_ids ? JSON.parse(dbGame.captain_tiebreak_ids) : null,
-          listenRelayUserId: null, // Runtime-only (relay dies on restart)
           listenHintsGiven: JSON.parse(dbGame.listen_hints_given || '[]'),
+          wolvesVoteState: require('./wolfVoteEngine').createWolvesVoteState(),
+          littleGirlExposureLevel: dbGame.little_girl_exposure || 0,
+          littleGirlListenedThisNight: false, // Runtime-only (reset on restart)
+          littleGirlExposed: dbGame.little_girl_exposed === 1,
           thiefExtraRoles: JSON.parse(dbGame.thief_extra_roles || '[]'),
           rules: { 
             minPlayers: dbGame.min_players, 
@@ -4009,9 +4007,8 @@ class GameManager extends EventEmitter {
           } else if (game.phase === PHASES.NIGHT && game.subPhase === PHASES.LOUPS) {
             const dbVoterMap = this.db.getVotes(channelId, 'wolves', round);
             if (dbVoterMap.size > 0) {
-              game.wolfVotes = new Map();
               for (const [wolfId, targetId] of dbVoterMap) {
-                game.wolfVotes.set(wolfId, targetId);
+                game.wolvesVoteState.votes.set(wolfId, targetId);
               }
               logger.debug('Restored wolf votes from DB', { channelId, count: dbVoterMap.size });
             }

@@ -478,35 +478,6 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   }
 });
 
-// ─── Petite Fille : relais anonymisé des messages loups ──────────────────────
-client.on('messageCreate', async (message) => {
-  try {
-    // Ignorer les messages du bot
-    if (message.author.bot) return;
-
-    // Chercher une partie dont le wolvesChannelId correspond
-    const game = Array.from(gameManager.games.values()).find(g => g.wolvesChannelId === message.channelId);
-    if (!game) return;
-
-    // Vérifier qu'un relais est actif
-    if (!game.listenRelayUserId) return;
-
-    // Vérifier que c'est bien la phase des loups
-    const PHASES = require('./game/phases');
-    if (game.phase !== PHASES.NIGHT || game.subPhase !== PHASES.LOUPS) {
-      game.listenRelayUserId = null;
-      return;
-    }
-
-    // Relayer le message en DM anonymisé
-    const { t } = require('./utils/i18n');
-    const user = await client.users.fetch(game.listenRelayUserId);
-    await user.send(t('cmd.listen.relay_message', { content: message.content }));
-  } catch (err) {
-    // Silently ignore relay errors (user DM closed, etc.)
-  }
-});
-
 client.on("interactionCreate", async interaction => {
   // Ignorer les interactions en DM (toutes les commandes nécessitent un serveur)
   if (!interaction.guild) {

@@ -87,6 +87,7 @@ function createMockGame(options = {}) {
     hasUsedDeathPotion: false,
     hunterTarget: null,
     petiteFilleSpy: null,
+    wolvesVoteState: { round: 1, votes: new Map(), resolved: false },
     rules: { minPlayers: 5, maxPlayers: 10 },
     history: []
   };

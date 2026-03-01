@@ -145,8 +145,11 @@ function buildRoleDescription(game, timerInfo, roleKey, guildId, hint) {
 // ─── Wolves Panel ──────────────────────────────────────────────────
 
 function buildWolvesPanel(game, timerInfo, guildId) {
+  const ROLES_L = require('./roles');
+  const { getWolfMajority } = require('./wolfVoteEngine');
+
   const wolves = (game.players || []).filter(
-    p => (p.role === ROLES.WEREWOLF || p.role === ROLES.WHITE_WOLF) && p.alive
+    p => (p.role === ROLES_L.WEREWOLF || p.role === ROLES_L.WHITE_WOLF) && p.alive
   );
   const wolfList = wolves.length > 0
     ? wolves.map(w => `🐺 **${w.username}**`).join('\n')
@@ -166,6 +169,34 @@ function buildWolvesPanel(game, timerInfo, guildId) {
     value: wolfList,
     inline: false,
   });
+
+  // ── Dynamic vote tracking embed section ──
+  const voteState = game.wolvesVoteState;
+  if (voteState && isRoleTurn(game, 'wolves') && !voteState.resolved) {
+    const totalWolves = wolves.length;
+    const majorityNeeded = getWolfMajority(totalWolves);
+
+    const voteLines = [];
+    for (const wolf of wolves) {
+      const targetId = voteState.votes instanceof Map
+        ? voteState.votes.get(wolf.id)
+        : (voteState.votes && voteState.votes[wolf.id]);
+      if (targetId) {
+        const targetPlayer = (game.players || []).find(p => p.id === targetId);
+        const targetName = targetPlayer ? targetPlayer.username : targetId;
+        voteLines.push(`🐺 ${wolf.username} → **${targetName}**`);
+      } else {
+        voteLines.push(`⏳ ${wolf.username} — ${t('role_panel.wolves_vote_waiting', {}, guildId)}`);
+      }
+    }
+
+    const voteDisplay = voteLines.join('\n') || '—';
+    embed.addFields({
+      name: `${t('role_panel.wolves_vote_title', {}, guildId)} — Round ${voteState.round}`,
+      value: `${voteDisplay}\n\n${t('role_panel.wolves_majority_label', {}, guildId)} : **${majorityNeeded}/${totalWolves}**`,
+      inline: false,
+    });
+  }
 
   embed.setFooter({ text: t('role_panel.footer', {}, guildId) });
   return embed;
@@ -464,6 +495,8 @@ function buildThiefButtons(game, guildId) {
 function buildWolvesComponents(game, guildId) {
   if (game.phase !== PHASES.NIGHT) return [];
   if (game.subPhase !== PHASES.LOUPS) return [];
+  // Don't show select menu if vote is already resolved
+  if (game.wolvesVoteState && game.wolvesVoteState.resolved) return [];
 
   const targets = (game.players || []).filter(
     p => p.alive && p.role !== ROLES.WEREWOLF && p.role !== ROLES.WHITE_WOLF

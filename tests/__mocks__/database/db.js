@@ -44,6 +44,8 @@ class MockGameDatabase {
       last_protected_player_id: null,
       village_roles_powerless: 0,
       listen_hints_given: '[]',
+      little_girl_exposure: 0,
+      little_girl_exposed: 0,
       thief_extra_roles: '[]'
     });
     
@@ -94,6 +96,8 @@ class MockGameDatabase {
       captainTiebreakIds: 'captain_tiebreak_ids',
       noKillCycles: 'no_kill_cycles',
       listenHintsGiven: 'listen_hints_given',
+      littleGirlExposureLevel: 'little_girl_exposure',
+      littleGirlExposed: 'little_girl_exposed',
       thiefExtraRoles: 'thief_extra_roles',
       phase: 'phase',
       subPhase: 'sub_phase',

@@ -1,5 +1,6 @@
 /**
  * Tests for interactions/common/guards.js — validateLittleGirlListen
+ * Updated for new mechanic: exposure system, once-per-night, no relay
  */
 
 const ROLES = require('../../game/roles');
@@ -31,7 +32,9 @@ describe('validateLittleGirlListen', () => {
       subPhase: PHASES.LOUPS,
       wolvesChannelId: 'wolves-ch',
       villageRolesPowerless: false,
-      listenRelayUserId: null,
+      littleGirlListenedThisNight: false,
+      littleGirlExposed: false,
+      littleGirlExposureLevel: 0,
       players: [
         createMockPlayer({ id: 'lgirl', username: 'Alice', role: ROLES.PETITE_FILLE }),
         createMockPlayer({ id: 'wolf1', username: 'Bob', role: ROLES.WEREWOLF }),
@@ -127,8 +130,16 @@ describe('validateLittleGirlListen', () => {
     expect(result.ok).toBe(false);
   });
 
-  test('fails when already listening', () => {
-    const game = makeGame({ listenRelayUserId: 'lgirl' });
+  test('fails when already listened this night', () => {
+    const game = makeGame({ littleGirlListenedThisNight: true });
+    gameManager.getGameByChannelId.mockReturnValue(game);
+    const i = makeInteraction();
+    const result = validateLittleGirlListen(i);
+    expect(result.ok).toBe(false);
+  });
+
+  test('fails when Little Girl is exposed', () => {
+    const game = makeGame({ littleGirlExposed: true });
     gameManager.getGameByChannelId.mockReturnValue(game);
     const i = makeInteraction();
     const result = validateLittleGirlListen(i);

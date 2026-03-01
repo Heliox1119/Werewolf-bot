@@ -92,12 +92,15 @@ describe('interactions/nightActions', () => {
     it('registers a vote and advances on consensus (solo wolf)', async () => {
       const wolf = createMockPlayer({ id: 'wolf1', role: ROLES.WEREWOLF });
       const villager = createMockPlayer({ id: 'v1', role: ROLES.VILLAGER });
+      const { createWolvesVoteState } = require('../../game/wolfVoteEngine');
       const game = createMockGame({
         mainChannelId: 'main', wolvesChannelId: 'wolves-ch',
         phase: PHASES.NIGHT, subPhase: PHASES.LOUPS,
-        players: [wolf, villager], wolfVotes: null,
+        players: [wolf, villager],
+        wolvesVoteState: createWolvesVoteState(),
       });
       gameManager.getGameByChannelId.mockReturnValue(game);
+      gameManager._refreshAllGui = jest.fn(async () => {});
 
       const i = createSelectInteraction('wolves_kill', ['v1'], 'wolves-ch', 'wolf1');
       await handleWolvesKill(i);
@@ -107,44 +110,82 @@ describe('interactions/nightActions', () => {
       expect(gameManager.advanceSubPhase).toHaveBeenCalledWith(i.guild, game);
     });
 
-    it('pending vote when no majority (multi-wolf)', async () => {
+    it('pending vote when no majority (2 wolves need unanimity)', async () => {
       const wolf1 = createMockPlayer({ id: 'wolf1', role: ROLES.WEREWOLF });
       const wolf2 = createMockPlayer({ id: 'wolf2', role: ROLES.WEREWOLF });
       const v1 = createMockPlayer({ id: 'v1', role: ROLES.VILLAGER });
       const v2 = createMockPlayer({ id: 'v2', role: ROLES.VILLAGER });
+      const { createWolvesVoteState } = require('../../game/wolfVoteEngine');
       const game = createMockGame({
         mainChannelId: 'main', wolvesChannelId: 'wolves-ch',
         phase: PHASES.NIGHT, subPhase: PHASES.LOUPS,
-        players: [wolf1, wolf2, v1, v2], wolfVotes: null,
+        players: [wolf1, wolf2, v1, v2],
+        wolvesVoteState: createWolvesVoteState(),
       });
       gameManager.getGameByChannelId.mockReturnValue(game);
+      gameManager._refreshAllGui = jest.fn(async () => {});
 
       const i = createSelectInteraction('wolves_kill', ['v1'], 'wolves-ch', 'wolf1');
       await handleWolvesKill(i);
 
-      // Not yet consensus (1/2 < ceil(2/2)=1) — actually ceil(2/2)=1 so 1>=1 is true
-      // With 2 wolves, majority = ceil(2/2) = 1, so a single vote suffices
-      expect(gameManager.advanceSubPhase).toHaveBeenCalled();
+      // New majority: floor(2/2)+1 = 2 → need both wolves to agree
+      // Only wolf1 voted → pending
+      expect(gameManager.advanceSubPhase).not.toHaveBeenCalled();
     });
 
-    it('plurality when all wolves voted for different targets', async () => {
+    it('advance_round when all wolves voted but no majority in round 1', async () => {
       const wolf1 = createMockPlayer({ id: 'wolf1', role: ROLES.WEREWOLF });
       const wolf2 = createMockPlayer({ id: 'wolf2', role: ROLES.WEREWOLF });
       const wolf3 = createMockPlayer({ id: 'wolf3', role: ROLES.WEREWOLF });
       const v1 = createMockPlayer({ id: 'v1', role: ROLES.VILLAGER });
       const v2 = createMockPlayer({ id: 'v2', role: ROLES.VILLAGER });
+      const v3 = createMockPlayer({ id: 'v3', role: ROLES.VILLAGER });
+      const { createWolvesVoteState } = require('../../game/wolfVoteEngine');
+      const state = createWolvesVoteState();
+      state.votes.set('wolf2', 'v2');
+      state.votes.set('wolf3', 'v3');
       const game = createMockGame({
         mainChannelId: 'main', wolvesChannelId: 'wolves-ch',
         phase: PHASES.NIGHT, subPhase: PHASES.LOUPS,
-        players: [wolf1, wolf2, wolf3, v1, v2],
-        wolfVotes: new Map([['wolf2', 'v2'], ['wolf3', 'v1']]),
+        players: [wolf1, wolf2, wolf3, v1, v2, v3],
+        wolvesVoteState: state,
       });
       gameManager.getGameByChannelId.mockReturnValue(game);
+      gameManager._refreshAllGui = jest.fn(async () => {});
 
-      // wolf1 votes for v1 → allVoted, v1 has 2 votes (plurality winner)
+      // wolf1 votes for v1 → all voted, all different → no majority → advance_round
       const i = createSelectInteraction('wolves_kill', ['v1'], 'wolves-ch', 'wolf1');
       await handleWolvesKill(i);
 
+      expect(game.wolvesVoteState.round).toBe(2);
+      expect(gameManager.advanceSubPhase).not.toHaveBeenCalled();
+    });
+
+    it('no_kill when all wolves voted in round 2 without majority', async () => {
+      const wolf1 = createMockPlayer({ id: 'wolf1', role: ROLES.WEREWOLF });
+      const wolf2 = createMockPlayer({ id: 'wolf2', role: ROLES.WEREWOLF });
+      const wolf3 = createMockPlayer({ id: 'wolf3', role: ROLES.WEREWOLF });
+      const v1 = createMockPlayer({ id: 'v1', role: ROLES.VILLAGER });
+      const v2 = createMockPlayer({ id: 'v2', role: ROLES.VILLAGER });
+      const v3 = createMockPlayer({ id: 'v3', role: ROLES.VILLAGER });
+      const { createWolvesVoteState } = require('../../game/wolfVoteEngine');
+      const state = createWolvesVoteState(2); // round 2
+      state.votes.set('wolf2', 'v2');
+      state.votes.set('wolf3', 'v3');
+      const game = createMockGame({
+        mainChannelId: 'main', wolvesChannelId: 'wolves-ch',
+        phase: PHASES.NIGHT, subPhase: PHASES.LOUPS,
+        players: [wolf1, wolf2, wolf3, v1, v2, v3],
+        wolvesVoteState: state,
+      });
+      gameManager.getGameByChannelId.mockReturnValue(game);
+      gameManager._refreshAllGui = jest.fn(async () => {});
+
+      const i = createSelectInteraction('wolves_kill', ['v1'], 'wolves-ch', 'wolf1');
+      await handleWolvesKill(i);
+
+      expect(game.wolvesVoteState.resolved).toBe(true);
+      expect(game.nightVictim).toBeFalsy();
       expect(gameManager.advanceSubPhase).toHaveBeenCalled();
     });
   });

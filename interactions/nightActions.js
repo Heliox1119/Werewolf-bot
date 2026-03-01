@@ -36,8 +36,14 @@ const {
 } = require('./common/guards');
 const { safeEditReply } = require('../utils/interaction');
 const { t, translateRole } = require('../utils/i18n');
+const {
+  getAliveWolves,
+  registerWolfVote,
+  processWolfVote,
+  getWolfMajority,
+} = require('../game/wolfVoteEngine');
 
-// ─── Wolves Kill (vote) ────────────────────────────────────────────
+// ─── Wolves Kill (collective vote with majority) ───────────────────
 
 async function handleWolvesKill(interaction) {
   const targetId = interaction.values[0];
@@ -49,97 +55,92 @@ async function handleWolvesKill(interaction) {
 
   const { game, target } = result;
 
-  const aliveWolves = game.players.filter(
-    p => (p.role === ROLES.WEREWOLF || p.role === ROLES.WHITE_WOLF) && p.alive && gameManager.isRealPlayerId(p.id)
-  );
+  const aliveWolves = getAliveWolves(game, (id) => gameManager.isRealPlayerId(id));
+  const aliveWolfIds = aliveWolves.map(w => w.id);
   const totalWolves = aliveWolves.length;
-  const majorityNeeded = Math.ceil(totalWolves / 2);
+  const majorityNeeded = getWolfMajority(totalWolves);
 
-  let killResult;
+  let outcome;
   try {
-    killResult = await gameManager.runAtomic(game.mainChannelId, () => {
-      if (!game.wolfVotes) game.wolfVotes = new Map();
-      game.wolfVotes.set(interaction.user.id, targetId);
-      gameManager.db.addVoteIfChanged(game.mainChannelId, interaction.user.id, targetId, 'wolves', game.dayCount || 0);
-
-      const votesForTarget = [...game.wolfVotes.values()].filter(v => v === targetId).length;
-      let finalVictim = null;
-      let mode = 'pending';
-
-      if (votesForTarget >= majorityNeeded) {
-        finalVictim = targetId;
-        mode = 'consensus';
-      } else {
-        const allVoted = aliveWolves.every(w => game.wolfVotes.has(w.id));
-        if (allVoted) {
-          const voteCounts = new Map();
-          for (const tid of game.wolfVotes.values()) {
-            voteCounts.set(tid, (voteCounts.get(tid) || 0) + 1);
-          }
-          const sorted = [...voteCounts.entries()].sort((a, b) => b[1] - a[1]);
-          finalVictim = sorted[0][0];
-          mode = 'plurality';
-        }
+    outcome = await gameManager.runAtomic(game.mainChannelId, (state) => {
+      // Register vote
+      const votesForTarget = registerWolfVote(state.wolvesVoteState, interaction.user.id, targetId);
+      if (votesForTarget === null) {
+        return { action: 'already_resolved' };
       }
+      gameManager.db.addVoteIfChanged(state.mainChannelId, interaction.user.id, targetId, 'wolves', state.dayCount || 0);
 
-      if (finalVictim) {
-        const victimPlayer = game.players.find(p => p.id === finalVictim);
-        game.nightVictim = finalVictim;
-        game.wolfVotes = null;
-        gameManager.db.clearVotes(game.mainChannelId, 'wolves', game.dayCount || 0);
-        gameManager.clearNightAfkTimeout(game);
-        const victimName = victimPlayer ? victimPlayer.username : finalVictim;
-        gameManager.logAction(game, `Loups choisissent: ${victimName} (${mode === 'consensus' ? `consensus ${votesForTarget}/${totalWolves}` : 'pluralité'})`);
-        const ok = gameManager.db.addNightAction(game.mainChannelId, game.dayCount || 0, 'kill', interaction.user.id, finalVictim);
+      // Process vote outcome
+      const result = processWolfVote(state.wolvesVoteState, aliveWolfIds, totalWolves);
+
+      if (result.action === 'kill') {
+        const victimPlayer = state.players.find(p => p.id === result.targetId);
+        state.nightVictim = result.targetId;
+        gameManager.db.clearVotes(state.mainChannelId, 'wolves', state.dayCount || 0);
+        gameManager.clearNightAfkTimeout(state);
+        const victimName = victimPlayer ? victimPlayer.username : result.targetId;
+        gameManager.logAction(state, `Loups choisissent: ${victimName} (majorité ${result.votesForTarget}/${totalWolves})`);
+        const ok = gameManager.db.addNightAction(state.mainChannelId, state.dayCount || 0, 'kill', interaction.user.id, result.targetId);
         if (!ok) throw new Error('Failed to persist wolf kill action');
+        result.victimName = victimName;
+      } else if (result.action === 'advance_round') {
+        gameManager.db.clearVotes(state.mainChannelId, 'wolves', state.dayCount || 0);
+        gameManager.logAction(state, 'Loups: pas de majorité round 1, passage au round 2');
+      } else if (result.action === 'no_kill') {
+        gameManager.db.clearVotes(state.mainChannelId, 'wolves', state.dayCount || 0);
+        gameManager.clearNightAfkTimeout(state);
+        gameManager.logAction(state, 'Loups: consensus impossible après 2 rounds, personne ne meurt');
       }
 
-      return {
-        votesForTarget,
-        mode,
-        finalVictim,
-        victimName: finalVictim
-          ? (game.players.find(p => p.id === finalVictim)?.username || finalVictim)
-          : target.username,
-      };
+      return result;
     });
   } catch (e) {
     await safeEditReply(interaction, { content: t('error.internal'), flags: MessageFlags.Ephemeral });
     return;
   }
 
-  // Notify the wolves channel about the vote
-  try {
-    const wolvesChannel = await interaction.guild.channels.fetch(game.wolvesChannelId);
-    await wolvesChannel.send(
-      t('cmd.kill.wolf_vote', {
-        name: interaction.user.username,
-        target: target.username,
-        n: killResult.votesForTarget,
-        m: majorityNeeded,
-      })
-    );
-  } catch (_) { /* ignore channel send failure */ }
+  // Handle outcome
+  if (outcome.action === 'already_resolved') {
+    await safeEditReply(interaction, { content: t('error.wolves_already_resolved'), flags: MessageFlags.Ephemeral });
+    return;
+  }
 
-  if (killResult.mode === 'consensus') {
-    await safeEditReply(interaction, { content: t('cmd.kill.consensus', { name: killResult.victimName }), flags: MessageFlags.Ephemeral });
+  if (outcome.action === 'kill') {
+    await safeEditReply(interaction, { content: t('cmd.kill.wolves_majority_reached', { name: outcome.victimName }), flags: MessageFlags.Ephemeral });
+    // Refresh GUI (panel shows resolved state) then advance
+    await gameManager._refreshAllGui(game.mainChannelId).catch(() => {});
     await gameManager.advanceSubPhase(interaction.guild, game);
-  } else if (killResult.mode === 'plurality') {
+  } else if (outcome.action === 'advance_round') {
+    await safeEditReply(interaction, { content: t('cmd.kill.wolves_round2_start'), flags: MessageFlags.Ephemeral });
+    // Send disagreement warning to wolves channel
     try {
       const wolvesChannel = await interaction.guild.channels.fetch(game.wolvesChannelId);
-      await wolvesChannel.send(t('cmd.kill.pack_chose', { name: killResult.victimName }));
+      await wolvesChannel.send(t('cmd.kill.wolves_no_consensus_warning'));
     } catch (_) { /* ignore */ }
-    await safeEditReply(interaction, { content: t('cmd.kill.all_voted', { name: killResult.victimName }), flags: MessageFlags.Ephemeral });
+    // Refresh GUI to show round 2 with fresh select menu
+    await gameManager._refreshAllGui(game.mainChannelId).catch(() => {});
+  } else if (outcome.action === 'no_kill') {
+    await safeEditReply(interaction, { content: t('cmd.kill.wolves_no_kill'), flags: MessageFlags.Ephemeral });
+    // Send no-kill message to wolves channel
+    try {
+      const wolvesChannel = await interaction.guild.channels.fetch(game.wolvesChannelId);
+      await wolvesChannel.send(t('cmd.kill.wolves_no_kill'));
+    } catch (_) { /* ignore */ }
+    // Refresh GUI then advance
+    await gameManager._refreshAllGui(game.mainChannelId).catch(() => {});
     await gameManager.advanceSubPhase(interaction.guild, game);
   } else {
+    // Pending — show vote confirmation
     await safeEditReply(interaction, {
-      content: t('cmd.kill.vote_pending', {
+      content: t('cmd.kill.wolves_vote_registered', {
         name: target.username,
-        n: killResult.votesForTarget,
+        n: outcome.votesForTarget,
         m: majorityNeeded,
       }),
       flags: MessageFlags.Ephemeral,
     });
+    // Refresh GUI panel to show updated vote status
+    await gameManager._refreshAllGui(game.mainChannelId).catch(() => {});
   }
 }
 

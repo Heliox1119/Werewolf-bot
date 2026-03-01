@@ -5,17 +5,16 @@
  *
  * These are roles that:
  *  - have NO private channel
- *  - act from the village channel via a single ephemeral button
+ *  - act from the village channel via a button on the village master panel
  *  - need ALL server-side guards (phase, subPhase, role, alive, idempotence)
  *
  * Currently supported:
- *  - lgirl_listen → Little Girl eavesdrops on wolves
+ *  - lgirl_listen → Little Girl eavesdrops on wolves (village panel button)
  *
  * Architecture note: adding a new ephemeral role action requires only:
  *  1. A guard in interactions/common/guards.js
  *  2. A handler in interactions/ephemeralRoleActions/<role>.js
  *  3. A customId entry in the EPHEMERAL_HANDLERS map below
- *  4. An embed builder in buildEphemeralPrompt() for the auto-prompt
  */
 
 const { handleLittleGirlListen } = require('./littleGirlListen');

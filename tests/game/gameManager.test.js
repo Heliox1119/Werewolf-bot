@@ -835,7 +835,7 @@ describe('GameManager', () => {
       expect(game.phase).toBe(PHASES.ENDED);
     });
 
-    test('nextPhase() resets votes and wolfVotes on new night', async () => {
+    test('nextPhase() resets votes and wolvesVoteState on new night', async () => {
       gameManager.create('ch-fsm-7');
       const game = gameManager.games.get('ch-fsm-7');
       for (let i = 0; i < 5; i++) {
@@ -848,13 +848,15 @@ describe('GameManager', () => {
       await gameManager.nextPhase(mockGuild, game);
       // Add some votes
       game.votes.set('voter1', 'target1');
-      game.wolfVotes = { target: 'someone' };
+      game.wolvesVoteState.votes.set('w1', 'v1');
       
       // DAY → NIGHT
       await gameManager.nextPhase(mockGuild, game);
       
       expect(game.votes.size).toBe(0);
-      expect(game.wolfVotes).toBeNull();
+      expect(game.wolvesVoteState.votes.size).toBe(0);
+      expect(game.wolvesVoteState.round).toBe(1);
+      expect(game.wolvesVoteState.resolved).toBe(false);
       expect(game.nightVictim).toBeNull();
     });
 
@@ -951,7 +953,7 @@ describe('GameManager', () => {
       expect(snap.dead).toBeInstanceOf(Array);
       expect(snap.rules).toBeDefined();
       // New fields from audit fix
-      expect(snap).toHaveProperty('wolfVotes');
+      expect(snap).toHaveProperty('wolvesVoteState');
       expect(snap).toHaveProperty('protectedPlayerId');
       expect(snap).toHaveProperty('witchKillTarget');
       expect(snap).toHaveProperty('witchSave');

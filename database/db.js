@@ -98,6 +98,14 @@ class GameDatabase {
         this.db.exec("ALTER TABLE games ADD COLUMN listen_hints_given TEXT DEFAULT '[]'");
         logger.info('Migration: added listen_hints_given column');
       }
+      if (!columns.includes('little_girl_exposure')) {
+        this.db.exec('ALTER TABLE games ADD COLUMN little_girl_exposure INTEGER DEFAULT 0');
+        logger.info('Migration: added little_girl_exposure column');
+      }
+      if (!columns.includes('little_girl_exposed')) {
+        this.db.exec('ALTER TABLE games ADD COLUMN little_girl_exposed BOOLEAN DEFAULT 0');
+        logger.info('Migration: added little_girl_exposed column');
+      }
       if (!columns.includes('thief_extra_roles')) {
         this.db.exec("ALTER TABLE games ADD COLUMN thief_extra_roles TEXT DEFAULT '[]'");
         logger.info('Migration: added thief_extra_roles column');
@@ -392,6 +400,8 @@ class GameDatabase {
       lastProtectedPlayerId: 'last_protected_player_id',
       villageRolesPowerless: 'village_roles_powerless',
       listenHintsGiven: 'listen_hints_given',
+      littleGirlExposureLevel: 'little_girl_exposure',
+      littleGirlExposed: 'little_girl_exposed',
       thiefExtraRoles: 'thief_extra_roles',
       // v3.5.1 — hunter shoot persistence
       hunterMustShootId: 'hunter_must_shoot_id',

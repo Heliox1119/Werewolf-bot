@@ -1,7 +1,9 @@
 /**
  * Tests for interactions/ephemeralRoleActions/littleGirlListen.js
  * — handleLittleGirlListen (button handler)
- * — buildLittleGirlPrompt (embed + button builder)
+ * — generateAmbiguousHint (hint generator)
+ *
+ * Updated for new mechanic: exposure system, wolf reveal, ambiguous hints
  */
 
 const ROLES = require('../../../game/roles');
@@ -21,7 +23,8 @@ jest.mock('../../../utils/validators', () => ({
 
 const {
   handleLittleGirlListen,
-  buildLittleGirlPrompt,
+  generateAmbiguousHint,
+  HINT_TEMPLATES,
 } = require('../../../interactions/ephemeralRoleActions/littleGirlListen');
 
 // ─── Helpers ───────────────────────────────────────────────────────
@@ -34,8 +37,9 @@ function makeGame(overrides = {}) {
     subPhase: PHASES.LOUPS,
     wolvesChannelId: 'wolves-ch',
     villageRolesPowerless: false,
-    listenRelayUserId: null,
-    listenHintsGiven: [],
+    littleGirlListenedThisNight: false,
+    littleGirlExposed: false,
+    littleGirlExposureLevel: 0,
     players: [
       createMockPlayer({ id: 'lgirl', username: 'Alice', role: ROLES.PETITE_FILLE }),
       createMockPlayer({ id: 'wolf1', username: 'Bob', role: ROLES.WEREWOLF }),
@@ -50,8 +54,6 @@ function makeButtonInteraction(userId = 'lgirl', channelId = 'village-ch') {
   i.customId = 'lgirl_listen';
   i.deferred = true;
   i.replied = false;
-  // Override user.send with a jest.fn so we can assert on it
-  i.user.send = jest.fn(async () => ({ id: 'dm-msg' }));
   // Mock guild.channels.fetch for wolves channel
   i.guild.channels.fetch = jest.fn(async (chId) => ({
     id: chId,
@@ -78,18 +80,17 @@ describe('handleLittleGirlListen', () => {
     setupGameManager();
   });
 
-  test('activates relay and responds with confirmation', async () => {
+  test('marks listened this night and increments exposure', async () => {
     const game = makeGame();
     gameManager.getGameByChannelId.mockReturnValue(game);
 
     const i = makeButtonInteraction();
     await handleLittleGirlListen(i);
 
-    // Relay activated
-    expect(game.listenRelayUserId).toBe('lgirl');
-    // DM sent
-    expect(i.user.send).toHaveBeenCalled();
-    // Ephemeral reply
+    // State updated
+    expect(game.littleGirlListenedThisNight).toBe(true);
+    expect(game.littleGirlExposureLevel).toBe(1);
+    // Ephemeral reply sent
     expect(i._replyContent).toBeDefined();
     // Logged
     expect(gameManager.logAction).toHaveBeenCalled();
@@ -106,8 +107,8 @@ describe('handleLittleGirlListen', () => {
     expect(gameManager.runAtomic).not.toHaveBeenCalled();
   });
 
-  test('rejects when already listening', async () => {
-    const game = makeGame({ listenRelayUserId: 'lgirl' });
+  test('rejects when already listened this night', async () => {
+    const game = makeGame({ littleGirlListenedThisNight: true });
     gameManager.getGameByChannelId.mockReturnValue(game);
 
     const i = makeButtonInteraction();
@@ -117,56 +118,101 @@ describe('handleLittleGirlListen', () => {
     expect(gameManager.runAtomic).not.toHaveBeenCalled();
   });
 
-  test('rolls back relay on error', async () => {
+  test('rejects when Little Girl is exposed', async () => {
+    const game = makeGame({ littleGirlExposed: true });
+    gameManager.getGameByChannelId.mockReturnValue(game);
+
+    const i = makeButtonInteraction();
+    await handleLittleGirlListen(i);
+
+    expect(i._replyContent).toBeDefined();
+    expect(gameManager.runAtomic).not.toHaveBeenCalled();
+  });
+
+  test('sends hint to wolves channel', async () => {
     const game = makeGame();
     gameManager.getGameByChannelId.mockReturnValue(game);
 
-    // First runAtomic succeeds (activating relay)
-    // Then user.send throws
+    const wolvesSend = jest.fn();
     const i = makeButtonInteraction();
-    i.user.send = jest.fn().mockRejectedValueOnce(new Error('DM blocked'));
-
-    // runAtomic is called twice: once to activate, once to rollback
-    let callCount = 0;
-    gameManager.runAtomic.mockImplementation(async (chId, fn) => {
-      callCount++;
-      if (callCount === 1) {
-        return fn(game); // activate
-      }
-      return fn(game); // rollback
-    });
+    i.guild.channels.fetch = jest.fn(async () => ({ id: 'wolves-ch', send: wolvesSend }));
 
     await handleLittleGirlListen(i);
 
-    // Should have called runAtomic twice (activate + rollback)
-    expect(gameManager.runAtomic).toHaveBeenCalledTimes(2);
-    // Relay should be rolled back
-    expect(game.listenRelayUserId).toBeNull();
+    // Wolves channel should receive at least the hint
+    expect(wolvesSend).toHaveBeenCalled();
+  });
+
+  test('triggers exposure when threshold reached', async () => {
+    // 1 wolf alive → maxExposure = 1 + 1 = 2
+    // Start at exposure 1, after listen it becomes 2 → exposed
+    const game = makeGame({
+      littleGirlExposureLevel: 1,
+      players: [
+        createMockPlayer({ id: 'lgirl', username: 'Alice', role: ROLES.PETITE_FILLE }),
+        createMockPlayer({ id: 'wolf1', username: 'Bob', role: ROLES.WEREWOLF }),
+        createMockPlayer({ id: 'v1', username: 'Carol', role: ROLES.VILLAGER }),
+      ],
+    });
+    gameManager.getGameByChannelId.mockReturnValue(game);
+
+    const wolvesSend = jest.fn();
+    const i = makeButtonInteraction();
+    i.guild.channels.fetch = jest.fn(async () => ({ id: 'wolves-ch', send: wolvesSend }));
+
+    await handleLittleGirlListen(i);
+
+    expect(game.littleGirlExposed).toBe(true);
+    expect(game.littleGirlExposureLevel).toBe(2);
+    // Identity reveal sent to wolves (hint + identity = 2 sends)
+    expect(wolvesSend).toHaveBeenCalledTimes(2);
+  });
+
+  test('handles runAtomic error gracefully', async () => {
+    const game = makeGame();
+    gameManager.getGameByChannelId.mockReturnValue(game);
+    gameManager.runAtomic.mockRejectedValueOnce(new Error('atomic fail'));
+
+    const i = makeButtonInteraction();
+    await handleLittleGirlListen(i);
+
+    // Should reply with error message
+    expect(i._replyContent).toBeDefined();
   });
 });
 
-describe('buildLittleGirlPrompt', () => {
+describe('generateAmbiguousHint', () => {
 
-  test('returns embed with correct title', () => {
-    const result = buildLittleGirlPrompt('guild-1');
-    expect(result.embeds).toHaveLength(1);
-    const embed = result.embeds[0];
-    expect(embed.data.title).toContain('Petite Fille');
+  test('returns a hint when matching hints exist', () => {
+    const lgirl = createMockPlayer({ id: 'lgirl', username: 'Alice', role: ROLES.PETITE_FILLE });
+    const state = {
+      players: [
+        lgirl,
+        createMockPlayer({ id: 'wolf1', username: 'Andre', role: ROLES.WEREWOLF }),
+        createMockPlayer({ id: 'v1', username: 'Bob', role: ROLES.VILLAGER }),
+      ],
+    };
+    const hint = generateAmbiguousHint(lgirl, state, 'guild-1');
+    expect(hint).toBeDefined();
+    expect(typeof hint).toBe('string');
   });
 
-  test('returns a single action row with one button', () => {
-    const result = buildLittleGirlPrompt('guild-1');
-    expect(result.components).toHaveLength(1);
-    const row = result.components[0];
-    expect(row.components).toHaveLength(1);
-    const btn = row.components[0];
-    expect(btn.data.custom_id || btn.data.customId).toBe('lgirl_listen');
+  test('returns generic hint when no matching hints exist', () => {
+    // Construct a scenario where no hint template matches 2+ players
+    const lgirl = createMockPlayer({ id: 'lgirl', username: 'X', role: ROLES.PETITE_FILLE });
+    const state = {
+      players: [lgirl], // Only 1 player alive
+    };
+    const hint = generateAmbiguousHint(lgirl, state, 'guild-1');
+    expect(hint).toBeDefined();
+    expect(typeof hint).toBe('string');
   });
 
-  test('button has Primary style', () => {
-    const result = buildLittleGirlPrompt('guild-1');
-    const btn = result.components[0].components[0];
-    // ButtonStyle.Primary = 1
-    expect(btn.data.style).toBe(1);
+  test('HINT_TEMPLATES are well-formed', () => {
+    expect(HINT_TEMPLATES.length).toBeGreaterThan(0);
+    for (const tmpl of HINT_TEMPLATES) {
+      expect(typeof tmpl.test).toBe('function');
+      expect(typeof tmpl.key).toBe('string');
+    }
   });
 });
