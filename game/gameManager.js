@@ -2619,6 +2619,12 @@ class GameManager extends EventEmitter {
    * Centralise la logique dupliquée entre start.js, debug-start-force.js et lobby_start.
    */
   async postStartGame(guild, game, client, interaction = null) {
+    // CRITICAL: Set the posting guard IMMEDIATELY (before any await) to prevent
+    // the gameStarted event's setImmediate(_refreshAllGui) from re-posting panels
+    // while we're still setting up. The gameStarted event was emitted synchronously
+    // in start(), and its setImmediate fires as soon as we yield with our first await.
+    this._guiPostingInProgress.add(game.mainChannelId);
+
     const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
     const pathMod = require('path');
     const { getRoleDescription, getRoleImageName } = require('../utils/roleHelpers');
@@ -2631,7 +2637,10 @@ class GameManager extends EventEmitter {
     // 1. Permissions channels
     await updateProgress(t('progress.permissions'));
     const setupSuccess = await this.updateChannelPermissions(guild, game);
-    if (!setupSuccess) return false;
+    if (!setupSuccess) {
+      this._guiPostingInProgress.delete(game.mainChannelId);
+      return false;
+    }
 
     // 2. Permissions vocales
     await updateProgress(t('progress.voice'));
@@ -2665,8 +2674,6 @@ class GameManager extends EventEmitter {
 
     // 4. Post persistent role channel GUI panels (replaces legacy welcome messages)
     await updateProgress(t('progress.channels'));
-    // Mark posting in progress to prevent recovery paths from creating duplicates
-    this._guiPostingInProgress.add(game.mainChannelId);
     try {
       await this._postRolePanels(guild, game);
     } catch (e) { logger.warn('Failed to post role panels', { error: e.message }); }
