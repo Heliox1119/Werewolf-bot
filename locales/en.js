@@ -1052,6 +1052,11 @@ module.exports = {
     witch_death_ph: "Choose a player to poison…",
     // Cupid multi-select
     cupid_select_ph: "Choose two players to link…",
+    // Little Girl ephemeral prompt
+    lgirl_title: "👧 Little Girl — Listen to the Night",
+    lgirl_narration: "_\"Hiding in the shadows, you try to eavesdrop on the pack…\"_",
+    lgirl_listen_btn: "👂 Listen to the Wolves",
+    lgirl_done: "✅ *You strain your ears…*",
   },
 
   // ==================== VILLAGE PANEL (MASTER GUI) ====================

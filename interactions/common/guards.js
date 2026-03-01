@@ -417,6 +417,56 @@ function validateSkip(interaction, expectedRole, expectedPhase, label) {
   return { ok: true, game, player };
 }
 
+// ─── Little Girl Listen ─────────────────────────────────────────────
+
+/**
+ * Validate a Little Girl listen action (ephemeral button).
+ * Mirrors commands/listen.js guard chain.
+ * Note: unlike channel-based guards, this uses player lookup across all games
+ * because the Little Girl acts from the village channel, not a private channel.
+ *
+ * @param {ButtonInteraction} interaction  Already deferred (ephemeral).
+ * @returns {{ ok: true, game: object, player: object } | { ok: false, message: string }}
+ */
+function validateLittleGirlListen(interaction) {
+  // Find the game for this player (may be in village channel or any channel)
+  let game = gameManager.getGameByChannelId(interaction.channelId);
+  if (!game) {
+    // Fallback: search by guild + player id
+    game = Array.from(gameManager.games.values())
+      .filter(g => g.guildId === interaction.guildId)
+      .find(g => g.players.some(p => p.id === interaction.user.id));
+  }
+  if (!game) {
+    return { ok: false, message: t('error.not_in_any_game') };
+  }
+
+  const player = game.players.find(p => p.id === interaction.user.id);
+  if (!player || player.role !== ROLES.PETITE_FILLE) {
+    return { ok: false, message: t('error.not_petite_fille') };
+  }
+  if (!player.alive) {
+    return { ok: false, message: t('error.dead_cannot_listen') };
+  }
+  if (game.villageRolesPowerless) {
+    return { ok: false, message: t('error.powers_lost') };
+  }
+  if (game.phase !== PHASES.NIGHT) {
+    return { ok: false, message: t('error.listen_night_only') };
+  }
+  if (game.subPhase !== PHASES.LOUPS) {
+    return { ok: false, message: t('error.wolves_not_deliberating') };
+  }
+  if (!game.wolvesChannelId) {
+    return { ok: false, message: t('error.wolves_channel_missing') };
+  }
+  if (game.listenRelayUserId === interaction.user.id) {
+    return { ok: false, message: t('error.already_listening') };
+  }
+
+  return { ok: true, game, player };
+}
+
 module.exports = {
   validateThiefSteal,
   validateThiefSkip,
@@ -436,4 +486,6 @@ module.exports = {
   validateCupidLove,
   // Generic skip
   validateSkip,
+  // Ephemeral role actions
+  validateLittleGirlListen,
 };

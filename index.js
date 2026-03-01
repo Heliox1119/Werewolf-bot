@@ -631,6 +631,20 @@ client.on("interactionCreate", async interaction => {
   if (interaction.isButton()) {
     const { safeDefer } = require('./utils/interaction');
 
+    // ── Ephemeral role action buttons (no private channel) ──
+    const { EPHEMERAL_BUTTON_IDS, handleEphemeralRoleButton } = require('./interactions/ephemeralRoleActions');
+    if (EPHEMERAL_BUTTON_IDS.includes(interaction.customId)) {
+      try {
+        const deferred = await safeDefer(interaction, { flags: MessageFlags.Ephemeral });
+        if (!deferred) return;
+      } catch (err) {
+        if (err.code === 10062) return;
+        throw err;
+      }
+      await handleEphemeralRoleButton(interaction);
+      return;
+    }
+
     // ── Role action buttons (ephemeral defer) ──
     const ROLE_BTN_PREFIXES = ['thief_', 'witch_', 'seer_', 'salvateur_', 'cupid_', 'ww_'];
     if (ROLE_BTN_PREFIXES.some(p => interaction.customId.startsWith(p))) {

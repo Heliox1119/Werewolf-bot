@@ -916,7 +916,49 @@ class GameManager extends EventEmitter {
       this._refreshRolePanels(gameChannelId),
       this._refreshStatusPanels(gameChannelId),
       this._refreshSpectatorPanel(gameChannelId),
+      this._sendEphemeralRolePrompts(gameChannelId),
     ]);
+  }
+
+  /**
+   * Send DM prompts with action buttons to roles that act from the village
+   * channel (no private channel). Pure GUI — no game state mutation.
+   * Idempotent: tracks sent prompts per subPhase to avoid duplicates.
+   * @param {string} gameChannelId
+   */
+  async _sendEphemeralRolePrompts(gameChannelId) {
+    const game = this.games.get(gameChannelId);
+    if (!game || game.phase === PHASES.ENDED) return;
+
+    // Only trigger during LOUPS subPhase (Little Girl)
+    if (game.phase !== PHASES.NIGHT || game.subPhase !== PHASES.LOUPS) return;
+
+    const ROLES_REQ = require('./roles');
+    const petiteFille = game.players.find(
+      p => p.alive && p.role === ROLES_REQ.PETITE_FILLE && !game.villageRolesPowerless
+    );
+    if (!petiteFille) return;
+
+    // Idempotent: don't re-send if already prompted this subPhase cycle
+    const promptKey = `lgirl:${game.dayCount}:${game.subPhase}`;
+    if (!this._ephemeralPromptsSent) this._ephemeralPromptsSent = new Map();
+    const sentSet = this._ephemeralPromptsSent.get(gameChannelId) || new Set();
+    if (sentSet.has(promptKey)) return;
+    sentSet.add(promptKey);
+    this._ephemeralPromptsSent.set(gameChannelId, sentSet);
+
+    try {
+      const { buildLittleGirlPrompt } = require('../interactions/ephemeralRoleActions/littleGirlListen');
+      const client = require.main?.exports?.client || this.client;
+      if (!client) return;
+      const user = await client.users.fetch(petiteFille.id);
+      if (user) {
+        const prompt = buildLittleGirlPrompt(game.guildId);
+        await user.send(prompt);
+      }
+    } catch (e) {
+      logger.debug('Failed to send ephemeral prompt to Little Girl', { error: e.message });
+    }
   }
 
   /**

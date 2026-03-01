@@ -1052,6 +1052,11 @@ module.exports = {
     witch_death_ph: "Choisissez un joueur à empoisonner…",
     // Multi-sélection de Cupidon
     cupid_select_ph: "Choisissez deux joueurs à lier…",
+    // GUI éphémère Petite Fille
+    lgirl_title: "👧 Petite Fille — Écouter la nuit",
+    lgirl_narration: "_« Tapie dans l'ombre, tu tentes de surprendre la meute… »_",
+    lgirl_listen_btn: "👂 Écouter les Loups",
+    lgirl_done: "✅ *Tu tends l'oreille…*",
   },
 
   // ==================== PANNEAU VILLAGE (GUI MAÎTRE) ====================
