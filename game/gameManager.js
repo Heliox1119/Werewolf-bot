@@ -48,6 +48,8 @@ class GameManager extends EventEmitter {
     this.villagePanels = new Map();      // gameChannelId -> Discord Message
     this.spectatorPanels = new Map();    // gameChannelId -> Discord Message (auto-posted in spectator channel)
     this._villagePanelTimers = new Map(); // gameChannelId -> intervalId (15s tick)
+    this._guiPostingInProgress = new Set(); // gameChannelId — prevents concurrent _post* for the same game
+    this._guiRefreshScheduled = new Set(); // gameChannelId — coalesces rapid _refreshAllGui calls
     this._testMode = options.testMode ?? process.env.NODE_ENV === 'test';
     this._failurePoints = new Map();
     this.stuckGameThresholdMs = TIMEOUTS.STUCK_GAME_THRESHOLD;
@@ -507,6 +509,8 @@ class GameManager extends EventEmitter {
     this.statusPanels.clear();
     this.rolePanels.clear();
     this.spectatorPanels.clear();
+    this._guiPostingInProgress.clear();
+    this._guiRefreshScheduled.clear();
     // Stop all village panel timer ticks
     for (const intervalId of this._villagePanelTimers.values()) {
       clearInterval(intervalId);
@@ -877,10 +881,18 @@ class GameManager extends EventEmitter {
         ...data
       });
     } catch (e) { /* never let event emission crash the bot */ }
-    // Auto-refresh ALL GUI panels on any visible state change (fire-and-forget)
+    // Auto-refresh ALL GUI panels on any visible state change (fire-and-forget, coalesced)
     const GUI_EVENTS = ['phaseChanged', 'subPhaseChanged', 'playerKilled', 'gameEnded', 'gameStarted', 'voteCompleted', 'captainElected'];
     if (GUI_EVENTS.includes(eventName)) {
-      setImmediate(() => this._refreshAllGui(game.mainChannelId).catch(() => {}));
+      const gid = game.mainChannelId;
+      // Coalesce: if a refresh is already scheduled for this game, skip
+      if (!this._guiRefreshScheduled.has(gid)) {
+        this._guiRefreshScheduled.add(gid);
+        setImmediate(() => {
+          this._guiRefreshScheduled.delete(gid);
+          this._refreshAllGui(gid).catch(() => {});
+        });
+      }
     }
   }
 
@@ -893,6 +905,8 @@ class GameManager extends EventEmitter {
    * @param {string} gameChannelId  mainChannelId of the game
    */
   async _refreshAllGui(gameChannelId) {
+    // Skip refresh while initial posting is in progress (avoid recovery creating duplicates)
+    if (this._guiPostingInProgress.has(gameChannelId)) return;
     // Fire all refreshes in parallel (independent, idempotent)
     await Promise.allSettled([
       this._refreshVillageMasterPanel(gameChannelId),
@@ -952,6 +966,11 @@ class GameManager extends EventEmitter {
    * @param {object} game
    */
   async _postRolePanels(guild, game) {
+    // Guard: never post if panels already exist for this game
+    if (this.rolePanels.has(game.mainChannelId)) {
+      const existing = this.rolePanels.get(game.mainChannelId);
+      if (existing && Object.values(existing).some(m => m)) return;
+    }
     const { getRoleChannels, buildRolePanel } = require('./roleChannelView');
     const roleChannels = getRoleChannels(game);
     const timerInfo = this.getTimerInfo(game.mainChannelId);
@@ -985,7 +1004,9 @@ class GameManager extends EventEmitter {
     if (!game || game.phase === PHASES.ENDED) return;
 
     // If no panels registered (e.g. after reboot), re-create them
+    // Guard: skip recovery if a post is already in progress
     if (!this.rolePanels.has(gameChannelId)) {
+      if (this._guiPostingInProgress.has(gameChannelId)) return;
       try {
         const client = require.main?.exports?.client || this.client;
         if (client && game.guildId) {
@@ -1032,6 +1053,8 @@ class GameManager extends EventEmitter {
    * @param {object} game
    */
   async _postVillageMasterPanel(guild, game) {
+    // Guard: never post if a panel already exists for this game
+    if (this.villagePanels.has(game.mainChannelId) && this.villagePanels.get(game.mainChannelId)) return;
     const { buildVillageMasterEmbed } = require('./villageStatusPanel');
     const channelId = game.villageChannelId || game.mainChannelId;
     try {
@@ -1065,8 +1088,10 @@ class GameManager extends EventEmitter {
     }
 
     // If no panel (reboot recovery), try to recreate
+    // Guard: skip recovery if a post is already in progress
     if (!this.villagePanels.has(gameChannelId)) {
       if (game.phase === PHASES.ENDED) return; // Don't recreate for ended games
+      if (this._guiPostingInProgress.has(gameChannelId)) return;
       try {
         const client = require.main?.exports?.client || this.client;
         if (client && game.guildId) {
@@ -1105,6 +1130,8 @@ class GameManager extends EventEmitter {
    */
   async _postSpectatorPanel(guild, game) {
     if (!game.spectatorChannelId) return;
+    // Guard: never post if a panel already exists for this game
+    if (this.spectatorPanels.has(game.mainChannelId) && this.spectatorPanels.get(game.mainChannelId)) return;
     try {
       const channel = await guild.channels.fetch(game.spectatorChannelId);
       if (!channel) return;
@@ -1131,8 +1158,10 @@ class GameManager extends EventEmitter {
     if (!game.spectatorChannelId) return;
 
     // If no panel registered (reboot recovery), try to recreate
+    // Guard: skip recovery if a post is already in progress
     if (!this.spectatorPanels.has(gameChannelId)) {
       if (game.phase === PHASES.ENDED) return; // Don't recreate for ended games
+      if (this._guiPostingInProgress.has(gameChannelId)) return;
       try {
         const client = require.main?.exports?.client || this.client;
         if (client && game.guildId) {
@@ -2579,7 +2608,11 @@ class GameManager extends EventEmitter {
 
     // 4. Post persistent role channel GUI panels (replaces legacy welcome messages)
     await updateProgress(t('progress.channels'));
-    await this._postRolePanels(guild, game);
+    // Mark posting in progress to prevent recovery paths from creating duplicates
+    this._guiPostingInProgress.add(game.mainChannelId);
+    try {
+      await this._postRolePanels(guild, game);
+    } catch (e) { logger.warn('Failed to post role panels', { error: e.message }); }
 
     // 5. Message dans le channel village
     await updateProgress(t('progress.done'));
@@ -2602,6 +2635,9 @@ class GameManager extends EventEmitter {
 
     // 5c. Post the persistent spectator GUI panel
     await this._postSpectatorPanel(guild, game);
+
+    // Release the posting guard — panels exist, refreshes can now proceed
+    this._guiPostingInProgress.delete(game.mainChannelId);
 
     // 6. Lancer le timeout AFK si on est en sous-phase qui attend une action
     if ([PHASES.VOLEUR, PHASES.CUPIDON, PHASES.LOUPS, PHASES.SALVATEUR].includes(game.subPhase)) {

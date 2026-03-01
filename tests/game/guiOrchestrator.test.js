@@ -565,9 +565,9 @@ describe('GUI Orchestrator', () => {
   // ───────────────────────────────────────────────────────────
 
   describe('GUI_EVENTS completeness', () => {
-    test('all 7 event types are handled for GUI refresh', () => {
+    test('each of the 7 event types individually triggers a GUI refresh', async () => {
       // This test documents the complete set of events that trigger _refreshAllGui.
-      // If a new event is added, this test should be updated.
+      // Each event type is tested individually to avoid coalescing.
       const expected = [
         'phaseChanged', 'subPhaseChanged', 'playerKilled',
         'gameEnded', 'gameStarted', 'voteCompleted', 'captainElected',
@@ -578,12 +578,206 @@ describe('GUI Orchestrator', () => {
       gm._refreshAllGui = jest.fn(async () => {});
 
       for (const ev of expected) {
+        gm._refreshAllGui.mockClear();
+        gm._guiRefreshScheduled.clear();
         gm._emitGameEvent(game, ev, {});
+        await new Promise(resolve => setImmediate(resolve));
+        expect(gm._refreshAllGui).toHaveBeenCalledTimes(1);
       }
+    });
+
+    test('rapid events for the same game are coalesced into one refresh', () => {
+      // When multiple events fire in the same tick, only one refresh is scheduled.
+      const game = makeGame();
+      gm.games.set('ch1', game);
+      gm._refreshAllGui = jest.fn(async () => {});
+
+      gm._emitGameEvent(game, 'phaseChanged', {});
+      gm._emitGameEvent(game, 'subPhaseChanged', {});
+      gm._emitGameEvent(game, 'playerKilled', {});
 
       return new Promise(resolve => {
         setImmediate(() => {
-          expect(gm._refreshAllGui).toHaveBeenCalledTimes(expected.length);
+          expect(gm._refreshAllGui).toHaveBeenCalledTimes(1);
+          resolve();
+        });
+      });
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────
+  // GUI dedup guards — prevent duplicate embeds per channel
+  // ───────────────────────────────────────────────────────────
+
+  describe('GUI dedup guards', () => {
+    // Helper: create a mock guild with channels that return sendable messages
+    function makeMockGuild(channelIds) {
+      const sentMessages = []; // track all sent messages
+      const channels = new Map();
+      for (const id of channelIds) {
+        channels.set(id, {
+          id,
+          send: jest.fn(async () => {
+            const msg = { id: `msg-${id}-${sentMessages.length}`, edit: jest.fn(), pin: jest.fn() };
+            sentMessages.push(msg);
+            return msg;
+          }),
+        });
+      }
+      return {
+        sentMessages,
+        channels: {
+          fetch: jest.fn(async (id) => channels.get(id) || null),
+        },
+      };
+    }
+
+    // ─── _guiPostingInProgress & _guiRefreshScheduled lifecycle ───
+
+    test('_guiPostingInProgress is initialised as empty Set', () => {
+      expect(gm._guiPostingInProgress).toBeInstanceOf(Set);
+      expect(gm._guiPostingInProgress.size).toBe(0);
+    });
+
+    test('_guiRefreshScheduled is initialised as empty Set', () => {
+      expect(gm._guiRefreshScheduled).toBeInstanceOf(Set);
+      expect(gm._guiRefreshScheduled.size).toBe(0);
+    });
+
+    test('both Sets are cleared in destroy()', () => {
+      gm._guiPostingInProgress.add('ch1');
+      gm._guiRefreshScheduled.add('ch1');
+      gm.destroy();
+      expect(gm._guiPostingInProgress.size).toBe(0);
+      expect(gm._guiRefreshScheduled.size).toBe(0);
+      gm = null;
+    });
+
+    // ─── _refreshAllGui skips when _guiPostingInProgress ─────────
+
+    test('_refreshAllGui skips when _guiPostingInProgress is set for the game', async () => {
+      const game = makeGame();
+      gm.games.set('ch1', game);
+      gm._guiPostingInProgress.add('ch1');
+
+      gm._refreshVillageMasterPanel = jest.fn(async () => {});
+      gm._refreshRolePanels = jest.fn(async () => {});
+      gm._refreshStatusPanels = jest.fn(async () => {});
+      gm._refreshSpectatorPanel = jest.fn(async () => {});
+
+      await gm._refreshAllGui('ch1');
+
+      // None of the refreshers should have been called
+      expect(gm._refreshVillageMasterPanel).not.toHaveBeenCalled();
+      expect(gm._refreshRolePanels).not.toHaveBeenCalled();
+      expect(gm._refreshStatusPanels).not.toHaveBeenCalled();
+      expect(gm._refreshSpectatorPanel).not.toHaveBeenCalled();
+    });
+
+    // ─── _postVillageMasterPanel existence guard ────────────────
+
+    test('_postVillageMasterPanel does not re-post if panel already exists', async () => {
+      const game = makeGame();
+      const mockGuild = makeMockGuild(['vc1']);
+      gm.villagePanels.set('ch1', { id: 'existing-msg', edit: jest.fn() });
+
+      await gm._postVillageMasterPanel(mockGuild, game);
+
+      // channel.send should NOT have been called
+      const ch = await mockGuild.channels.fetch('vc1');
+      expect(ch.send).not.toHaveBeenCalled();
+    });
+
+    // ─── _postRolePanels existence guard ────────────────────────
+
+    test('_postRolePanels does not re-post if panels already exist', async () => {
+      const game = makeGame();
+      const mockGuild = makeMockGuild(['wc1', 'sc1', 'wic1']);
+      // Pre-fill the Map with an existing panel ref
+      gm.rolePanels.set('ch1', { wolves: { id: 'existing', edit: jest.fn() } });
+
+      await gm._postRolePanels(mockGuild, game);
+
+      // No messages should have been sent
+      expect(mockGuild.sentMessages.length).toBe(0);
+    });
+
+    // ─── _postSpectatorPanel existence guard ────────────────────
+
+    test('_postSpectatorPanel does not re-post if panel already exists', async () => {
+      const game = makeGame();
+      const mockGuild = makeMockGuild(['spec1']);
+      gm.spectatorPanels.set('ch1', { id: 'existing-msg', edit: jest.fn() });
+
+      await gm._postSpectatorPanel(mockGuild, game);
+
+      const ch = await mockGuild.channels.fetch('spec1');
+      expect(ch.send).not.toHaveBeenCalled();
+    });
+
+    // ─── _refreshRolePanels recovery skips when posting in progress ───
+
+    test('_refreshRolePanels recovery skips when _guiPostingInProgress is set', async () => {
+      const game = makeGame();
+      gm.games.set('ch1', game);
+      gm._guiPostingInProgress.add('ch1');
+      // No rolePanels registered → would normally trigger recovery
+
+      gm._postRolePanels = jest.fn(async () => {});
+
+      await gm._refreshRolePanels('ch1');
+
+      expect(gm._postRolePanels).not.toHaveBeenCalled();
+    });
+
+    // ─── _refreshVillageMasterPanel recovery skips when posting in progress ───
+
+    test('_refreshVillageMasterPanel recovery skips when _guiPostingInProgress is set', async () => {
+      const game = makeGame();
+      gm.games.set('ch1', game);
+      gm._guiPostingInProgress.add('ch1');
+      // No villagePanels registered → would normally trigger recovery
+
+      gm._postVillageMasterPanel = jest.fn(async () => {});
+
+      await gm._refreshVillageMasterPanel('ch1');
+
+      expect(gm._postVillageMasterPanel).not.toHaveBeenCalled();
+    });
+
+    // ─── _refreshSpectatorPanel recovery skips when posting in progress ───
+
+    test('_refreshSpectatorPanel recovery skips when _guiPostingInProgress is set', async () => {
+      const game = makeGame();
+      gm.games.set('ch1', game);
+      gm._guiPostingInProgress.add('ch1');
+      // No spectatorPanels registered → would normally trigger recovery
+
+      gm._postSpectatorPanel = jest.fn(async () => {});
+
+      await gm._refreshSpectatorPanel('ch1');
+
+      expect(gm._postSpectatorPanel).not.toHaveBeenCalled();
+    });
+
+    // ─── Event coalescing for different games runs independently ───
+
+    test('events for different games are not coalesced together', () => {
+      const game1 = makeGame({ mainChannelId: 'ch1' });
+      const game2 = makeGame({ mainChannelId: 'ch2' });
+      gm.games.set('ch1', game1);
+      gm.games.set('ch2', game2);
+      gm._refreshAllGui = jest.fn(async () => {});
+
+      gm._emitGameEvent(game1, 'phaseChanged', {});
+      gm._emitGameEvent(game2, 'phaseChanged', {});
+
+      return new Promise(resolve => {
+        setImmediate(() => {
+          // Both games should get their own refresh call
+          expect(gm._refreshAllGui).toHaveBeenCalledTimes(2);
+          expect(gm._refreshAllGui).toHaveBeenCalledWith('ch1');
+          expect(gm._refreshAllGui).toHaveBeenCalledWith('ch2');
           resolve();
         });
       });
