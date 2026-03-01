@@ -261,6 +261,8 @@ class MockEmbedBuilder {
   addFields(...fields) { this.data.fields = [...(this.data.fields || []), ...fields]; return this; }
   setImage(url) { this.data.image = url; return this; }
   setFooter(footer) { this.data.footer = footer; return this; }
+  setTimestamp(ts) { this.data.timestamp = ts || true; return this; }
+  toJSON() { return { ...this.data }; }
   static from(embed) { 
     const builder = new MockEmbedBuilder();
     builder.data = { ...embed.data };

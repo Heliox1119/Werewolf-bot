@@ -2,12 +2,13 @@ const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const { isInGameCategory } = require("../utils/validators");
 const { safeReply } = require("../utils/interaction");
-const { t, translatePhase } = require('../utils/i18n');
+const { t } = require('../utils/i18n');
+const { buildStatusEmbed, buildPlayerEmbed, buildSpectatorEmbed } = require('../game/gameStateView');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("status")
-    .setDescription("Voir l'état de la partie"),
+    .setDescription("Voir l'état de la partie / Game status panel"),
 
   async execute(interaction) {
     // Vérification catégorie
@@ -15,29 +16,49 @@ module.exports = {
       await safeReply(interaction, { content: t('error.action_forbidden'), flags: MessageFlags.Ephemeral });
       return;
     }
+
     const game = gameManager.getGameByChannelId(interaction.channelId);
-    if (!game) return safeReply(interaction, { content: t('error.no_game'), flags: MessageFlags.Ephemeral });
-    const alive = game.players.filter(p => p.alive);
-    const dead = game.players.filter(p => !p.alive);
-    let message = t('status.title') + `\n\n`;
-    message += t('status.phase', { phase: translatePhase(game.phase) }) + `\n`;
-    message += t('status.alive', { n: alive.length }) + `\n`;
-    message += t('status.dead', { n: dead.length }) + `\n`;
-    if (game.captainId) {
-      const cap = game.players.find(p => p.id === game.captainId);
-      if (cap) message += `\n` + t('status.captain', { name: cap.username }) + `\n`;
+    if (!game) {
+      return safeReply(interaction, { content: t('gui.no_game'), flags: MessageFlags.Ephemeral });
     }
-    message += `\n`;
-    if (alive.length > 0) {
-      message += t('status.alive_list') + `\n${alive.map(p => `  • ${p.username}`).join("\n")}\n\n`;
+
+    const guildId = interaction.guildId;
+    const timerInfo = gameManager.getTimerInfo(game.mainChannelId);
+    const isSpectator = interaction.channelId === game.spectatorChannelId;
+    const player = game.players.find(p => p.id === interaction.user.id);
+
+    // Choose embed based on channel context
+    const embed = isSpectator
+      ? buildSpectatorEmbed(game, timerInfo, guildId)
+      : buildStatusEmbed(game, timerInfo, guildId);
+
+    // Send public status embed (visible to all, registered for auto-update)
+    await safeReply(interaction, { embeds: [embed] });
+
+    // Register panel for auto-update on state changes
+    try {
+      const msg = await interaction.fetchReply();
+      if (msg) {
+        if (!gameManager.statusPanels.has(game.mainChannelId)) {
+          gameManager.statusPanels.set(game.mainChannelId, {});
+        }
+        const ref = gameManager.statusPanels.get(game.mainChannelId);
+        if (isSpectator) {
+          ref.spectatorMsg = msg;
+        } else {
+          ref.villageMsg = msg;
+        }
+      }
+    } catch (_) { /* ignore fetch failures */ }
+
+    // Ephemeral player view (follow-up, only for game participants)
+    if (player && !isSpectator) {
+      const playerEmbed = buildPlayerEmbed(game, interaction.user.id, timerInfo, guildId);
+      if (playerEmbed) {
+        try {
+          await interaction.followUp({ embeds: [playerEmbed], flags: MessageFlags.Ephemeral });
+        } catch (_) { /* ignore followUp failures */ }
+      }
     }
-    if (dead.length > 0) {
-      message += t('status.dead_list') + `\n${dead.map(p => `  • ${p.username}`).join("\n")}`;
-    }
-    const victory = gameManager.checkVictory(interaction.channelId);
-    if (victory) {
-      message += `\n\n` + t('status.victory', { name: victory });
-    }
-    await safeReply(interaction, { content: message });
   }
 };

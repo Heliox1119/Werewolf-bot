@@ -43,6 +43,7 @@ class GameManager extends EventEmitter {
     this._atomicContexts = new Map(); // channelId -> { active, postCommit: [] }
     this.activeGameTimers = new Map(); // channelId -> { type, epoch }
     this._timerEpochs = new Map(); // channelId -> number
+    this.statusPanels = new Map(); // channelId -> { villageMsg, spectatorMsg }
     this._testMode = options.testMode ?? process.env.NODE_ENV === 'test';
     this._failurePoints = new Map();
     this.stuckGameThresholdMs = TIMEOUTS.STUCK_GAME_THRESHOLD;
@@ -224,6 +225,8 @@ class GameManager extends EventEmitter {
       clearTimeout(game._captainVoteTimer);
       game._captainVoteTimer = null;
     }
+    game._timerDeadline = null;
+    game._timerTotalMs = null;
   }
 
   _getTimerFieldByType(timerType) {
@@ -255,12 +258,30 @@ class GameManager extends EventEmitter {
     const game = this.games.get(channelId);
     if (game) {
       game._activeTimerType = null;
+      game._timerDeadline = null;
+      game._timerTotalMs = null;
     }
   }
 
   _isTimerStillActive(channelId, type, epoch) {
     const active = this.activeGameTimers.get(channelId);
     return !!active && active.type === type && active.epoch === epoch;
+  }
+
+  /**
+   * Get timer info for GUI display (read-only, no mutation).
+   * @param {string} channelId
+   * @returns {{ type: string, remainingMs: number, totalMs: number } | null}
+   */
+  getTimerInfo(channelId) {
+    const game = this.games.get(channelId);
+    if (!game || !game._timerDeadline) return null;
+    const remainingMs = Math.max(0, game._timerDeadline - Date.now());
+    return {
+      type: game._activeTimerType,
+      remainingMs,
+      totalMs: game._timerTotalMs || 0,
+    };
   }
 
   _scheduleGameTimer(game, timerType, delay, callback) {
@@ -278,6 +299,8 @@ class GameManager extends EventEmitter {
 
     const epoch = this._activateTimer(channelId, timerType);
     game._activeTimerType = timerType;
+    game._timerDeadline = Date.now() + delay;
+    game._timerTotalMs = delay;
 
     const timeoutId = setTimeout(async () => {
       if (!this._isTimerStillActive(channelId, timerType, epoch)) return;
@@ -477,6 +500,7 @@ class GameManager extends EventEmitter {
       clearTimeout(timeoutId);
     }
     this.lobbyTimeouts.clear();
+    this.statusPanels.clear();
     // Save state (force all) and close DB
     this.saveState(true);
     this.gameMutex.destroy();
@@ -839,6 +863,53 @@ class GameManager extends EventEmitter {
         ...data
       });
     } catch (e) { /* never let event emission crash the bot */ }
+    // Auto-refresh status panels on state changes (fire-and-forget)
+    if (['phaseChanged', 'playerKilled', 'gameEnded', 'gameStarted'].includes(eventName)) {
+      setImmediate(() => this._refreshStatusPanels(game.mainChannelId).catch(() => {}));
+    }
+  }
+
+  /**
+   * Auto-refresh registered status panel messages (read-only, no game mutation).
+   * Panels are Discord messages registered by the /status command.
+   */
+  async _refreshStatusPanels(gameChannelId) {
+    const panelRef = this.statusPanels.get(gameChannelId);
+    if (!panelRef) return;
+
+    const game = this.games.get(gameChannelId);
+    if (!game) {
+      this.statusPanels.delete(gameChannelId);
+      return;
+    }
+
+    const timerInfo = this.getTimerInfo(gameChannelId);
+    const { buildStatusEmbed, buildSpectatorEmbed } = require('./gameStateView');
+
+    // Refresh village panel
+    if (panelRef.villageMsg) {
+      try {
+        const embed = buildStatusEmbed(game, timerInfo, game.guildId);
+        await panelRef.villageMsg.edit({ embeds: [embed] });
+      } catch (_) {
+        panelRef.villageMsg = null;
+      }
+    }
+
+    // Refresh spectator panel
+    if (panelRef.spectatorMsg) {
+      try {
+        const embed = buildSpectatorEmbed(game, timerInfo, game.guildId);
+        await panelRef.spectatorMsg.edit({ embeds: [embed] });
+      } catch (_) {
+        panelRef.spectatorMsg = null;
+      }
+    }
+
+    // Cleanup if no panels left
+    if (!panelRef.villageMsg && !panelRef.spectatorMsg) {
+      this.statusPanels.delete(gameChannelId);
+    }
   }
 
   /**
