@@ -30,8 +30,8 @@ const {
   getAnimatedSubPhaseEmoji,
 } = require('./gameStateView');
 
-// ─── Separator ────────────────────────────────────────────────────
-const SEP = '━━━━━━━━━━━━━━━━━━━━';
+// ─── Separator (light dashed — separates without blocking visual flow) ──
+const SEP = '╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌';
 
 // ─── Narration line ───────────────────────────────────────────────
 
@@ -141,21 +141,21 @@ function buildFocusMessage(game, guildId) {
  * Build the PREMIUM village master embed — cinematic, minimal, iconic.
  *
  * Layout (max visual breathing room):
- * ┌──────────────────────────────────────┐
- * │  🌙  NUIT ━━━ Jour 3                │   ← Title: phase + day
- * ├──────────────────────────────────────┤
- * │                                      │
- * │  *Des hurlements déchirent la nuit.  │   ← Description:
- * │   Les Loups rôdent…*                 │      HERO narration (italic)
- * │                                      │
- * │  ━━━━━━━━━━━━━━━━━━━━                │
- * │  🐺  Les Loups agissent              │      Focus line
- * │                                      │
- * │  ⏱ 1:30  ██████▓░░░░░               │      Timer (only if active)
- * │                                      │
- * ├──────────────────────────────────────┤
- * │  👥 6 en vie · 💀 2 morts · 👑 Alice │   ← Footer: ultra-compact
- * └──────────────────────────────────────┘
+ * ┌──────────────────────────────────────────┐
+ * │  🌙  NUIT  ·  Jour 3                     │  ← Title: phase · day
+ * ├──────────────────────────────────────────┤
+ * │                                          │
+ * │  *Des hurlements déchirent la nuit.*     │  ← Narration (italic,
+ * │  *Les Loups rôdent et choisissent…*      │     multi-line strophe)
+ * │                                          │
+ * │  ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌                  │
+ * │  🐺  Les Loups choisissent leur victime… │  ← Focus line
+ * │                                          │
+ * │  > ⏱ **1:30**  █████▓░░░░░              │  ← Timer (blockquote)
+ * │                                          │
+ * ├──────────────────────────────────────────┤
+ * │  👥 6 vivants  ·  💀 2  ·  👑 Alice      │  ← Footer: ultra-compact
+ * └──────────────────────────────────────────┘
  *
  * @param {object} game        Game state (read-only)
  * @param {object|null} timerInfo  { type, remainingMs, totalMs } or null
@@ -174,30 +174,33 @@ function buildVillageMasterEmbed(game, timerInfo, guildId) {
   const embedColor = getTransitionColor(phase, lastChange, guildId);
   const subEmoji   = getAnimatedSubPhaseEmoji(game.subPhase);
 
-  // ── Title: "{emoji}  PHASE ━━━ Day N" ──
+  // ── Title: "{emoji}  PHASE  ·  Day N" ──
   const phaseLabel = translatePhase(phase).toUpperCase();
   const title = phase === PHASES.ENDED
     ? `${titleEmoji}  ${t('village_panel.title_ended', {}, guildId)}`
-    : `${titleEmoji}  ${phaseLabel} ━━━ ${t('gui.day', {}, guildId)} ${dayCount}`;
+    : `${titleEmoji}  ${phaseLabel}  ·  ${t('gui.day', {}, guildId)} ${dayCount}`;
 
   // ── Description: cinematic narration block ──
   const narration = buildNarrationLine(game, guildId);
   const focus = buildFocusMessage(game, guildId);
 
+  // Multi-line narration: each line wrapped in *italic* for strophe effect
+  const narrationLines = narration.split('\n').map(line => `*${line}*`);
+
   const descLines = [
     '',
-    `*${narration}*`,
+    ...narrationLines,
     '',
     SEP,
     `${subEmoji}  ${focus}`,
   ];
 
-  // Timer (only when active — part of the description for visual flow)
+  // Timer (only when active — blockquote for visual anchoring)
   if (timerInfo && timerInfo.remainingMs > 0) {
     const bar = buildAnimatedTimerBar(timerInfo.remainingMs, timerInfo.totalMs, 12);
     const timeStr = formatTimeRemaining(timerInfo.remainingMs);
     descLines.push('');
-    descLines.push(`⏱ **${timeStr}**  ${bar}`);
+    descLines.push(`> ⏱ **${timeStr}**  ${bar}`);
   }
 
   // ── Build embed ──
@@ -219,7 +222,7 @@ function buildVillageMasterEmbed(game, timerInfo, guildId) {
     `👥 ${alive.length} ${t('gui.alive', {}, guildId)}`,
     `💀 ${dead.length}`,
   ];
-  if (captainName) footerParts.push(`👑 ${captainName}`);
+  if (captainName && phase !== PHASES.ENDED) footerParts.push(`👑 ${captainName}`);
 
   embed.setFooter({ text: footerParts.join('  ·  ') });
   return embed;

@@ -276,6 +276,7 @@ describe('buildVillageMasterEmbed — structure', () => {
   test('narration is wrapped in italic markers', () => {
     const embed = buildVillageMasterEmbed(createTestGame(), NO_TIMER, 'g1');
     const desc = getDescription(embed);
+    // Mock i18n returns key as-is; narration has no \n so single line
     expect(desc).toContain('*village_panel.narration_wolves*');
   });
 
@@ -285,11 +286,11 @@ describe('buildVillageMasterEmbed — structure', () => {
     expect(fields).toHaveLength(0);
   });
 
-  test('has phase label in uppercase in title', () => {
+  test('title uses · separator between phase and day', () => {
     const embed = buildVillageMasterEmbed(createTestGame(), NO_TIMER, 'g1');
-    const json = embed.toJSON();
-    // translatePhase returns the phase key as-is, toUpperCase is applied
-    expect(json.title).toContain(PHASES.NIGHT.toUpperCase());
+    const title = embed.toJSON().title;
+    expect(title).toContain(' · ');
+    expect(title).not.toContain('━━━');
   });
 });
 
@@ -316,10 +317,10 @@ describe('buildVillageMasterEmbed — timer', () => {
     expect(desc).not.toContain('⏱');
   });
 
-  test('timer has animated progress bar characters', () => {
+  test('timer uses blockquote format', () => {
     const embed = buildVillageMasterEmbed(createTestGame(), TIMER, 'g1');
     const desc = getDescription(embed);
-    expect(desc).toMatch(/[█▓░]/);
+    expect(desc).toContain('> ⏱');
   });
 });
 
@@ -357,7 +358,7 @@ describe('buildVillageMasterEmbed — narration + focus in description', () => {
 
   test('description contains separator', () => {
     const embed = buildVillageMasterEmbed(createTestGame(), NO_TIMER, 'g1');
-    expect(getDescription(embed)).toContain('━━━');
+    expect(getDescription(embed)).toContain('╌╌╌');
   });
 });
 
@@ -383,6 +384,13 @@ describe('buildVillageMasterEmbed — footer counts & captain', () => {
     const footer = getFooter(embed);
     expect(footer).toContain('👑');
     expect(footer).toContain('Alice');
+  });
+
+  test('footer hides captain during ENDED phase', () => {
+    const game = createTestGame({ phase: PHASES.ENDED });
+    const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
+    const footer = getFooter(embed);
+    expect(footer).not.toContain('👑');
   });
 
   test('footer has no captain badge when no captain', () => {
