@@ -5,12 +5,17 @@ const { t } = require('../utils/i18n');
 
 const ROLE_MAP = {
   WEREWOLF: ROLES.WEREWOLF,
+  WHITE_WOLF: ROLES.WHITE_WOLF,
   VILLAGER: ROLES.VILLAGER,
   SEER: ROLES.SEER,
   WITCH: ROLES.WITCH,
   HUNTER: ROLES.HUNTER,
   PETITE_FILLE: ROLES.PETITE_FILLE,
-  CUPID: ROLES.CUPID
+  CUPID: ROLES.CUPID,
+  SALVATEUR: ROLES.SALVATEUR,
+  ANCIEN: ROLES.ANCIEN,
+  IDIOT: ROLES.IDIOT,
+  THIEF: ROLES.THIEF
 };
 
 module.exports = {
@@ -25,12 +30,17 @@ module.exports = {
         .setRequired(true)
         .addChoices(
           { name: "Loup-Garou", value: "WEREWOLF" },
+          { name: "Loup Blanc", value: "WHITE_WOLF" },
           { name: "Villageois", value: "VILLAGER" },
           { name: "Voyante", value: "SEER" },
-          { name: "Sorciere", value: "WITCH" },
+          { name: "Sorcière", value: "WITCH" },
           { name: "Chasseur", value: "HUNTER" },
           { name: "Petite Fille", value: "PETITE_FILLE" },
-          { name: "Cupidon", value: "CUPID" }
+          { name: "Cupidon", value: "CUPID" },
+          { name: "Salvateur", value: "SALVATEUR" },
+          { name: "Ancien", value: "ANCIEN" },
+          { name: "Idiot du Village", value: "IDIOT" },
+          { name: "Voleur", value: "THIEF" }
         )
     )
     .addUserOption(option =>
