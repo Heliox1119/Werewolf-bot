@@ -117,7 +117,7 @@ module.exports = {
         if (imageName) {
           const imagePath = pathMod.join(__dirname, '..', 'img', imageName);
           files.push(new AttachmentBuilder(imagePath, { name: imageName }));
-          embed.setImage(`attachment://${imageName}`);
+          embed.setThumbnail(`attachment://${imageName}`);
         }
 
         await user.send({ embeds: [embed], files });

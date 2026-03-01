@@ -31,6 +31,27 @@ const {
 // ─── Separator ────────────────────────────────────────────────────
 const SEP = '━━━━━━━━━━━━━━━━━━━━';
 
+// ─── Role key → image filename (thumbnail) ────────────────────────
+
+const ROLE_KEY_IMAGES = {
+  wolves:     'loupSimple.webp',
+  seer:       'voyante.webp',
+  witch:      'sorciere.png',
+  cupid:      'cupidon.webp',
+  salvateur:  'salvateur.webp',
+  white_wolf: 'loupBlanc.webp',
+  thief:      'voleur.webp',
+};
+
+/**
+ * Get the image filename for a role key (used as thumbnail).
+ * @param {string} roleKey
+ * @returns {string|null}
+ */
+function getRoleKeyImage(roleKey) {
+  return ROLE_KEY_IMAGES[roleKey] || null;
+}
+
 // ─── Role→Channel mapping helpers ──────────────────────────────────
 
 /**
@@ -376,12 +397,20 @@ const PANEL_BUILDERS = {
 function buildRolePanel(roleKey, game, timerInfo, guildId) {
   const builder = PANEL_BUILDERS[roleKey];
   if (!builder) return null;
-  return builder(game, timerInfo, guildId);
+  const embed = builder(game, timerInfo, guildId);
+  // ── Thumbnail: role image in top-right corner ──
+  const imageFile = getRoleKeyImage(roleKey);
+  if (imageFile) {
+    embed.setThumbnail(`attachment://${imageFile}`);
+  }
+  return embed;
 }
 
 module.exports = {
   ROLE_CHANNEL_MAP,
+  ROLE_KEY_IMAGES,
   getRoleChannels,
+  getRoleKeyImage,
   buildRolePanel,
   buildWolvesPanel,
   buildSeerPanel,

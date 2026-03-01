@@ -36,7 +36,9 @@ jest.mock('../../utils/theme', () => ({
 
 const {
   ROLE_CHANNEL_MAP,
+  ROLE_KEY_IMAGES,
   getRoleChannels,
+  getRoleKeyImage,
   buildRolePanel,
   buildWolvesPanel,
   buildSeerPanel,
@@ -207,6 +209,79 @@ describe('buildRolePanel', () => {
       const embed = buildRolePanel(key, game, TIMER, 'g1');
       expect(embed).not.toBeNull();
       expect(embed.toJSON().title).toBeDefined();
+    }
+  });
+});
+
+// ─── getRoleKeyImage ───────────────────────────────────────────
+
+describe('getRoleKeyImage', () => {
+  test('returns correct image for each role key', () => {
+    expect(getRoleKeyImage('wolves')).toBe('loupSimple.webp');
+    expect(getRoleKeyImage('seer')).toBe('voyante.webp');
+    expect(getRoleKeyImage('witch')).toBe('sorciere.png');
+    expect(getRoleKeyImage('cupid')).toBe('cupidon.webp');
+    expect(getRoleKeyImage('salvateur')).toBe('salvateur.webp');
+    expect(getRoleKeyImage('white_wolf')).toBe('loupBlanc.webp');
+    expect(getRoleKeyImage('thief')).toBe('voleur.webp');
+  });
+
+  test('returns null for unknown role key', () => {
+    expect(getRoleKeyImage('unknown')).toBeNull();
+  });
+});
+
+// ─── Thumbnail in role panels ───────────────────────────────────
+
+describe('buildRolePanel — thumbnail', () => {
+  test('all 7 role panels have a thumbnail set', () => {
+    const game = createTestGame();
+    for (const roleKey of Object.keys(PANEL_BUILDERS)) {
+      const embed = buildRolePanel(roleKey, game, TIMER, 'g1');
+      const json = embed.toJSON();
+      expect(json.thumbnail).toBeDefined();
+      expect(json.thumbnail.url).toContain('attachment://');
+    }
+  });
+
+  test('wolves panel thumbnail is loupSimple.webp', () => {
+    const embed = buildRolePanel('wolves', createTestGame(), NO_TIMER, 'g1');
+    expect(embed.toJSON().thumbnail.url).toBe('attachment://loupSimple.webp');
+  });
+
+  test('seer panel thumbnail is voyante.webp', () => {
+    const embed = buildRolePanel('seer', createTestGame(), NO_TIMER, 'g1');
+    expect(embed.toJSON().thumbnail.url).toBe('attachment://voyante.webp');
+  });
+
+  test('witch panel thumbnail is sorciere.png', () => {
+    const embed = buildRolePanel('witch', createTestGame(), NO_TIMER, 'g1');
+    expect(embed.toJSON().thumbnail.url).toBe('attachment://sorciere.png');
+  });
+
+  test('cupid panel thumbnail is cupidon.webp', () => {
+    const embed = buildRolePanel('cupid', createTestGame(), NO_TIMER, 'g1');
+    expect(embed.toJSON().thumbnail.url).toBe('attachment://cupidon.webp');
+  });
+
+  test('salvateur panel thumbnail is salvateur.webp', () => {
+    const embed = buildRolePanel('salvateur', createTestGame(), NO_TIMER, 'g1');
+    expect(embed.toJSON().thumbnail.url).toBe('attachment://salvateur.webp');
+  });
+
+  test('white_wolf panel thumbnail is loupBlanc.webp', () => {
+    const embed = buildRolePanel('white_wolf', createTestGame(), NO_TIMER, 'g1');
+    expect(embed.toJSON().thumbnail.url).toBe('attachment://loupBlanc.webp');
+  });
+
+  test('thief panel thumbnail is voleur.webp', () => {
+    const embed = buildRolePanel('thief', createTestGame(), NO_TIMER, 'g1');
+    expect(embed.toJSON().thumbnail.url).toBe('attachment://voleur.webp');
+  });
+
+  test('ROLE_KEY_IMAGES covers all panel builders', () => {
+    for (const roleKey of Object.keys(PANEL_BUILDERS)) {
+      expect(ROLE_KEY_IMAGES[roleKey]).toBeDefined();
     }
   });
 });

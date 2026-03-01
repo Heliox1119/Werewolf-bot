@@ -260,6 +260,7 @@ class MockEmbedBuilder {
   setColor(color) { this.data.color = color; return this; }
   addFields(...fields) { this.data.fields = [...(this.data.fields || []), ...fields]; return this; }
   setImage(url) { this.data.image = url; return this; }
+  setThumbnail(url) { this.data.thumbnail = url; return this; }
   setFooter(footer) { this.data.footer = footer; return this; }
   setTimestamp(ts) { this.data.timestamp = ts || true; return this; }
   toJSON() { return { ...this.data }; }

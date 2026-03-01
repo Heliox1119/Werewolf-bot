@@ -974,7 +974,8 @@ class GameManager extends EventEmitter {
       const existing = this.rolePanels.get(game.mainChannelId);
       if (existing && Object.values(existing).some(m => m)) return;
     }
-    const { getRoleChannels, buildRolePanel } = require('./roleChannelView');
+    const { getRoleChannels, buildRolePanel, getRoleKeyImage } = require('./roleChannelView');
+    const { AttachmentBuilder } = require('discord.js');
     const roleChannels = getRoleChannels(game);
     const timerInfo = this.getTimerInfo(game.mainChannelId);
     const panelRef = {};
@@ -985,7 +986,13 @@ class GameManager extends EventEmitter {
         if (!channel) continue;
         const embed = buildRolePanel(roleKey, game, timerInfo, game.guildId);
         if (!embed) continue;
-        const msg = await channel.send({ embeds: [embed] });
+        const sendPayload = { embeds: [embed] };
+        const imageFile = getRoleKeyImage(roleKey);
+        if (imageFile) {
+          const imagePath = path.join(__dirname, '..', 'img', imageFile);
+          sendPayload.files = [new AttachmentBuilder(imagePath, { name: imageFile })];
+        }
+        const msg = await channel.send(sendPayload);
         panelRef[roleKey] = msg;
         // Auto-pin the role panel
         try { await msg.pin(); } catch (_) { /* ignore pin failures */ }
@@ -1025,7 +1032,8 @@ class GameManager extends EventEmitter {
     }
 
     const panelRef = this.rolePanels.get(gameChannelId);
-    const { buildRolePanel } = require('./roleChannelView');
+    const { buildRolePanel, getRoleKeyImage } = require('./roleChannelView');
+    const { AttachmentBuilder } = require('discord.js');
     const timerInfo = this.getTimerInfo(gameChannelId);
     let anyAlive = false;
 
@@ -1034,7 +1042,15 @@ class GameManager extends EventEmitter {
       try {
         const embed = buildRolePanel(roleKey, game, timerInfo, game.guildId);
         if (!embed) continue;
-        await msg.edit({ embeds: [embed] });
+        const editPayload = { embeds: [embed] };
+        const imageFile = getRoleKeyImage(roleKey);
+        if (imageFile) {
+          const imagePath = path.join(__dirname, '..', 'img', imageFile);
+          editPayload.files = [new AttachmentBuilder(imagePath, { name: imageFile })];
+        } else {
+          editPayload.files = [];
+        }
+        await msg.edit(editPayload);
         anyAlive = true;
       } catch (_) {
         panelRef[roleKey] = null;
@@ -2637,7 +2653,7 @@ class GameManager extends EventEmitter {
         if (imageName) {
           const imagePath = pathMod.join(__dirname, '..', 'img', imageName);
           files.push(new AttachmentBuilder(imagePath, { name: imageName }));
-          embed.setImage(`attachment://${imageName}`);
+          embed.setThumbnail(`attachment://${imageName}`);
         }
 
         logger.info('DM send', { userId: user.id, username: user.username, content: '[role embed]' });
