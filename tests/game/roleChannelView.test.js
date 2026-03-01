@@ -40,6 +40,8 @@ const {
   getRoleChannels,
   getRoleKeyImage,
   buildRolePanel,
+  buildRolePanelComponents,
+  buildThiefButtons,
   buildWolvesPanel,
   buildSeerPanel,
   buildWitchPanel,
@@ -693,5 +695,121 @@ describe('Timer in description across panels', () => {
     const embed = buildRolePanel(roleKey, game, NO_TIMER, 'g1');
     const desc = getDescription(embed);
     expect(desc).not.toContain('⏱');
+  });
+});
+
+// ─── Thief Buttons ─────────────────────────────────────────────────
+
+describe('buildThiefButtons', () => {
+
+  test('returns action row with 3 buttons during VOLEUR subPhase', () => {
+    const game = createTestGame({
+      subPhase: PHASES.VOLEUR,
+      thiefExtraRoles: [ROLES.SEER, ROLES.WITCH],
+    });
+    const rows = buildThiefButtons(game, 'g1');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].components).toHaveLength(3);
+  });
+
+  test('button labels include translated card role names', () => {
+    const game = createTestGame({
+      subPhase: PHASES.VOLEUR,
+      thiefExtraRoles: [ROLES.SEER, ROLES.WITCH],
+    });
+    const rows = buildThiefButtons(game, 'g1');
+    const labels = rows[0].components.map(c => c.data.label);
+    // translateRole returns role key as-is in test mock
+    expect(labels[0]).toContain(ROLES.SEER);
+    expect(labels[1]).toContain(ROLES.WITCH);
+  });
+
+  test('button customIds are thief_steal:1, thief_steal:2, thief_skip', () => {
+    const game = createTestGame({
+      subPhase: PHASES.VOLEUR,
+      thiefExtraRoles: [ROLES.SEER, ROLES.WITCH],
+    });
+    const rows = buildThiefButtons(game, 'g1');
+    // discord.js v14 stores customId as custom_id in raw data
+    const ids = rows[0].components.map(c => c.data.custom_id || c.data.customId);
+    expect(ids).toEqual(['thief_steal:1', 'thief_steal:2', 'thief_skip']);
+  });
+
+  test('skip button is disabled when both cards are wolves', () => {
+    const game = createTestGame({
+      subPhase: PHASES.VOLEUR,
+      thiefExtraRoles: [ROLES.WEREWOLF, ROLES.WHITE_WOLF],
+    });
+    const rows = buildThiefButtons(game, 'g1');
+    const skipBtn = rows[0].components[2];
+    expect(skipBtn.data.disabled).toBe(true);
+  });
+
+  test('skip button is enabled when cards are not both wolves', () => {
+    const game = createTestGame({
+      subPhase: PHASES.VOLEUR,
+      thiefExtraRoles: [ROLES.SEER, ROLES.WEREWOLF],
+    });
+    const rows = buildThiefButtons(game, 'g1');
+    const skipBtn = rows[0].components[2];
+    expect(skipBtn.data.disabled).toBe(false);
+  });
+
+  test('returns empty array when phase is DAY', () => {
+    const game = createTestGame({
+      phase: PHASES.DAY,
+      subPhase: PHASES.VOLEUR,
+      thiefExtraRoles: [ROLES.SEER, ROLES.WITCH],
+    });
+    const rows = buildThiefButtons(game, 'g1');
+    expect(rows).toEqual([]);
+  });
+
+  test('returns empty array when subPhase is not VOLEUR', () => {
+    const game = createTestGame({
+      subPhase: PHASES.LOUPS,
+      thiefExtraRoles: [ROLES.SEER, ROLES.WITCH],
+    });
+    const rows = buildThiefButtons(game, 'g1');
+    expect(rows).toEqual([]);
+  });
+
+  test('returns empty array when no thief cards', () => {
+    const game = createTestGame({
+      subPhase: PHASES.VOLEUR,
+      thiefExtraRoles: [],
+    });
+    const rows = buildThiefButtons(game, 'g1');
+    expect(rows).toEqual([]);
+  });
+});
+
+// ─── buildRolePanelComponents ──────────────────────────────────────
+
+describe('buildRolePanelComponents', () => {
+
+  test('returns thief buttons for roleKey "thief"', () => {
+    const game = createTestGame({
+      subPhase: PHASES.VOLEUR,
+      thiefExtraRoles: [ROLES.SEER, ROLES.WITCH],
+    });
+    const components = buildRolePanelComponents('thief', game, 'g1');
+    expect(components).toHaveLength(1);
+  });
+
+  test('returns empty array for non-thief role keys', () => {
+    const game = createTestGame({ subPhase: PHASES.VOLEUR });
+    expect(buildRolePanelComponents('wolves', game, 'g1')).toEqual([]);
+    expect(buildRolePanelComponents('seer', game, 'g1')).toEqual([]);
+    expect(buildRolePanelComponents('witch', game, 'g1')).toEqual([]);
+  });
+
+  test('returns empty array for thief when subPhase is past VOLEUR', () => {
+    const game = createTestGame({
+      subPhase: PHASES.LOUPS,
+      thiefExtraRoles: [ROLES.SEER, ROLES.WITCH],
+    });
+    const components = buildRolePanelComponents('thief', game, 'g1');
+    expect(components).toEqual([]);
   });
 });

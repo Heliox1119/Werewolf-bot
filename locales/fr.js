@@ -1036,6 +1036,7 @@ module.exports = {
     thief_must_take: "Les deux cartes sont des loups-garous — vous devez en prendre une !",
     thief_done: "Le rôle a été choisi.",
     thief_action_hint: "Utilisez `/steal` pour voir et choisir une carte.",
+    thief_keep_btn: "Garder mon rôle",
   },
 
   // ==================== PANNEAU VILLAGE (GUI MAÎTRE) ====================

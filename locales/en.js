@@ -1036,6 +1036,7 @@ module.exports = {
     thief_must_take: "Both cards are werewolves — you must take one!",
     thief_done: "The role has been chosen.",
     thief_action_hint: "Use `/steal` to see and choose a card.",
+    thief_keep_btn: "Keep my role",
   },
 
   // ==================== VILLAGE PANEL (MASTER GUI) ====================

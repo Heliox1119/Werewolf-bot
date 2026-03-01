@@ -974,7 +974,7 @@ class GameManager extends EventEmitter {
       const existing = this.rolePanels.get(game.mainChannelId);
       if (existing && Object.values(existing).some(m => m)) return;
     }
-    const { getRoleChannels, buildRolePanel, getRoleKeyImage } = require('./roleChannelView');
+    const { getRoleChannels, buildRolePanel, getRoleKeyImage, buildRolePanelComponents } = require('./roleChannelView');
     const { AttachmentBuilder } = require('discord.js');
     const roleChannels = getRoleChannels(game);
     const timerInfo = this.getTimerInfo(game.mainChannelId);
@@ -992,6 +992,8 @@ class GameManager extends EventEmitter {
           const imagePath = path.join(__dirname, '..', 'img', imageFile);
           sendPayload.files = [new AttachmentBuilder(imagePath, { name: imageFile })];
         }
+        const components = buildRolePanelComponents(roleKey, game, game.guildId);
+        if (components.length > 0) sendPayload.components = components;
         const msg = await channel.send(sendPayload);
         panelRef[roleKey] = msg;
         // Auto-pin the role panel
@@ -1032,7 +1034,7 @@ class GameManager extends EventEmitter {
     }
 
     const panelRef = this.rolePanels.get(gameChannelId);
-    const { buildRolePanel, getRoleKeyImage } = require('./roleChannelView');
+    const { buildRolePanel, getRoleKeyImage, buildRolePanelComponents } = require('./roleChannelView');
     const { AttachmentBuilder } = require('discord.js');
     const timerInfo = this.getTimerInfo(gameChannelId);
     let anyAlive = false;
@@ -1050,6 +1052,8 @@ class GameManager extends EventEmitter {
         } else {
           editPayload.files = [];
         }
+        // Add or remove button components based on current state
+        editPayload.components = buildRolePanelComponents(roleKey, game, game.guildId);
         await msg.edit(editPayload);
         anyAlive = true;
       } catch (_) {

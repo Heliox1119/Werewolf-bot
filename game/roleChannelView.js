@@ -7,7 +7,6 @@
  * Only role-specific data gets a field. Context + timer live in description.
  *
  * ABSOLUTE CONSTRAINTS:
- * ❌ No buttons or action components
  * ❌ No database writes
  * ❌ No game state mutation
  * ❌ No decision logic — the engine is the single source of truth
@@ -16,7 +15,7 @@
  * Panels are posted ONCE per channel and EDITED on state changes.
  */
 
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const PHASES = require('./phases');
 const ROLES = require('./roles');
 const { t, translatePhase, translateRole } = require('../utils/i18n');
@@ -406,12 +405,77 @@ function buildRolePanel(roleKey, game, timerInfo, guildId) {
   return embed;
 }
 
+// ─── Thief Buttons (Action Row) ────────────────────────────────────
+
+/**
+ * Build the ActionRow with thief action buttons.
+ * Returns an array of components (0 or 1 ActionRow).
+ *
+ * Buttons are shown ONLY when:
+ *   - It is NIGHT phase
+ *   - subPhase === VOLEUR
+ *   - There are exactly 2 thief cards available
+ *
+ * The "keep role" button is disabled when both cards are wolves.
+ *
+ * @param {object} game   Game state (read-only)
+ * @param {string} guildId
+ * @returns {ActionRowBuilder[]}  Empty array when no buttons should be shown
+ */
+function buildThiefButtons(game, guildId) {
+  if (game.phase !== PHASES.NIGHT) return [];
+  if (game.subPhase !== PHASES.VOLEUR) return [];
+
+  const cards = game.thiefExtraRoles || [];
+  if (cards.length !== 2) return [];
+
+  const card1Label = translateRole(cards[0]);
+  const card2Label = translateRole(cards[1]);
+
+  const isWolf = (r) => r === ROLES.WEREWOLF || r === ROLES.WHITE_WOLF;
+  const bothWolves = isWolf(cards[0]) && isWolf(cards[1]);
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('thief_steal:1')
+      .setLabel(`🃏 ${card1Label}`)
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('thief_steal:2')
+      .setLabel(`🃏 ${card2Label}`)
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('thief_skip')
+      .setLabel(`⏭️ ${t('role_panel.thief_keep_btn', {}, guildId)}`)
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(bothWolves),
+  );
+
+  return [row];
+}
+
+/**
+ * Build the component rows for a given role key.
+ * Returns an empty array for roles that have no interactive buttons (yet).
+ *
+ * @param {string} roleKey
+ * @param {object} game
+ * @param {string} guildId
+ * @returns {ActionRowBuilder[]}
+ */
+function buildRolePanelComponents(roleKey, game, guildId) {
+  if (roleKey === 'thief') return buildThiefButtons(game, guildId);
+  return [];
+}
+
 module.exports = {
   ROLE_CHANNEL_MAP,
   ROLE_KEY_IMAGES,
   getRoleChannels,
   getRoleKeyImage,
   buildRolePanel,
+  buildRolePanelComponents,
+  buildThiefButtons,
   buildWolvesPanel,
   buildSeerPanel,
   buildWitchPanel,

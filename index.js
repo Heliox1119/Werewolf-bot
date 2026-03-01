@@ -627,10 +627,25 @@ client.on("interactionCreate", async interaction => {
       return;
     }
 
-  // Gérer les boutons du lobby
+  // Gérer les boutons du lobby et des rôles
   if (interaction.isButton()) {
     const { safeDefer } = require('./utils/interaction');
-    
+
+    // ── Thief role buttons (ephemeral defer) ──
+    if (interaction.customId.startsWith('thief_')) {
+      try {
+        const deferred = await safeDefer(interaction, { flags: MessageFlags.Ephemeral });
+        if (!deferred) return; // interaction expired
+      } catch (err) {
+        if (err.code === 10062) return;
+        throw err;
+      }
+      const { handleThiefButton } = require('./interactions/thiefButtons');
+      await handleThiefButton(interaction);
+      return;
+    }
+
+    // ── Other buttons (non-ephemeral defer) ──
     try {
       await safeDefer(interaction);
     } catch (err) {
