@@ -160,8 +160,8 @@ module.exports = {
 
   // ==================== JEU ====================
   game: {
-    day_begins: "☀️ **LE JOUR SE LÈVE**\n\nTous les micros sont réactivés. Le village discute et vote !\nUtilisez `/vote @joueur` pour voter pour éliminer quelqu'un.",
-    night_falls: "🌙 **LA NUIT TOMBE**\n\nLes micros se coupent pour tout le monde.\nLes loups choisissent leur victime avec `/kill @joueur`",
+    day_begins: "☀️ **LE JOUR SE LÈVE**\n\nTous les micros sont réactivés. Le village discute et vote !\nUtilisez `/vote @joueur` pour voter pour éliminer quelqu'un.\n-# 📊 Tableau de bord : `/status`",
+    night_falls: "🌙 **LA NUIT TOMBE**\n\nLes micros se coupent pour tout le monde.\nLes loups choisissent leur victime avec `/kill @joueur`\n-# 📊 Tableau de bord : `/status`",
     witch_saved: "✨ La victime des loups a été sauvée par la sorcière !",
     night_victim: "💀 **{{name}}** s'est fait dévorer la nuit ! 🐺",
     witch_kill: "💀 **{{name}}** a été empoisonné pendant la nuit ! 🧪",
@@ -207,9 +207,9 @@ module.exports = {
     stats_kills: "Fois éliminé",
     stats_survived: "Fois survécu",
     stats_no_data: "Aucune statistique trouvée pour ce joueur.",
-    night_start_cupid: "🌙 **LA NUIT TOMBE**\n\n✅ Les rôles ont été distribués en DM\n✅ Channels privés créés pour les rôles spéciaux\n🎤 **Rejoignez le channel vocal 🎤-partie**\n\n**Cette nuit :**\n• Cupidon choisit deux amoureux avec `/love @a @b`\n• Puis les loups choisiront leur victime",
-    night_start_thief: "🌙 **LA NUIT TOMBE**\n\n✅ Les rôles ont été distribués en DM\n✅ Channels privés créés pour les rôles spéciaux\n🎤 **Rejoignez le channel vocal 🎤-partie**\n\n**Cette nuit :**\n• Le Voleur choisit son rôle parmi 2 cartes avec `/steal`\n• Puis la nuit continue...",
-    night_start_default: "🌙 **LA NUIT TOMBE**\n\n✅ Les rôles ont été distribués en DM\n✅ Channels privés créés pour les rôles spéciaux\n🎤 **Rejoignez le channel vocal 🎤-partie**\n\n**Cette nuit :**\n• Les loups choisissent leur victime avec `/kill @joueur` (dans leur channel)\n• Les autres ne peuvent PAS parler (micros coupés)",
+    night_start_cupid: "🌙 **LA NUIT TOMBE**\n\n✅ Les rôles ont été distribués en DM\n✅ Channels privés créés pour les rôles spéciaux\n🎤 **Rejoignez le channel vocal 🎤-partie**\n\n**Cette nuit :**\n• Cupidon choisit deux amoureux avec `/love @a @b`\n• Puis les loups choisiront leur victime\n-# 📊 Suivez la partie en direct : `/status`",
+    night_start_thief: "🌙 **LA NUIT TOMBE**\n\n✅ Les rôles ont été distribués en DM\n✅ Channels privés créés pour les rôles spéciaux\n🎤 **Rejoignez le channel vocal 🎤-partie**\n\n**Cette nuit :**\n• Le Voleur choisit son rôle parmi 2 cartes avec `/steal`\n• Puis la nuit continue...\n-# 📊 Suivez la partie en direct : `/status`",
+    night_start_default: "🌙 **LA NUIT TOMBE**\n\n✅ Les rôles ont été distribués en DM\n✅ Channels privés créés pour les rôles spéciaux\n🎤 **Rejoignez le channel vocal 🎤-partie**\n\n**Cette nuit :**\n• Les loups choisissent leur victime avec `/kill @joueur` (dans leur channel)\n• Les autres ne peuvent PAS parler (micros coupés)\n-# 📊 Suivez la partie en direct : `/status`",
     ended: "🐺 Partie terminée ! {{deleted}} channel(s) supprimé(s).",
     started_button: "🌙 **La partie a démarré !** Les rôles ont été envoyés en DM.",
     started_command: "🌙 La nuit tombe… channels privés créés et rôles envoyés !",
@@ -992,5 +992,6 @@ module.exports = {
     progression: "Progression",
     eliminated: "éliminés",
     no_game: "Aucune partie en cours dans ce salon.",
+    status_hint: "-# 📊 Tableau de bord : `/status`",
   },
 };

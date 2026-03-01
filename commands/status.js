@@ -35,7 +35,7 @@ module.exports = {
     // Send public status embed (visible to all, registered for auto-update)
     await safeReply(interaction, { embeds: [embed] });
 
-    // Register panel for auto-update on state changes
+    // Register panel for auto-update on state changes + auto-pin
     try {
       const msg = await interaction.fetchReply();
       if (msg) {
@@ -48,6 +48,8 @@ module.exports = {
         } else {
           ref.villageMsg = msg;
         }
+        // Auto-pin the status panel so it stays visible
+        try { await msg.pin(); } catch (_) { /* ignore pin failures (permissions, already pinned) */ }
       }
     } catch (_) { /* ignore fetch failures */ }
 

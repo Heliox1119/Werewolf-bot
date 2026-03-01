@@ -1895,11 +1895,16 @@ class GameManager extends EventEmitter {
   }
 
   // Annonce la sous-phase dans le channel village
+  // Night sub-phase micro-states ("X se réveille...") are suppressed:
+  // the /status panel already displays the current sub-phase in real-time.
   async announcePhase(guild, game, message) {
     if (!game.villageChannelId) return;
+    // Suppress night sub-phase announcements — visible via status panel
+    if (game.phase === PHASES.NIGHT) return;
     try {
       const channel = await guild.channels.fetch(game.villageChannelId);
-      await this.sendLogged(channel, `**${message}**`, { type: 'announcePhase', phase: game.phase, subPhase: game.subPhase });
+      const hint = t('gui.status_hint');
+      await this.sendLogged(channel, `**${message}**\n${hint}`, { type: 'announcePhase', phase: game.phase, subPhase: game.subPhase });
     } catch (e) { /* ignore */ }
   }
 
@@ -1927,25 +1932,21 @@ class GameManager extends EventEmitter {
             state.wolfVotes = null;
             this.db.clearVotes(game.mainChannelId, 'wolves', state.dayCount || 0);
           });
+          // Wolves AFK is a major narrative event (no victim) — keep in channel
           await this.sendLogged(mainChannel, t('game.afk_wolves'), { type: 'afkTimeout' });
           this.logAction(game, 'AFK timeout: loups');
         } else if (currentSub === PHASES.SORCIERE) {
-          await this.sendLogged(mainChannel, t('game.afk_witch'), { type: 'afkTimeout' });
+          // Suppressed: visible via /status panel
           this.logAction(game, 'AFK timeout: sorcière');
         } else if (currentSub === PHASES.VOYANTE) {
-          await this.sendLogged(mainChannel, t('game.afk_seer'), { type: 'afkTimeout' });
           this.logAction(game, 'AFK timeout: voyante');
         } else if (currentSub === PHASES.SALVATEUR) {
-          await this.sendLogged(mainChannel, t('game.afk_salvateur'), { type: 'afkTimeout' });
           this.logAction(game, 'AFK timeout: salvateur');
         } else if (currentSub === PHASES.LOUP_BLANC) {
-          await this.sendLogged(mainChannel, t('game.afk_white_wolf'), { type: 'afkTimeout' });
           this.logAction(game, 'AFK timeout: loup blanc');
         } else if (currentSub === PHASES.CUPIDON) {
-          await this.sendLogged(mainChannel, t('game.afk_cupid') || '⏰ Cupidon n\'a pas agi à temps.', { type: 'afkTimeout' });
           this.logAction(game, 'AFK timeout: cupidon');
         } else if (currentSub === PHASES.VOLEUR) {
-          await this.sendLogged(mainChannel, t('game.afk_thief'), { type: 'afkTimeout' });
           this.logAction(game, 'AFK timeout: voleur');
         } else {
           return; // Pas de timeout pour les autres sous-phases

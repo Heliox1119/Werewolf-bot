@@ -160,8 +160,8 @@ module.exports = {
 
   // ==================== GAME ====================
   game: {
-    day_begins: "☀️ **DAY BREAKS**\n\nAll microphones are reactivated. The village discusses and votes!\nUse `/vote @player` to vote to eliminate someone.",
-    night_falls: "🌙 **NIGHT FALLS**\n\nMicrophones are muted for everyone.\nThe wolves choose their victim with `/kill @player`",
+    day_begins: "☀️ **DAY BREAKS**\n\nAll microphones are reactivated. The village discusses and votes!\nUse `/vote @player` to vote to eliminate someone.\n-# 📊 Dashboard: `/status`",
+    night_falls: "🌙 **NIGHT FALLS**\n\nMicrophones are muted for everyone.\nThe wolves choose their victim with `/kill @player`\n-# 📊 Dashboard: `/status`",
     witch_saved: "✨ The wolves' victim was saved by the witch!",
     night_victim: "💀 **{{name}}** was devoured during the night! 🐺",
     witch_kill: "💀 **{{name}}** was poisoned during the night! 🧪",
@@ -207,9 +207,9 @@ module.exports = {
     stats_kills: "Times eliminated",
     stats_survived: "Times survived",
     stats_no_data: "No statistics found for this player.",
-    night_start_cupid: "🌙 **NIGHT FALLS**\n\n✅ Roles have been distributed via DM\n✅ Private channels created for special roles\n🎤 **Join the voice channel 🎤-game**\n\n**Tonight:**\n• Cupid chooses two lovers with `/love @a @b`\n• Then the wolves will choose their victim",
-    night_start_thief: "🌙 **NIGHT FALLS**\n\n✅ Roles have been distributed via DM\n✅ Private channels created for special roles\n🎤 **Join the voice channel 🎤-game**\n\n**Tonight:**\n• The Thief chooses their role from 2 cards with `/steal`\n• Then the night continues...",
-    night_start_default: "🌙 **NIGHT FALLS**\n\n✅ Roles have been distributed via DM\n✅ Private channels created for special roles\n🎤 **Join the voice channel 🎤-game**\n\n**Tonight:**\n• The wolves choose their victim with `/kill @player` (in their channel)\n• Others cannot speak (mics muted)",
+    night_start_cupid: "🌙 **NIGHT FALLS**\n\n✅ Roles have been distributed via DM\n✅ Private channels created for special roles\n🎤 **Join the voice channel 🎤-game**\n\n**Tonight:**\n• Cupid chooses two lovers with `/love @a @b`\n• Then the wolves will choose their victim\n-# 📊 Follow the game live: `/status`",
+    night_start_thief: "🌙 **NIGHT FALLS**\n\n✅ Roles have been distributed via DM\n✅ Private channels created for special roles\n🎤 **Join the voice channel 🎤-game**\n\n**Tonight:**\n• The Thief chooses their role from 2 cards with `/steal`\n• Then the night continues...\n-# 📊 Follow the game live: `/status`",
+    night_start_default: "🌙 **NIGHT FALLS**\n\n✅ Roles have been distributed via DM\n✅ Private channels created for special roles\n🎤 **Join the voice channel 🎤-game**\n\n**Tonight:**\n• The wolves choose their victim with `/kill @player` (in their channel)\n• Others cannot speak (mics muted)\n-# 📊 Follow the game live: `/status`",
     ended: "🐺 Game over! {{deleted}} channel(s) deleted.",
     started_button: "🌙 **The game has started!** Roles have been sent via DM.",
     started_command: "🌙 Night falls… private channels created and roles sent!",
@@ -992,5 +992,6 @@ module.exports = {
     progression: "Progression",
     eliminated: "eliminated",
     no_game: "No game in progress in this channel.",
+    status_hint: "-# 📊 Dashboard: `/status`",
   },
 };
