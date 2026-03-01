@@ -994,4 +994,46 @@ module.exports = {
     no_game: "Aucune partie en cours dans ce salon.",
     status_hint: "-# 📊 Tableau de bord : `/status`",
   },
+
+  // ==================== PANNEAUX DE RÔLES ====================
+  role_panel: {
+    footer: "🔄 Mise à jour automatique",
+    game_ended: "La partie est terminée.",
+    day_rest: "Le village est éveillé — reposez-vous.",
+    // Loups
+    wolves_title: "Repaire des Loups",
+    pack_members: "Membres de la meute",
+    wolves_action_hint: "Utilisez `/kill @joueur` pour choisir votre victime.",
+    // Voyante
+    seer_title: "Chambre de la Voyante",
+    seer_action_hint: "Utilisez `/see @joueur` pour espionner un joueur.",
+    // Sorcière
+    witch_title: "Laboratoire de la Sorcière",
+    potions: "Potions",
+    potion_life: "Vie",
+    potion_death: "Mort",
+    wolf_victim: "Victime des loups",
+    witch_action_hint: "Utilisez `/potion type:Vie` ou `/potion type:Mort target:@joueur`.",
+    // Cupidon
+    cupid_title: "Sanctuaire de Cupidon",
+    lovers: "Amoureux",
+    cupid_done: "Les amoureux ont été choisis.",
+    cupid_action_hint: "Utilisez `/love @a @b` pour lier deux joueurs.",
+    // Salvateur
+    salvateur_title: "Refuge du Salvateur",
+    last_protected: "Dernier protégé (interdit)",
+    salvateur_action_hint: "Utilisez `/protect @joueur` pour protéger quelqu'un.",
+    // Loup Blanc
+    white_wolf_title: "Tanière du Loup Blanc",
+    night_type: "Type de nuit",
+    white_wolf_hunt_night: "Nuit impaire — vous pouvez dévorer un loup !",
+    white_wolf_rest_night: "Nuit paire — pas de chasse solitaire.",
+    white_wolf_action_hint: "Utilisez `/kill @loup` pour dévorer un autre loup.",
+    // Voleur
+    thief_title: "Tente du Voleur",
+    thief_cards: "Cartes disponibles",
+    thief_must_take: "Les deux cartes sont des loups-garous — vous devez en prendre une !",
+    thief_done: "Le rôle a été choisi.",
+    thief_action_hint: "Utilisez `/steal` pour voir et choisir une carte.",
+  },
 };

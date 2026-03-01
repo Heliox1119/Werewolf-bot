@@ -44,6 +44,7 @@ class GameManager extends EventEmitter {
     this.activeGameTimers = new Map(); // channelId -> { type, epoch }
     this._timerEpochs = new Map(); // channelId -> number
     this.statusPanels = new Map(); // channelId -> { villageMsg, spectatorMsg }
+    this.rolePanels = new Map();   // gameChannelId -> { wolves: msg, seer: msg, witch: msg, ... }
     this._testMode = options.testMode ?? process.env.NODE_ENV === 'test';
     this._failurePoints = new Map();
     this.stuckGameThresholdMs = TIMEOUTS.STUCK_GAME_THRESHOLD;
@@ -501,6 +502,7 @@ class GameManager extends EventEmitter {
     }
     this.lobbyTimeouts.clear();
     this.statusPanels.clear();
+    this.rolePanels.clear();
     // Save state (force all) and close DB
     this.saveState(true);
     this.gameMutex.destroy();
@@ -866,6 +868,7 @@ class GameManager extends EventEmitter {
     // Auto-refresh status panels on state changes (fire-and-forget)
     if (['phaseChanged', 'playerKilled', 'gameEnded', 'gameStarted'].includes(eventName)) {
       setImmediate(() => this._refreshStatusPanels(game.mainChannelId).catch(() => {}));
+      setImmediate(() => this._refreshRolePanels(game.mainChannelId).catch(() => {}));
     }
   }
 
@@ -909,6 +912,83 @@ class GameManager extends EventEmitter {
     // Cleanup if no panels left
     if (!panelRef.villageMsg && !panelRef.spectatorMsg) {
       this.statusPanels.delete(gameChannelId);
+    }
+  }
+
+  /**
+   * Post persistent role channel panels (one per role channel).
+   * Called once when the game starts. Panels are then edited, never reposted.
+   * @param {Guild} guild
+   * @param {object} game
+   */
+  async _postRolePanels(guild, game) {
+    const { getRoleChannels, buildRolePanel } = require('./roleChannelView');
+    const roleChannels = getRoleChannels(game);
+    const timerInfo = this.getTimerInfo(game.mainChannelId);
+    const panelRef = {};
+
+    for (const [roleKey, channelId] of Object.entries(roleChannels)) {
+      try {
+        const channel = await guild.channels.fetch(channelId);
+        if (!channel) continue;
+        const embed = buildRolePanel(roleKey, game, timerInfo, game.guildId);
+        if (!embed) continue;
+        const msg = await channel.send({ embeds: [embed] });
+        panelRef[roleKey] = msg;
+        // Auto-pin the role panel
+        try { await msg.pin(); } catch (_) { /* ignore pin failures */ }
+      } catch (e) {
+        logger.warn('Failed to post role panel', { roleKey, channelId, error: e.message });
+      }
+    }
+
+    this.rolePanels.set(game.mainChannelId, panelRef);
+  }
+
+  /**
+   * Auto-refresh all registered role channel panels (read-only, no game mutation).
+   * If panels are missing (e.g. after bot restart), re-posts them.
+   * @param {string} gameChannelId  The mainChannelId of the game
+   */
+  async _refreshRolePanels(gameChannelId) {
+    const game = this.games.get(gameChannelId);
+    if (!game || game.phase === PHASES.ENDED) return;
+
+    // If no panels registered (e.g. after reboot), re-create them
+    if (!this.rolePanels.has(gameChannelId)) {
+      try {
+        const client = require.main?.exports?.client || this.client;
+        if (client && game.guildId) {
+          const guild = await client.guilds.fetch(game.guildId);
+          if (guild) {
+            await this._postRolePanels(guild, game);
+          }
+        }
+      } catch (e) {
+        logger.warn('Failed to re-post role panels after reboot', { gameChannelId, error: e.message });
+      }
+      return;
+    }
+
+    const panelRef = this.rolePanels.get(gameChannelId);
+    const { buildRolePanel } = require('./roleChannelView');
+    const timerInfo = this.getTimerInfo(gameChannelId);
+    let anyAlive = false;
+
+    for (const [roleKey, msg] of Object.entries(panelRef)) {
+      if (!msg) continue;
+      try {
+        const embed = buildRolePanel(roleKey, game, timerInfo, game.guildId);
+        if (!embed) continue;
+        await msg.edit({ embeds: [embed] });
+        anyAlive = true;
+      } catch (_) {
+        panelRef[roleKey] = null;
+      }
+    }
+
+    if (!anyAlive) {
+      this.rolePanels.delete(gameChannelId);
     }
   }
 
@@ -1859,13 +1939,7 @@ class GameManager extends EventEmitter {
     });
 
     if (outcome.stopListenRelay) await this.stopListenRelay(game);
-    if (outcome.notifyWitchVictim && game.witchChannelId && game.nightVictim) {
-      try {
-        const victimPlayer = game.players.find(p => p.id === game.nightVictim);
-        const witchChannel = await guild.channels.fetch(game.witchChannelId);
-        await witchChannel.send(t('cmd.kill.witch_notify', { name: victimPlayer ? victimPlayer.username : '???' }));
-      } catch (e) { /* ignore */ }
-    }
+    // Witch victim notification is now displayed in the witch role panel (auto-refreshed)
     if (outcome.announce) await this.announcePhase(guild, game, outcome.announce);
     if (outcome.notifyRole) this.notifyTurn(guild, game, outcome.notifyRole);
     if (outcome.timer === 'captain') {
@@ -2303,72 +2377,9 @@ class GameManager extends EventEmitter {
       }
     }
 
-    // 4. Messages dans les channels privés
+    // 4. Post persistent role channel GUI panels (replaces legacy welcome messages)
     await updateProgress(t('progress.channels'));
-    if (game.wolvesChannelId) {
-      try {
-        const wolvesChannel = await guild.channels.fetch(game.wolvesChannelId);
-        const wolves = game.players.filter(p => p.role === ROLES.WEREWOLF || p.role === ROLES.WHITE_WOLF);
-        // Ping les loups pour les identifier dans le channel
-        const wolfPings = wolves.map(w => `<@${w.id}>`).join(' ');
-        const wolfNames = wolves.map(w => `🐺 **${w.username}**`).join('\n');
-        await this.sendLogged(wolvesChannel, t('welcome.wolves', { n: wolves.length }) + `\n\n${t('welcome.wolves_members')}\n${wolfNames}\n\n${wolfPings}`, { type: 'wolvesWelcome' });
-      } catch (e) { logger.warn('Failed to send wolves welcome', { error: e.message }); }
-    }
-
-    if (game.whiteWolfChannelId) {
-      try {
-        const whiteWolfChannel = await guild.channels.fetch(game.whiteWolfChannelId);
-        await this.sendLogged(whiteWolfChannel, t('welcome.white_wolf'), { type: 'whiteWolfWelcome' });
-      } catch (e) { logger.warn('Failed to send white wolf welcome', { error: e.message }); }
-    }
-
-    if (game.thiefChannelId) {
-      try {
-        const thiefChannel = await guild.channels.fetch(game.thiefChannelId);
-        await this.sendLogged(thiefChannel, t('welcome.thief'), { type: 'thiefWelcome' });
-        // Si le voleur a des cartes à choisir, afficher les cartes
-        if (game.thiefExtraRoles && game.thiefExtraRoles.length === 2) {
-          const { translateRole } = require('../utils/i18n');
-          const role1Name = translateRole(game.thiefExtraRoles[0]);
-          const role2Name = translateRole(game.thiefExtraRoles[1]);
-          const bothWolves = (game.thiefExtraRoles[0] === ROLES.WEREWOLF || game.thiefExtraRoles[0] === ROLES.WHITE_WOLF) &&
-                             (game.thiefExtraRoles[1] === ROLES.WEREWOLF || game.thiefExtraRoles[1] === ROLES.WHITE_WOLF);
-          const cardsMsg = bothWolves
-            ? t('cmd.steal.cards_must_take', { role1: role1Name, role2: role2Name })
-            : t('cmd.steal.cards', { role1: role1Name, role2: role2Name });
-          await this.sendLogged(thiefChannel, cardsMsg, { type: 'thiefCards' });
-        }
-      } catch (e) { logger.warn('Failed to send thief welcome', { error: e.message }); }
-    }
-
-    if (game.seerChannelId) {
-      try {
-        const seerChannel = await guild.channels.fetch(game.seerChannelId);
-        await this.sendLogged(seerChannel, t('welcome.seer'), { type: 'seerWelcome' });
-      } catch (e) { logger.warn('Failed to send seer welcome', { error: e.message }); }
-    }
-
-    if (game.witchChannelId) {
-      try {
-        const witchChannel = await guild.channels.fetch(game.witchChannelId);
-        await this.sendLogged(witchChannel, t('welcome.witch'), { type: 'witchWelcome' });
-      } catch (e) { logger.warn('Failed to send witch welcome', { error: e.message }); }
-    }
-
-    if (game.cupidChannelId) {
-      try {
-        const cupidChannel = await guild.channels.fetch(game.cupidChannelId);
-        await this.sendLogged(cupidChannel, t('welcome.cupid'), { type: 'cupidWelcome' });
-      } catch (e) { logger.warn('Failed to send cupid welcome', { error: e.message }); }
-    }
-
-    if (game.salvateurChannelId) {
-      try {
-        const salvateurChannel = await guild.channels.fetch(game.salvateurChannelId);
-        await this.sendLogged(salvateurChannel, t('welcome.salvateur'), { type: 'salvateurWelcome' });
-      } catch (e) { logger.warn('Failed to send salvateur welcome', { error: e.message }); }
-    }
+    await this._postRolePanels(guild, game);
 
     // 5. Message dans le channel village
     await updateProgress(t('progress.done'));

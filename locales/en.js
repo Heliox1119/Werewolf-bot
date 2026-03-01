@@ -994,4 +994,46 @@ module.exports = {
     no_game: "No game in progress in this channel.",
     status_hint: "-# 📊 Dashboard: `/status`",
   },
+
+  // ==================== ROLE PANELS ====================
+  role_panel: {
+    footer: "🔄 Auto-updating",
+    game_ended: "The game is over.",
+    day_rest: "The village is awake — rest up.",
+    // Wolves
+    wolves_title: "Wolf Den",
+    pack_members: "Pack Members",
+    wolves_action_hint: "Use `/kill @player` to choose your victim.",
+    // Seer
+    seer_title: "Seer's Chamber",
+    seer_action_hint: "Use `/see @player` to spy on a player.",
+    // Witch
+    witch_title: "Witch's Laboratory",
+    potions: "Potions",
+    potion_life: "Life",
+    potion_death: "Death",
+    wolf_victim: "Wolf victim",
+    witch_action_hint: "Use `/potion type:Life` or `/potion type:Death target:@player`.",
+    // Cupid
+    cupid_title: "Cupid's Sanctuary",
+    lovers: "Lovers",
+    cupid_done: "The lovers have been chosen.",
+    cupid_action_hint: "Use `/love @a @b` to link two players.",
+    // Salvateur
+    salvateur_title: "Salvateur's Refuge",
+    last_protected: "Last protected (forbidden)",
+    salvateur_action_hint: "Use `/protect @player` to protect someone.",
+    // White Wolf
+    white_wolf_title: "White Wolf's Lair",
+    night_type: "Night Type",
+    white_wolf_hunt_night: "Odd night — you can devour a wolf!",
+    white_wolf_rest_night: "Even night — no solo hunt.",
+    white_wolf_action_hint: "Use `/kill @wolf` to devour another wolf.",
+    // Thief
+    thief_title: "Thief's Tent",
+    thief_cards: "Available Cards",
+    thief_must_take: "Both cards are werewolves — you must take one!",
+    thief_done: "The role has been chosen.",
+    thief_action_hint: "Use `/steal` to see and choose a card.",
+  },
 };
