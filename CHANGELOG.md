@@ -252,17 +252,21 @@
 
 ## 🗺️ Roadmap
 
-### v3.5.0 — Premium & Custom Content
+### ✅ v3.5.0 — i18n Engine Rewrite & Persistent Sessions *(released 2026-02-28)*
+### ✅ v3.5.1 — Resilience Hardening *(released 2026-03-01)*
+
+### v3.6.0 — GUI & Web Dashboard Overhaul
+- 🖥️ Full web-based game management GUI (create, configure, monitor games from browser)
+- 📊 Advanced analytics: role win rates, player heatmaps, game duration trends
 - 🎨 Premium theme packs (custom card backs, ambient sounds, embed colors)
 - 🐺 Custom roles: full gameplay integration (web editor → game engine)
-- 🏆 Season system with monthly resets and rewards
-- 📊 Advanced analytics: role win rates, player heatmaps, game duration trends
+- 📱 Mobile-optimized responsive web interface
 
-### v3.6.0 — Social & Community
-- 🎙️ In-game voice effects (distortion, reverb per role)
+### v3.7.0 — Social & Community
+- 🏆 Season system with monthly resets and rewards
 - 🏅 Tournaments mode with brackets and seeding
-- 📱 Mobile-optimized web interface
 - 🔗 Cross-guild leaderboard and global rankings
+- 🎙️ In-game voice effects (distortion, reverb per role)
 
 ### v4.0.0 — Next Generation
 - 🤖 AI-powered game balancing (role distribution based on player skill)
