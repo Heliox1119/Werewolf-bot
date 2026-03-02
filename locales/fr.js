@@ -159,6 +159,9 @@ module.exports = {
     powers_lost: "❌ Les pouvoirs spéciaux ont été perdus à cause de la mort de l'Ancien.",
     // Idiot
     idiot_cannot_vote: "❌ Tu es l'Idiot du Village révélé. Tu n'as plus le droit de voter.",
+    // Day vote GUI
+    vote_already_resolved: "❌ Le vote est déjà terminé.",
+    captain_tiebreak_invalid: "❌ Ce joueur n'est pas dans la liste des ex-aequo.",
   },
 
   // ==================== JEU ====================
@@ -174,6 +177,8 @@ module.exports = {
     vote_tie_captain: "⚖️ **Égalité !** {{names}} sont à égalité avec {{count}} vote(s).\nLe capitaine <@{{captainId}}> doit départager : `/vote @joueur` parmi les ex-aequo.",
     vote_tie_no_captain: "⚖️ **Égalité !** {{names}} sont à égalité avec {{count}} vote(s). Personne n'est éliminé.",
     captain_tiebreak: "⚖️🔨 Le capitaine a tranché : **{{name}}** est éliminé !",
+    captain_tiebreak_result: "⚖️🔨 Le capitaine a tranché : **{{name}}** est éliminé !",
+    captain_tiebreak_afk: "⏰⚖️ Le capitaine n'a pas départagé à temps. Personne n'est éliminé.",
     captain_auto_elected: "⏰👑 Temps écoulé ! **{{name}}** est élu capitaine automatiquement !",
     captain_random_elected: "🎲👑 Égalité au vote — **{{name}}** est élu capitaine au hasard !",
     captain_random_no_votes: "⏰👑 Aucun vote pour le capitaine ! **{{name}}** est désigné capitaine au hasard.",
@@ -187,7 +192,6 @@ module.exports = {
     afk_salvateur: "⏰ Le Salvateur ne se réveille pas... La nuit continue.",
     afk_white_wolf: "⏰ Le Loup Blanc ne se réveille pas... La nuit continue.",
     afk_thief: "⏰ Le Voleur ne se réveille pas... Il garde son rôle actuel.",
-    afk_deliberation: "⏰ Fin de la délibération ! Passage au vote...",
     afk_vote: "⏰ Le temps de vote est écoulé. Passage à la nuit...",
     victory: "\n🏆 **{{victor}}** a gagné la partie !",
     victory_village: "🎉 **VICTOIRE DES VILLAGEOIS !**\nTous les loups-garous ont été éliminés.",
@@ -220,6 +224,7 @@ module.exports = {
     started_debug: "🌙 Jeu lancé en debug !",
     someone: "quelqu'un",
     // Salvateur
+    night_peaceful: "☀️ La nuit a été calme... Personne n'est mort cette nuit.",
     salvateur_protected: "🛡️ **{{name}}** était protégé par le Salvateur cette nuit ! L'attaque des loups échoue.",
     // Ancien
     ancien_survives: "✨ **{{name}}** survit à l'attaque des loups grâce à sa résistance d'Ancien !",
@@ -642,7 +647,6 @@ module.exports = {
     voyante: "Voyante",
     reveil: "Réveil",
     vote_capitaine: "Vote Capitaine",
-    deliberation: "Délibération",
     vote: "Vote",
     wolves_wake: "Les loups se réveillent...",
     white_wolf_wakes: "Le Loup Blanc se réveille...",
@@ -653,9 +657,9 @@ module.exports = {
     salvateur_wakes: "Le Salvateur se réveille...",
     village_wakes: "Le village se réveille...",
     captain_vote_announce: "🗳️ Vote du capitaine ! Utilisez `/captainvote @joueur` — quand tout le monde a voté, le capitaine est élu automatiquement.",
-    deliberation_announce: "Délibération du village... (3 min)",
+    deliberation_announce: "🗳️ Débattez et votez. Vous pouvez modifier votre vote jusqu'à la fin du timer. (8 min)",
     captain_can_vote: "Le capitaine peut lancer le vote avec le bouton 'Vote' !",
-    vote_announce: "🗳️ C'est l'heure du vote ! Utilisez `/vote @joueur` (2 min)",
+    vote_announce: "🗳️ Débattez et votez. Vous pouvez modifier votre vote jusqu'à la fin du timer. (8 min)",
     night_wolves_wake: "La nuit tombe, les loups se réveillent...",
   },
 
@@ -1086,8 +1090,7 @@ module.exports = {
     footer: "🔄 Mise à jour automatique — Panneau Village",
     // Dynamic focus messages (no secrets!)
     focus_ended: "La partie est terminée.",
-    focus_deliberation: "Le village délibère…",
-    focus_vote: "Le village vote pour éliminer un suspect…",
+    focus_vote: "Le village débat et vote pour éliminer un suspect…",
     focus_captain_vote: "Élection du capitaine en cours…",
     focus_day: "Le village est éveillé.",
     focus_thief: "Le Voleur choisit son rôle…",
@@ -1103,8 +1106,8 @@ module.exports = {
     narration_ended: "Le récit touche à sa fin.",
     narration_day: "Le soleil brille sur le village.\nLes villageois discutent sur la place.",
     narration_captain_vote: "Un nouveau chef doit être choisi.\nLe village se réunit pour élire son capitaine.",
-    narration_deliberation: "Le village débat avec ardeur.\nQui parmi eux cache un sombre secret ?",
-    narration_vote: "Le silence se fait.\nIl est temps de pointer du doigt et de voter.",
+    narration_deliberation: "Le village débat avec ardeur et vote.\nQui parmi eux cache un sombre secret ?",
+    narration_vote: "Le village débat avec ardeur et vote.\nQui parmi eux cache un sombre secret ?",
     narration_night: "La nuit tombe sur le village.\nLes ombres s'animent…",
     narration_thief: "Sous le couvert de la nuit,\nle Voleur se faufile entre les maisons…",
     narration_cupid: "Cupidon bande son arc…\nDeux cœurs s'embrasent dans l'obscurité.",
@@ -1117,5 +1120,15 @@ module.exports = {
     // Field headers for definitive village panel
     state_header: "État du jeu",
     players_header: "Villageois",
+    // Village vote GUI
+    vote_select_ph: "Votez pour éliminer un joueur…",
+    vote_registered: "✅ Vote enregistré contre **{{target}}**.",
+    vote_option_captain: "🎖️ Capitaine",
+    // Captain election GUI
+    captain_elect_ph: "Votez pour élire le capitaine…",
+    captain_elect_registered: "✅ Vote enregistré pour **{{target}}** comme capitaine.",
+    // Captain tiebreak GUI
+    tiebreak_select_ph: "Capitaine, départagez l'égalité…",
+    tiebreak_chosen: "⚖️ Tu as choisi d'éliminer **{{target}}**.",
   },
 };

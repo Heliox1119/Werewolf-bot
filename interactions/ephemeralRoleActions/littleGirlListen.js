@@ -166,7 +166,7 @@ async function handleLittleGirlListen(interaction) {
           await wolvesChannel.send(hintMessage);
         }
       } catch (e) {
-        logger.debug('Failed to send hint to wolves channel', { error: e.message });
+        logger.debug('LGIRL_HINT_SEND_FAILED', { error: e.message });
       }
     }
 
@@ -180,7 +180,7 @@ async function handleLittleGirlListen(interaction) {
           );
         }
       } catch (e) {
-        logger.debug('Failed to send identity reveal to wolves channel', { error: e.message });
+        logger.debug('LGIRL_IDENTITY_REVEAL_FAILED', { error: e.message });
       }
     }
 
@@ -192,7 +192,7 @@ async function handleLittleGirlListen(interaction) {
     );
 
   } catch (err) {
-    logger.error('Erreur bouton lgirl_listen:', { error: err.message });
+    logger.error('LGIRL_LISTEN_BUTTON_ERROR', { error: err.message });
     await safeEditReply(interaction, {
       content: t('error.listen_fetch_error'),
       flags: MessageFlags.Ephemeral,

@@ -155,7 +155,8 @@ describe('guildReconciler', () => {
       app: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), success: jest.fn(), debug: jest.fn() },
       game: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), success: jest.fn(), debug: jest.fn() },
       discord: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), success: jest.fn(), debug: jest.fn() },
-      interaction: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), success: jest.fn(), debug: jest.fn() }
+      interaction: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), success: jest.fn(), debug: jest.fn() },
+      interactionMeta: (i) => ({ type: 'test', userId: i?.user?.id, channelId: i?.channelId }),
     }));
     const mod = require('../../game/guildReconciler');
     reconcileGuildsOnStartup = mod.reconcileGuildsOnStartup;

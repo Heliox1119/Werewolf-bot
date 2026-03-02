@@ -73,7 +73,6 @@ describe('Ordre logique des phases', () => {
   test('phases de vote existent', () => {
     expect(PHASES.VOTE).toBe('Vote');
     expect(PHASES.VOTE_CAPITAINE).toBe('Vote Capitaine');
-    expect(PHASES.DELIBERATION).toBe('Délibération');
   });
 });
 
@@ -92,7 +91,7 @@ describe('VALID_TRANSITIONS (FSM table)', () => {
   });
 
   test('day sub-phases have transitions', () => {
-    const dayPhases = [PHASES.REVEIL, PHASES.VOTE_CAPITAINE, PHASES.DELIBERATION, PHASES.VOTE];
+    const dayPhases = [PHASES.REVEIL, PHASES.VOTE_CAPITAINE, PHASES.VOTE];
     for (const phase of dayPhases) {
       expect(PHASES.VALID_TRANSITIONS[phase]).toBeDefined();
     }
@@ -106,8 +105,8 @@ describe('VALID_TRANSITIONS (FSM table)', () => {
     expect(allowed).toContain(PHASES.REVEIL);
   });
 
-  test('DELIBERATION only leads to VOTE', () => {
-    expect(PHASES.VALID_TRANSITIONS[PHASES.DELIBERATION]).toEqual([PHASES.VOTE]);
+  test('VOTE_CAPITAINE leads to VOTE', () => {
+    expect(PHASES.VALID_TRANSITIONS[PHASES.VOTE_CAPITAINE]).toEqual([PHASES.VOTE]);
   });
 });
 
@@ -117,14 +116,13 @@ describe('isValidTransition()', () => {
     expect(PHASES.isValidTransition(PHASES.LOUPS, PHASES.SORCIERE)).toBe(true);
     expect(PHASES.isValidTransition(PHASES.SORCIERE, PHASES.VOYANTE)).toBe(true);
     expect(PHASES.isValidTransition(PHASES.VOYANTE, PHASES.REVEIL)).toBe(true);
-    expect(PHASES.isValidTransition(PHASES.DELIBERATION, PHASES.VOTE)).toBe(true);
+    expect(PHASES.isValidTransition(PHASES.VOTE_CAPITAINE, PHASES.VOTE)).toBe(true);
   });
 
   test('rejects invalid backward transitions', () => {
     expect(PHASES.isValidTransition(PHASES.VOYANTE, PHASES.LOUPS)).toBe(false);
     expect(PHASES.isValidTransition(PHASES.REVEIL, PHASES.LOUPS)).toBe(false);
-    expect(PHASES.isValidTransition(PHASES.DELIBERATION, PHASES.REVEIL)).toBe(false);
-    expect(PHASES.isValidTransition(PHASES.VOTE, PHASES.DELIBERATION)).toBe(false);
+    expect(PHASES.isValidTransition(PHASES.VOTE, PHASES.VOTE_CAPITAINE)).toBe(false);
   });
 
   test('rejects unknown and null states', () => {
@@ -146,8 +144,7 @@ describe('isValidTransition()', () => {
 
   test('validates full day cycle', () => {
     expect(PHASES.isValidTransition(PHASES.REVEIL, PHASES.VOTE_CAPITAINE)).toBe(true);
-    expect(PHASES.isValidTransition(PHASES.VOTE_CAPITAINE, PHASES.DELIBERATION)).toBe(true);
-    expect(PHASES.isValidTransition(PHASES.DELIBERATION, PHASES.VOTE)).toBe(true);
+    expect(PHASES.isValidTransition(PHASES.VOTE_CAPITAINE, PHASES.VOTE)).toBe(true);
   });
 
   test('validates skipped-role transitions', () => {

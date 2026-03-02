@@ -66,7 +66,7 @@ class RateLimiter {
     const ban = this.bans.get(userId);
     if (ban && ban.bannedUntil > Date.now()) {
       const retryAfter = Math.ceil((ban.bannedUntil - Date.now()) / 1000);
-      logger.warn('User is banned', { userId, commandName, retryAfter, reason: ban.reason });
+      logger.warn('USER_BANNED', { userId, commandName, retryAfter, reason: ban.reason });
       return {
         allowed: false,
         reason: t('error.rate_ban_message', { reason: ban.reason, seconds: retryAfter }),
@@ -113,7 +113,7 @@ class RateLimiter {
     const timeSinceLastUse = now - bucket.lastUse;
     if (timeSinceLastUse < config.cooldown) {
       const retryAfter = Math.ceil((config.cooldown - timeSinceLastUse) / 1000);
-      logger.debug('Cooldown active', { userId, commandName, retryAfter });
+      logger.debug('COOLDOWN_ACTIVE', { userId, commandName, retryAfter });
       return {
         allowed: false,
         reason: t('error.rate_cooldown', { seconds: retryAfter }),
@@ -133,7 +133,7 @@ class RateLimiter {
       const timeUntilRefill = config.window - (now - bucket.lastRefill);
       const retryAfter = Math.ceil(timeUntilRefill / 1000);
       
-      logger.warn('Rate limit exceeded', { 
+      logger.warn('RATE_LIMIT_EXCEEDED', { 
         userId, 
         commandName, 
         violations: bucket.violations,
@@ -152,7 +152,7 @@ class RateLimiter {
     bucket.lastUse = now;
     bucket.violations = Math.max(0, bucket.violations - 0.1); // Décroissance lente
 
-    logger.debug('Rate limit check passed', { 
+    logger.debug('RATE_LIMIT_OK', { 
       userId, 
       commandName, 
       tokensRemaining: bucket.tokens 
@@ -192,7 +192,7 @@ class RateLimiter {
       violations
     });
 
-    logger.error('User penalized', {
+    logger.error('USER_PENALIZED', {
       userId,
       commandName,
       violations,
@@ -207,7 +207,7 @@ class RateLimiter {
   resetUser(userId) {
     this.buckets.delete(userId);
     this.bans.delete(userId);
-    logger.info('User rate limits reset', { userId });
+    logger.info('RATE_LIMITS_RESET', { userId });
   }
 
   /**
@@ -219,7 +219,7 @@ class RateLimiter {
       reason,
       violations: 999
     });
-    logger.warn('User manually banned', { userId, durationMs, reason });
+    logger.warn('USER_BANNED_MANUAL', { userId, durationMs, reason });
   }
 
   /**
@@ -227,7 +227,7 @@ class RateLimiter {
    */
   unbanUser(userId) {
     this.bans.delete(userId);
-    logger.info('User unbanned', { userId });
+    logger.info('USER_UNBANNED', { userId });
   }
 
   /**
@@ -261,7 +261,7 @@ class RateLimiter {
     }
 
     if (cleaned > 0) {
-      logger.debug('Rate limiter cleanup', { bucketsRemoved: cleaned });
+      logger.debug('RATE_LIMITER_CLEANUP', { bucketsRemoved: cleaned });
     }
   }
 

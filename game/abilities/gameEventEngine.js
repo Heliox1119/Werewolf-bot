@@ -175,13 +175,13 @@ function dispatch(eventName, context) {
 
   // Prevent infinite recursion
   if (depth >= MAX_EVENT_DEPTH) {
-    logger.warn('Event engine: max recursion depth reached', { eventName, depth });
+    logger.warn('EVENT_ENGINE_MAX_DEPTH_REACHED', { eventName, depth });
     return { results: [], cycleState: context.cycleState || {} };
   }
 
   // Validate event name
   if (!Object.values(EVENTS).includes(eventName)) {
-    logger.warn('Event engine: unknown event', { eventName });
+    logger.warn('EVENT_ENGINE_UNKNOWN_EVENT', { eventName });
     return { results: [], cycleState: context.cycleState || {} };
   }
 
@@ -221,7 +221,7 @@ function dispatch(eventName, context) {
   for (const { player, ability } of sorted) {
     const handler = getHandler(ability.effect);
     if (!handler) {
-      logger.warn('Event engine: no handler for effect', { effect: ability.effect });
+      logger.warn('EVENT_ENGINE_NO_HANDLER', { effect: ability.effect });
       continue;
     }
 
@@ -258,7 +258,7 @@ function dispatch(eventName, context) {
         }
       }
     } catch (err) {
-      logger.error('Event engine: handler error', {
+      logger.error('EVENT_ENGINE_HANDLER_ERROR', {
         effect: ability.effect,
         playerId: player.id,
         error: err.message,

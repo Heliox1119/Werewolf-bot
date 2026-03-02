@@ -189,7 +189,7 @@ describe('buildContextField', () => {
   });
 
   test('returns day rest message when game is DAY', () => {
-    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.DELIBERATION });
+    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.VOTE });
     expect(buildContextField(game, 'wolves', 'g1')).toContain('role_panel.day_rest');
   });
 
@@ -641,7 +641,7 @@ describe('Day state across panels', () => {
   const roleKeys = Object.keys(PANEL_BUILDERS);
 
   test.each(roleKeys)('%s panel shows day rest in description during DAY', (roleKey) => {
-    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.DELIBERATION });
+    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.VOTE });
     const embed = buildRolePanel(roleKey, game, NO_TIMER, 'g1');
     const desc = getDescription(embed);
     // Cupid with lovers shows "done", thief during DAY might show regular context

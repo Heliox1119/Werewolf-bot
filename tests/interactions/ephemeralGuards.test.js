@@ -9,11 +9,7 @@ const gameManager = require('../../game/gameManager');
 const { createMockInteraction, createMockGame, createMockPlayer } = require('../helpers/testHelpers');
 
 jest.mock('../../game/gameManager');
-jest.mock('../../utils/logger', () => ({
-  app: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
-  commands: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), startTimer: jest.fn(() => ({ end: jest.fn() })) },
-  interaction: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
-}));
+jest.mock('../../utils/logger', () => require('../helpers/loggerMock')());
 
 const { validateLittleGirlListen } = require('../../interactions/common/guards');
 

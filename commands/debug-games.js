@@ -18,7 +18,7 @@ module.exports = {
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    logger.info('Debug-games command called', { 
+    logger.info('DEBUG_GAMES_COMMAND_CALLED', { 
       gamesCount: gameManager.games.size 
     });
 

@@ -278,31 +278,6 @@ db.backup('./backup/werewolf-backup.db');
 db.close();
 ```
 
-## Migration depuis JSON
-
-Si vous avez des parties existantes dans `data/games.json`, utilisez le script de migration:
-
-```bash
-node scripts/migrate-to-sqlite.js
-```
-
-Le script:
-1. ✅ Lit `data/games.json`
-2. ✅ Crée un backup de la DB si elle existe
-3. ✅ Migre toutes les parties, joueurs, logs
-4. ✅ Préserve les rôles, statuts, et historiques
-5. ✅ Conserve l'ancien JSON en backup
-
-### Options de migration
-
-```bash
-# Migration avec chemins personnalisés
-node scripts/migrate-to-sqlite.js /path/to/games.json /path/to/output.db
-
-# Migration avec chemin par défaut
-node scripts/migrate-to-sqlite.js
-```
-
 ## Performances
 
 ### Optimisations activées
@@ -327,21 +302,15 @@ node scripts/migrate-to-sqlite.js
 
 ### Backup automatique
 
-Le bot ne fait **pas** de backup automatique. Recommandé d'ajouter un cronjob:
+Le bot effectue des backups automatiques via `BackupManager` (`database/backup.js`) :
+- **Horaire** : backup toutes les heures avec rotation (24 derniers conservés)
+- **Au shutdown** : backup lors du graceful shutdown (SIGTERM/SIGINT)
+- **Premier backup** : 5 minutes après le démarrage
+- Utilise l'API native `better-sqlite3` `.backup()` pour des copies atomiques
 
 ```bash
-# Backup quotidien à 3h du matin
-0 3 * * * cp /path/to/werewolf.db /path/to/backups/werewolf-$(date +\%Y\%m\%d).db
-```
-
-### Backup manuel
-
-```bash
-# Copier le fichier .db
-cp data/werewolf.db data/backups/werewolf-backup.db
-
-# Ou utiliser SQLite
-sqlite3 data/werewolf.db ".backup 'data/backups/werewolf-backup.db'"
+# Backup manuel
+npm run backup
 ```
 
 ### Restauration
@@ -402,7 +371,4 @@ jest.mock('../database/db');
 ## Évolutions futures
 
 - [ ] Compression avec VACUUM automatique
-- [ ] Statistics table pour analytics
 - [ ] Encryption at rest (SQLCipher)
-- [ ] Replication master-slave pour HA
-- [ ] GraphQL API pour queries complexes

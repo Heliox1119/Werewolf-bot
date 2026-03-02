@@ -28,7 +28,7 @@ async function isInGameCategory(interaction) {
     
     return channel.parentId === CATEGORY_ID;
   } catch (error) {
-    logger.error('Error checking category:', { error: error.message });
+    logger.error('CATEGORY_CHECK_ERROR', { error: error.message });
     return false;
   }
 }

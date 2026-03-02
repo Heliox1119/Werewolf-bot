@@ -21,7 +21,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
 const fs = require('fs');
-const { game: logger } = require('../utils/logger');
+const { web: logger } = require('../utils/logger');
 const roleData = require('../game/roleData');
 
 class WebServer {
@@ -59,7 +59,7 @@ class WebServer {
 
     return new Promise((resolve) => {
       this.server.listen(this.port, () => {
-        logger.info(`🌐 Web dashboard running on http://localhost:${this.port}`);
+        logger.info('WEB_DASHBOARD_STARTED', { port: this.port });
         resolve();
       });
     });
@@ -78,7 +78,7 @@ class WebServer {
     if (this.server) {
       return new Promise((resolve) => {
         this.server.close(() => {
-          logger.info('🌐 Web server stopped');
+          logger.info('WEB_SERVER_STOPPED');
           resolve();
         });
       });
@@ -168,21 +168,21 @@ class WebServer {
       if (fs.existsSync(secretFile)) {
         const stored = fs.readFileSync(secretFile, 'utf8').trim();
         if (stored.length >= 32) {
-          logger.info('🔑 Session secret loaded from data/.session-secret');
+          logger.info('SESSION_SECRET_LOADED');
           return stored;
         }
       }
     } catch (err) {
-      logger.warn('⚠️  Could not read session secret file, generating new one', { error: err.message });
+      logger.warn('SESSION_SECRET_READ_FAILED', { error: err.message });
     }
 
     // Generate and persist a new secret
     const newSecret = require('crypto').randomBytes(48).toString('hex');
     try {
       fs.writeFileSync(secretFile, newSecret, { mode: 0o600 });
-      logger.info('🔑 Generated and saved new session secret to data/.session-secret');
+      logger.info('SESSION_SECRET_GENERATED');
     } catch (err) {
-      logger.warn('⚠️  Could not save session secret file — sessions will not survive restarts', { error: err.message });
+      logger.warn('SESSION_SECRET_SAVE_FAILED', { error: err.message });
     }
     return newSecret;
   }
@@ -209,7 +209,7 @@ class WebServer {
       passport.serializeUser((user, done) => done(null, user));
       passport.deserializeUser((obj, done) => done(null, obj));
     } else {
-      logger.warn('🌐 CLIENT_SECRET not set — OAuth2 disabled, dashboard in read-only mode');
+      logger.warn('OAUTH2_DISABLED');
     }
   }
 
@@ -236,7 +236,7 @@ class WebServer {
 
     // Error handler
     this.app.use((err, req, res, next) => {
-      logger.error('Web server error', { error: err.message, stack: err.stack });
+      logger.error('WEB_SERVER_ERROR', { error: err.message, stack: err.stack });
       res.status(500).render('error', { title: 'Error', message: 'Internal server error' });
     });
   }
@@ -316,16 +316,16 @@ class WebServer {
 
       // Join a game spectator room
       socket.on('spectate', (gameId) => {
-        console.log(`[spectate] Received spectate request: gameId=${gameId} socketId=${socket.id}`);
-        if (checkRateLimit()) { console.log('[spectate] REJECTED: rate limited'); return reject('Rate limited'); }
-        if (typeof gameId !== 'string' || gameId.length > 30) { console.log('[spectate] REJECTED: invalid game id'); return reject('Invalid game id'); }
+        logger.debug('SPECTATE_REQUEST_RECEIVED', { gameId, socketId: socket.id });
+        if (checkRateLimit()) { logger.warn('SPECTATE_REJECTED_RATE_LIMITED'); return reject('Rate limited'); }
+        if (typeof gameId !== 'string' || gameId.length > 30) { logger.warn('SPECTATE_REJECTED_INVALID_ID'); return reject('Invalid game id'); }
         const game = this.gameManager.games.get(gameId);
         if (!game) {
-          console.log(`[spectate] REJECTED: game not found (active games: ${[...this.gameManager.games.keys()].join(', ')})`);
+          logger.warn('SPECTATE_REJECTED_GAME_NOT_FOUND', { activeGames: [...this.gameManager.games.keys()] });
           return reject('Game not found');
         }
         if (!this._canSocketAccessGame(socket, game)) {
-          console.log(`[spectate] REJECTED: unauthorized (guildId=${game.guildId}, userGuilds=${JSON.stringify(this._getSocketUserGuildIds(socket))})`);
+          logger.warn('SPECTATE_REJECTED_UNAUTHORIZED', { guildId: game.guildId, userGuilds: this._getSocketUserGuildIds(socket) });
           return reject('Unauthorized game');
         }
 
@@ -340,10 +340,10 @@ class WebServer {
 
         // Send buffered event history so late spectators see the full feed
         const eventBuffer = this.gameEventBuffers.get(gameId);
-        console.log(`[spectate] gameId=${gameId} bufferExists=${!!eventBuffer} bufferSize=${eventBuffer ? eventBuffer.length : 0}`);
+        logger.debug('SPECTATE_STATE', { gameId, bufferExists: !!eventBuffer, bufferSize: eventBuffer ? eventBuffer.length : 0 });
         if (eventBuffer && eventBuffer.length > 0) {
           socket.emit('gameEventHistory', { gameId, events: [...eventBuffer] });
-          console.log(`[spectate] Sent ${eventBuffer.length} history events to socket ${socket.id}`);
+          logger.debug('SPECTATE_HISTORY_SENT', { events: eventBuffer.length, socketId: socket.id });
         }
 
         // Notify spectator count
@@ -407,7 +407,7 @@ class WebServer {
         buffer.push(spectatorData);
       }
       if (buffer.length > 200) buffer.shift();
-      console.log(`[event-buffer] gameId=${gameId} event=${event} bufferSize=${buffer.length}`);
+      logger.debug('EVENT_BUFFER_UPDATED', { gameId, event, bufferSize: buffer.length });
 
       // Broadcast sanitized event to spectators of this game
       if (spectatorData) {

@@ -27,7 +27,7 @@ module.exports = {
 
     const targetChannelId = interaction.options.getString('channel-id') || interaction.channelId;
 
-    logger.info('Force-end command called', { 
+    logger.info('FORCE_END_COMMAND_CALLED', { 
       channelId: targetChannelId,
       user: interaction.user.username,
       gamesCount: gameManager.games.size
@@ -55,7 +55,7 @@ module.exports = {
       return;
     }
 
-    logger.info('Force ending game', { 
+    logger.info('FORCE_ENDING_GAME', { 
       channelId: targetChannelId,
       playerCount: game.players.length,
       phase: game.phase
@@ -65,27 +65,25 @@ module.exports = {
     let deleted = 0;
     try {
       deleted = await gameManager.cleanupChannels(interaction.guild, game);
-      logger.success('Channels cleaned up', { deletedCount: deleted });
+      logger.info('CHANNELS_CLEANED_UP', { deletedCount: deleted });
     } catch (error) {
-      logger.error('Failed to cleanup channels', error);
+      logger.error('CHANNEL_CLEANUP_FAILED', error);
     }
 
     // Déconnecter le bot du channel vocal
     if (game.voiceChannelId) {
       try {
         gameManager.disconnectVoice(game.voiceChannelId);
-        logger.debug('Disconnected from voice');
+        logger.debug('VOICE_DISCONNECTED');
       } catch (e) {
-        logger.warn('Failed to disconnect from voice', { error: e.message });
+        logger.warn('VOICE_DISCONNECT_FAILED', { error: e.message });
       }
     }
 
     // Supprimer la partie de la mémoire et de la base de données
-    try { gameManager.db.deleteGame(targetChannelId); } catch (e) { logger.warn('Failed to delete game from DB', { error: e.message }); }
-    gameManager.games.delete(targetChannelId);
-    gameManager.saveState();
+    gameManager.purgeGame(targetChannelId, game);
 
-    logger.success('Game force-ended successfully', { 
+    logger.info('GAME_FORCE_ENDED', { 
       channelId: targetChannelId,
       deletedChannels: deleted 
     });

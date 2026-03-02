@@ -18,14 +18,14 @@ class ConfigManager {
    */
   initialize(database) {
     if (this.initialized) {
-      logger.warn('ConfigManager already initialized');
+      logger.warn('CONFIG_ALREADY_INITIALIZED');
       return;
     }
 
     this.db = database;
     this.loadAll();
     this.initialized = true;
-    logger.success('ConfigManager initialized', { cachedKeys: this.cache.size });
+    logger.info('CONFIG_INITIALIZED', { cachedKeys: this.cache.size });
   }
 
   /**
@@ -33,7 +33,7 @@ class ConfigManager {
    */
   loadAll() {
     if (!this.db) {
-      logger.error('Database not initialized');
+      logger.error('CONFIG_DB_NOT_INITIALIZED');
       return;
     }
 
@@ -57,9 +57,9 @@ class ConfigManager {
         }
       }
 
-      logger.debug('Configuration loaded', { count: this.cache.size });
+      logger.debug('CONFIG_LOADED', { count: this.cache.size });
     } catch (error) {
-      logger.error('Failed to load configuration', { error: error.message });
+      logger.error('CONFIG_LOAD_FAILED', { error: error.message });
     }
   }
 
@@ -68,7 +68,7 @@ class ConfigManager {
    */
   get(key, defaultValue = null) {
     if (!this.initialized) {
-      logger.warn('ConfigManager not initialized, returning default', { key });
+      logger.warn('CONFIG_NOT_INITIALIZED', { key });
       return defaultValue;
     }
 
@@ -81,7 +81,7 @@ class ConfigManager {
    */
   set(key, value) {
     if (!this.initialized || !this.db) {
-      logger.error('ConfigManager not initialized');
+      logger.error('CONFIG_NOT_INITIALIZED');
       return false;
     }
 
@@ -101,10 +101,10 @@ class ConfigManager {
       stmt.run(key, stringValue);
       this.cache.set(key, value);
 
-      logger.info('Configuration updated', { key });
+      logger.info('CONFIG_KEY_UPDATED', { key });
       return true;
     } catch (error) {
-      logger.error('Failed to set configuration', { key, error: error.message });
+      logger.error('CONFIG_SET_FAILED', { key, error: error.message });
       return false;
     }
   }
@@ -114,7 +114,7 @@ class ConfigManager {
    */
   delete(key) {
     if (!this.initialized || !this.db) {
-      logger.error('ConfigManager not initialized');
+      logger.error('CONFIG_NOT_INITIALIZED');
       return false;
     }
 
@@ -123,10 +123,10 @@ class ConfigManager {
       stmt.run(key);
       this.cache.delete(key);
 
-      logger.info('Configuration deleted', { key });
+      logger.info('CONFIG_KEY_DELETED', { key });
       return true;
     } catch (error) {
-      logger.error('Failed to delete configuration', { key, error: error.message });
+      logger.error('CONFIG_DELETE_FAILED', { key, error: error.message });
       return false;
     }
   }

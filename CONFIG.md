@@ -1,157 +1,74 @@
-# ⚙️ Configuration Centralisée - Werewolf Bot
+# ⚙️ Configuration Centralisée - Résumé Exécutif
 
-Documentation complète du système de configuration centralisée du bot Werewolf.
+> **TL;DR** : Configuration unifiée du bot via commande `/setup` avec stockage SQLite. Plus de valeurs hardcodées, tout est configurable depuis Discord.
 
-## 📋 Table des matières
+## 🎯 Que fait le système de configuration ?
 
-- [Vue d'ensemble](#vue-densemble)
-- [Commande /setup](#commande-setup)
-- [Module ConfigManager](#module-configmanager)
-- [Clés de configuration](#clés-de-configuration)
-- [Assistant de configuration](#assistant-de-configuration)
-- [Utilisation dans le code](#utilisation-dans-le-code)
-- [Troubleshooting](#troubleshooting)
+**Configuration centralisée :**
+- ⚙️ **Commande `/setup`** : Configuration interactive depuis Discord (admin uniquement)
+- 💾 **Stockage SQLite** : Toutes les configurations dans la table `config`
+- 🚀 **Cache mémoire** : Accès ultra-rapide aux paramètres
+- ✅ **Validation** : Vérification du setup au démarrage
+- 📊 **API simple** : `config.getCategoryId()`, `config.set()`, etc.
 
----
+## ⚡ Quick Start
 
-## 🎯 Vue d'ensemble
+### 1. Première installation
 
-Le système de configuration centralisée permet de **stocker et gérer tous les paramètres du bot** de manière unifiée :
-
-- ✅ **Stockage SQLite** : Configurations persistantes dans la table `config`
-- ✅ **Commande /setup** : Configuration interactive via Discord
-- ✅ **Cache en mémoire** : Accès rapide aux valeurs
-- ✅ **API simple** : `config.get()`, `config.set()`, méthodes typées
-- ✅ **Validation** : Vérification du setup complet au démarrage
-- ✅ **Migration automatique** : Plus de valeurs hardcodées dans le code
-
-### Pourquoi centraliser ?
-
-**Avant (hardcodé) :**
-```javascript
-const CATEGORY_ID = "1469976287790633146"; // Dans 5 fichiers différents
+```
+/setup wizard
 ```
 
-**Après (centralisé) :**
-```javascript
-const config = ConfigManager.getInstance();
-const categoryId = config.getCategoryId(); // Depuis la DB
-```
+L'assistant vous guide pour configurer :
+1. **Catégorie Discord** (requis) : Où créer les channels de jeu
+2. **Webhook monitoring** (optionnel) : Alertes automatiques
+3. **Règles par défaut** (optionnel) : min/max joueurs
 
----
+### 2. Configuration rapide
 
-## 🔧 Commande /setup
+```bash
+# 1. Créer une catégorie sur votre serveur (ex: "Werewolf Games")
 
-### Sous-commandes
-
-#### `/setup category <category>`
-
-Configure la catégorie Discord où les channels de jeu seront créés.
-
-**Paramètres :**
-- `category` (Catégorie Discord, requis) : La catégorie à utiliser
-
-**Exemple :**
-```
+# 2. Configurer la catégorie (REQUIS)
 /setup category category:#werewolf-games
+
+# 3. Vérifier le setup
+/setup status
 ```
 
-**Résultat :**
+### 3. Configuration optionnelle
+
 ```
-✅ Catégorie configurée
-La catégorie Werewolf Games a été définie pour les channels de jeu.
-
-📋 ID: 1469976287790633146
-📍 Position: Position 3
-```
-
----
-
-#### `/setup webhook [url]`
-
-Configure le webhook Discord pour recevoir les alertes de monitoring.
-
-**Paramètres :**
-- `url` (String, optionnel) : URL du webhook (laisser vide pour désactiver)
-
-**Exemple :**
-```
+# Webhook pour alertes monitoring
 /setup webhook url:https://discord.com/api/webhooks/xxxxx/yyyyyy
-```
 
-**Résultat :**
-```
-✅ Webhook configuré
-Le webhook de monitoring a été configuré avec succès.
-
-🔗 URL: https://discord.com/api/webhooks/xxxxx...
-📡 Statut: Les alertes seront envoyées sur ce webhook
-```
-
-**Désactiver :**
-```
-/setup webhook
-```
-
----
-
-#### `/setup rules [min_players] [max_players]`
-
-Configure les règles par défaut des parties.
-
-**Paramètres :**
-- `min_players` (Nombre, 3-20, optionnel) : Minimum de joueurs
-- `max_players` (Nombre, 3-20, optionnel) : Maximum de joueurs
-
-**Exemple :**
-```
+# Règles par défaut
 /setup rules min_players:5 max_players:12
-```
 
-**Résultat :**
-```
-✅ Règles configurées
-Les règles par défaut des parties ont été mises à jour.
-
-👥 Minimum: 5
-👥 Maximum: 12
-```
-
----
-
-#### `/setup monitoring [interval] [alerts_enabled]`
-
-Configure le système de monitoring.
-
-**Paramètres :**
-- `interval` (Nombre, 30-300s, optionnel) : Intervalle de collecte en secondes
-- `alerts_enabled` (Boolean, optionnel) : Activer/désactiver les alertes
-
-**Exemple :**
-```
+# Monitoring
 /setup monitoring interval:120 alerts_enabled:true
 ```
 
-**Résultat :**
-```
-✅ Monitoring configuré
-Les paramètres de monitoring ont été mis à jour.
+### 4. C'est tout !
 
-🔧 Changements
-• Intervalle: 120s
-• Alertes: Activées
-```
+Le bot est configuré et prêt à l'emploi.
 
 ---
 
-#### `/setup status`
+## 🔧 Commandes `/setup`
 
-Affiche la configuration actuelle du bot.
+| Commande | Description | Exemple |
+|----------|-------------|---------|
+| `/setup wizard` | Assistant de configuration | - |
+| `/setup category <category>` | Configurer la catégorie Discord (REQUIS) | `/setup category category:#werewolf-games` |
+| `/setup webhook [url]` | Configurer le webhook monitoring | `/setup webhook url:https://...` |
+| `/setup rules [min] [max]` | Règles par défaut des parties | `/setup rules min_players:5 max_players:10` |
+| `/setup monitoring [interval] [alerts]` | Paramètres de monitoring | `/setup monitoring interval:120 alerts_enabled:true` |
+| `/setup status` | Afficher la configuration actuelle | - |
 
-**Résultat :**
+---
 
-<details>
-<summary>Configuration complète (cliquer pour voir)</summary>
+## 📊 Exemple de `/setup status`
 
 ```
 ⚙️ Configuration du bot
@@ -175,8 +92,6 @@ Timeout lobby: 60min
 Clés totales: 12
 ```
 
-</details>
-
 **Si setup incomplet :**
 
 ```
@@ -193,350 +108,199 @@ Utilisez /setup wizard pour une configuration guidée
 
 ---
 
-#### `/setup wizard`
-
-Lance l'assistant de configuration interactive (première installation).
-
-**Résultat :**
+## 🏗️ Architecture
 
 ```
-🧙 Assistant de configuration
-Bienvenue dans l'assistant de configuration du bot Werewolf !
-
-Pour configurer le bot, suivez ces étapes :
-
-1️⃣ Catégorie Discord (Requis)
-Action : Créer une catégorie sur votre serveur
-Commande : /setup category
-Info : Les channels de jeu seront créés dans cette catégorie
-
-2️⃣ Webhook monitoring (Optionnel)
-Action : Créer un webhook dans un salon (ex: #bot-logs)
-Commande : /setup webhook url:<webhook_url>
-Info : Recevez des alertes automatiques sur les problèmes du bot
-
-3️⃣ Règles par défaut (Optionnel)
-Commande : /setup rules min_players:5 max_players:10
-Info : Définir les règles par défaut des parties
-Actuel : 5-10 joueurs
-
-✅ Vérification
-Utilisez /setup status pour vérifier votre configuration
+Bot Discord
+    │
+    ├─ ConfigManager (singleton)
+    │   ├─ Cache mémoire (Map)
+    │   └─ SQLite (table config)
+    │
+    ├─ Commande /setup (interface admin)
+    │   ├─ /setup wizard
+    │   ├─ /setup category (REQUIS)
+    │   ├─ /setup webhook
+    │   ├─ /setup rules
+    │   ├─ /setup monitoring
+    │   └─ /setup status
+    │
+    └─ Vérification au démarrage
+        ├─ isSetupComplete()
+        ├─ getMissingSetupKeys()
+        └─ Warnings dans les logs
 ```
 
 ---
 
-## 🏗️ Module ConfigManager
+## 🔑 Clés de configuration prédéfinies
 
-### Initialisation
-
-Le ConfigManager est automatiquement initialisé au démarrage du bot :
+### Discord
 
 ```javascript
-// index.js (déjà fait)
-const ConfigManager = require('./utils/config');
-const GameDatabase = require('./database/db');
+// Catégorie Discord (REQUIS)
+config.getCategoryId()
+config.setCategoryId('1469976287790633146')
 
-const db = new GameDatabase();
-ConfigManager.initialize(db.db);
+// Emojis personnalisés
+config.getEmojis()
+config.setEmojis({ wolf: '🐺', villager: '👨', ... })
 ```
 
-### Singleton Pattern
+### Monitoring
+
+```javascript
+// Webhook Discord
+config.getMonitoringWebhookUrl()
+config.setMonitoringWebhookUrl('https://discord.com/api/webhooks/...')
+
+// Alertes activées
+config.isMonitoringAlertsEnabled()
+config.setMonitoringAlertsEnabled(true)
+
+// Intervalle de collecte (ms)
+config.getMetricsInterval()
+config.setMetricsInterval(120000) // 120s
+```
+
+### Jeux
+
+```javascript
+// Règles par défaut
+config.getDefaultGameRules()
+// => { minPlayers: 5, maxPlayers: 10, disableVoiceMute: false }
+
+config.setDefaultGameRules({ minPlayers: 6, maxPlayers: 12 })
+
+// Rôles activés
+config.getEnabledRoles()
+// => ['Loup-Garou', 'Voyante', ...]
+
+// Timeout des lobbys (ms)
+config.getLobbyTimeout()
+// => 3600000 (1h)
+```
+
+---
+
+## 💻 Utilisation dans le code
+
+### API de base
 
 ```javascript
 const ConfigManager = require('./utils/config');
 const config = ConfigManager.getInstance();
-```
 
-### API de base
+// Getter générique
+const value = config.get('discord.category_id', null);
 
-#### `get(key, defaultValue)`
-Récupère une valeur de configuration.
-
-```javascript
-const categoryId = config.get('discord.category_id', null);
-// => "1469976287790633146" ou null
-```
-
-#### `set(key, value)`
-Définit une valeur de configuration.
-
-```javascript
+// Setter générique
 config.set('discord.category_id', '1469976287790633146');
-// => true (succès)
-```
 
-#### `has(key)`
-Vérifie si une clé existe.
-
-```javascript
+// Vérifier existence
 if (config.has('discord.category_id')) {
-  // Catégorie configurée
+  // Configuré
 }
-```
 
-#### `delete(key)`
-Supprime une configuration.
-
-```javascript
-config.delete('monitoring.webhook_url');
-// => true (succès)
-```
-
-#### `getAll()`
-Récupère toutes les configurations.
-
-```javascript
+// Tout récupérer
 const allConfig = config.getAll();
-// => { 'discord.category_id': '...', ... }
-```
 
-#### `reload()`
-Recharge le cache depuis la DB.
-
-```javascript
+// Recharger depuis DB
 config.reload();
 ```
 
----
-
-## 🔑 Clés de configuration
-
-### Clés prédéfinies avec méthodes typées
-
-#### Discord
-
-**`discord.category_id`** : ID de la catégorie Discord
+### Méthodes typées (recommandées)
 
 ```javascript
-// Getter
+// Discord
 const categoryId = config.getCategoryId();
-// => "1469976287790633146" ou null
-
-// Setter
-config.setCategoryId('1469976287790633146');
-```
-
-**`discord.emojis`** : Emojis personnalisés
-
-```javascript
 const emojis = config.getEmojis();
-// => { wolf: '🐺', villager: '👨', ... }
 
-config.setEmojis({
-  wolf: '🐺',
-  villager: '👨',
-  seer: '🔮',
-  witch: '🧙',
-  hunter: '🎯',
-  cupid: '💘',
-  littleGirl: '👧'
-});
-```
-
----
-
-#### Monitoring
-
-**`monitoring.webhook_url`** : URL du webhook Discord
-
-```javascript
+// Monitoring
 const webhookUrl = config.getMonitoringWebhookUrl();
-// => "https://discord.com/api/webhooks/..." ou null
-
-config.setMonitoringWebhookUrl('https://...');
-```
-
-**`monitoring.alerts_enabled`** : Alertes activées
-
-```javascript
-const enabled = config.isMonitoringAlertsEnabled();
-// => true ou false
-
-config.setMonitoringAlertsEnabled(true);
-```
-
-**`monitoring.metrics_interval`** : Intervalle de collecte (ms)
-
-```javascript
+const alertsEnabled = config.isMonitoringAlertsEnabled();
 const interval = config.getMetricsInterval();
-// => 60000 (60s par défaut)
 
-config.setMetricsInterval(120000); // 120s
-```
-
----
-
-#### Jeux
-
-**`game.default_rules`** : Règles par défaut
-
-```javascript
+// Jeux
 const rules = config.getDefaultGameRules();
-// => { minPlayers: 5, maxPlayers: 10, disableVoiceMute: false }
-
-config.setDefaultGameRules({
-  minPlayers: 6,
-  maxPlayers: 12,
-  disableVoiceMute: false
-});
-```
-
-**`game.enabled_roles`** : Rôles activés
-
-```javascript
 const roles = config.getEnabledRoles();
-// => ['Loup-Garou', 'Voyante', ...]
-
-config.setEnabledRoles(['Loup-Garou', 'Villageois']);
-```
-
-**`game.lobby_timeout`** : Timeout des lobbys (ms)
-
-```javascript
 const timeout = config.getLobbyTimeout();
-// => 3600000 (1h par défaut)
-
-config.setLobbyTimeout(7200000); // 2h
 ```
 
----
-
-### Validation du setup
-
-#### `isSetupComplete()`
-
-Vérifie si le setup initial est complet.
+### Validation
 
 ```javascript
+// Vérifier setup complet
 if (!config.isSetupComplete()) {
-  console.log('Setup required!');
+  throw new Error('Bot not configured');
 }
-```
 
-#### `getMissingSetupKeys()`
-
-Récupère les clés manquantes.
-
-```javascript
+// Récupérer les clés manquantes
 const missing = config.getMissingSetupKeys();
-// => [{ key: 'discord.category_id', description: 'ID de la catégorie Discord' }]
-```
+// => [{ key: 'discord.category_id', description: '...' }]
 
-#### `getSummary()`
-
-Récupère un résumé de la configuration.
-
-```javascript
+// Résumé de la configuration
 const summary = config.getSummary();
 console.log(summary);
 ```
 
-**Résultat :**
-
-```javascript
-{
-  setupComplete: true,
-  discord: {
-    categoryId: '1469976287790633146',
-    emojis: 7
-  },
-  monitoring: {
-    webhookUrl: '✓ Configuré',
-    alertsEnabled: true,
-    metricsInterval: '60s'
-  },
-  game: {
-    defaultRules: { minPlayers: 5, maxPlayers: 10, disableVoiceMute: false },
-    enabledRoles: 7,
-    lobbyTimeout: '60min'
-  },
-  totalKeys: 12
-}
-```
-
 ---
 
-## 🚀 Utilisation dans le code
+## 🚀 Exemples d'utilisation
 
-### Exemple 1 : Valider la catégorie
-
-**utils/validators.js** (Migré) :
-
-```javascript
-const ConfigManager = require('./config');
-
-async function isInGameCategory(interaction) {
-  const config = ConfigManager.getInstance();
-  const CATEGORY_ID = config.getCategoryId();
-  
-  if (!CATEGORY_ID) {
-    // Configuration non faite
-    return false;
-  }
-  
-  const channel = interaction.guild.channels.cache.get(interaction.channelId);
-  return channel.parentId === CATEGORY_ID;
-}
-```
-
-### Exemple 2 : Créer une partie
-
-**commands/create.js** (Migré) :
-
-```javascript
-const ConfigManager = require('../utils/config');
-
-async execute(interaction) {
-  const config = ConfigManager.getInstance();
-  const CATEGORY_ID = config.getCategoryId();
-  
-  if (!CATEGORY_ID) {
-    await interaction.reply({
-      content: '❌ Le bot n\'est pas configuré. Un administrateur doit utiliser `/setup category`.',
-      ephemeral: true
-    });
-    return;
-  }
-  
-  // Créer les channels dans la catégorie
-  await createChannels(guild, CATEGORY_ID);
-}
-```
-
-### Exemple 3 : Monitoring
-
-**index.js** (Migré) :
+### Exemple 1 : Vérifier la catégorie avant création
 
 ```javascript
 const config = ConfigManager.getInstance();
+const categoryId = config.getCategoryId();
 
-// Utiliser le webhook de la config
-const webhookUrl = config.getMonitoringWebhookUrl();
+if (!categoryId) {
+  await interaction.reply({
+    content: '❌ Bot non configuré. Utilisez `/setup category`',
+    ephemeral: true
+  });
+  return;
+}
 
-// Utiliser l'intervalle configuré
-const metricsInterval = config.getMetricsInterval();
-metrics.startCollection(metricsInterval);
-
-// Activer/désactiver les alertes
-alerts.setEnabled(config.isMonitoringAlertsEnabled());
-```
-
-### Exemple 4 : Règles de jeu
-
-```javascript
-const config = ConfigManager.getInstance();
-const defaultRules = config.getDefaultGameRules();
-
-const game = gameManager.create(channelId, {
-  minPlayers: defaultRules.minPlayers,
-  maxPlayers: defaultRules.maxPlayers
+// Créer les channels dans la catégorie
+await guild.channels.create('village', {
+  type: ChannelType.GuildText,
+  parent: categoryId
 });
 ```
 
+### Exemple 2 : Utiliser les règles par défaut
+
+```javascript
+const config = ConfigManager.getInstance();
+const rules = config.getDefaultGameRules();
+
+const game = gameManager.create(channelId, {
+  minPlayers: rules.minPlayers,
+  maxPlayers: rules.maxPlayers
+});
+```
+
+### Exemple 3 : Monitoring avec configuration
+
+```javascript
+const config = ConfigManager.getInstance();
+
+// Webhook depuis la config
+const webhookUrl = config.getMonitoringWebhookUrl();
+AlertSystem.initialize(webhookUrl);
+
+// Intervalle depuis la config
+const interval = config.getMetricsInterval();
+metrics.startCollection(interval);
+
+// Alertes selon config
+alerts.setEnabled(config.isMonitoringAlertsEnabled());
+```
+
 ---
 
-## 📦 Structure de la table `config`
+## 📦 Table SQLite `config`
 
 ```sql
 CREATE TABLE IF NOT EXISTS config (
@@ -553,38 +317,30 @@ CREATE TABLE IF NOT EXISTS config (
 | `discord.category_id` | `"1469976287790633146"` | 1704067200 |
 | `monitoring.webhook_url` | `"https://discord.com/..."` | 1704067201 |
 | `monitoring.alerts_enabled` | `true` | 1704067202 |
-| `monitoring.metrics_interval` | `60000` | 1704067203 |
-| `game.default_rules` | `{"minPlayers":5,"maxPlayers":10}` | 1704067204 |
-
-**Notes :**
-- Les valeurs complexes (objets) sont stockées en JSON
-- Les valeurs simples (string, number, boolean) sont converties en string
-- `updated_at` est mis à jour automatiquement
+| `game.default_rules` | `{"minPlayers":5,"maxPlayers":10}` | 1704067203 |
 
 ---
 
 ## 🔍 Vérification au démarrage
 
-Le bot vérifie automatiquement si le setup est complet au démarrage :
-
 ```
-[2025-01-10 10:30:00] [SUCCESS] Configuration system initialized
-[2025-01-10 10:30:00] [WARN] Bot setup incomplete! Use /setup wizard to configure
-[2025-01-10 10:30:00] [WARN] Missing configuration: ["discord.category_id"]
+[SUCCESS] Configuration system initialized
+[WARN] Bot setup incomplete! Use /setup wizard to configure
+[WARN] Missing configuration: ["discord.category_id"]
 ```
 
-Si setup complet :
+✅ **Setup complet :**
 
 ```
-[2025-01-10 10:30:00] [SUCCESS] Configuration system initialized
-[2025-01-10 10:30:00] [SUCCESS] Bot configuration complete
+[SUCCESS] Configuration system initialized
+[SUCCESS] Bot configuration complete
 ```
 
 ---
 
-## 🔧 Troubleshooting
+## 🎯 Cas d'usage
 
-### Problème : "Bot non configuré"
+### 1. Bot non configuré
 
 **Symptôme :**
 ```
@@ -592,102 +348,119 @@ Si setup complet :
 ```
 
 **Solution :**
-1. Utilisez `/setup wizard` pour voir les étapes
-2. Créez une catégorie sur votre serveur
-3. Utilisez `/setup category` pour la configurer
-4. Vérifiez avec `/setup status`
+```
+/setup wizard
+/setup category category:#werewolf-games
+/setup status
+```
 
----
+### 2. Changer la catégorie
 
-### Problème : Configuration perdue après redémarrage
+```
+/setup category category:#nouvelle-categorie
+```
 
-**Cause :** Base de données supprimée ou corrompue
+Les prochaines parties utiliseront la nouvelle catégorie.
 
-**Solution :**
-```bash
-# Vérifier que data/werewolf.db existe
-ls data/werewolf.db
+### 3. Activer les alertes monitoring
 
-# Reconfigurer si nécessaire
-/setup category
+```
+# 1. Créer un webhook dans un salon (ex: #bot-logs)
+# 2. Copier l'URL du webhook
+# 3. Configurer
+/setup webhook url:https://discord.com/api/webhooks/xxxxx/yyyyyy
+
+# 4. Vérifier
+/setup status
+```
+
+### 4. Ajuster les règles
+
+```
+# Plus de joueurs
+/setup rules min_players:8 max_players:15
+
+# Vérifier
+/setup status
+```
+
+### 5. Optimiser le monitoring
+
+```
+# Réduire la fréquence de collecte
+/setup monitoring interval:180
+
+# Économiser de la mémoire/CPU
+# (collecte toutes les 3 minutes au lieu de 1)
 ```
 
 ---
 
-### Problème : "ConfigManager not initialized"
+## 🔧 Troubleshooting
 
-**Cause :** ConfigManager appelé avant l'initialisation
+| Problème | Solution |
+|----------|----------|
+| ❌ "Bot non configuré" | `/setup category` pour configurer la catégorie |
+| ❌ "ConfigManager not initialized" | Attendre que le bot soit démarré (`clientReady`) |
+| ⚠️ Configuration perdue | Vérifier que `data/werewolf.db` existe |
+| ⚠️ Valeurs non mises à jour | `config.reload()` pour recharger |
+| ❓ Voir toute la config | `/setup status` ou `config.getAll()` |
 
-**Solution :**
-
-Assurez-vous d'appeler après `clientReady` :
-
-```javascript
-client.once("clientReady", async () => {
-  // Initialiser d'abord
-  ConfigManager.initialize(db.db);
-  
-  // Puis utiliser
-  const config = ConfigManager.getInstance();
-});
-```
-
----
-
-### Problème : Valeurs non mises à jour
-
-**Cause :** Cache non rechargé
-
-**Solution :**
-
-```javascript
-const config = ConfigManager.getInstance();
-config.reload(); // Recharger depuis la DB
-```
-
----
-
-## 📊 Requêtes SQL utiles
-
-### Voir toutes les configurations
+### Requêtes SQL utiles
 
 ```sql
+-- Voir toutes les configurations
 SELECT * FROM config;
-```
 
-### Voir une configuration spécifique
-
-```sql
+-- Voir une valeur spécifique
 SELECT value FROM config WHERE key = 'discord.category_id';
-```
 
-### Mettre à jour manuellement
-
-```sql
-UPDATE config 
-SET value = '1469976287790633146', updated_at = strftime('%s', 'now')
-WHERE key = 'discord.category_id';
-```
-
-### Supprimer une configuration
-
-```sql
-DELETE FROM config WHERE key = 'monitoring.webhook_url';
-```
-
-### Réinitialiser tout
-
-```sql
+-- Réinitialiser (sauf schema_version)
 DELETE FROM config WHERE key NOT IN ('schema_version');
 ```
 
 ---
 
-## 🎯 Bonnes pratiques
+## 🎨 Migration depuis les valeurs hardcodées
 
-### ✅ À faire
+### Avant (hardcodé)
 
-1. **Utiliser les méthodes typées** quand disponibles
+```javascript
+// utils/validators.js
+const CATEGORY_ID = '1469976287790633146';
+
+// commands/create.js
+const CATEGORY_ID = "1469976287790633146";
+
+// index.js
+const CATEGORY_ID = "1469976287790633146";
+```
+
+### Après (centralisé)
+
+```javascript
+const ConfigManager = require('./utils/config');
+const config = ConfigManager.getInstance();
+const categoryId = config.getCategoryId();
+
+if (!categoryId) {
+  // Gérer le cas non configuré
+}
+```
+
+### Fichiers migrés
+
+- ✅ `utils/validators.js`
+- ✅ `commands/create.js`
+- ✅ `index.js`
+
+---
+
+## ✅ Bonnes pratiques
+
+### À faire ✅
+
+1. **Utiliser les méthodes typées**
    ```javascript
    config.getCategoryId() // ✅ Bon
    config.get('discord.category_id') // ⚠️ Moins bien
@@ -697,84 +470,70 @@ DELETE FROM config WHERE key NOT IN ('schema_version');
    ```javascript
    const categoryId = config.getCategoryId();
    if (!categoryId) {
-     // Gérer le cas non configuré
+     throw new Error('Not configured');
    }
    ```
 
-3. **Utiliser des valeurs par défaut**
-   ```javascript
-   const interval = config.get('custom.interval', 60000);
+3. **Utiliser `/setup` depuis Discord**
+   ```
+   /setup category
+   /setup status
    ```
 
-4. **Documenter les nouvelles clés**
-   - Ajouter dans CONFIG.md
-   - Créer une méthode typée si utilisée souvent
+### À éviter ❌
 
-### ❌ À éviter
-
-1. **Ne pas hardcoder les valeurs**
+1. **Ne pas hardcoder**
    ```javascript
-   const CATEGORY_ID = "1469976287790633146"; // ❌ Non
-   const categoryId = config.getCategoryId(); // ✅ Oui
+   const CATEGORY_ID = "1469976287790633146"; // ❌
    ```
 
-2. **Ne pas modifier directement la DB**
+2. **Ne pas modifier la DB directement**
    ```javascript
-   // ❌ Non
-   db.run("UPDATE config SET value = ? WHERE key = ?", value, key);
-   
-   // ✅ Oui
-   config.set(key, value);
+   db.run("UPDATE config..."); // ❌
+   config.set(key, value); // ✅
    ```
 
 3. **Ne pas ignorer les erreurs de setup**
    ```javascript
-   // ❌ Non
-   const categoryId = config.getCategoryId() || "default";
-   
-   // ✅ Oui
-   if (!config.isSetupComplete()) {
-     throw new Error('Bot not configured');
-   }
+   const id = config.getCategoryId() || "default"; // ❌
    ```
 
 ---
 
-## 📚 Références
+## 📈 Avantages
 
-- [SQLite Documentation](https://www.sqlite.org/docs.html)
-- [better-sqlite3](https://github.com/WiseLibs/better-sqlite3)
-- [Discord.js Guide](https://discordjs.guide/)
+✅ **Plus de valeurs hardcodées** : Tout est configurable  
+✅ **Configuration depuis Discord** : Pas besoin d'éditer le code  
+✅ **Validation automatique** : Détection du setup incomplet  
+✅ **Cache performant** : <1ms pour obtenir une valeur  
+✅ **Persistance SQLite** : Configuration sauvegardée entre redémarrages  
+✅ **API simple** : Méthodes typées et claires  
+✅ **Extensible** : Facile d'ajouter de nouvelles configurations  
 
 ---
 
-## 🔄 Migration depuis les valeurs hardcodées
+## 📚 Documentation Complète
 
-### Fichiers migrés
+**Voir [CONFIG.md](CONFIG.md)** pour :
+- Guide complet de toutes les commandes
+- API Reference détaillée
+- Exemples de code avancés
+- Structure de la table SQL
+- Troubleshooting approfondi
 
-- ✅ `utils/validators.js` : `CATEGORY_ID` → `config.getCategoryId()`
-- ✅ `commands/create.js` : `CATEGORY_ID` → `config.getCategoryId()`
-- ✅ `index.js` : `CATEGORY_ID` → `config.getCategoryId()`
+---
 
-### Script de migration (si nécessaire)
+## 🎉 Résultat
 
-Si vous aviez des données dans l'ancien système JSON :
+Un bot Discord avec **configuration centralisée** :
 
-```javascript
-// scripts/migrate-to-config.js
-const ConfigManager = require('../utils/config');
-const GameDatabase = require('../database/db');
+- ⚙️ Configuration interactive depuis Discord
+- 💾 Sauvegarde automatique dans SQLite
+- ✅ Validation au démarrage
+- 📊 Gestion unifiée de tous les paramètres
+- 🚀 Plus besoin de modifier le code
 
-const db = new GameDatabase();
-ConfigManager.initialize(db.db);
-const config = ConfigManager.getInstance();
-
-// Migrer les anciennes valeurs
-config.setCategoryId('1469976287790633146');
-config.setDefaultGameRules({ minPlayers: 5, maxPlayers: 10 });
-
-console.log('Migration complete!');
-```
+**Bot professionnel = Bot configurable** 🎯
 
 ---
 

@@ -206,7 +206,7 @@ class AchievementEngine {
       `);
       this.db.exec(`CREATE INDEX IF NOT EXISTS idx_extended_elo ON player_extended_stats(elo_rating)`);
     } catch (err) {
-      logger.error('Failed to create achievements tables', { error: err.message });
+      logger.error('ACHIEVEMENTS_TABLE_CREATE_FAILED', { error: err.message });
     }
   }
 
@@ -317,7 +317,7 @@ class AchievementEngine {
           ).run(playerId, ach.id);
           newlyUnlocked.push(ach.id);
         } catch (err) {
-          logger.error('Failed to award achievement', { playerId, achievement: ach.id, error: err.message });
+          logger.error('ACHIEVEMENT_AWARD_FAILED', { playerId, achievement: ach.id, error: err.message });
         }
       }
     }
@@ -372,7 +372,7 @@ class AchievementEngine {
           newAchievements.set(player.id, unlocked);
         }
       } catch (err) {
-        logger.error('Achievement processing error', { playerId: player.id, error: err.message });
+        logger.error('ACHIEVEMENT_PROCESSING_ERROR', { playerId: player.id, error: err.message });
       }
     }
 
@@ -408,7 +408,7 @@ class AchievementEngine {
           break;
       }
     } catch (err) {
-      logger.error('Achievement trackEvent error', { playerId, event, error: err.message });
+      logger.error('ACHIEVEMENT_TRACK_EVENT_ERROR', { playerId, event, error: err.message });
     }
   }
 
@@ -534,7 +534,7 @@ class AchievementEngine {
         LIMIT ?
       `).all(limit);
     } catch (err) {
-      logger.error('Failed to get leaderboard', { error: err.message });
+      logger.error('LEADERBOARD_GET_FAILED', { error: err.message });
       return [];
     }
   }

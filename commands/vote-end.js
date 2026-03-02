@@ -78,7 +78,7 @@ module.exports = {
     const votesNeeded = voteState.votesNeeded;
     const currentVotes = voteState.currentVotes;
 
-    logger.info('Vote-end received', {
+    logger.info('VOTE_END_RECEIVED', {
       channelId: interaction.channelId,
       user: interaction.user.username,
       votes: currentVotes,
@@ -88,7 +88,7 @@ module.exports = {
 
     // Majorité atteinte ?
     if (currentVotes >= votesNeeded) {
-      logger.info('Vote-end majority reached, ending game', { channelId: game.mainChannelId });
+      logger.info('VOTE_END_MAJORITY_REACHED', { channelId: game.mainChannelId });
 
       // 1) Annuler tous les timers
       gameManager.clearGameTimers(game);
@@ -120,9 +120,7 @@ module.exports = {
       }
 
       // 5) Supprimer la partie de la mémoire et DB
-      try { gameManager.db.deleteGame(game.mainChannelId); } catch (e) { /* ignore */ }
-      gameManager.games.delete(game.mainChannelId);
-      gameManager.saveState();
+      gameManager.purgeGame(game.mainChannelId, game);
 
       // 6) Répondre AVANT de supprimer les channels
       await safeReply(interaction, {
@@ -132,7 +130,7 @@ module.exports = {
       // 7) Nettoyer les channels (suppression Discord — en dernier)
       const deleted = await gameManager.cleanupChannels(interaction.guild, game);
 
-      logger.success('Game ended by vote', { channelId: game.mainChannelId, deletedChannels: deleted });
+      logger.info('GAME_ENDED_BY_VOTE', { channelId: game.mainChannelId, deletedChannels: deleted });
     } else {
       await safeReply(interaction, {
         content: t('cmd.vote_end.cast', { name: interaction.user.username, n: currentVotes, m: votesNeeded })

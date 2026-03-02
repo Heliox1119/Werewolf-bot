@@ -215,7 +215,8 @@ function mockLogger() {
     error: jest.fn(),
     debug: jest.fn(),
     success: jest.fn(),
-    startTimer: jest.fn(() => ({ end: jest.fn() }))
+    critical: jest.fn(),
+    startTimer: jest.fn(() => ({ end: jest.fn(() => 0) }))
   };
 }
 

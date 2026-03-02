@@ -1,7 +1,7 @@
 const Database = require('better-sqlite3');
 const fs = require('fs');
 const path = require('path');
-const { game: logger } = require('../utils/logger');
+const { db: logger } = require('../utils/logger');
 
 class GameDatabase {
   constructor(dbPath = null) {
@@ -22,7 +22,7 @@ class GameDatabase {
     // Initialiser le schéma
     this.initSchema();
     
-    logger.info('Database initialized', { path: this.dbPath });
+    logger.info('DB_INITIALIZED', { path: this.dbPath });
   }
 
   initSchema() {
@@ -33,7 +33,7 @@ class GameDatabase {
     this.db.exec(schema);
     
     const version = this.getConfig('schema_version');
-    logger.info('Database schema loaded', { version });
+    logger.info('DB_SCHEMA_LOADED', { version });
     
     // Migration: ajouter les colonnes nightVictim/witchKillTarget/witchSave si absentes
     this.migrateSchema();
@@ -47,77 +47,77 @@ class GameDatabase {
       const columns = this.db.pragma('table_info(games)').map(c => c.name);
       if (!columns.includes('night_victim_id')) {
         this.db.exec('ALTER TABLE games ADD COLUMN night_victim_id TEXT');
-        logger.info('Migration: added night_victim_id column');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'night_victim_id' });
       }
       if (!columns.includes('witch_kill_target_id')) {
         this.db.exec('ALTER TABLE games ADD COLUMN witch_kill_target_id TEXT');
-        logger.info('Migration: added witch_kill_target_id column');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'witch_kill_target_id' });
       }
       if (!columns.includes('witch_save')) {
         this.db.exec('ALTER TABLE games ADD COLUMN witch_save BOOLEAN DEFAULT 0');
-        logger.info('Migration: added witch_save column');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'witch_save' });
       }
       if (!columns.includes('guild_id')) {
         this.db.exec('ALTER TABLE games ADD COLUMN guild_id TEXT');
-        logger.info('Migration: added guild_id column (multi-guild support)');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'guild_id', table: 'games' });
       }
       if (!columns.includes('salvateur_channel_id')) {
         this.db.exec('ALTER TABLE games ADD COLUMN salvateur_channel_id TEXT');
-        logger.info('Migration: added salvateur_channel_id column');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'salvateur_channel_id' });
       }
       if (!columns.includes('spectator_channel_id')) {
         this.db.exec('ALTER TABLE games ADD COLUMN spectator_channel_id TEXT');
-        logger.info('Migration: added spectator_channel_id column');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'spectator_channel_id' });
       }
       // v3.2 migrations — persist previously missing state fields
       if (!columns.includes('thief_channel_id')) {
         this.db.exec('ALTER TABLE games ADD COLUMN thief_channel_id TEXT');
-        logger.info('Migration: added thief_channel_id column');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'thief_channel_id' });
       }
       if (!columns.includes('white_wolf_channel_id')) {
         this.db.exec('ALTER TABLE games ADD COLUMN white_wolf_channel_id TEXT');
-        logger.info('Migration: added white_wolf_channel_id column');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'white_wolf_channel_id' });
       }
       if (!columns.includes('white_wolf_kill_target_id')) {
         this.db.exec('ALTER TABLE games ADD COLUMN white_wolf_kill_target_id TEXT');
-        logger.info('Migration: added white_wolf_kill_target_id column');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'white_wolf_kill_target_id' });
       }
       if (!columns.includes('protected_player_id')) {
         this.db.exec('ALTER TABLE games ADD COLUMN protected_player_id TEXT');
-        logger.info('Migration: added protected_player_id column');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'protected_player_id' });
       }
       if (!columns.includes('last_protected_player_id')) {
         this.db.exec('ALTER TABLE games ADD COLUMN last_protected_player_id TEXT');
-        logger.info('Migration: added last_protected_player_id column');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'last_protected_player_id' });
       }
       if (!columns.includes('village_roles_powerless')) {
         this.db.exec('ALTER TABLE games ADD COLUMN village_roles_powerless BOOLEAN DEFAULT 0');
-        logger.info('Migration: added village_roles_powerless column');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'village_roles_powerless' });
       }
       if (!columns.includes('listen_hints_given')) {
         this.db.exec("ALTER TABLE games ADD COLUMN listen_hints_given TEXT DEFAULT '[]'");
-        logger.info('Migration: added listen_hints_given column');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'listen_hints_given' });
       }
       if (!columns.includes('little_girl_exposure')) {
         this.db.exec('ALTER TABLE games ADD COLUMN little_girl_exposure INTEGER DEFAULT 0');
-        logger.info('Migration: added little_girl_exposure column');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'little_girl_exposure' });
       }
       if (!columns.includes('little_girl_exposed')) {
         this.db.exec('ALTER TABLE games ADD COLUMN little_girl_exposed BOOLEAN DEFAULT 0');
-        logger.info('Migration: added little_girl_exposed column');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'little_girl_exposed' });
       }
       if (!columns.includes('thief_extra_roles')) {
         this.db.exec("ALTER TABLE games ADD COLUMN thief_extra_roles TEXT DEFAULT '[]'");
-        logger.info('Migration: added thief_extra_roles column');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'thief_extra_roles' });
       }
       const playerColumns = this.db.pragma('table_info(players)').map(c => c.name);
       if (!playerColumns.includes('has_shot')) {
         this.db.exec('ALTER TABLE players ADD COLUMN has_shot BOOLEAN DEFAULT 0');
-        logger.info('Migration: added has_shot column to players');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'has_shot', table: 'players' });
       }
       if (!playerColumns.includes('idiot_revealed')) {
         this.db.exec('ALTER TABLE players ADD COLUMN idiot_revealed BOOLEAN DEFAULT 0');
-        logger.info('Migration: added idiot_revealed column to players');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'idiot_revealed', table: 'players' });
       }
 
       // Ensure idempotent uniqueness for actor/night/action logs
@@ -135,7 +135,7 @@ class GameDatabase {
       if (!statsColumns.includes('guild_id')) {
         this.db.exec('ALTER TABLE player_stats ADD COLUMN guild_id TEXT');
         this.db.exec('CREATE INDEX IF NOT EXISTS idx_player_stats_guild ON player_stats(guild_id)');
-        logger.info('Migration: added guild_id to player_stats');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'guild_id', table: 'player_stats' });
       }
 
       // Migration: create game_history table if it doesn't exist
@@ -158,7 +158,7 @@ class GameDatabase {
         `);
         this.db.exec('CREATE INDEX IF NOT EXISTS idx_history_guild ON game_history(guild_id)');
         this.db.exec('CREATE INDEX IF NOT EXISTS idx_history_ended ON game_history(ended_at)');
-        logger.info('Migration: created game_history table');
+        logger.info('MIGRATION_TABLE_CREATED', { table: 'game_history' });
       }
 
       // Migration: create premium_users table
@@ -177,7 +177,7 @@ class GameDatabase {
         `);
         this.db.exec('CREATE INDEX IF NOT EXISTS idx_premium_tier ON premium_users(tier)');
         this.db.exec('CREATE INDEX IF NOT EXISTS idx_premium_expires ON premium_users(expires_at)');
-        logger.info('Migration: created premium_users table');
+        logger.info('MIGRATION_TABLE_CREATED', { table: 'premium_users' });
       }
 
       // Migration: create player_guilds junction table (permanent player↔guild mapping)
@@ -191,7 +191,7 @@ class GameDatabase {
           )
         `);
         this.db.exec('CREATE INDEX IF NOT EXISTS idx_player_guilds_guild ON player_guilds(guild_id)');
-        logger.info('Migration: created player_guilds table');
+        logger.info('MIGRATION_TABLE_CREATED', { table: 'player_guilds' });
 
         // Back-fill from game_history
         try {
@@ -208,9 +208,9 @@ class GameDatabase {
             }
           });
           tx();
-          logger.info('Migration: back-filled player_guilds from game_history');
+          logger.info('MIGRATION_BACKFILL_COMPLETE', { table: 'player_guilds' });
         } catch (e) {
-          logger.warn('Migration: failed to back-fill player_guilds', { error: e.message });
+          logger.warn('MIGRATION_BACKFILL_FAILED', { error: e.message });
         }
       }
 
@@ -225,25 +225,25 @@ class GameDatabase {
       // v3.5.1 — Persist hunter shoot flag across reboots
       if (!columns.includes('hunter_must_shoot_id')) {
         this.db.exec('ALTER TABLE games ADD COLUMN hunter_must_shoot_id TEXT');
-        logger.info('Migration: added hunter_must_shoot_id column to games');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'hunter_must_shoot_id', table: 'games' });
       }
 
       // v3.5.1 — Persist captain tiebreak state across reboots
       if (!columns.includes('captain_tiebreak_ids')) {
         this.db.exec('ALTER TABLE games ADD COLUMN captain_tiebreak_ids TEXT');
-        logger.info('Migration: added captain_tiebreak_ids column to games');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'captain_tiebreak_ids', table: 'games' });
       }
 
       // v3.5.1 — Persist AFK no-kill cycle counter across reboots
       if (!columns.includes('no_kill_cycles')) {
         this.db.exec('ALTER TABLE games ADD COLUMN no_kill_cycles INTEGER DEFAULT 0');
-        logger.info('Migration: added no_kill_cycles column to games');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'no_kill_cycles', table: 'games' });
       }
 
       // Add ability_state_json to games table for persisting ability runtime state
       if (!columns.includes('ability_state_json')) {
         this.db.exec("ALTER TABLE games ADD COLUMN ability_state_json TEXT DEFAULT '{}'");
-        logger.info('Migration: added ability_state_json column to games');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'ability_state_json', table: 'games' });
       }
 
       // Upgrade custom_roles table: add abilities_json and win_condition columns
@@ -252,11 +252,11 @@ class GameDatabase {
         const crColumns = this.db.pragma('table_info(custom_roles)').map(c => c.name);
         if (!crColumns.includes('abilities_json')) {
           this.db.exec("ALTER TABLE custom_roles ADD COLUMN abilities_json TEXT DEFAULT '[]'");
-          logger.info('Migration: added abilities_json column to custom_roles');
+          logger.info('MIGRATION_COLUMN_ADDED', { column: 'abilities_json', table: 'custom_roles' });
         }
         if (!crColumns.includes('win_condition')) {
           this.db.exec("ALTER TABLE custom_roles ADD COLUMN win_condition TEXT DEFAULT 'village_wins'");
-          logger.info('Migration: added win_condition column to custom_roles');
+          logger.info('MIGRATION_COLUMN_ADDED', { column: 'win_condition', table: 'custom_roles' });
         }
       } else {
         // Create the full custom_roles table with ability support
@@ -276,7 +276,7 @@ class GameDatabase {
           )
         `);
         this.db.exec('CREATE INDEX IF NOT EXISTS idx_custom_roles_guild ON custom_roles(guild_id)');
-        logger.info('Migration: created custom_roles table with ability support');
+        logger.info('MIGRATION_TABLE_CREATED', { table: 'custom_roles' });
       }
 
       // Migration: create mod_audit_log table for persistent moderation history
@@ -294,7 +294,7 @@ class GameDatabase {
           )
         `);
         this.db.exec('CREATE INDEX IF NOT EXISTS idx_mod_audit_guild ON mod_audit_log(guild_id, created_at)');
-        logger.info('Migration: created mod_audit_log table');
+        logger.info('MIGRATION_TABLE_CREATED', { table: 'mod_audit_log' });
       }
 
       // Cleanup: remove fake debug players from stats
@@ -302,7 +302,7 @@ class GameDatabase {
       this.db.exec("DELETE FROM player_extended_stats WHERE player_id LIKE 'fake_%'");
       this.db.exec("DELETE FROM player_guilds WHERE player_id LIKE 'fake_%'");
     } catch (err) {
-      logger.error('Schema migration error', { error: err.message });
+      logger.error('SCHEMA_MIGRATION_ERROR', { error: err.message });
     }
   }
 
@@ -347,11 +347,11 @@ class GameDatabase {
         options.disableVoiceMute || 0
       );
       
-      logger.info('Game created in DB', { gameId: result.lastInsertRowid, channelId });
+      logger.info('GAME_CREATED', { gameId: result.lastInsertRowid, channelId });
       return result.lastInsertRowid;
     } catch (err) {
       if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-        logger.warn('Game already exists', { channelId });
+        logger.warn('GAME_ALREADY_EXISTS', { channelId });
         return null;
       }
       throw err;
@@ -565,7 +565,7 @@ class GameDatabase {
         alreadyExecuted: result.alreadyExecuted
       };
     } catch (err) {
-      logger.error('Failed to add vote', err);
+      logger.error('VOTE_ADD_FAILED', err);
       return { ok: false, affectedRows: 0, alreadyExecuted: false };
     }
   }
@@ -649,7 +649,7 @@ class GameDatabase {
         alreadyExecuted: result.alreadyExecuted
       };
     } catch (err) {
-      logger.error('Failed to add night action', err);
+      logger.error('NIGHT_ACTION_ADD_FAILED', err);
       return { ok: false, affectedRows: 0, alreadyExecuted: false };
     }
   }
@@ -726,7 +726,7 @@ class GameDatabase {
 
       return tx();
     } catch (err) {
-      logger.error('Failed to use witch potion', err);
+      logger.error('WITCH_POTION_USE_FAILED', err);
       return { ok: false, affectedRows: 0, alreadyExecuted: false };
     }
   }
@@ -753,7 +753,7 @@ class GameDatabase {
         alreadyExecuted: result.changes === 0
       };
     } catch (err) {
-      logger.error('Failed to mark hunter shot', err);
+      logger.error('HUNTER_SHOT_MARK_FAILED', err);
       return { ok: false, affectedRows: 0, alreadyExecuted: false };
     }
   }
@@ -795,7 +795,7 @@ class GameDatabase {
       `).run(guildId, moderatorId, moderatorName, action, details ? JSON.stringify(details) : null);
       return true;
     } catch (err) {
-      logger.error('Failed to add mod audit log', { error: err.message });
+      logger.error('MOD_AUDIT_LOG_ADD_FAILED', { error: err.message });
       return false;
     }
   }
@@ -810,7 +810,7 @@ class GameDatabase {
         return r;
       });
     } catch (err) {
-      logger.error('Failed to get mod audit log', { error: err.message });
+      logger.error('MOD_AUDIT_LOG_GET_FAILED', { error: err.message });
       return [];
     }
   }
@@ -887,7 +887,7 @@ class GameDatabase {
 
       return true;
     } catch (err) {
-      logger.error('Failed to update player stats', { error: err.message });
+      logger.error('PLAYER_STATS_UPDATE_FAILED', { error: err.message });
       return false;
     }
   }
@@ -932,10 +932,10 @@ class GameDatabase {
         game.endedAt || null
       );
 
-      logger.info('Game history saved', { channel: game.mainChannelId, winner });
+      logger.info('GAME_HISTORY_SAVED', { channel: game.mainChannelId, winner });
       return true;
     } catch (err) {
-      logger.error('Failed to save game history', { error: err.message });
+      logger.error('GAME_HISTORY_SAVE_FAILED', { error: err.message });
       return false;
     }
   }
@@ -960,7 +960,7 @@ class GameDatabase {
       const result = this.db.prepare('DELETE FROM game_history WHERE id = ?').run(id);
       return result.changes > 0;
     } catch (err) {
-      logger.error('Failed to delete game history entry', { error: err.message, id });
+      logger.error('GAME_HISTORY_DELETE_FAILED', { error: err.message, id });
       return false;
     }
   }
@@ -996,11 +996,11 @@ class GameDatabase {
         "DELETE FROM games WHERE ended_at IS NOT NULL AND ended_at < ? AND phase = 'Terminé'"
       ).run(cutoff);
       if (result.changes > 0) {
-        logger.info(`Archived ${result.changes} old games (older than ${retentionDays} days)`);
+        logger.info('GAMES_ARCHIVED', { count: result.changes, retentionDays });
       }
       return result.changes;
     } catch (err) {
-      logger.error('Failed to archive old games', { error: err.message });
+      logger.error('GAMES_ARCHIVE_FAILED', { error: err.message });
       return 0;
     }
   }
@@ -1050,10 +1050,10 @@ class GameDatabase {
           expires_at = excluded.expires_at,
           updated_at = strftime('%s', 'now')
       `).run(userId, tier, options.grantedBy || null, options.reason || null, options.expiresAt || null);
-      logger.info('Premium granted', { userId, tier });
+      logger.info('PREMIUM_GRANTED', { userId, tier });
       return true;
     } catch (err) {
-      logger.error('Failed to grant premium', { userId, error: err.message });
+      logger.error('PREMIUM_GRANT_FAILED', { userId, error: err.message });
       return false;
     }
   }
@@ -1064,10 +1064,10 @@ class GameDatabase {
   revokePremium(userId) {
     try {
       this.db.prepare('DELETE FROM premium_users WHERE user_id = ?').run(userId);
-      logger.info('Premium revoked', { userId });
+      logger.info('PREMIUM_REVOKED', { userId });
       return true;
     } catch (err) {
-      logger.error('Failed to revoke premium', { userId, error: err.message });
+      logger.error('PREMIUM_REVOKE_FAILED', { userId, error: err.message });
       return false;
     }
   }
@@ -1095,7 +1095,7 @@ class GameDatabase {
         reason: 'Bot owner — automatic lifetime premium',
         grantedBy: 'system'
       });
-      logger.info('Owner premium ensured', { ownerId });
+      logger.info('OWNER_PREMIUM_ENSURED', { ownerId });
     }
   }
 
@@ -1115,7 +1115,7 @@ class GameDatabase {
       `).run(key, String(amount), amount);
       return true;
     } catch (err) {
-      logger.error('Failed to increment counter', { key, error: err.message });
+      logger.error('COUNTER_INCREMENT_FAILED', { key, error: err.message });
       return false;
     }
   }
@@ -1211,7 +1211,7 @@ class GameDatabase {
       );
       return true;
     } catch (err) {
-      logger.error('Failed to insert metrics snapshot', { error: err.message });
+      logger.error('METRICS_SNAPSHOT_INSERT_FAILED', { error: err.message });
       return false;
     }
   }
@@ -1229,7 +1229,7 @@ class GameDatabase {
 
   close() {
     this.db.close();
-    logger.info('Database connection closed');
+    logger.info('DB_CONNECTION_CLOSED');
   }
 
   backup(backupPath) {

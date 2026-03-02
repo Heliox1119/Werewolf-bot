@@ -152,7 +152,8 @@ module.exports = {
     }
 
     // Appeler start avec les rôles choisis
-    const startedGame = gameManager.start(interaction.channelId, rolesToUse);
+    // ALWAYS use game.mainChannelId — interaction.channelId may be a sub-channel
+    const startedGame = gameManager.start(game.mainChannelId, rolesToUse);
     if (!startedGame) {
       await interaction.editReply(t('error.cannot_start'));
       return;

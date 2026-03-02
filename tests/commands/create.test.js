@@ -14,30 +14,7 @@ jest.mock('../../utils/validators', () => ({
   isPlayerInGame: jest.fn(() => ({ inGame: true, alive: true })),
   getCategoryId: jest.fn(() => '1469976287790633146')
 }));
-jest.mock('../../utils/logger', () => ({
-  app: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    success: jest.fn(),
-    debug: jest.fn()
-  },
-  commands: {
-    startTimer: jest.fn(() => ({ end: jest.fn() })),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    success: jest.fn(),
-    debug: jest.fn()
-  },
-  interaction: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    success: jest.fn(),
-    debug: jest.fn()
-  }
-}));
+jest.mock('../../utils/logger', () => require('../helpers/loggerMock')());
 jest.mock('../../utils/config', () => {
   const mockConfig = {
     initialized: true,

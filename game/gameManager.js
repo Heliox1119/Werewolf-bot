@@ -9,14 +9,14 @@ const gameMutex = require('./GameMutex');
 const { t, translateRole, translateRoleDesc, tips } = require('../utils/i18n');
 const { AchievementEngine, ACHIEVEMENTS } = require('./achievements');
 const { getColor } = require('../utils/theme');
+const nightEngine = require('./nightResolutionEngine');
 
 // Timeouts configurables (en ms)
 const TIMEOUTS = {
   LOBBY_AUTO_CLEANUP: 60 * 60 * 1000, // 1h
   NIGHT_AFK: 120_000,                  // 120s (augmenté)
   HUNTER_SHOOT: 90_000,                // 90s (augmenté)
-  DAY_DELIBERATION: 300_000,           // 5 min de discussion (augmenté)
-  DAY_VOTE: 180_000,                   // 3 min pour voter (augmenté)
+  DAY_VOTE: 480_000,                   // 8 min (discussion + vote fusionnés)
   STUCK_GAME_THRESHOLD: Number.isFinite(Number(process.env.GAME_STUCK_THRESHOLD_MS))
     ? Number(process.env.GAME_STUCK_THRESHOLD_MS)
     : 10 * 60 * 1000,
@@ -136,7 +136,7 @@ class GameManager extends EventEmitter {
     if (lastExecution) {
       const elapsed = Date.now() - lastExecution;
       if (elapsed < TIMEOUTS.RECENT_COMMAND_WINDOW) {
-        logger.warn('Duplicate command detected (Discord retry)', {
+        logger.warn('DUPLICATE_COMMAND_DETECTED', {
           command: commandName,
           channelId,
           userId,
@@ -175,12 +175,10 @@ class GameManager extends EventEmitter {
         if (guild) {
           this._emitGameEvent(game, 'gameEnded', { victor: null, reason: 'timeout' });
           await this.cleanupChannels(guild, game);
-          this.clearGameTimers(game);
-          this.games.delete(channelId);
-          this.db.deleteGame(channelId);
-          logger.info(`💤 Lobby auto-deleted after 1h of inactivity`, { channelId });
+          this.purgeGame(channelId, game);
+          logger.info('LOBBY_AUTO_DELETED', { channelId });
         }
-      } catch (e) { logger.error('Auto-cleanup lobby failed', e); }
+      } catch (e) { logger.error('LOBBY_AUTO_CLEANUP_FAILED', e); }
     }, TIMEOUTS.LOBBY_AUTO_CLEANUP);
     this.lobbyTimeouts.set(channelId, timeoutId);
     if (game) {
@@ -378,7 +376,7 @@ class GameManager extends EventEmitter {
 
         await this.advanceSubPhase(guild, game);
       } catch (e) {
-        logger.error('Captain vote timeout error', { error: e.message });
+        logger.error('CAPTAIN_VOTE_TIMEOUT_ERROR', { error: e.message });
       }
     });
   }
@@ -405,57 +403,28 @@ class GameManager extends EventEmitter {
     this.clearCaptainTiebreakTimeout(game);
     this._scheduleGameTimer(game, 'captain-tiebreak', TIMEOUTS.CAPTAIN_TIEBREAK, async () => {
       try {
-        if (!game._captainTiebreak || game.phase !== PHASES.DAY) return;
+        if (game.phase !== PHASES.DAY) return;
 
         const mainChannel = game.villageChannelId
           ? await guild.channels.fetch(game.villageChannelId)
           : await guild.channels.fetch(game.mainChannelId);
 
-        const tiedIds = game._captainTiebreak;
-        const randomId = tiedIds[Math.floor(Math.random() * tiedIds.length)];
-
-        const result = await this.runAtomic(game.mainChannelId, (state) => {
-          const player = state.players.find(p => p.id === randomId);
-          if (!player || !player.alive) {
-            state._captainTiebreak = null;
-            return { skipped: true };
-          }
-          const collateral = this.kill(state.mainChannelId, randomId, { throwOnDbFailure: true });
-          this.logAction(state, `Départage capitaine (timeout AFK): ${player.username} éliminé au hasard`);
-          const hunterTriggered = player.role === ROLES.HUNTER && !state.villageRolesPowerless;
-          if (hunterTriggered) {
-            state._hunterMustShoot = player.id;
+        // Captain AFK → nobody dies (per spec: no random elimination)
+        const voteEngine = require('./villageVoteEngine');
+        await this.runAtomic(game.mainChannelId, (state) => {
+          if (state.villageVoteState) {
+            voteEngine.resolveCaptainTiebreakTimeout(state.villageVoteState);
           }
           state._captainTiebreak = null;
-          const victory = this.checkWinner(state);
-          return { skipped: false, player, collateral, hunterTriggered, victory };
         });
 
-        if (result.skipped) {
-          await this.transitionToNight(guild, game);
-          return;
-        }
+        await this.sendLogged(mainChannel, t('game.captain_tiebreak_afk'), { type: 'captainTiebreakTimeout' });
+        this.logAction(game, 'Capitaine AFK au départage — personne ne meurt');
 
-        await this.sendLogged(mainChannel, t('game.captain_tiebreak_timeout', { name: result.player.username }), { type: 'captainTiebreakTimeout' });
-        await this.announceDeathReveal(mainChannel, result.player, 'village');
-
-        for (const dead of result.collateral) {
-          await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
-          this.logAction(game, `Mort d'amour: ${dead.username}`);
-        }
-
-        if (result.hunterTriggered) {
-          await this.sendLogged(mainChannel, t('game.hunter_death', { name: result.player.username }), { type: 'hunterDeath' });
-          this.startHunterTimeout(guild, game, result.player.id);
-        }
-
-        if (result.victory) {
-          await this.announceVictoryIfAny(guild, game);
-        } else {
-          await this.transitionToNight(guild, game);
-        }
+        // Proceed to night
+        await this.transitionToNight(guild, game);
       } catch (e) {
-        logger.error('Captain tiebreak timeout error', { error: e.message, stack: e.stack });
+        logger.error('CAPTAIN_TIEBREAK_TIMEOUT_ERROR', { error: e.message, stack: e.stack });
       }
     });
   }
@@ -543,7 +512,7 @@ class GameManager extends EventEmitter {
       if (isStuck) {
         if (game.stuckStatus !== 'STUCK') {
           game.stuckStatus = 'STUCK';
-          logger.warn('Game liveness detected STUCK game', {
+          logger.warn('GAME_STUCK_DETECTED', {
             channelId: game.mainChannelId,
             guildId: game.guildId,
             phase: game.phase,
@@ -729,8 +698,134 @@ class GameManager extends EventEmitter {
     return Array.from(this.games.values());
   }
 
+  // ── Single source of truth: reconcile memory ↔ DB ─────────────
+
+  /**
+   * Unified game lookup.  Checks memory first, falls back to DB.
+   * If DB contains a row with no matching in-memory game the row is
+   * treated as a *zombie* and is deleted.  This guarantees memory and
+   * DB never diverge silently.
+   *
+   * @param {string} channelId  — mainChannel (or any sub-channel) ID
+   * @returns {object|null} the in-memory game, or null
+   */
+  getGameByChannel(channelId) {
+    // 1. Fast-path: exact mainChannel match in memory
+    if (this.games.has(channelId)) return this.games.get(channelId);
+
+    // 2. Sub-channel scan (village, wolves, seer, etc.)
+    for (const game of this.games.values()) {
+      const ids = [
+        game.mainChannelId,
+        game.villageChannelId,
+        game.wolvesChannelId,
+        game.whiteWolfChannelId,
+        game.thiefChannelId,
+        game.seerChannelId,
+        game.witchChannelId,
+        game.cupidChannelId,
+        game.salvateurChannelId,
+        game.spectatorChannelId,
+        game.voiceChannelId
+      ].filter(Boolean);
+      if (ids.includes(channelId)) return game;
+    }
+
+    // 3. NOT in memory — check DB for zombie row
+    try {
+      const dbRow = this.db.getGame(channelId);
+      if (dbRow) {
+        logger.warn('ZOMBIE_GAME_DETECTED', {
+          channelId,
+          phase: dbRow.phase,
+          createdAt: dbRow.created_at,
+          endedAt: dbRow.ended_at,
+        });
+        // Purge the orphan DB row so /create can proceed
+        this.db.deleteGame(channelId);
+        logger.info('ZOMBIE_GAME_PURGED', { channelId });
+      }
+    } catch (e) {
+      logger.warn('DB_RECONCILE_LOOKUP_FAILED', { channelId, error: e.message });
+    }
+
+    return null;
+  }
+
+  /**
+   * Full purge of a game — clears memory, DB, and timers.
+   * This is the ONLY function that should be called when a game needs
+   * to be completely removed.  Callers should NOT do manual deletions.
+   *
+   * @param {string} channelId  — mainChannelId of the game
+   * @param {object} [game]     — optional in-memory game object (avoids a lookup)
+   */
+  purgeGame(channelId, game = null) {
+    game = game || this.games.get(channelId);
+
+    // 1. Clear all timers (safe even if game is null)
+    if (game) {
+      this.clearGameTimers(game);
+    }
+    this.clearLobbyTimeout(channelId);
+
+    // 2. Remove from memory
+    this.games.delete(channelId);
+
+    // 3. Remove from DB (CASCADE deletes players, votes, logs, etc.)
+    try {
+      const deleted = this.db.deleteGame(channelId);
+      if (deleted) {
+        logger.info('GAME_PURGED_FROM_DB', { channelId });
+      }
+    } catch (e) {
+      logger.warn('DB_PURGE_DELETE_FAILED', { channelId, error: e.message });
+    }
+
+    // 4. Mark dirty games cache clean
+    this.dirtyGames.delete(channelId);
+
+    logger.info('GAME_FULLY_PURGED', { channelId });
+  }
+
+  /**
+   * Purge ALL zombie DB rows for a guild that have no in-memory game.
+   * Returns the number of zombies cleaned.
+   *
+   * @param {string} guildId
+   * @returns {number}
+   */
+  purgeGuildZombies(guildId) {
+    let purged = 0;
+    try {
+      const dbGames = this.db.getAllGames();
+      for (const dbGame of dbGames) {
+        if (dbGame.guild_id !== guildId) continue;
+        if (!this.games.has(dbGame.channel_id)) {
+          logger.warn('GUILD_ZOMBIE_PURGING', { channelId: dbGame.channel_id, guildId });
+          this.db.deleteGame(dbGame.channel_id);
+          purged++;
+        }
+      }
+    } catch (e) {
+      logger.warn('GUILD_ZOMBIE_PURGE_FAILED', { guildId, error: e.message });
+    }
+    return purged;
+  }
+
   create(channelId, options = {}) {
     if (this.games.has(channelId)) return false;
+
+    // Reconcile: if DB has a zombie row for this channel, purge it first
+    try {
+      const dbRow = this.db.getGame(channelId);
+      if (dbRow) {
+        logger.warn('ZOMBIE_DETECTED_ON_CREATE', { channelId });
+        this.db.deleteGame(channelId);
+      }
+    } catch (e) {
+      logger.warn('DB_CHECK_FAILED_ON_CREATE', { channelId, error: e.message });
+    }
 
     const minPlayers = options.minPlayers ?? 5;
     const maxPlayers = options.maxPlayers ?? 10;
@@ -745,7 +840,7 @@ class GameManager extends EventEmitter {
     });
 
     if (!gameId) {
-      logger.warn('Game already exists in DB', { channelId });
+      logger.error('CREATE_GAME_NULL_AFTER_PURGE', { channelId });
       return false;
     }
 
@@ -789,6 +884,7 @@ class GameManager extends EventEmitter {
       lastProtectedPlayerId: null,
       villageRolesPowerless: false,
       wolvesVoteState: require('./wolfVoteEngine').createWolvesVoteState(),
+      villageVoteState: require('./villageVoteEngine').createVillageVoteState(),
       listenHintsGiven: [],
       littleGirlExposureLevel: 0,
       littleGirlListenedThisNight: false,
@@ -820,27 +916,7 @@ class GameManager extends EventEmitter {
   }
 
   getGameByChannelId(channelId) {
-    if (this.games.has(channelId)) return this.games.get(channelId);
-
-    for (const game of this.games.values()) {
-      const ids = [
-        game.mainChannelId,
-        game.villageChannelId,
-        game.wolvesChannelId,
-        game.whiteWolfChannelId,
-        game.thiefChannelId,
-        game.seerChannelId,
-        game.witchChannelId,
-        game.cupidChannelId,
-        game.salvateurChannelId,
-        game.spectatorChannelId,
-        game.voiceChannelId
-      ].filter(Boolean);
-
-      if (ids.includes(channelId)) return game;
-    }
-
-    return null;
+    return this.getGameByChannel(channelId);
   }
 
   logAction(game, text) {
@@ -961,7 +1037,10 @@ class GameManager extends EventEmitter {
     // Guard: never post if panels already exist for this game
     if (this.rolePanels.has(game.mainChannelId)) {
       const existing = this.rolePanels.get(game.mainChannelId);
-      if (existing && Object.values(existing).some(m => m)) return;
+      if (existing && Object.values(existing).some(m => m)) {
+        logger.debug('ROLE_PANELS_ALREADY_EXIST', { channelId: game.mainChannelId });
+        return;
+      }
     }
     const { getRoleChannels, buildRolePanel, getRoleKeyImage, buildRolePanelComponents } = require('./roleChannelView');
     const { AttachmentBuilder } = require('discord.js');
@@ -969,12 +1048,29 @@ class GameManager extends EventEmitter {
     const timerInfo = this.getTimerInfo(game.mainChannelId);
     const panelRef = {};
 
+    logger.info('ROLE_PANELS_POSTING', {
+      channelId: game.mainChannelId,
+      roleChannelCount: Object.keys(roleChannels).length,
+      roleKeys: Object.keys(roleChannels),
+    });
+
+    let posted = 0;
+    let failed = 0;
+
     for (const [roleKey, channelId] of Object.entries(roleChannels)) {
       try {
         const channel = await guild.channels.fetch(channelId);
-        if (!channel) continue;
+        if (!channel) {
+          logger.warn('ROLE_PANEL_CHANNEL_NOT_FOUND', { roleKey, channelId });
+          failed++;
+          continue;
+        }
         const embed = buildRolePanel(roleKey, game, timerInfo, game.guildId);
-        if (!embed) continue;
+        if (!embed) {
+          logger.warn('ROLE_PANEL_BUILD_NULL', { roleKey });
+          failed++;
+          continue;
+        }
         const sendPayload = { embeds: [embed] };
         const imageFile = getRoleKeyImage(roleKey);
         if (imageFile) {
@@ -985,14 +1081,31 @@ class GameManager extends EventEmitter {
         if (components.length > 0) sendPayload.components = components;
         const msg = await channel.send(sendPayload);
         panelRef[roleKey] = msg;
+        posted++;
         // Auto-pin the role panel
         try { await msg.pin(); } catch (_) { /* ignore pin failures */ }
       } catch (e) {
-        logger.warn('Failed to post role panel', { roleKey, channelId, error: e.message });
+        logger.warn('ROLE_PANEL_POST_FAILED', { roleKey, channelId, error: e.message });
+        failed++;
       }
     }
 
-    this.rolePanels.set(game.mainChannelId, panelRef);
+    logger.info('ROLE_PANELS_POST_COMPLETE', {
+      channelId: game.mainChannelId,
+      posted,
+      failed,
+      total: Object.keys(roleChannels).length,
+    });
+
+    // Only register panels if at least one was posted — allows recovery on next refresh
+    if (posted > 0) {
+      this.rolePanels.set(game.mainChannelId, panelRef);
+    } else if (Object.keys(roleChannels).length > 0) {
+      logger.warn('ROLE_PANELS_ALL_FAILED', {
+        channelId: game.mainChannelId,
+      });
+      // Do NOT set rolePanels — _refreshRolePanels will detect the gap and re-post
+    }
   }
 
   /**
@@ -1004,10 +1117,11 @@ class GameManager extends EventEmitter {
     const game = this.games.get(gameChannelId);
     if (!game || game.phase === PHASES.ENDED) return;
 
-    // If no panels registered (e.g. after reboot), re-create them
+    // If no panels registered (e.g. after reboot or failed initial posting), re-create them
     // Guard: skip recovery if a post is already in progress
     if (!this.rolePanels.has(gameChannelId)) {
       if (this._guiPostingInProgress.has(gameChannelId)) return;
+      logger.info('ROLE_PANELS_RECOVERY_ATTEMPT', { gameChannelId });
       try {
         const client = require.main?.exports?.client || this.client;
         if (client && game.guildId) {
@@ -1017,7 +1131,7 @@ class GameManager extends EventEmitter {
           }
         }
       } catch (e) {
-        logger.warn('Failed to re-post role panels after reboot', { gameChannelId, error: e.message });
+        logger.warn('ROLE_PANELS_REBOOT_REPOST_FAILED', { gameChannelId, error: e.message });
       }
       return;
     }
@@ -1064,7 +1178,7 @@ class GameManager extends EventEmitter {
    * @returns {ActionRowBuilder[]}
    */
   _buildVillagePanelComponents(game) {
-    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
     const ROLES_REQ = require('./roles');
     const rows = [];
 
@@ -1081,6 +1195,70 @@ class GameManager extends EventEmitter {
             .setStyle(ButtonStyle.Secondary)
         );
         rows.push(row);
+      }
+    }
+
+    // Captain election select menu during VOTE_CAPITAINE subPhase
+    if (game.phase === PHASES.DAY && game.subPhase === PHASES.VOTE_CAPITAINE && !game.captainId) {
+      const alivePlayers = (game.players || []).filter(p => p.alive);
+      if (alivePlayers.length > 0 && alivePlayers.length <= 25) {
+        const selectMenu = new StringSelectMenuBuilder()
+          .setCustomId('captain_elect')
+          .setPlaceholder(t('village_panel.captain_elect_ph', {}, game.guildId))
+          .setMinValues(1)
+          .setMaxValues(1)
+          .addOptions(
+            alivePlayers.map(p => ({
+              label: p.username,
+              value: p.id,
+            }))
+          );
+        rows.push(new ActionRowBuilder().addComponents(selectMenu));
+      }
+    }
+
+    // Village vote select menu during VOTE subPhase
+    if (game.phase === PHASES.DAY && game.subPhase === PHASES.VOTE) {
+      const voteState = game.villageVoteState;
+      if (voteState && !voteState.resolved) {
+        const targets = (game.players || []).filter(p => p.alive);
+        if (targets.length > 0 && targets.length <= 25) {
+          const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('village_vote')
+            .setPlaceholder(t('village_panel.vote_select_ph', {}, game.guildId))
+            .setMinValues(1)
+            .setMaxValues(1)
+            .addOptions(
+              targets.map(p => ({
+                label: p.username,
+                value: p.id,
+                description: p.id === game.captainId
+                  ? t('village_panel.vote_option_captain', {}, game.guildId)
+                  : undefined,
+              }))
+            );
+          rows.push(new ActionRowBuilder().addComponents(selectMenu));
+        }
+      }
+    }
+
+    // Captain tiebreak select menu
+    if (game.phase === PHASES.DAY && game.villageVoteState
+        && game.villageVoteState.tiedCandidates.length >= 2
+        && !game.villageVoteState.resolved && game.captainId) {
+      const candidates = game.villageVoteState.tiedCandidates;
+      const options = candidates.map(id => {
+        const p = (game.players || []).find(pl => pl.id === id);
+        return { label: p ? p.username : id, value: id };
+      });
+      if (options.length > 0 && options.length <= 25) {
+        const selectMenu = new StringSelectMenuBuilder()
+          .setCustomId('captain_tiebreak')
+          .setPlaceholder(t('village_panel.tiebreak_select_ph', {}, game.guildId))
+          .setMinValues(1)
+          .setMaxValues(1)
+          .addOptions(options);
+        rows.push(new ActionRowBuilder().addComponents(selectMenu));
       }
     }
 
@@ -1120,7 +1298,7 @@ class GameManager extends EventEmitter {
       // Start timer tick for live timer display (every 15s)
       this._startVillagePanelTick(game.mainChannelId);
     } catch (e) {
-      logger.warn('Failed to post village master panel', { channelId, error: e.message });
+      logger.warn('VILLAGE_PANEL_POST_FAILED', { channelId, error: e.message });
     }
   }
 
@@ -1150,7 +1328,7 @@ class GameManager extends EventEmitter {
           if (guild) await this._postVillageMasterPanel(guild, game);
         }
       } catch (e) {
-        logger.warn('Failed to re-post village master panel after reboot', { gameChannelId, error: e.message });
+        logger.warn('VILLAGE_PANEL_REBOOT_REPOST_FAILED', { gameChannelId, error: e.message });
       }
       return;
     }
@@ -1205,7 +1383,7 @@ class GameManager extends EventEmitter {
       // Auto-pin so the panel stays visible
       try { await msg.pin(); } catch (_) { /* ignore pin failures */ }
     } catch (e) {
-      logger.warn('Failed to post spectator panel', { channelId: game.spectatorChannelId, error: e.message });
+      logger.warn('SPECTATOR_PANEL_POST_FAILED', { channelId: game.spectatorChannelId, error: e.message });
     }
   }
 
@@ -1231,7 +1409,7 @@ class GameManager extends EventEmitter {
           if (guild) await this._postSpectatorPanel(guild, game);
         }
       } catch (e) {
-        logger.warn('Failed to re-post spectator panel after reboot', { gameChannelId, error: e.message });
+        logger.warn('SPECTATOR_PANEL_REBOOT_REPOST_FAILED', { gameChannelId, error: e.message });
       }
       return;
     }
@@ -1338,6 +1516,9 @@ class GameManager extends EventEmitter {
       wolvesVoteState: game.wolvesVoteState
         ? { round: game.wolvesVoteState.round, votes: game.wolvesVoteState.votes ? Object.fromEntries(game.wolvesVoteState.votes) : {}, resolved: game.wolvesVoteState.resolved }
         : { round: 1, votes: {}, resolved: false },
+      villageVoteState: game.villageVoteState
+        ? { votes: game.villageVoteState.votes ? Object.fromEntries(game.villageVoteState.votes) : {}, resolved: game.villageVoteState.resolved, tiedCandidates: game.villageVoteState.tiedCandidates || [] }
+        : { votes: {}, resolved: false, tiedCandidates: [] },
       protectedPlayerId: game.protectedPlayerId || null,
       witchKillTarget: game.witchKillTarget || null,
       witchSave: game.witchSave || false,
@@ -1379,7 +1560,7 @@ class GameManager extends EventEmitter {
   async sendLogged(channel, payload, context = {}) {
     // GUI_MASTER guard: block/warn sends that carry phase/status information
     if (context.type && !GameManager.ALLOWED_SEND_TYPES.has(context.type)) {
-      logger.warn('GUI_MASTER: blocked channel send (narrative/status)', {
+      logger.warn('GUI_MASTER_SEND_BLOCKED', {
         channelId: channel?.id,
         type: context.type,
         content: this.formatPayloadSummary(payload)
@@ -1387,7 +1568,7 @@ class GameManager extends EventEmitter {
       return null;
     }
     try {
-      logger.info('Channel send', {
+      logger.info('CHANNEL_SEND', {
         channelId: channel?.id,
         channelName: channel?.name,
         context,
@@ -1395,7 +1576,7 @@ class GameManager extends EventEmitter {
       });
       return await channel.send(payload);
     } catch (err) {
-      logger.error('Channel send failed', {
+      logger.error('CHANNEL_SEND_FAILED', {
         channelId: channel?.id,
         channelName: channel?.name,
         error: err.message
@@ -1488,7 +1669,7 @@ class GameManager extends EventEmitter {
 
       await channel.send({ embeds: [embed], files });
     } catch (err) {
-      logger.warn('Failed to send death reveal', { error: err.message });
+      logger.warn('DEATH_REVEAL_SEND_FAILED', { error: err.message });
     }
   }
 
@@ -1521,7 +1702,7 @@ class GameManager extends EventEmitter {
         }
       }
     } catch (err) {
-      logger.warn('Failed to send turn notifications', { error: err.message });
+      logger.warn('TURN_NOTIFICATIONS_SEND_FAILED', { error: err.message });
     }
   }
 
@@ -1531,9 +1712,9 @@ class GameManager extends EventEmitter {
   initAchievements() {
     try {
       this.achievements = new AchievementEngine(this.db.db);
-      logger.success('Achievement engine initialized');
+      logger.info('ACHIEVEMENT_ENGINE_INITIALIZED');
     } catch (err) {
-      logger.error('Failed to initialize achievements', { error: err.message });
+      logger.error('ACHIEVEMENT_ENGINE_INIT_FAILED', { error: err.message });
     }
   }
 
@@ -1556,131 +1737,23 @@ class GameManager extends EventEmitter {
         ? await guild.channels.fetch(game.villageChannelId)
         : await guild.channels.fetch(game.mainChannelId);
 
-      // Day begins — village master GUI panel focus section shows this automatically.
-      // Narrative message suppressed (replaced by persistent GUI panel).
-
-      // Collecter les morts de la nuit pour vérifier le chasseur après
-      const nightDeaths = [];
-      let savedVictimId = null;
-
-      if (game.nightVictim) {
-        savedVictimId = game.witchSave ? game.nightVictim : null;
-        if (game.witchSave) {
-          await this.sendLogged(mainChannel, t('game.witch_saved'), { type: 'witchSave' });
-          this.logAction(game, 'Sorciere sauve la victime des loups');
-          logger.info('Witch life potion active — nightVictim saved', { nightVictim: game.nightVictim });
-        } else if (game.protectedPlayerId && game.protectedPlayerId === game.nightVictim) {
-          // Salvateur a protégé la victime des loups
-          const protectedPlayer = game.players.find(p => p.id === game.nightVictim);
-          if (protectedPlayer) {
-            await this.sendLogged(mainChannel, t('game.salvateur_protected', { name: protectedPlayer.username }), { type: 'salvateurSave' });
-            this.logAction(game, `Salvateur protège ${protectedPlayer.username} de l'attaque des loups`);
-
-            // Track achievement: salvateur save
-            if (this.achievements) {
-              const salvateur = game.players.find(p => p.role === ROLES.SALVATEUR && p.alive);
-              if (salvateur) {
-                try { this.achievements.trackEvent(salvateur.id, 'salvateur_save'); } catch (e) { /* ignore */ }
-              }
-            }
-          }
-        } else {
-          const victimPlayer = game.players.find(p => p.id === game.nightVictim);
-          if (victimPlayer && victimPlayer.alive) {
-            // Vérifier si c'est l'Ancien avec une vie supplémentaire
-            if (victimPlayer.role === ROLES.ANCIEN && victimPlayer.ancienExtraLife) {
-              victimPlayer.ancienExtraLife = false;
-              await this.sendLogged(mainChannel, t('game.ancien_survives', { name: victimPlayer.username }), { type: 'ancienSurvives' });
-              this.logAction(game, `Ancien ${victimPlayer.username} survit à l'attaque (vie supplémentaire)`);
-            } else {
-              if (victimPlayer.role === ROLES.ANCIEN && !victimPlayer.ancienExtraLife) {
-                await this.sendLogged(mainChannel, t('game.ancien_final_death', { name: victimPlayer.username }), { type: 'ancienFinalDeath' });
-              }
-              if (game.voiceChannelId) {
-                this.playAmbience(game.voiceChannelId, 'death.mp3');
-              }
-              await this.sendLogged(mainChannel, t('game.night_victim', { name: victimPlayer.username }), { type: 'nightVictim' });
-              const collateral = this.kill(game.mainChannelId, game.nightVictim, { throwOnDbFailure: true });
-              nightDeaths.push(victimPlayer);
-              this.logAction(game, `Mort la nuit: ${victimPlayer.username}`);
-              await this.announceDeathReveal(mainChannel, victimPlayer, 'wolves');
-              for (const dead of collateral) {
-                await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
-                nightDeaths.push(dead);
-                this.logAction(game, `Mort d'amour: ${dead.username}`);
-                await this.announceDeathReveal(mainChannel, dead, 'love');
-              }
-            }
-          }
-        }
-        game.nightVictim = null;
-      }
-
-      // Mettre à jour la protection du Salvateur pour la nuit suivante
-      game.lastProtectedPlayerId = game.protectedPlayerId;
-      game.protectedPlayerId = null;
-
-      // Résoudre la potion de mort de la sorcière (à l'aube)
-      if (game.witchKillTarget) {
-        // Sécurité: ne pas tuer le joueur qui vient d'être sauvé par la potion de vie
-        if (savedVictimId && game.witchKillTarget === savedVictimId) {
-          logger.warn('witchKillTarget matches saved victim — skipping death potion', { witchKillTarget: game.witchKillTarget, savedVictimId });
-          game.witchKillTarget = null;
-        } else {
-          const witchVictim = game.players.find(p => p.id === game.witchKillTarget);
-          if (witchVictim && witchVictim.alive) {
-            await this.sendLogged(mainChannel, t('game.witch_kill', { name: witchVictim.username }), { type: 'witchKill' });
-            const collateral = this.kill(game.mainChannelId, game.witchKillTarget, { throwOnDbFailure: true });
-            nightDeaths.push(witchVictim);
-            this.logAction(game, `Empoisonné: ${witchVictim.username}`);
-            await this.announceDeathReveal(mainChannel, witchVictim, 'witch');
-            for (const dead of collateral) {
-              await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
-              nightDeaths.push(dead);
-              this.logAction(game, `Mort d'amour: ${dead.username}`);
-              await this.announceDeathReveal(mainChannel, dead, 'love');
-            }
-          }
-          game.witchKillTarget = null;
-        }
-      }
-
-      // Résoudre le kill du Loup Blanc (à l'aube)
-      if (game.whiteWolfKillTarget) {
-        const wwVictim = game.players.find(p => p.id === game.whiteWolfKillTarget);
-        if (wwVictim && wwVictim.alive) {
-          await this.sendLogged(mainChannel, t('game.white_wolf_kill', { name: wwVictim.username }), { type: 'whiteWolfKill' });
-          const collateral = this.kill(game.mainChannelId, game.whiteWolfKillTarget, { throwOnDbFailure: true });
-          nightDeaths.push(wwVictim);
-          this.logAction(game, `Dévoré par le Loup Blanc: ${wwVictim.username}`);
-          await this.announceDeathReveal(mainChannel, wwVictim, 'white_wolf');
-          for (const dead of collateral) {
-            await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
-            nightDeaths.push(dead);
-            this.logAction(game, `Mort d'amour: ${dead.username}`);
-            await this.announceDeathReveal(mainChannel, dead, 'love');
-          }
-        }
-        game.whiteWolfKillTarget = null;
-      }
-
-      game.witchSave = false;
+      // ── Night Resolution Engine ─────────────────────────────────
+      // 1. Resolve all night events into a context (NO messages sent)
+      const ctx = nightEngine.createNightResolutionContext();
+      nightEngine.resolveNightVictim(game, ctx, this);
+      nightEngine.resolveWitchKill(game, ctx, this);
+      nightEngine.resolveWhiteWolfKill(game, ctx, this);
+      nightEngine.clearNightState(game);
+      nightEngine.resolveHunterDeath(game, ctx);
       this.scheduleSave();
 
-      // Appliquer les lockouts de channels pour les joueurs morts
+      // 2. Apply dead-player lockouts BEFORE announce (channel perms)
       await this.applyDeadPlayerLockouts(guild);
 
-      // Vérifier si un chasseur est mort cette nuit — il doit tirer (sauf si pouvoirs perdus)
-      for (const dead of nightDeaths) {
-        if (dead.role === ROLES.HUNTER && !game.villageRolesPowerless) {
-          game._hunterMustShoot = dead.id;
-          await this.sendLogged(mainChannel, t('game.hunter_death', { name: dead.username }), { type: 'hunterDeath' });
-          this.startHunterTimeout(guild, game, dead.id);
-          break;
-        }
-      }
+      // 3. Announce ALL night results in a single narrative block
+      await nightEngine.announceNightResults(mainChannel, ctx, game, this, guild);
 
-      // Vérifier victoire avant d'avancer les sous-phases du jour
+      // ── Post-announce: victory check & day sub-phase ────────────
       const victoryResult = this.checkWinner(game);
       if (victoryResult) {
         await this.announceVictoryIfAny(guild, game);
@@ -1696,9 +1769,11 @@ class GameManager extends EventEmitter {
           await this.announcePhase(guild, game, t('phase.captain_vote_announce'));
           this.startCaptainVoteTimeout(guild, game);
         } else {
-          this._setSubPhase(game, PHASES.DELIBERATION, { allowOutsideAtomic: true });
-          await this.announcePhase(guild, game, t('phase.deliberation_announce'));
-          this.startDayTimeout(guild, game, 'deliberation');
+          game.villageVoteState = require('./villageVoteEngine').createVillageVoteState();
+          game.dayVoteStartedAt = Date.now();
+          this._setSubPhase(game, PHASES.VOTE, { allowOutsideAtomic: true });
+          await this.announcePhase(guild, game, t('phase.vote_announce'));
+          this.startDayTimeout(guild, game);
         }
       }
 
@@ -1721,92 +1796,99 @@ class GameManager extends EventEmitter {
     try {
       // Re-check after acquiring lock
       if (game.phase !== PHASES.DAY) return;
-      // IMPORTANT: Snapshot votes BEFORE nextPhase clears them
-      const voteSnapshot = Array.from(game.votes.entries()).sort((a, b) => b[1] - a[1]);
 
       const mainChannel = game.villageChannelId
         ? await guild.channels.fetch(game.villageChannelId)
         : await guild.channels.fetch(game.mainChannelId);
 
-      // --- Résolution des votes AVANT de changer de phase ---
-      if (voteSnapshot.length > 0) {
-        const [votedId, voteCount] = voteSnapshot[0];
-        const tied = voteSnapshot.filter(([, c]) => c === voteCount);
+      // --- Resolve village vote using villageVoteEngine ---
+      const voteEngine = require('./villageVoteEngine');
+      const voteState = game.villageVoteState;
+      const resolution = voteEngine.resolveVillageVote(voteState);
 
-        if (tied.length > 1) {
-          const tiedNames = tied.map(([id]) => {
-            const p = game.players.find(pl => pl.id === id);
-            return p ? `**${p.username}**` : id;
-          }).join(', ');
+      if (resolution.action === 'tie') {
+        // Tie detected — enter captain tiebreak or resolve without kill
+        const tiedNames = resolution.tiedCandidates.map(id => {
+          const p = game.players.find(pl => pl.id === id);
+          return p ? `**${p.username}**` : id;
+        }).join(', ');
 
-          if (game.captainId) {
-            // Égalité + capitaine : on reste en JOUR, le capitaine départage
-            game._captainTiebreak = tied.map(([id]) => id);
-            game.votes.clear();
-            if (game.voteVoters) game.voteVoters.clear();
-            await this.sendLogged(mainChannel, t('game.vote_tie_captain', { names: tiedNames, count: voteCount, captainId: game.captainId }), { type: 'voteTie' });
-            this.logAction(game, `Égalité au vote — capitaine doit départager: ${tiedNames}`);
-            this.startCaptainTiebreakTimeout(guild, game);
-            return; // On NE passe PAS à la nuit
-          } else {
-            await this.sendLogged(mainChannel, t('game.vote_tie_no_captain', { names: tiedNames, count: voteCount }), { type: 'voteTie' });
-            this.logAction(game, `Égalité au vote, pas d'élimination`);
-          }
+        if (game.captainId) {
+          // Captain tiebreak: store tied candidates in villageVoteState, start timer
+          // Note: resolveVillageVote already set voteState.tiedCandidates and reset resolved=false
+          await this.sendLogged(mainChannel, t('game.vote_tie_captain', {
+            names: tiedNames,
+            count: resolution.topCount,
+            captainId: game.captainId
+          }), { type: 'voteTie' });
+          this.logAction(game, `Égalité au vote — capitaine doit départager: ${tiedNames}`);
+          await this._refreshAllGui(game.mainChannelId);
+          this.startCaptainTiebreakTimeout(guild, game);
+          this.syncGameToDb(game.mainChannelId, { throwOnError: true });
+          return; // Stay in DAY, wait for captain tiebreak
         } else {
-          const votedPlayer = game.players.find(p => p.id === votedId);
-          if (votedPlayer && votedPlayer.alive) {
-            // Idiot du Village : révélé mais pas tué, perd le droit de vote
-            if (votedPlayer.role === ROLES.IDIOT && !votedPlayer.idiotRevealed) {
-              votedPlayer.idiotRevealed = true;
-              await this.sendLogged(mainChannel, t('game.idiot_revealed', { name: votedPlayer.username }), { type: 'idiotRevealed' });
-              this.logAction(game, `Idiot du Village ${votedPlayer.username} révélé mais survit`);
-            } else {
-              // Ancien tué par le village : perte des pouvoirs spéciaux
-              if (votedPlayer.role === ROLES.ANCIEN) {
-                game.villageRolesPowerless = true;
-                await this.sendLogged(mainChannel, t('game.ancien_power_drain', { name: votedPlayer.username }), { type: 'ancienPowerDrain' });
-                this.logAction(game, `Ancien ${votedPlayer.username} tué par le village — pouvoirs perdus`);
-              }
+          await this.sendLogged(mainChannel, t('game.vote_tie_no_captain', {
+            names: tiedNames,
+            count: resolution.topCount
+          }), { type: 'voteTie' });
+          this.logAction(game, `Égalité au vote, pas d'élimination`);
+        }
+      } else if (resolution.action === 'eliminate') {
+        const votedPlayer = game.players.find(p => p.id === resolution.targetId);
+        if (votedPlayer && votedPlayer.alive) {
+          // Check Idiot du Village
+          const idiotEffect = voteEngine.resolveIdiotEffect(votedPlayer);
+          if (idiotEffect) {
+            votedPlayer.idiotRevealed = true;
+            await this.sendLogged(mainChannel, t('game.idiot_revealed', { name: votedPlayer.username }), { type: 'idiotRevealed' });
+            this.logAction(game, `Idiot du Village ${votedPlayer.username} révélé mais survit`);
+          } else {
+            // Check Ancien killed by village
+            if (votedPlayer.role === ROLES.ANCIEN) {
+              game.villageRolesPowerless = true;
+              await this.sendLogged(mainChannel, t('game.ancien_power_drain', { name: votedPlayer.username }), { type: 'ancienPowerDrain' });
+              this.logAction(game, `Ancien ${votedPlayer.username} tué par le village — pouvoirs perdus`);
+            }
 
-              if (game.voiceChannelId) {
-                this.playAmbience(game.voiceChannelId, 'death.mp3');
-              }
-              await this.sendLogged(mainChannel, t('game.vote_result', { name: votedPlayer.username, count: voteCount }), { type: 'dayVoteResult' });
-              const collateral = this.kill(game.mainChannelId, votedId, { throwOnDbFailure: true });
-              this.logAction(game, `Vote du village: ${votedPlayer.username} elimine`);
-              await this.announceDeathReveal(mainChannel, votedPlayer, 'village');
+            if (game.voiceChannelId) {
+              this.playAmbience(game.voiceChannelId, 'death.mp3');
+            }
+            await this.sendLogged(mainChannel, t('game.vote_result', { name: votedPlayer.username, count: resolution.topCount }), { type: 'dayVoteResult' });
+            const collateral = this.kill(game.mainChannelId, resolution.targetId, { throwOnDbFailure: true });
+            this.logAction(game, `Vote du village: ${votedPlayer.username} elimine`);
+            await this.announceDeathReveal(mainChannel, votedPlayer, 'village');
 
-              for (const dead of collateral) {
-                await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
-                this.logAction(game, `Mort d'amour: ${dead.username}`);
-                await this.announceDeathReveal(mainChannel, dead, 'love');
-              }
+            for (const dead of collateral) {
+              await this.sendLogged(mainChannel, t('game.lover_death', { name: dead.username }), { type: 'loverDeath' });
+              this.logAction(game, `Mort d'amour: ${dead.username}`);
+              await this.announceDeathReveal(mainChannel, dead, 'love');
+            }
 
-              // Vérifier chasseur (sauf si pouvoirs perdus)
-              if (votedPlayer.role === ROLES.HUNTER && !game.villageRolesPowerless) {
-                game._hunterMustShoot = votedPlayer.id;
-                await this.sendLogged(mainChannel, t('game.hunter_death', { name: votedPlayer.username }), { type: 'hunterDeath' });
-                this.startHunterTimeout(guild, game, votedPlayer.id);
-              }
+            // Check Hunter
+            if (votedPlayer.role === ROLES.HUNTER && !game.villageRolesPowerless) {
+              game._hunterMustShoot = votedPlayer.id;
+              await this.sendLogged(mainChannel, t('game.hunter_death', { name: votedPlayer.username }), { type: 'hunterDeath' });
+              this.startHunterTimeout(guild, game, votedPlayer.id);
             }
           }
         }
       }
+      // action === 'no_vote' or 'already_resolved' → no elimination
 
       // Emit voteCompleted so GUI panels refresh after village vote resolution
-      this._emitGameEvent(game, 'voteCompleted', { voteSnapshot });
+      this._emitGameEvent(game, 'voteCompleted', { resolution });
 
-      // Appliquer les lockouts de channels pour les joueurs morts
+      // Apply dead player lockouts
       await this.applyDeadPlayerLockouts(guild);
 
-      // Vérifier victoire après les éliminations du jour
+      // Check victory after day eliminations
       const victoryCheck = this.checkWinner(game);
       if (victoryCheck) {
         await this.announceVictoryIfAny(guild, game);
         return;
       }
 
-      // --- Détection de cycles sans élimination (convergence anti-AFK) ---
+      // --- No-kill cycle detection (anti-AFK convergence) ---
       const aliveNow = game.players.filter(p => p.alive).length;
       if (game._aliveAtNightStart !== undefined && aliveNow === game._aliveAtNightStart) {
         game._noKillCycles = (game._noKillCycles || 0) + 1;
@@ -1821,9 +1903,9 @@ class GameManager extends EventEmitter {
         return;
       }
 
-      // Maintenant on passe à la nuit
+      // Transition to night
       game._captainTiebreak = null;
-      game.littleGirlListenedThisNight = false; // Reset per-night Little Girl flag
+      game.littleGirlListenedThisNight = false;
       const newPhase = await this.nextPhase(guild, game, { skipAtomic: true });
       if (newPhase !== PHASES.NIGHT) return;
 
@@ -1831,10 +1913,6 @@ class GameManager extends EventEmitter {
         this.playAmbience(game.voiceChannelId, 'night_ambience.mp3');
       }
 
-      // Night falls — village master GUI panel focus section shows this automatically.
-      // Narrative message suppressed (replaced by persistent GUI panel).
-
-      // Lancer le timeout AFK ou auto-skip si sous-phase d'un fake player
       shouldAutoSkip = this._shouldAutoSkipSubPhase(game);
       if (!shouldAutoSkip) {
         this.startNightAfkTimeout(guild, game);
@@ -1851,7 +1929,7 @@ class GameManager extends EventEmitter {
 
     // Auto-skip after mutex is released (avoids deadlock with advanceSubPhase→runAtomic)
     if (shouldAutoSkip) {
-      logger.info('Auto-skipping night subphase after transitionToNight (fake player)', { subPhase: game.subPhase, channelId: game.mainChannelId });
+      logger.info('NIGHT_SUBPHASE_AUTO_SKIP', { subPhase: game.subPhase, channelId: game.mainChannelId });
       await this.advanceSubPhase(guild, game);
     }
   }
@@ -1990,7 +2068,7 @@ class GameManager extends EventEmitter {
         eloChanges = this.achievements.calculateElo(game, victor);
         newAchievements = this.achievements.processGameEnd(game, victor);
       } catch (e) {
-        logger.error('Achievement/ELO processing error', { error: e.message });
+        logger.error('ACHIEVEMENT_ELO_PROCESSING_ERROR', { error: e.message });
       }
     }
 
@@ -2105,7 +2183,7 @@ class GameManager extends EventEmitter {
 
       await this.sendLogged(mainChannel, { embeds: [embed], components: [row] }, { type: 'summary' });
     } catch (err) {
-      logger.error('Failed to send game summary', err);
+      logger.error('GAME_SUMMARY_SEND_FAILED', err);
     }
   }
 
@@ -2236,18 +2314,17 @@ class GameManager extends EventEmitter {
             result.announce = t('phase.captain_vote_announce');
             result.timer = 'captain';
           } else {
-            this._setSubPhase(state, PHASES.DELIBERATION, { allowOutsideAtomic: true });
-            result.announce = t('phase.deliberation_announce');
-            result.timer = 'day_deliberation';
+            state.villageVoteState = require('./villageVoteEngine').createVillageVoteState();
+            state.dayVoteStartedAt = Date.now();
+            this._setSubPhase(state, PHASES.VOTE, { allowOutsideAtomic: true });
+            result.announce = t('phase.vote_announce');
+            result.timer = 'day_vote';
           }
           break;
         }
         case PHASES.VOTE_CAPITAINE:
-          this._setSubPhase(state, PHASES.DELIBERATION);
-          result.announce = t('phase.deliberation_announce');
-          result.timer = 'day_deliberation';
-          break;
-        case PHASES.DELIBERATION:
+          state.villageVoteState = require('./villageVoteEngine').createVillageVoteState();
+          state.dayVoteStartedAt = Date.now();
           this._setSubPhase(state, PHASES.VOTE);
           result.announce = t('phase.vote_announce');
           result.timer = 'day_vote';
@@ -2257,7 +2334,7 @@ class GameManager extends EventEmitter {
           // Dead branch safety: advanceSubPhase is never called from VOTE;
           // transitionToNight handles DAY→NIGHT via its own path.
           // Guard: log and no-op to prevent an incoherent state (phase=DAY, subPhase=LOUPS).
-          logger.warn('advanceSubPhase reached VOTE/default — unexpected, no-op', {
+          logger.warn('ADVANCE_SUBPHASE_UNEXPECTED_NOOP', {
             phase: state.phase, subPhase: state.subPhase, channelId: state.mainChannelId
           });
           break;
@@ -2270,10 +2347,8 @@ class GameManager extends EventEmitter {
     if (outcome.notifyRole) this.notifyTurn(guild, game, outcome.notifyRole);
     if (outcome.timer === 'captain') {
       this.startCaptainVoteTimeout(guild, game);
-    } else if (outcome.timer === 'day_deliberation') {
-      this.startDayTimeout(guild, game, 'deliberation');
     } else if (outcome.timer === 'day_vote') {
-      this.startDayTimeout(guild, game, 'vote');
+      this.startDayTimeout(guild, game);
     }
 
     // Centralized night phase chaining:
@@ -2284,7 +2359,7 @@ class GameManager extends EventEmitter {
     } else if (game.phase === PHASES.NIGHT && [PHASES.VOLEUR, PHASES.CUPIDON, PHASES.LOUPS, PHASES.LOUP_BLANC, PHASES.SORCIERE, PHASES.VOYANTE, PHASES.SALVATEUR].includes(game.subPhase)) {
       if (this._shouldAutoSkipSubPhase(game)) {
         // Role only held by fake players → auto-advance
-        logger.info('Auto-skipping subphase (fake player)', { subPhase: game.subPhase, channelId: game.mainChannelId });
+        logger.info('SUBPHASE_AUTO_SKIP', { subPhase: game.subPhase, channelId: game.mainChannelId });
         await this.advanceSubPhase(guild, game);
       } else {
         this.startNightAfkTimeout(guild, game);
@@ -2358,7 +2433,7 @@ class GameManager extends EventEmitter {
         await this.advanceSubPhase(guild, game);
         // REVEIL→Day chain + AFK restart are now handled inside advanceSubPhase
       } catch (e) {
-        logger.error('Night AFK timeout error', { error: e.message, stack: e.stack });
+        logger.error('NIGHT_AFK_TIMEOUT_ERROR', { error: e.message, stack: e.stack });
       }
     });
   }
@@ -2403,44 +2478,31 @@ class GameManager extends EventEmitter {
           await this.transitionToNight(guild, game);
         }
       } catch (e) {
-        logger.error('Hunter timeout error', { error: e.message });
+        logger.error('HUNTER_TIMEOUT_ERROR', { error: e.message });
       }
     });
   }
 
   // --- Day timeout ---
-  // Auto-ends deliberation or vote if players are AFK during the day
-  startDayTimeout(guild, game, type = 'deliberation') {
+  // Auto-ends vote if players are AFK during the day
+  startDayTimeout(guild, game) {
     const ctx = this._atomicContexts.get(game.mainChannelId);
     if (ctx && ctx.active) {
-      this._queuePostCommit(game.mainChannelId, () => this.startDayTimeout(guild, game, type));
+      this._queuePostCommit(game.mainChannelId, () => this.startDayTimeout(guild, game));
       return;
     }
     this.clearDayTimeout(game);
-    const delay = type === 'vote' ? TIMEOUTS.DAY_VOTE : TIMEOUTS.DAY_DELIBERATION;
-    const label = type === 'vote' ? 'vote' : 'deliberation';
+    const delay = TIMEOUTS.DAY_VOTE;
 
-    this._scheduleGameTimer(game, `day-${type}`, delay, async () => {
+    this._scheduleGameTimer(game, 'day-vote', delay, async () => {
       try {
         if (game.phase !== PHASES.DAY) return;
-
-        if (type === 'deliberation') {
-          // End of deliberation → move to vote phase
-          // Narrative suppressed — village GUI narration panel shows the transition
-          await this.runAtomic(game.mainChannelId, (state) => {
-            this.logAction(state, 'Timeout: fin de la délibération');
-            this._setSubPhase(state, PHASES.VOTE);
-          });
-          await this.announcePhase(guild, game, t('phase.vote_announce'));
-          this.startDayTimeout(guild, game, 'vote');
-        } else {
-          // End of vote → transition to night (even with 0 votes)
-          // Narrative suppressed — village GUI narration panel shows the transition
-          this.logAction(game, 'Timeout: fin du vote');
-          await this.transitionToNight(guild, game);
-        }
+        // End of vote → transition to night (even with 0 votes)
+        this.logAction(game, 'Timeout: fin du vote');
+        logger.info('DAY_VOTE_RESOLVED', { channelId: game.mainChannelId, reason: 'timeout', durationMs: Date.now() - (game.dayVoteStartedAt || 0) });
+        await this.transitionToNight(guild, game);
       } catch (e) {
-        logger.error('Day timeout error', { error: e.message, type: label });
+        logger.error('DAY_TIMEOUT_ERROR', { error: e.message });
       }
     });
   }
@@ -2493,7 +2555,7 @@ class GameManager extends EventEmitter {
 
     // Empêcher le double-start
     if (game.startedAt) {
-      logger.warn('Game already started, ignoring duplicate start', { channelId });
+      logger.warn('GAME_DUPLICATE_START_IGNORED', { channelId });
       return null;
     }
 
@@ -2664,6 +2726,23 @@ class GameManager extends EventEmitter {
     // in start(), and its setImmediate fires as soon as we yield with our first await.
     this._guiPostingInProgress.add(game.mainChannelId);
 
+    logger.info('POST_START_GAME_BEGIN', {
+      channelId: game.mainChannelId,
+      guildId: game.guildId,
+      playerCount: game.players.length,
+      subPhase: game.subPhase,
+      roleChannels: {
+        village: !!game.villageChannelId,
+        wolves: !!game.wolvesChannelId,
+        seer: !!game.seerChannelId,
+        witch: !!game.witchChannelId,
+        cupid: !!game.cupidChannelId,
+        salvateur: !!game.salvateurChannelId,
+        whiteWolf: !!game.whiteWolfChannelId,
+        thief: !!game.thiefChannelId,
+      },
+    });
+
     const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
     const pathMod = require('path');
     const { getRoleDescription, getRoleImageName } = require('../utils/roleHelpers');
@@ -2704,10 +2783,10 @@ class GameManager extends EventEmitter {
           embed.setThumbnail(`attachment://${imageName}`);
         }
 
-        logger.info('DM send', { userId: user.id, username: user.username, content: '[role embed]' });
+        logger.info('ROLE_DM_SENT', { userId: user.id, username: user.username, content: '[role embed]' });
         await user.send({ embeds: [embed], files });
       } catch (err) {
-        logger.warn(`Erreur envoi DM rôle à ${player.id}:`, { error: err.message });
+        logger.warn('ROLE_DM_SEND_FAILED', { error: err.message });
       }
     }
 
@@ -2715,7 +2794,24 @@ class GameManager extends EventEmitter {
     await updateProgress(t('progress.channels'));
     try {
       await this._postRolePanels(guild, game);
-    } catch (e) { logger.warn('Failed to post role panels', { error: e.message }); }
+    } catch (e) { logger.warn('ROLE_PANELS_POST_FAILED_INIT', { error: e.message }); }
+
+    // 4b. Scheduled recovery: if role panels failed, retry once after a short delay
+    if (!this.rolePanels.has(game.mainChannelId)) {
+      logger.warn('ROLE_PANELS_DEFERRED_RETRY_SCHEDULED', {
+        channelId: game.mainChannelId,
+      });
+      setTimeout(async () => {
+        try {
+          if (!this.rolePanels.has(game.mainChannelId) && this.games.has(game.mainChannelId)) {
+            logger.info('ROLE_PANELS_DEFERRED_RECOVERY', { channelId: game.mainChannelId });
+            await this._postRolePanels(guild, game);
+          }
+        } catch (e) {
+          logger.warn('ROLE_PANELS_DEFERRED_RECOVERY_FAILED', { error: e.message });
+        }
+      }, 3000);
+    }
 
     // 5. Village master GUI panel replaces all narrative text.
     //    (Legacy nightStart message suppressed — GUI_MASTER architecture)
@@ -2733,7 +2829,7 @@ class GameManager extends EventEmitter {
     // 6. Lancer le timeout AFK si on est en sous-phase qui attend une action
     if ([PHASES.VOLEUR, PHASES.CUPIDON, PHASES.LOUPS, PHASES.SALVATEUR].includes(game.subPhase)) {
       if (this._shouldAutoSkipSubPhase(game)) {
-        logger.info('Auto-skipping initial subphase (fake player)', { subPhase: game.subPhase, channelId: game.mainChannelId });
+        logger.info('INITIAL_SUBPHASE_AUTO_SKIP', { subPhase: game.subPhase, channelId: game.mainChannelId });
         await this.advanceSubPhase(guild, game);
       } else {
         this.startNightAfkTimeout(guild, game);
@@ -2748,7 +2844,7 @@ class GameManager extends EventEmitter {
     try {
       // DEFENSIVE: categoryId is required — refuse to create channels without it
       if (!categoryId) {
-        logger.error('createInitialChannels called without categoryId — guild not configured', { mainChannelId });
+        logger.error('CHANNELS_NO_CATEGORY_ID', { mainChannelId });
         throw new Error('Guild not configured: missing category_id');
       }
 
@@ -2756,16 +2852,16 @@ class GameManager extends EventEmitter {
       try {
         const cat = await guild.channels.fetch(categoryId);
         if (!cat || cat.type !== 4) {
-          logger.error('Category invalid or not found', { categoryId });
+          logger.error('CATEGORY_INVALID', { categoryId });
           throw new Error('Guild not configured: category_id is invalid');
         }
       } catch (err) {
         if (err.message.startsWith('Guild not configured')) throw err;
-        logger.error('Category not found on Discord', { categoryId });
+        logger.error('CATEGORY_NOT_FOUND', { categoryId });
         throw new Error('Guild not configured: category not found');
       }
 
-      logger.info("Creating initial game channels...", { mainChannelId, categoryId });
+      logger.info('CHANNELS_CREATING', { mainChannelId, categoryId });
 
       // Bot permission overwrite — ensures the bot retains ViewChannel + ManageChannels
       // on hidden channels so that cleanup/deletion always works.
@@ -2776,17 +2872,17 @@ class GameManager extends EventEmitter {
       ];
       
       // Créer le channel village (visible de tous) pour les messages système
-      logger.debug("Creating village channel...");
+      logger.debug('CHANNEL_CREATING_VILLAGE');
       const villageChannel = await guild.channels.create({
         name: t('channel.village'),
         type: 0, // GUILD_TEXT
         parent: categoryId || undefined
       });
       game.villageChannelId = villageChannel.id;
-      logger.success("✅ Village channel created", { id: villageChannel.id });
+      logger.info('CHANNEL_CREATED_VILLAGE', { id: villageChannel.id });
 
       // Créer le channel des loups (accessible à tous pour l'instant)
-      logger.debug("Creating wolves channel...");
+      logger.debug('CHANNEL_CREATING_WOLVES');
       const wolvesChannel = await guild.channels.create({
         name: t('channel.wolves'),
         type: 0, // GUILD_TEXT
@@ -2794,10 +2890,10 @@ class GameManager extends EventEmitter {
         permissionOverwrites: hiddenPerms
       });
       game.wolvesChannelId = wolvesChannel.id;
-      logger.success("✅ Wolves channel created", { id: wolvesChannel.id });
+      logger.info('CHANNEL_CREATED_WOLVES', { id: wolvesChannel.id });
 
       // Créer le channel de la voyante
-      logger.debug("Creating seer channel...");
+      logger.debug('CHANNEL_CREATING_SEER');
       const seerChannel = await guild.channels.create({
         name: t('channel.seer'),
         type: 0, // GUILD_TEXT
@@ -2805,10 +2901,10 @@ class GameManager extends EventEmitter {
         permissionOverwrites: hiddenPerms
       });
       game.seerChannelId = seerChannel.id;
-      logger.success("✅ Seer channel created", { id: seerChannel.id });
+      logger.info('CHANNEL_CREATED_SEER', { id: seerChannel.id });
 
       // Créer le channel de la sorcière
-      logger.debug("Creating witch channel...");
+      logger.debug('CHANNEL_CREATING_WITCH');
       const witchChannel = await guild.channels.create({
         name: t('channel.witch'),
         type: 0, // GUILD_TEXT
@@ -2816,10 +2912,10 @@ class GameManager extends EventEmitter {
         permissionOverwrites: hiddenPerms
       });
       game.witchChannelId = witchChannel.id;
-      logger.success("✅ Witch channel created", { id: witchChannel.id });
+      logger.info('CHANNEL_CREATED_WITCH', { id: witchChannel.id });
 
       // Créer le channel de Cupidon
-      logger.debug("Creating cupid channel...");
+      logger.debug('CHANNEL_CREATING_CUPID');
       const cupidChannel = await guild.channels.create({
         name: t('channel.cupid'),
         type: 0, // GUILD_TEXT
@@ -2827,10 +2923,10 @@ class GameManager extends EventEmitter {
         permissionOverwrites: hiddenPerms
       });
       game.cupidChannelId = cupidChannel.id;
-      logger.success("✅ Cupid channel created", { id: cupidChannel.id });
+      logger.info('CHANNEL_CREATED_CUPID', { id: cupidChannel.id });
 
       // Créer le channel du Salvateur
-      logger.debug("Creating salvateur channel...");
+      logger.debug('CHANNEL_CREATING_SALVATEUR');
       const salvateurChannel = await guild.channels.create({
         name: t('channel.salvateur'),
         type: 0, // GUILD_TEXT
@@ -2838,10 +2934,10 @@ class GameManager extends EventEmitter {
         permissionOverwrites: hiddenPerms
       });
       game.salvateurChannelId = salvateurChannel.id;
-      logger.success("✅ Salvateur channel created", { id: salvateurChannel.id });
+      logger.info('CHANNEL_CREATED_SALVATEUR', { id: salvateurChannel.id });
 
       // Créer le channel du Loup Blanc
-      logger.debug("Creating white wolf channel...");
+      logger.debug('CHANNEL_CREATING_WHITE_WOLF');
       const whiteWolfChannel = await guild.channels.create({
         name: t('channel.white_wolf'),
         type: 0, // GUILD_TEXT
@@ -2849,10 +2945,10 @@ class GameManager extends EventEmitter {
         permissionOverwrites: hiddenPerms
       });
       game.whiteWolfChannelId = whiteWolfChannel.id;
-      logger.success("✅ White Wolf channel created", { id: whiteWolfChannel.id });
+      logger.info('CHANNEL_CREATED_WHITE_WOLF', { id: whiteWolfChannel.id });
 
       // Créer le channel du Voleur
-      logger.debug("Creating thief channel...");
+      logger.debug('CHANNEL_CREATING_THIEF');
       const thiefChannel = await guild.channels.create({
         name: t('channel.thief'),
         type: 0, // GUILD_TEXT
@@ -2860,10 +2956,10 @@ class GameManager extends EventEmitter {
         permissionOverwrites: hiddenPerms
       });
       game.thiefChannelId = thiefChannel.id;
-      logger.success("✅ Thief channel created", { id: thiefChannel.id });
+      logger.info('CHANNEL_CREATED_THIEF', { id: thiefChannel.id });
 
       // Créer le channel spectateurs (pour les morts)
-      logger.debug("Creating spectator channel...");
+      logger.debug('CHANNEL_CREATING_SPECTATOR');
       const spectatorChannel = await guild.channels.create({
         name: t('channel.spectator'),
         type: 0, // GUILD_TEXT
@@ -2871,17 +2967,17 @@ class GameManager extends EventEmitter {
         permissionOverwrites: hiddenPerms
       });
       game.spectatorChannelId = spectatorChannel.id;
-      logger.success("✅ Spectator channel created", { id: spectatorChannel.id });
+      logger.info('CHANNEL_CREATED_SPECTATOR', { id: spectatorChannel.id });
 
       // Créer le channel vocal
-      logger.debug("Creating voice channel...");
+      logger.debug('CHANNEL_CREATING_VOICE');
       const voiceChannel = await guild.channels.create({
         name: t('channel.voice'),
         type: 2, // GUILD_VOICE
         parent: categoryId || undefined
       });
       game.voiceChannelId = voiceChannel.id;
-      logger.success("✅ Voice channel created", { id: voiceChannel.id });
+      logger.info('CHANNEL_CREATED_VOICE', { id: voiceChannel.id });
 
       // Synchroniser les IDs de channels avec la DB
       this.db.updateGame(mainChannelId, {
@@ -2891,19 +2987,20 @@ class GameManager extends EventEmitter {
         witchChannelId: game.witchChannelId,
         cupidChannelId: game.cupidChannelId,
         salvateurChannelId: game.salvateurChannelId,
+        whiteWolfChannelId: game.whiteWolfChannelId,
         thiefChannelId: game.thiefChannelId,
         spectatorChannelId: game.spectatorChannelId,
         voiceChannelId: game.voiceChannelId
       });
 
       timer.end();
-      logger.success("✅ All initial channels created successfully", { 
+      logger.info('CHANNELS_ALL_CREATED', { 
         channelCount: 10,
         mainChannelId 
       });
       return true;
     } catch (error) {
-      logger.error("❌ Failed to create initial channels", error);
+      logger.error('CHANNELS_CREATION_FAILED', error);
       return false;
     }
   }
@@ -2911,7 +3008,7 @@ class GameManager extends EventEmitter {
   async updateChannelPermissions(guild, game) {
     const timer = logger.startTimer('updateChannelPermissions');
     try {
-      logger.info("Updating channel permissions...");
+      logger.info('PERMISSIONS_UPDATING');
 
       // Mettre à jour le channel des loups
       const wolvesChannel = await guild.channels.fetch(game.wolvesChannelId);
@@ -2941,12 +3038,12 @@ class GameManager extends EventEmitter {
             allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
           });
         } catch (err) {
-          logger.warn(`Ignored non-guild member for wolves permissions`, { playerId: p.id });
+          logger.warn('PERMISSIONS_NON_MEMBER_WOLVES', { playerId: p.id });
         }
       }
 
       await wolvesChannel.permissionOverwrites.set(wolvesPerms);
-      logger.success("✅ Wolves channel permissions updated");
+      logger.info('PERMISSIONS_UPDATED_WOLVES');
 
       // Mettre à jour le channel du Loup Blanc
       if (game.whiteWolfChannelId) {
@@ -2965,12 +3062,12 @@ class GameManager extends EventEmitter {
                 allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
               });
             } catch (err) {
-              logger.warn(`Ignored non-guild member for white wolf permissions`, { playerId: whiteWolfPlayer.id });
+              logger.warn('PERMISSIONS_NON_MEMBER_WHITE_WOLF', { playerId: whiteWolfPlayer.id });
             }
           }
           await whiteWolfChannel.permissionOverwrites.set(whiteWolfPerms);
-          logger.success("✅ White Wolf channel permissions updated");
-        } catch (e) { logger.warn('Failed to update white wolf channel permissions', { error: e.message }); }
+          logger.info('PERMISSIONS_UPDATED_WHITE_WOLF');
+        } catch (e) { logger.warn('PERMISSIONS_UPDATE_FAILED_WHITE_WOLF', { error: e.message }); }
       }
 
       // Mettre à jour le channel du Voleur
@@ -2990,12 +3087,12 @@ class GameManager extends EventEmitter {
                 allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
               });
             } catch (err) {
-              logger.warn(`Ignored non-guild member for thief permissions`, { playerId: thiefPlayer.id });
+              logger.warn('PERMISSIONS_NON_MEMBER_THIEF', { playerId: thiefPlayer.id });
             }
           }
           await thiefChannel.permissionOverwrites.set(thiefPerms);
-          logger.success("✅ Thief channel permissions updated");
-        } catch (e) { logger.warn('Failed to update thief channel permissions', { error: e.message }); }
+          logger.info('PERMISSIONS_UPDATED_THIEF');
+        } catch (e) { logger.warn('PERMISSIONS_UPDATE_FAILED_THIEF', { error: e.message }); }
       }
 
       // Mettre à jour le channel de la voyante
@@ -3013,11 +3110,11 @@ class GameManager extends EventEmitter {
             allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
           });
         } catch (err) {
-          logger.warn(`Ignored non-guild member for seer permissions`, { playerId: seerPlayer.id });
+          logger.warn('PERMISSIONS_NON_MEMBER_SEER', { playerId: seerPlayer.id });
         }
       }
       await seerChannel.permissionOverwrites.set(seerPerms);
-      logger.success("✅ Seer channel permissions updated");
+      logger.info('PERMISSIONS_UPDATED_SEER');
 
       // Mettre à jour le channel de la sorcière
       const witchChannel = await guild.channels.fetch(game.witchChannelId);
@@ -3031,11 +3128,11 @@ class GameManager extends EventEmitter {
             allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
           });
         } catch (err) {
-          logger.warn(`Ignored non-guild member for witch permissions`, { playerId: witchPlayer.id });
+          logger.warn('PERMISSIONS_NON_MEMBER_WITCH', { playerId: witchPlayer.id });
         }
       }
       await witchChannel.permissionOverwrites.set(witchPerms);
-      logger.success("✅ Witch channel permissions updated");
+      logger.info('PERMISSIONS_UPDATED_WITCH');
 
       // Mettre à jour le channel de Cupidon
       if (game.cupidChannelId) {
@@ -3050,11 +3147,11 @@ class GameManager extends EventEmitter {
               allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
             });
           } catch (err) {
-            logger.warn(`Ignored non-guild member for cupid permissions`, { playerId: cupidPlayer.id });
+            logger.warn('PERMISSIONS_NON_MEMBER_CUPID', { playerId: cupidPlayer.id });
           }
         }
         await cupidChannel.permissionOverwrites.set(cupidPerms);
-        logger.success("✅ Cupid channel permissions updated");
+        logger.info('PERMISSIONS_UPDATED_CUPID');
       }
 
       // Mettre à jour le channel du Salvateur
@@ -3070,17 +3167,17 @@ class GameManager extends EventEmitter {
               allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
             });
           } catch (err) {
-            logger.warn(`Ignored non-guild member for salvateur permissions`, { playerId: salvateurPlayer.id });
+            logger.warn('PERMISSIONS_NON_MEMBER_SALVATEUR', { playerId: salvateurPlayer.id });
           }
         }
         await salvateurChannel.permissionOverwrites.set(salvateurPerms);
-        logger.success("✅ Salvateur channel permissions updated");
+        logger.info('PERMISSIONS_UPDATED_SALVATEUR');
       }
 
       timer.end();
       return true;
     } catch (error) {
-      logger.error("❌ Failed to update channel permissions", error);
+      logger.error('PERMISSIONS_UPDATE_FAILED', error);
       return false;
     }
   }
@@ -3105,7 +3202,7 @@ class GameManager extends EventEmitter {
       { id: game.voiceChannelId, name: 'voice' }
     ];
 
-    logger.info('Cleaning up game channels...', { channelCount: ids.filter(i => i.id).length });
+    logger.info('CHANNELS_CLEANUP_START', { channelCount: ids.filter(i => i.id).length });
     let deleted = 0;
 
     for (const entry of ids) {
@@ -3114,14 +3211,14 @@ class GameManager extends EventEmitter {
         // Force-fetch from API to avoid stale cache
         const ch = await guild.channels.fetch(entry.id, { force: true }).catch(() => null);
         if (!ch) {
-          logger.warn(`Channel not found, skipping`, { name: entry.name, id: entry.id });
+          logger.warn('CHANNEL_CLEANUP_NOT_FOUND', { name: entry.name, id: entry.id });
           continue;
         }
 
         // Try to unban/mute safety: if voice, attempt to unmute members before deletion
         try {
           if (ch.type === 2) {
-            logger.debug('Unmuting voice channel members before deletion', { channelId: ch.id });
+            logger.debug('VOICE_UNMUTING_BEFORE_DELETE', { channelId: ch.id });
             for (const member of ch.members.values()) {
               try { await member.voice.setMute(false); } catch (e) { /* ignore individual failures */ }
             }
@@ -3138,15 +3235,15 @@ class GameManager extends EventEmitter {
 
         await ch.delete({ reason: 'Cleanup partie Loup-Garou' });
         deleted++;
-        logger.success(`🗑️ Channel deleted`, { name: entry.name, id: entry.id });
+        logger.info('CHANNEL_DELETED', { name: entry.name, id: entry.id });
       } catch (err) {
-        logger.error(`Failed to delete channel ${entry.name} (${entry.id})`, err);
+        logger.error('CHANNEL_DELETE_FAILED', { name: entry.name, id: entry.id, error: err.message });
       }
     }
 
     this.saveState();
     timer.end();
-    logger.success('Channel cleanup completed', { deleted });
+    logger.info('CHANNELS_CLEANUP_COMPLETE', { deleted });
 
     return deleted;
   }
@@ -3159,7 +3256,7 @@ class GameManager extends EventEmitter {
    */
   async cleanupOrphanChannels(guild, categoryId) {
     const timer = logger.startTimer('cleanupOrphanChannels');
-    logger.info('Searching for orphan game channels...', { categoryId });
+    logger.info('ORPHAN_CLEANUP_START', { categoryId });
 
     // Match both with and without emojis (Discord sometimes normalizes, sometimes doesn't)
     const gameChannelNames = [
@@ -3176,9 +3273,9 @@ class GameManager extends EventEmitter {
 
     try {
       // IMPORTANT: Force fetch ALL channels from API bypassing cache completely
-      logger.debug('Fetching all channels from Discord API (forced)...');
+      logger.debug('ORPHAN_FETCHING_CHANNELS');
       const allChannels = await guild.channels.fetch({ force: true, cache: false });
-      logger.debug('Channels fetched', { total: allChannels.size });
+      logger.debug('ORPHAN_CHANNELS_FETCHED', { total: allChannels.size });
       
       // Log all channels for debugging
       const allChannelsList = Array.from(allChannels.values()).map(ch => ({
@@ -3187,18 +3284,18 @@ class GameManager extends EventEmitter {
         parentId: ch.parentId,
         type: ch.type
       }));
-      logger.debug('All guild channels:', { channels: allChannelsList.slice(0, 30) }); // Limit to first 30
+      logger.debug('ORPHAN_ALL_GUILD_CHANNELS', { channels: allChannelsList.slice(0, 30) }); // Limit to first 30
       
       // Filter channels in the specified category
       const channels = allChannels.filter(ch => ch.parentId === categoryId);
-      logger.info('Channels in game category', { 
+      logger.info('ORPHAN_CATEGORY_CHANNELS', { 
         count: channels.size, 
         categoryId,
         channelNames: Array.from(channels.values()).map(ch => ch.name)
       });
       
       // Log active games
-      logger.debug('Active games', { 
+      logger.debug('ORPHAN_ACTIVE_GAMES', { 
         count: this.games.size,
         gameChannelIds: Array.from(this.games.values()).flatMap(g => [
           g.wolvesChannelId, g.seerChannelId, g.witchChannelId,
@@ -3213,7 +3310,7 @@ class GameManager extends EventEmitter {
         const isGameChannel = gameChannelNames.includes(channel.name);
         
         if (isGameChannel) {
-          logger.debug('Found potential game channel', { name: channel.name, id: channel.id });
+          logger.debug('ORPHAN_POTENTIAL_GAME_CHANNEL', { name: channel.name, id: channel.id });
           
           // Check if there's an active game that owns this channel
           let isOrphan = true;
@@ -3232,13 +3329,13 @@ class GameManager extends EventEmitter {
             
             if (gameChannelIds.includes(channel.id)) {
               isOrphan = false;
-              logger.debug('Channel belongs to active game', { channelId: channel.id, mainChannelId: game.mainChannelId });
+              logger.debug('ORPHAN_CHANNEL_BELONGS_TO_GAME', { channelId: channel.id, mainChannelId: game.mainChannelId });
               break;
             }
           }
           
           if (isOrphan) {
-            logger.info('Deleting orphan channel...', { name: channel.name, id: channel.id });
+            logger.info('ORPHAN_CHANNEL_DELETING', { name: channel.name, id: channel.id });
             try {
               // Ensure bot has permission to delete
               try {
@@ -3247,29 +3344,29 @@ class GameManager extends EventEmitter {
               } catch (e) { /* best-effort */ }
               await channel.delete({ reason: 'Cleanup orphan Loup-Garou channel' });
               deleted++;
-              logger.success('🗑️ Orphan channel deleted', { name: channel.name, id: channel.id });
+              logger.info('ORPHAN_CHANNEL_DELETED', { name: channel.name, id: channel.id });
             } catch (err) {
-              logger.error(`Failed to delete orphan channel ${channel.name} (${channel.id})`, err);
+              logger.error('ORPHAN_CHANNEL_DELETE_FAILED', { name: channel.name, id: channel.id, error: err.message });
             }
           } else {
-            logger.debug('Channel is part of active game, keeping', { name: channel.name, id: channel.id });
+            logger.debug('ORPHAN_CHANNEL_KEPT_ACTIVE', { name: channel.name, id: channel.id });
           }
         } else {
-          logger.debug('Skipping non-game channel', { name: channel.name, type: channel.type });
+          logger.debug('ORPHAN_NON_GAME_CHANNEL_SKIPPED', { name: channel.name, type: channel.type });
         }
       }
     } catch (err) {
-      logger.error('Error during orphan cleanup', err);
+      logger.error('ORPHAN_CLEANUP_ERROR', err);
     }
 
     timer.end();
-    logger.success('Orphan cleanup completed', { deleted });
+    logger.info('ORPHAN_CLEANUP_COMPLETE', { deleted });
     return deleted;
   }
 
   async cleanupCategoryChannels(guild, categoryId) {
     const timer = logger.startTimer('cleanupCategoryChannels');
-    logger.info('Cleaning game channels by name in category...', { categoryId });
+    logger.info('CATEGORY_CLEANUP_START', { categoryId });
 
     const gameChannelNames = [
       'village', '🏘️-village', '🏘-village',
@@ -3297,15 +3394,15 @@ class GameManager extends EventEmitter {
           await channel.delete({ reason: 'Cleanup duplicate Loup-Garou channels' });
           deleted++;
         } catch (err) {
-          logger.error(`Failed to delete channel during category cleanup ${channel.name} (${channel.id})`, err);
+          logger.error('CATEGORY_CHANNEL_DELETE_FAILED', { name: channel.name, id: channel.id, error: err.message });
         }
       }
     } catch (err) {
-      logger.error('Error during category cleanup', err);
+      logger.error('CATEGORY_CLEANUP_ERROR', err);
     }
 
     timer.end();
-    logger.success('Category cleanup completed', { deleted });
+    logger.info('CATEGORY_CLEANUP_COMPLETE', { deleted });
     return deleted;
   }
 
@@ -3349,7 +3446,7 @@ class GameManager extends EventEmitter {
         }
       }
     } catch (error) {
-      logger.error("❌ Failed to update voice permissions", error);
+      logger.error('VOICE_PERMISSIONS_UPDATE_FAILED', error);
     }
   }
 
@@ -3357,7 +3454,7 @@ class GameManager extends EventEmitter {
     const { skipAtomic = false } = options;
     // Guard: never toggle an ENDED game back
     if (game.phase === PHASES.ENDED) {
-      logger.warn('nextPhase called on ENDED game, ignoring', { channelId: game.mainChannelId });
+      logger.warn('NEXT_PHASE_ON_ENDED_GAME', { channelId: game.mainChannelId });
       return game.phase;
     }
 
@@ -3396,6 +3493,8 @@ class GameManager extends EventEmitter {
         state.wolvesVoteState = require('./wolfVoteEngine').createWolvesVoteState();
         this.db.clearVotes(state.mainChannelId, 'wolves', state.dayCount || 0);
       }
+      // Reset village vote state on any phase change
+      state.villageVoteState = require('./villageVoteEngine').createVillageVoteState();
 
       return state.phase;
     };
@@ -3543,7 +3642,7 @@ class GameManager extends EventEmitter {
       if (throwOnDbFailure) {
         throw new Error(`Failed to persist kill for player ${playerId}`);
       }
-      logger.warn('Kill DB update failed (non-strict mode)', { channelId, playerId });
+      logger.warn('KILL_DB_UPDATE_FAILED', { channelId, playerId });
     }
     
     this._emitGameEvent(game, 'playerKilled', { playerId, username: player.username, role: player.role });
@@ -3569,7 +3668,7 @@ class GameManager extends EventEmitter {
               if (throwOnDbFailure) {
                 throw new Error(`Failed to persist collateral kill for player ${otherId}`);
               }
-              logger.warn('Collateral kill DB update failed (non-strict mode)', { channelId, playerId: otherId });
+              logger.warn('COLLATERAL_KILL_DB_UPDATE_FAILED', { channelId, playerId: otherId });
             }
             // Révoquer l'accès pour l'amoureux aussi
             this._pendingLockouts.push({ channelId, playerId: otherId, role: other.role });
@@ -3614,7 +3713,7 @@ class GameManager extends EventEmitter {
             SendMessages: false
           });
         } catch (e) {
-          logger.warn('Failed to set dead player read-only', { playerId, roleChannelId, error: e.message });
+          logger.warn('DEAD_PLAYER_READONLY_FAILED', { playerId, roleChannelId, error: e.message });
         }
       }
 
@@ -3635,11 +3734,11 @@ class GameManager extends EventEmitter {
             await spectatorChannel.send(`👻 <@${playerId}> ${t('game.spectator_joined')}`);
           }
         } catch (e) {
-          logger.warn('Failed to add dead player to spectator channel', { playerId, error: e.message });
+          logger.warn('DEAD_PLAYER_SPECTATOR_FAILED', { playerId, error: e.message });
         }
       }
 
-      logger.debug('Dead player set to read-only on all channels + spectator access', { playerId });
+      logger.debug('DEAD_PLAYER_PERMISSIONS_SET', { playerId });
     }
   }
 
@@ -3654,17 +3753,17 @@ class GameManager extends EventEmitter {
   async joinVoiceChannel(guild, voiceChannelId) {
     const voiceManager = require('./voiceManager');
     try {
-      logger.debug('Joining voice channel...', { voiceChannelId });
+      logger.debug('VOICE_JOINING', { voiceChannelId });
       const voiceChannel = await guild.channels.fetch(voiceChannelId);
       if (!voiceChannel || !voiceChannel.isVoiceBased()) {
-        logger.error('❌ Invalid voice channel', { voiceChannelId });
+        logger.error('VOICE_CHANNEL_INVALID', { voiceChannelId });
         return false;
       }
       await voiceManager.joinChannel(voiceChannel);
-      logger.success('✅ Joined voice channel', { voiceChannelId });
+      logger.info('VOICE_JOINED', { voiceChannelId });
       return true;
     } catch (error) {
-      logger.error('❌ Voice connection failed', error);
+      logger.error('VOICE_CONNECTION_FAILED', error);
       return false;
     }
   }
@@ -3672,7 +3771,7 @@ class GameManager extends EventEmitter {
   async playAmbience(voiceChannelId, soundFile) {
     const voiceManager = require('./voiceManager');
     try {
-      logger.debug('Playing ambience', { voiceChannelId, soundFile });
+      logger.debug('AMBIENCE_PLAYING', { voiceChannelId, soundFile });
       // For day/night ambience we want looping until a phase change
       if (soundFile === 'day_ambience.mp3' || soundFile === 'night_ambience.mp3') {
         await voiceManager.startLoop(voiceChannelId, soundFile);
@@ -3681,9 +3780,9 @@ class GameManager extends EventEmitter {
         try { voiceManager.stopLoop(voiceChannelId); } catch (e) { /* ignore */ }
         await voiceManager.playSound(voiceChannelId, soundFile);
       }
-      logger.success('✅ Ambience started', { soundFile });
+      logger.info('AMBIENCE_STARTED', { soundFile });
     } catch (error) {
-      logger.error(`❌ Failed to play ambience`, { soundFile, error: error.message });
+      logger.error('AMBIENCE_PLAY_FAILED', { soundFile, error: error.message });
     }
   }
 
@@ -3836,9 +3935,9 @@ class GameManager extends EventEmitter {
 
     try {
       syncFn();
-      logger.debug('Game synced to DB (transaction)', { channelId });
+      logger.debug('GAME_SYNCED_TO_DB', { channelId });
     } catch (error) {
-      logger.error('Failed to sync game to DB', error);
+      logger.error('GAME_SYNC_TO_DB_FAILED', error);
       if (throwOnError) throw error;
     }
   }
@@ -3857,10 +3956,10 @@ class GameManager extends EventEmitter {
       }
       this.dirtyGames.clear();
       if (toSync.length > 0) {
-        logger.debug('Games synced to DB', { count: toSync.length });
+        logger.debug('GAMES_SYNCED_TO_DB', { count: toSync.length });
       }
     } catch (error) {
-      logger.error('❌ Failed to sync games to DB', error);
+      logger.error('GAMES_SYNC_TO_DB_FAILED', error);
     } finally {
       this.saveInProgress = false;
     }
@@ -3868,7 +3967,7 @@ class GameManager extends EventEmitter {
 
   loadState() {
     try {
-      logger.info('Loading game state from database...');
+      logger.info('GAME_STATE_LOADING');
       
       const allGames = this.db.getAllGames();
       
@@ -3929,6 +4028,7 @@ class GameManager extends EventEmitter {
           _captainTiebreak: dbGame.captain_tiebreak_ids ? JSON.parse(dbGame.captain_tiebreak_ids) : null,
           listenHintsGiven: JSON.parse(dbGame.listen_hints_given || '[]'),
           wolvesVoteState: require('./wolfVoteEngine').createWolvesVoteState(),
+          villageVoteState: require('./villageVoteEngine').createVillageVoteState(),
           littleGirlExposureLevel: dbGame.little_girl_exposure || 0,
           littleGirlListenedThisNight: false, // Runtime-only (reset on restart)
           littleGirlExposed: dbGame.little_girl_exposed === 1,
@@ -3954,7 +4054,7 @@ class GameManager extends EventEmitter {
             const { restoreAbilityState } = require('./abilities');
             restoreAbilityState(game, dbGame.ability_state_json);
           } catch (e) {
-            logger.warn('Failed to restore ability state', { channelId, error: e.message });
+            logger.warn('ABILITY_STATE_RESTORE_FAILED', { channelId, error: e.message });
           }
         }
 
@@ -3962,7 +4062,7 @@ class GameManager extends EventEmitter {
         try {
           this._rehydrateCustomRoles(game);
         } catch (e) {
-          logger.warn('Failed to rehydrate custom roles', { channelId, error: e.message });
+          logger.warn('CUSTOM_ROLES_REHYDRATE_FAILED', { channelId, error: e.message });
         }
 
         // Fallback: restore villageRolesPowerless from logs if column was 0 but logs say otherwise
@@ -3992,7 +4092,7 @@ class GameManager extends EventEmitter {
                 game._voteIncrements.set(voterId, increment);
                 game.votes.set(targetId, (game.votes.get(targetId) || 0) + increment);
               }
-              logger.debug('Restored village votes from DB', { channelId, count: dbVoterMap.size });
+              logger.debug('VOTES_RESTORED_VILLAGE', { channelId, count: dbVoterMap.size });
             }
           } else if (game.phase === PHASES.DAY && game.subPhase === PHASES.VOTE_CAPITAINE && !game.captainId) {
             const dbVoterMap = this.db.getVotes(channelId, 'captain', round);
@@ -4002,7 +4102,7 @@ class GameManager extends EventEmitter {
               for (const [, targetId] of dbVoterMap) {
                 game.captainVotes.set(targetId, (game.captainVotes.get(targetId) || 0) + 1);
               }
-              logger.debug('Restored captain votes from DB', { channelId, count: dbVoterMap.size });
+              logger.debug('VOTES_RESTORED_CAPTAIN', { channelId, count: dbVoterMap.size });
             }
           } else if (game.phase === PHASES.NIGHT && game.subPhase === PHASES.LOUPS) {
             const dbVoterMap = this.db.getVotes(channelId, 'wolves', round);
@@ -4010,19 +4110,19 @@ class GameManager extends EventEmitter {
               for (const [wolfId, targetId] of dbVoterMap) {
                 game.wolvesVoteState.votes.set(wolfId, targetId);
               }
-              logger.debug('Restored wolf votes from DB', { channelId, count: dbVoterMap.size });
+              logger.debug('VOTES_RESTORED_WOLF', { channelId, count: dbVoterMap.size });
             }
           }
         } catch (e) {
-          logger.warn('Failed to restore votes from DB', { channelId, error: e.message });
+          logger.warn('VOTES_RESTORE_FAILED', { channelId, error: e.message });
         }
         
         this.games.set(channelId, game);
       }
       
-      logger.success('Game state loaded from DB', { gameCount: this.games.size });
+      logger.info('GAME_STATE_LOADED', { gameCount: this.games.size });
     } catch (err) {
-      logger.error('❌ Failed to load game state from DB', err);
+      logger.error('GAME_STATE_LOAD_FAILED', err);
     }
   }
 
@@ -4057,7 +4157,7 @@ class GameManager extends EventEmitter {
       try {
         abilities = JSON.parse(cr.abilities_json || '[]');
       } catch {
-        logger.warn('Invalid abilities_json for custom role', { roleId: cr.id, name: cr.name });
+        logger.warn('CUSTOM_ROLE_INVALID_ABILITIES', { roleId: cr.id, name: cr.name });
         continue;
       }
 
@@ -4070,7 +4170,7 @@ class GameManager extends EventEmitter {
 
       const validation = validateRoleDefinition(roleDef);
       if (!validation.valid) {
-        logger.warn('Custom role failed validation on rehydrate', {
+        logger.warn('CUSTOM_ROLE_VALIDATION_FAILED', {
           roleId: cr.id,
           name: cr.name,
           errors: validation.errors,

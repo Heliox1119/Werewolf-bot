@@ -473,6 +473,143 @@ function validateLittleGirlListen(interaction) {
   return { ok: true, game, player };
 }
 
+// ─── Captain Election Guard ─────────────────────────────────────────
+
+/**
+ * Validate that the interaction is a valid captain election vote.
+ * Player must be alive, in VOTE_CAPITAINE subPhase, and captain not yet elected.
+ *
+ * @param {StringSelectMenuInteraction} interaction
+ * @param {string} targetId - selected target player ID
+ * @returns {{ ok: true, game: object, player: object, target: object } | { ok: false, message: string }}
+ */
+function validateCaptainElect(interaction, targetId) {
+  const game = gameManager.getGameByChannelId(interaction.channelId);
+  if (!game) {
+    return { ok: false, message: t('error.no_game') };
+  }
+
+  if (game.phase !== PHASES.DAY) {
+    return { ok: false, message: t('error.action_forbidden') };
+  }
+
+  if (game.subPhase !== PHASES.VOTE_CAPITAINE) {
+    return { ok: false, message: t('error.wrong_phase') };
+  }
+
+  if (game.captainId) {
+    return { ok: false, message: t('error.captain_already') };
+  }
+
+  const player = game.players.find(p => p.id === interaction.user.id);
+  if (!player || !player.alive) {
+    return { ok: false, message: t('error.not_participating_or_dead') };
+  }
+
+  const target = game.players.find(p => p.id === targetId);
+  if (!target || !target.alive) {
+    return { ok: false, message: t('error.target_not_found') };
+  }
+
+  return { ok: true, game, player, target };
+}
+
+// ─── Village Vote Guard ─────────────────────────────────────────────
+
+/**
+ * Validate that the interaction is a valid village day vote.
+ * Player must be alive, in VOTE subphase, not a revealed Idiot, and vote not resolved.
+ *
+ * @param {StringSelectMenuInteraction} interaction
+ * @param {string} targetId - selected target player ID
+ * @returns {{ ok: true, game: object, player: object, target: object } | { ok: false, message: string }}
+ */
+function validateVillageVote(interaction, targetId) {
+  const game = gameManager.getGameByChannelId(interaction.channelId);
+  if (!game) {
+    return { ok: false, message: t('error.no_game') };
+  }
+
+  if (game.phase !== PHASES.DAY) {
+    return { ok: false, message: t('error.action_forbidden') };
+  }
+
+  if (game.subPhase !== PHASES.VOTE) {
+    return { ok: false, message: t('error.action_forbidden') };
+  }
+
+  const player = game.players.find(p => p.id === interaction.user.id);
+  if (!player || !player.alive) {
+    return { ok: false, message: t('error.not_participating_or_dead') };
+  }
+
+  // Revealed Idiot du Village cannot vote
+  if (player.idiotRevealed) {
+    return { ok: false, message: t('error.idiot_cannot_vote') };
+  }
+
+  if (!game.villageVoteState || game.villageVoteState.resolved) {
+    return { ok: false, message: t('error.vote_already_resolved') };
+  }
+
+  // Tiebreak phase: only captain can act via captain_tiebreak menu
+  if (game.villageVoteState.tiedCandidates.length >= 2) {
+    return { ok: false, message: t('error.action_forbidden') };
+  }
+
+  const target = game.players.find(p => p.id === targetId);
+  if (!target || !target.alive) {
+    return { ok: false, message: t('error.target_not_found') };
+  }
+
+  return { ok: true, game, player, target };
+}
+
+// ─── Captain Tiebreak Guard ─────────────────────────────────────────
+
+/**
+ * Validate that the interaction is a valid captain tiebreak choice.
+ * Only the captain can do this, and the target must be among tiedCandidates.
+ *
+ * @param {StringSelectMenuInteraction} interaction
+ * @param {string} targetId - selected target player ID
+ * @returns {{ ok: true, game: object, player: object } | { ok: false, message: string }}
+ */
+function validateCaptainTiebreak(interaction, targetId) {
+  const game = gameManager.getGameByChannelId(interaction.channelId);
+  if (!game) {
+    return { ok: false, message: t('error.no_game') };
+  }
+
+  if (game.phase !== PHASES.DAY) {
+    return { ok: false, message: t('error.action_forbidden') };
+  }
+
+  if (!game.captainId) {
+    return { ok: false, message: t('error.action_forbidden') };
+  }
+
+  if (interaction.user.id !== game.captainId) {
+    return { ok: false, message: t('error.captain_tiebreak_only') };
+  }
+
+  const voteState = game.villageVoteState;
+  if (!voteState || voteState.resolved || voteState.tiedCandidates.length < 2) {
+    return { ok: false, message: t('error.vote_already_resolved') };
+  }
+
+  if (!voteState.tiedCandidates.includes(targetId)) {
+    return { ok: false, message: t('error.captain_tiebreak_invalid') };
+  }
+
+  const player = game.players.find(p => p.id === interaction.user.id);
+  if (!player || !player.alive) {
+    return { ok: false, message: t('error.not_participating_or_dead') };
+  }
+
+  return { ok: true, game, player };
+}
+
 module.exports = {
   validateThiefSteal,
   validateThiefSkip,
@@ -494,4 +631,8 @@ module.exports = {
   validateSkip,
   // Ephemeral role actions
   validateLittleGirlListen,
+  // Day village vote
+  validateCaptainElect,
+  validateVillageVote,
+  validateCaptainTiebreak,
 };

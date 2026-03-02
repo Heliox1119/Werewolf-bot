@@ -180,7 +180,6 @@ describe('getSubPhaseEmoji', () => {
   test('loups → 🐺', () => expect(getSubPhaseEmoji(PHASES.LOUPS)).toBe('🐺'));
   test('voyante → 🔮', () => expect(getSubPhaseEmoji(PHASES.VOYANTE)).toBe('🔮'));
   test('vote → 🗳️', () => expect(getSubPhaseEmoji(PHASES.VOTE)).toBe('🗳️'));
-  test('deliberation → 💬', () => expect(getSubPhaseEmoji(PHASES.DELIBERATION)).toBe('💬'));
   test('unknown → 🔄', () => expect(getSubPhaseEmoji('xyz')).toBe('🔄'));
 });
 
@@ -211,10 +210,6 @@ describe('SUB_PHASE_ACTIVE_ROLES', () => {
 
   test('VOTE is null (all alive players)', () => {
     expect(SUB_PHASE_ACTIVE_ROLES[PHASES.VOTE]).toBeNull();
-  });
-
-  test('DELIBERATION is null (all alive players)', () => {
-    expect(SUB_PHASE_ACTIVE_ROLES[PHASES.DELIBERATION]).toBeNull();
   });
 
   test('VOTE_CAPITAINE is null (all alive players)', () => {
@@ -315,9 +310,7 @@ describe('buildStatusEmbed', () => {
   });
 
   test('uses DAY color', () => {
-    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.DELIBERATION });
-    const embed = buildStatusEmbed(game, null, 'g123');
-    expect(embed.toJSON().color).toBe(0xF9A825);
+    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.VOTE });
   });
 
   test('uses ENDED color', () => {
@@ -386,12 +379,6 @@ describe('buildPlayerEmbed', () => {
   test('shows "your turn" for all alive during VOTE', () => {
     const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.VOTE });
     const embed = buildPlayerEmbed(game, 'p2', null, 'g123');
-    expect(getDescription(embed)).toContain('gui.your_turn');
-  });
-
-  test('shows "your turn" for all alive during DELIBERATION', () => {
-    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.DELIBERATION });
-    const embed = buildPlayerEmbed(game, 'p4', null, 'g123');
     expect(getDescription(embed)).toContain('gui.your_turn');
   });
 

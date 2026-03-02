@@ -31,26 +31,21 @@ module.exports = {
     const count = interaction.options.getInteger("count");
     const names = ["Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Henry", "Ivy", "Jack"];
     
-    const fakePlayers = [];
+    // Use gameManager.join() — same pipeline as real players
+    const added = [];
     for (let i = 0; i < count; i++) {
       const fakeName = names[Math.floor(Math.random() * names.length)] + Math.random().toString().slice(2, 5);
-      fakePlayers.push({
+      const fakeUser = {
         id: `fake_${Date.now()}_${i}`,
         username: fakeName,
-        role: null,
-        alive: true
-      });
+      };
+      const ok = gameManager.join(game.mainChannelId, fakeUser);
+      if (ok) {
+        added.push(fakeUser);
+      }
     }
 
-    try {
-      await gameManager.runAtomic(game.mainChannelId, (state) => {
-        for (const fakePlayer of fakePlayers) {
-          state.players.push(fakePlayer);
-          const persisted = gameManager.db.addPlayer(state.mainChannelId, fakePlayer.id, fakePlayer.username);
-          if (!persisted) throw new Error('Failed to persist fake debug player');
-        }
-      });
-    } catch (e) {
+    if (added.length === 0) {
       await interaction.reply({ content: t('error.internal'), flags: MessageFlags.Ephemeral });
       return;
     }
@@ -67,7 +62,7 @@ module.exports = {
     } catch (e) { /* ignore */ }
 
     await interaction.reply({
-      content: t('cmd.debug_fake_join.success', { count, total: game.players.length }),
+      content: t('cmd.debug_fake_join.success', { count: added.length, total: game.players.length }),
       flags: MessageFlags.Ephemeral
     });
   }

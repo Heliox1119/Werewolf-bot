@@ -69,7 +69,7 @@ class RoleBuilderService {
         this.db.db.exec(`ALTER TABLE custom_roles ADD COLUMN win_condition TEXT DEFAULT 'village_wins'`);
       } catch { /* column already exists */ }
     } catch (err) {
-      logger.warn('RoleBuilderService: Failed to ensure custom_roles table', { error: err.message });
+      logger.warn('CUSTOM_ROLES_TABLE_ENSURE_FAILED', { error: err.message });
     }
   }
 
@@ -141,7 +141,7 @@ class RoleBuilderService {
         createdBy || null
       );
 
-      logger.info('Custom role created', {
+      logger.info('CUSTOM_ROLE_CREATED', {
         guildId,
         name: normalized.name,
         roleId: result.lastInsertRowid,
@@ -150,7 +150,7 @@ class RoleBuilderService {
 
       return { ok: true, id: result.lastInsertRowid };
     } catch (err) {
-      logger.error('Failed to create custom role', { error: err.message });
+      logger.error('CUSTOM_ROLE_CREATE_FAILED', { error: err.message });
       return { ok: false, errors: ['Database error: ' + err.message] };
     }
   }
@@ -207,10 +207,10 @@ class RoleBuilderService {
         guildId
       );
 
-      logger.info('Custom role updated', { roleId, guildId, name: normalized.name });
+      logger.info('CUSTOM_ROLE_UPDATED', { roleId, guildId, name: normalized.name });
       return { ok: true };
     } catch (err) {
-      logger.error('Failed to update custom role', { error: err.message });
+      logger.error('CUSTOM_ROLE_UPDATE_FAILED', { error: err.message });
       return { ok: false, errors: ['Database error: ' + err.message] };
     }
   }
@@ -233,7 +233,7 @@ class RoleBuilderService {
 
     try {
       this.db.db.prepare('DELETE FROM custom_roles WHERE id = ? AND guild_id = ?').run(roleId, guildId);
-      logger.info('Custom role deleted', { roleId, guildId, name: existing.name });
+      logger.info('CUSTOM_ROLE_DELETED', { roleId, guildId, name: existing.name });
       return { ok: true };
     } catch (err) {
       return { ok: false, errors: ['Database error: ' + err.message] };

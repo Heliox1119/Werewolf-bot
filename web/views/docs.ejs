@@ -118,7 +118,7 @@
             <li data-i18n="docs.flow_d3">The host uses /start — roles are secretly assigned via DM to each player</li>
             <li data-i18n="docs.flow_d4">Private channels are created for wolves, seer, witch, etc.</li>
             <li data-i18n="docs.flow_d5">Night phase: special roles act in order (Thief → Cupid → Guardian → Wolves → White Wolf → Witch → Seer)</li>
-            <li data-i18n="docs.flow_d6">Day phase: deaths are announced, captain vote (if no captain), deliberation, then village vote</li>
+            <li data-i18n="docs.flow_d6">Day phase: deaths are announced, captain vote (if no captain), then village debate & vote</li>
             <li data-i18n="docs.flow_d7">The cycle repeats until a victory condition is met</li>
           </ul>
         </div>
@@ -296,9 +296,7 @@
               <span class="dw-flow-arrow">→</span>
               <div class="dw-flow-step">👑 <span data-i18n="docs.sub_captain_vote">Captain Vote</span></div>
               <span class="dw-flow-arrow">→</span>
-              <div class="dw-flow-step">💬 <span data-i18n="docs.sub_debate">Deliberation (5 min)</span></div>
-              <span class="dw-flow-arrow">→</span>
-              <div class="dw-flow-step">🗳️ <span data-i18n="docs.sub_village_vote">Village Vote (3 min)</span></div>
+              <div class="dw-flow-step">�️ <span data-i18n="docs.sub_village_vote">Debate & Vote (8 min)</span></div>
               <span class="dw-flow-arrow">→</span>
               <div class="dw-flow-step">⚖️ <span data-i18n="docs.sub_execution">Execution</span></div>
             </div>
@@ -680,8 +678,7 @@
             <tbody>
               <tr><td data-i18n="docs.to_night_afk_name">Night AFK</td><td>120s</td><td class="dw-cmd-desc" data-i18n="docs.to_night_afk">Auto-skip if player doesn't act during their night phase</td></tr>
               <tr><td data-i18n="docs.to_hunter_name">Hunter Shot</td><td>90s</td><td class="dw-cmd-desc" data-i18n="docs.to_hunter">Time for Hunter to choose a target after death</td></tr>
-              <tr><td data-i18n="docs.to_deliberation_name">Deliberation</td><td data-i18n="docs.to_deliberation_dur">5 min</td><td class="dw-cmd-desc" data-i18n="docs.to_deliberation">Village discussion before voting</td></tr>
-              <tr><td data-i18n="docs.to_vote_name">Village Vote</td><td data-i18n="docs.to_vote_dur">3 min</td><td class="dw-cmd-desc" data-i18n="docs.to_vote">Time window for village elimination vote</td></tr>
+              <tr><td data-i18n="docs.to_vote_name">Village Vote</td><td data-i18n="docs.to_vote_dur">8 min</td><td class="dw-cmd-desc" data-i18n="docs.to_vote">Debate + vote combined phase</td></tr>
               <tr><td data-i18n="docs.to_captain_name">Captain Vote</td><td data-i18n="docs.to_captain_dur">2 min</td><td class="dw-cmd-desc" data-i18n="docs.to_captain">Time for captain election</td></tr>
               <tr><td data-i18n="docs.to_lobby_name">Lobby Cleanup</td><td data-i18n="docs.to_lobby_dur">1 hour</td><td class="dw-cmd-desc" data-i18n="docs.to_lobby">Auto-cleanup idle lobbies</td></tr>
             </tbody>

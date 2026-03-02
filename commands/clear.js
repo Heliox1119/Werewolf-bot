@@ -55,16 +55,16 @@ module.exports = {
             }
           }
         } catch (e) {
-          logger.error('Erreur lors du démute avant suppression:', { error: e.message });
+          logger.error('UNMUTE_BEFORE_DELETE_ERROR', { error: e.message });
         }
 
         if (isGameChannel) {
           try {
             await channel.delete();
             deletedCount++;
-            logger.info(`🗑️ Supprimé: ${channel.name}`);
+            logger.info('CHANNEL_DELETED', { channelName: channel.name });
           } catch (err) {
-            logger.error(`❌ Erreur suppression ${channel.name}:`, { error: err.message });
+            logger.error('CHANNEL_DELETE_ERROR', { channelName: channel.name, error: err.message });
           }
         }
       }
@@ -73,12 +73,8 @@ module.exports = {
       const guildId = interaction.guildId;
       const guildGames = Array.from(gameManager.games.entries()).filter(([, g]) => g.guildId === guildId);
       const gamesCount = guildGames.length;
-      // Annuler tous les timers et émettre gameEnded pour chaque partie du serveur
+      // Émettre gameEnded + déconnecter voix + purge (memory + DB + timers)
       for (const [channelId, game] of guildGames) {
-        // Annuler les timers (AFK nuit, chasseur, capitaine, lobby)
-        gameManager.clearGameTimers(game);
-        gameManager.clearLobbyTimeout(channelId);
-
         // Émettre gameEnded pour le dashboard web
         gameManager._emitGameEvent(game, 'gameEnded', {
           victor: null,
@@ -96,41 +92,31 @@ module.exports = {
               }
             }
           } catch (e) {
-            logger.error('Erreur demute lors du clear pour game voiceChannelId:', { error: e.message });
+            logger.error('CLEAR_VOICE_UNMUTE_ERROR', { error: e.message });
           }
 
           try { gameManager.disconnectVoice(game.voiceChannelId); } catch (e) { /* ignore */ }
         }
+
+        // Single source of truth: purge memory + DB + timers in one call
+        gameManager.purgeGame(channelId, game);
       }
 
-      // Supprimer les games de CE serveur de la base de données
-      for (const [channelId] of guildGames) {
-        try { gameManager.db.deleteGame(channelId); } catch (e) { /* ignore */ }
+      // Also clean orphaned DB games for THIS guild (zombie rows not in memory)
+      const zombiesPurged = gameManager.purgeGuildZombies(guildId);
+      if (zombiesPurged > 0) {
+        logger.warn('ZOMBIE_DB_ROWS_PURGED', { count: zombiesPurged, guildId });
       }
-      // Also clean orphaned DB games for THIS guild (not in memory but still in DB)
-      try {
-        const dbGames = gameManager.db.getAllGames();
-        for (const dbGame of dbGames) {
-          if (dbGame.guild_id === guildId) {
-            try { gameManager.db.deleteGame(dbGame.channel_id); } catch (e) { /* ignore */ }
-          }
-        }
-      } catch (e) { /* ignore */ }
-      // Remove only this guild's games from memory
-      for (const [channelId] of guildGames) {
-        gameManager.games.delete(channelId);
-      }
-      gameManager.saveState();
 
       // Envoyer message temporaire avec nettoyage auto
       await sendTemporaryMessage(
         interaction,
-        t('cleanup.success', { channels: deletedCount, games: gamesCount }),
+        t('cleanup.success', { channels: deletedCount, games: gamesCount + zombiesPurged }),
         2000
       );
 
     } catch (error) {
-      logger.error("❌ Erreur clear:", { error: error.message });
+      logger.error('CLEAR_ERROR', { error: error.message });
       await interaction.editReply(t('error.cleanup_error'));
     }
   }

@@ -2,6 +2,7 @@
  * Dashboard page routes — Renders EJS templates
  */
 const express = require('express');
+const { web: logger } = require('../../utils/logger');
 
 module.exports = function(webServer) {
   const router = express.Router();
@@ -56,7 +57,7 @@ module.exports = function(webServer) {
           tier: AchievementEngine.getEloTier(p.elo_rating || 1000)
         }));
       } catch (err) {
-        console.error('[Dashboard] Leaderboard error:', err.message, err.stack);
+        logger.error('DASHBOARD_LEADERBOARD_ERROR', { error: err.message });
       }
 
       // Recent completed games (last 5 globally)
@@ -65,7 +66,7 @@ module.exports = function(webServer) {
         recentHistory = db.getGuildHistory(null, 5);
         if (!Array.isArray(recentHistory)) recentHistory = [];
       } catch (err) {
-        console.error('[Dashboard] History error:', err.message, err.stack);
+        logger.error('DASHBOARD_HISTORY_ERROR', { error: err.message });
       }
       // Resolve guild names for history entries
       if (client) {
@@ -77,7 +78,7 @@ module.exports = function(webServer) {
         });
       }
 
-      console.log(`[Dashboard] Rendering: leaderboard=${globalLeaderboard.length}, history=${recentHistory.length}, gm.achievements=${!!gm.achievements}`);
+      logger.debug('DASHBOARD_RENDERING', { leaderboard: globalLeaderboard.length, history: recentHistory.length, achievements: !!gm.achievements });
 
       res.render('dashboard', {
         title: 'Dashboard',
@@ -361,7 +362,7 @@ module.exports = function(webServer) {
           req2.on('error', () => resolve(null));
           req2.setTimeout(5000, () => { req2.destroy(); resolve(null); });
         });
-        console.log('[avatar-debug] REST response:', userData ? `avatar=${userData.avatar}, username=${userData.username}` : 'null');
+        logger.debug('AVATAR_REST_RESPONSE', { avatar: userData?.avatar, username: userData?.username });
         if (userData && userData.avatar) {
           const imgExt = userData.avatar.startsWith('a_') ? 'gif' : 'png';
           avatarUrl = `https://cdn.discordapp.com/avatars/${req.params.id}/${userData.avatar}.${imgExt}?size=256`;

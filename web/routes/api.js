@@ -3,6 +3,7 @@
  */
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const { web: logger } = require('../../utils/logger');
 
 // Rate limiters for API routes
 const apiLimiter = rateLimit({
@@ -422,7 +423,7 @@ module.exports = function(webServer) {
     const activeGames = [...gm.games.keys()];
     const user = isAuth ? { id: req.user.id, username: req.user.username, guilds: (req.user.guilds || []).length } : null;
     const clientReady = !!(client && client.isReady && client.isReady());
-    console.log('[MOD] Status check — auth:', isAuth, 'games:', activeGames.length, 'client:', clientReady);
+    logger.info('MOD_STATUS_CHECK', { auth: isAuth, games: activeGames.length, client: clientReady });
     res.json({
       success: true,
       authenticated: isAuth,
@@ -445,23 +446,23 @@ module.exports = function(webServer) {
 
   // Helper: send a message to the game's village or main channel
   async function sendToGameChannel(guild, game, content) {
-    if (!guild) { console.log('[MOD] No guild — cannot send message'); return; }
+    if (!guild) { logger.warn('MOD_NO_GUILD'); return; }
     try {
       const channelId = game.villageChannelId || game.mainChannelId;
-      console.log('[MOD] Sending to channel:', channelId);
+      logger.debug('MOD_SENDING_TO_CHANNEL', { channelId });
       const channel = await guild.channels.fetch(channelId);
       if (channel) await channel.send(content);
-      else console.log('[MOD] Channel not found:', channelId);
-    } catch (e) { console.error('[MOD] sendToGameChannel error:', e.message); }
+      else logger.warn('MOD_CHANNEL_NOT_FOUND', { channelId });
+    } catch (e) { logger.error('MOD_SEND_TO_CHANNEL_ERROR', { error: e.message }); }
   }
 
   /** POST /api/mod/force-end/:gameId — Force end a game */
   router.post('/mod/force-end/:gameId', modLimiter, requireAuth, async (req, res) => {
     try {
-      console.log('[MOD] force-end requested for:', req.params.gameId, 'by:', req.user?.username);
+      logger.info('MOD_FORCE_END_REQUESTED', { gameId: req.params.gameId, by: req.user?.username });
       const game = gm.games.get(req.params.gameId);
       if (!game) {
-        console.log('[MOD] Game not found. Active games:', [...gm.games.keys()]);
+        logger.warn('MOD_GAME_NOT_FOUND', { gameId: req.params.gameId, activeGames: [...gm.games.keys()] });
         return res.status(404).json({ success: false, error: 'Partie introuvable' });
       }
       if (!webServer.isBotOwner(req.user) && !webServer.isGuildAdmin(req.user, game.guildId)) {
@@ -480,12 +481,11 @@ module.exports = function(webServer) {
       try { if (guild) await gm.cleanupChannels(guild, game); } catch {}
       // Save history & remove
       try { db.saveGameHistory(game, 'Force ended (admin)'); } catch {}
-      gm.games.delete(req.params.gameId);
-      try { db.deleteGame(req.params.gameId); } catch {}
+      gm.purgeGame(req.params.gameId, game);
       gm.emit('gameEvent', { event: 'gameEnded', gameId: req.params.gameId, guildId: game.guildId, victor: 'Force ended (admin)' });
       res.json({ success: true, message: 'Partie terminée de force' });
     } catch (e) {
-      console.error('[MOD] force-end error:', e);
+      logger.error('MOD_FORCE_END_ERROR', e);
       res.status(500).json({ success: false, error: e.message });
     }
   });
@@ -493,10 +493,10 @@ module.exports = function(webServer) {
   /** POST /api/mod/skip-phase/:gameId — Force skip to next phase */
   router.post('/mod/skip-phase/:gameId', modLimiter, requireAuth, async (req, res) => {
     try {
-      console.log('[MOD] skip-phase requested for:', req.params.gameId, 'by:', req.user?.username);
+      logger.info('MOD_SKIP_PHASE_REQUESTED', { gameId: req.params.gameId, by: req.user?.username });
       const game = gm.games.get(req.params.gameId);
       if (!game) {
-        console.log('[MOD] Game not found. Active games:', [...gm.games.keys()]);
+        logger.warn('MOD_GAME_NOT_FOUND', { gameId: req.params.gameId, activeGames: [...gm.games.keys()] });
         return res.status(404).json({ success: false, error: 'Partie introuvable' });
       }
       if (!webServer.isBotOwner(req.user) && !webServer.isGuildAdmin(req.user, game.guildId)) {
@@ -525,7 +525,7 @@ module.exports = function(webServer) {
       }
       res.json({ success: true, message: `Phase sautée (${previousPhase} → ${game.phase}/${game.subPhase || '-'})`, phase: game.phase, subPhase: game.subPhase });
     } catch (e) {
-      console.error('[MOD] skip-phase error:', e);
+      logger.error('MOD_SKIP_PHASE_ERROR', e);
       res.status(500).json({ success: false, error: e.message });
     }
   });
@@ -533,10 +533,10 @@ module.exports = function(webServer) {
   /** POST /api/mod/kill-player/:gameId/:playerId — Force kill a player */
   router.post('/mod/kill-player/:gameId/:playerId', modLimiter, requireAuth, async (req, res) => {
     try {
-      console.log('[MOD] kill-player requested for:', req.params.gameId, 'player:', req.params.playerId, 'by:', req.user?.username);
+      logger.info('MOD_KILL_PLAYER_REQUESTED', { gameId: req.params.gameId, playerId: req.params.playerId, by: req.user?.username });
       const game = gm.games.get(req.params.gameId);
       if (!game) {
-        console.log('[MOD] Game not found. Active games:', [...gm.games.keys()]);
+        logger.warn('MOD_GAME_NOT_FOUND', { gameId: req.params.gameId, activeGames: [...gm.games.keys()] });
         return res.status(404).json({ success: false, error: 'Partie introuvable' });
       }
       if (!webServer.isBotOwner(req.user) && !webServer.isGuildAdmin(req.user, game.guildId)) {
@@ -581,7 +581,7 @@ module.exports = function(webServer) {
 
       res.json({ success: true, message: `${deadNames.join(', ')} éliminé(s)`, collateral: collateralDeaths.map(d => d.username) });
     } catch (e) {
-      console.error('[MOD] kill-player error:', e);
+      logger.error('MOD_KILL_PLAYER_ERROR', e);
       res.status(500).json({ success: false, error: e.message });
     }
   });
@@ -774,7 +774,7 @@ module.exports = function(webServer) {
 
 function requireAuth(req, res, next) {
   const isAuth = req.isAuthenticated && req.isAuthenticated();
-  console.log('[AUTH]', req.method, req.path, '— authenticated:', isAuth, '— user:', isAuth ? req.user?.username : 'none');
+  logger.debug('AUTH_CHECK', { method: req.method, path: req.path, authenticated: isAuth, user: isAuth ? req.user?.username : 'none' });
   if (isAuth) return next();
   res.status(401).json({ success: false, error: 'Authentication required' });
 }

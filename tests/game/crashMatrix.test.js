@@ -76,10 +76,10 @@ describe('Crash simulation matrix', () => {
       expectedPersistedBeforeRestart: false,
       trigger: async (manager, game) => {
         game.phase = PHASES.DAY;
-        game.subPhase = PHASES.DELIBERATION;
+        game.subPhase = PHASES.VOTE;
         manager.syncGameToDb(game.mainChannelId, { throwOnError: true });
         const fakeGuild = { channels: { fetch: jest.fn() } };
-        manager.startDayTimeout(fakeGuild, game, 'deliberation');
+        manager.startDayTimeout(fakeGuild, game);
       }
     },
     {
@@ -130,10 +130,10 @@ describe('Crash simulation matrix', () => {
     if (point === 'before_timer_scheduling') {
       restarted.clearFailurePoints();
       const fakeGuild = { channels: { fetch: jest.fn() } };
-      expect(() => restarted.startDayTimeout(fakeGuild, restored, 'deliberation')).not.toThrow();
+      expect(() => restarted.startDayTimeout(fakeGuild, restored)).not.toThrow();
       const active = restarted.activeGameTimers.get(restored.mainChannelId);
       expect(active).toBeDefined();
-      expect(active.type).toBe('day-deliberation');
+      expect(active.type).toBe('day-vote');
     } else {
       restarted.clearFailurePoints();
       await expect(applyAtomicMutation(restarted, restored.mainChannelId, marker)).resolves.toEqual({ ok: true });

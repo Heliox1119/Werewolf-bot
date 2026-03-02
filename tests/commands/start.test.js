@@ -25,23 +25,7 @@ jest.mock('../../utils/validators', () => ({
   isPlayerInGame: jest.fn(() => ({ inGame: true, alive: true })),
   getCategoryId: jest.fn(() => '1469976287790633146')
 }));
-jest.mock('../../utils/logger', () => ({
-  commands: {
-    startTimer: jest.fn(() => ({ end: jest.fn() })),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    success: jest.fn(),
-    debug: jest.fn()
-  },
-  interaction: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    success: jest.fn(),
-    debug: jest.fn()
-  }
-}));
+jest.mock('../../utils/logger', () => require('../helpers/loggerMock')());
 
 describe('Commande /start', () => {
   let startCommand;
@@ -100,7 +84,8 @@ describe('Commande /start', () => {
 
     await waitFor(100);
 
-    expect(gameManager.start).toHaveBeenCalled();
+    // start() must be called with game.mainChannelId, NOT interaction.channelId
+    expect(gameManager.start).toHaveBeenCalledWith(mockGame.mainChannelId, expect.anything());
     expect(gameManager.postStartGame).toHaveBeenCalled();
   });
 

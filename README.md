@@ -3,14 +3,29 @@
 [![English](https://img.shields.io/badge/lang-English-blue)](README.md)
 [![Français](https://img.shields.io/badge/lang-Français-red)](README.fr.md)
 
-A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice management, ambient audio and interactive lobby.
+A Discord bot for playing **Werewolf (Mafia)** with automatic voice management, ambient audio, web dashboard and interactive lobby.
 
-![Version](https://img.shields.io/badge/version-3.5.1-blue)
-![CI](https://github.com/Heliox1119/Werewolf-bot/actions/workflows/ci.yml/badge.svg)
-![Node](https://img.shields.io/badge/node-%E2%89%A5%2016.9.0-green)
+![Version](https://img.shields.io/badge/version-3.5.2-blue)
+![Node](https://img.shields.io/badge/node-%E2%89%A5%2020-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)
-![Tests](https://img.shields.io/badge/tests-456%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-1245%20passed-brightgreen)
+
+---
+
+## Table of Contents
+
+- [Screenshots](#-screenshots)
+- [Features](#-features)
+- [Game Flow](#-game-flow)
+- [Architecture](#-architecture)
+- [Installation](#-installation)
+- [Commands](#-commands)
+- [How to Play](#-how-to-play)
+- [Tests](#-tests)
+- [Documentation](#-documentation)
+- [Contributing](#-contributing)
+- [Roadmap](#-roadmap)
 
 ---
 
@@ -33,15 +48,7 @@ A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice ma
     <td><a href="https://ibb.co/5Xd2zRqJ"><img src="https://i.ibb.co/5Xd2zRqJ/channels.png" alt="Game Channels" width="400"/></a></td>
     <td><a href="https://ibb.co/BHG2cLzZ"><img src="https://i.ibb.co/BHG2cLzZ/night-phase.png" alt="Night Phase" width="400"/></a></td>
   </tr>
-  <tr>
-    <td align="center" colspan="2"><b>Console Logs</b></td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center"><a href="https://ibb.co/7JZx8X8X"><img src="https://i.ibb.co/7JZx8X8X/console-logs.png" alt="Console Logs" width="700"/></a></td>
-  </tr>
 </table>
-
-> *Click on any screenshot to enlarge it.*
 
 ---
 
@@ -49,77 +56,127 @@ A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice ma
 
 ### 🎮 Gameplay
 - **Interactive lobby** — Join / Leave / Start buttons with real-time role preview
-- **10 roles** — Werewolf, Villager, Seer, Witch, Hunter, Little Girl, Cupid, Salvateur, Ancien, Idiot du Village
-- **Automatic phases** — Night / Day cycle with automatic voice mute/unmute
-- **Voting system** — Village vote, automatic captain election (×2 vote), tie-breaking
+- **12 roles** — Werewolf, White Wolf, Villager, Seer, Witch, Hunter, Little Girl, Cupid, Salvateur, Ancien, Idiot du Village, Thief
+- **Automatic phases** — Night / Day cycle with voice mute/unmute, FSM-validated transitions
+- **Merged day vote** — Discussion and vote run simultaneously (8 min), with modifiable votes and absolute majority early resolution
+- **Captain election** — Automatic vote (×2 voting power), tie-breaking by random draw
 - **Victory detection** — Village, Wolves (majority or elimination, configurable), Lovers, Draw
 - **Ambient audio** — Night, day, death and victory sounds in voice channel
-- **Spectator mode** — Dead players can see all channels in read-only, dedicated spectator channel
-- **Death reveal** — Themed embeds on death with role, cause (wolves/village/witch/hunter/love), and color coding
-- **DM turn notifications** — Players receive a DM when it's their role's turn at night
+- **Spectator mode** — Dead players get read-only access to all channels + dedicated spectator channel
+- **DM notifications** — Players receive a DM when it's their role's turn at night
 
 ### 🏆 Progression & Rankings
-- **18 achievements** — 6 categories (victory, wolf, village, special, social, general) with emoji badges
-- **ELO ranking system** — Dynamic calculation with 7 tiers: Iron → Bronze → Silver → Gold → Platinum → Diamond → Alpha Wolf
-- **`/leaderboard`** — Top players by ELO with tier, win rate, and global stats
-- **`/history`** — Recent game history with winner, players, days, duration
-- **`/stats` enhanced** — ELO, rank, peak, wolf/village wins, streaks, role-specific stats, achievement badges
-- **Post-game summary** — ELO changes per player, event timeline, achievement unlock announcements
-
-### ⚙️ Administration
-- **Setup via commands** — `/setup wizard` for guided configuration
-- **Customizable rules** — Adjustable min/max players
-- **Debug commands** — Fake players, force start, inspect game state
-- **Auto cleanup** — Inactive game channels and lobbies (1h)
-- **Rate limiting** — Anti-spam protection with automatic bans
-- **Monitoring** — Real-time dashboard, webhook alerts, 24h history
-
-### 🌍 Internationalization
-- **Multilingual FR / EN** — `/lang` command to switch bot language
-- **500+ translation keys** — All messages, embeds, buttons and alerts translated
-- **Persistence** — Chosen language is saved in database
-- **Extensible** — Adding a language = creating a `locales/xx.js` file
+- **18 achievements** across 6 categories with emoji badges
+- **ELO ranking** — 7 tiers: Iron → Bronze → Silver → Gold → Platinum → Diamond → Alpha Wolf
+- **`/leaderboard`**, **`/history`**, **`/stats`** — Full player profiles with ELO, rank, win streaks, role stats
+- **Post-game summary** — ELO changes, event timeline, achievement unlocks
 
 ### 🌐 Web Dashboard & API
-- **Redesigned Web Dashboard** — Command center UI with global ambient glow, animated counters, PJAX SPA-like navigation
-- **Global ambient lighting** — Single viewport-wide glow layer replacing per-page orbs, darkened palette for optimal contrast
-- **Discord-style sidebar** — Dual sidebar: guild icon bar + guild management panel
-- **Dashboard data panels** — Global leaderboard (top 5) and recent completed games (last 5) with live data
-- **Interactive "Draw a Role"** — Card deck mini-game on dashboard with flip animations
-- **Invite card deck** — Premium card deck with shuffle animation, deal animation, fullscreen glassmorphism modal with role reveal
-- **Player page redesign** — Discord avatar integration, achievement progress bars with lock icons, ELO tier display
-- **Spectator enhancements** — Profile popup on player click, event feed persistence, real-time vote chart fixes
-- **Guild overview** — Win distribution charts, top players, recent games, animated metrics
-- **Leaderboard podium** — Top 3 visual cards with gold/silver/bronze glow, full ranking table
-- **Roles encyclopedia** — Redesigned roles page with detailed descriptions and camp filters
-- **Premium page** — Cinematic redesign with golden particles, pricing tiers, role carousel, testimonials
-- **Documentation wiki** — Full in-app wiki with sticky sidebar navigation
-- **Invite landing page** — Feature showcase, role carousel, permissions section, scroll-reveal
-- **Live Spectator** — 3-column layout with player quick modal, vote chart, real-time feed
+- **Web dashboard** — Command center UI with PJAX navigation, animated counters, real-time data
+- **Live spectator** — Watch games via Socket.IO (player list, vote chart, event feed)
 - **REST API** — 20+ endpoints for games, leaderboard, stats, roles, config, moderation
-- **Discord OAuth2** — Login with Discord, per-guild admin features, access-level filtering
-- **Custom Roles** — Create and manage custom roles via web editor
-- **Composable ability engine** — Event-driven architecture for custom role abilities
+- **Discord OAuth2** — Login with Discord, per-guild admin features
+- **Guild management** — Overview, leaderboard, history, moderation, rules configuration
+- **Roles encyclopedia** — Browse all roles with descriptions and camp filters
+
+### ⚙️ Administration
+- **`/setup wizard`** — One-click auto-setup or category selection
+- **Customizable rules** — Min/max players, wolf win condition
+- **Debug commands** — Fake players, force start, inspect game state
+- **Auto cleanup** — Inactive game channels and lobbies (1h)
+- **Rate limiting** — Token bucket anti-spam with automatic bans
+- **Monitoring** — Real-time dashboard, webhook alerts, Prometheus metrics
+
+### 🌍 Internationalization
+- **FR / EN** — `/lang` command to switch language, saved in database
+- **500+ translation keys** — All messages, embeds, buttons and alerts
+- **Extensible** — Add a language by creating `locales/xx.js`
 
 ### 🗄️ Technical
-- **SQLite persistence** — Game state, player stats, night actions, metrics, achievements, ELO
-- **GameMutex** — Async lock per game preventing race conditions on concurrent phase transitions
-- **FSM transition table** — Formal state machine validates all phase transitions, logs invalid paths
-- **Transaction-wrapped sync** — Atomic DB writes via `db.transaction()`, no partial state on crash
-- **Docker ready** — Multi-stage Dockerfile, docker-compose with persistent volumes, health checks
-- **Auto backup** — Hourly SQLite backups with 24h rotation, backup on shutdown
-- **Multi-guild** — Per-server language, config, and category with global fallback
-- **API rate limiting** — `express-rate-limit` (60 req/min API, 15 req/min mod), command dedup on 12 commands
-- **Prometheus metrics** — `/api/metrics` endpoint (uptime, heap, rss, active games, players, latency)
-- **Health endpoint** — `/api/health` for load balancer probes (200/503)
-- **CORS configurable** — Restrict origins via `CORS_ORIGINS` env var
-- **Centralized i18n** — `I18n` singleton, `{{variable}}` interpolation, automatic fallback
-- **EventEmitter architecture** — GameManager emits real-time events to web layer
-- **Robust error handling** — safeReply, graceful shutdown, zero crash in production
-- **Guild reconciliation** — Auto-purge stale guild data on startup when bot leaves a server
-- **Bot permission safety** — Bot retains ViewChannel + ManageChannels on all hidden game channels
-- **456 automated tests** — 26 suites, 0 failures
-- **Embed themes** — 4 color palettes, `/theme` command, 12 semantic colors
+- **SQLite persistence** — Game state, player stats, ELO, achievements, metrics
+- **GameMutex** — Async lock per game preventing race conditions
+- **FSM transition table** — Validates all phase transitions, logs invalid paths
+- **Transaction-wrapped sync** — Atomic DB writes, no partial state on crash
+- **GUI_MASTER architecture** — Single persistent panel per channel, edit-only updates (zero message spam)
+- **Docker ready** — Multi-stage build, docker-compose with persistent volumes, health checks
+- **Auto backup** — Hourly SQLite backups with 24h rotation
+- **1245 automated tests** — 43 suites, 0 failures
+
+---
+
+## 🎯 Game Flow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                        NIGHT                            │
+│  Thief → Cupid → Salvateur → Wolves → White Wolf →     │
+│  Witch → Seer → Dawn                                   │
+│  (each role: 120s AFK timeout)                          │
+└────────────────────────┬────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│                         DAY                             │
+│  ┌──────────────────────────────────────────────┐       │
+│  │ Captain Election (if needed) — 120s           │       │
+│  │ Auto-resolves when all voted or on timeout    │       │
+│  └───────────────────────┬──────────────────────┘       │
+│                          ▼                              │
+│  ┌──────────────────────────────────────────────┐       │
+│  │ Debate & Vote (merged) — 8 min                │       │
+│  │ • Discussion opens immediately                │       │
+│  │ • Votes can be changed until timer expires    │       │
+│  │ • Early end: absolute majority reached        │       │
+│  │ • Early end: all alive players have voted     │       │
+│  └───────────────────────┬──────────────────────┘       │
+│                          ▼                              │
+│  Captain tiebreak (if tied) → Elimination → Night       │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🏗️ Architecture
+
+```
+Werewolf-bot/
+├── index.js                 # Entry point, Discord event handlers
+├── commands/                # 35 slash commands (auto-loaded)
+├── game/
+│   ├── gameManager.js       # Game engine (phases, victory, EventEmitter)
+│   ├── GameMutex.js         # Async per-game lock
+│   ├── achievements.js      # Achievement engine + ELO system
+│   ├── voiceManager.js      # Audio & voice connections
+│   ├── phases.js            # Phase constants + FSM transition table
+│   ├── roles.js             # Role constants (12 roles)
+│   ├── guildReconciler.js   # Auto-purge stale guild data
+│   └── abilities/           # Composable ability engine (custom roles)
+├── web/
+│   ├── server.js            # Express + Socket.IO server
+│   ├── routes/              # Auth, API, dashboard routes
+│   ├── views/               # EJS templates (15+ pages)
+│   └── public/              # Static assets (CSS, JS, locales)
+├── locales/                 # FR + EN translations (~500+ keys each)
+├── utils/                   # Config, i18n, logger, rate limiter, validators
+├── database/                # SQLite API + schema + backup
+├── monitoring/              # Metrics collector + webhook alerts
+├── tests/                   # 1245 Jest tests across 43 suites
+├── audio/                   # Ambient sounds (.mp3)
+├── img/                     # Role images
+├── Dockerfile               # Multi-stage Docker build
+└── docker-compose.yml       # Production-ready compose
+```
+
+### Key Design Decisions
+
+| Concern | Solution |
+|---------|----------|
+| Race conditions | `GameMutex` — async promise-chaining lock per game |
+| State integrity | FSM transition table + `_setSubPhase()` single entry point |
+| Crash safety | Transaction-wrapped DB sync + dirty flag + timer re-arm on boot |
+| Message spam | GUI_MASTER — one persistent embed per channel, edit-only |
+| Multi-guild | Per-server language, config, category with global fallback |
+| Observability | Structured logger, Prometheus `/api/metrics`, webhook alerts |
 
 ---
 
@@ -127,23 +184,18 @@ A full-featured Discord bot to play **Werewolf (Mafia)** with automatic voice ma
 
 ### 🐳 Docker (Recommended)
 
-The simplest way to run the bot in production:
-
 ```bash
-# 1. Clone the repository
-git clone https://github.com/Heliox1119/Werewolf-bot.git
+git clone https://github.com/user/Werewolf-bot.git
 cd Werewolf-bot
-
-# 2. Configure environment
-cp .env.example .env   # or create manually
+cp .env.example .env    # Edit with your tokens
 ```
 
-Fill in the `.env` file:
+`.env` configuration:
 ```env
 TOKEN=your_discord_bot_token
 CLIENT_ID=discord_application_id
 GUILD_ID=discord_server_id
-LOG_LEVEL=INFO    # DEBUG | INFO | WARN | ERROR | NONE
+LOG_LEVEL=INFO
 
 # Web Dashboard (optional)
 WEB_PORT=3000
@@ -152,36 +204,21 @@ SESSION_SECRET=your_session_secret
 ```
 
 ```bash
-# 3. Add audio files (optional)
-mkdir -p audio
-# Place: night_ambience.mp3, day_ambience.mp3, death.mp3,
-#        victory_villagers.mp3, victory_wolves.mp3
-
-# 4. Launch with Docker Compose
 docker compose up -d
 ```
 
-> **What Docker provides:** Auto-restart, persistent volumes for database & logs, health checks, log rotation, isolated environment with FFmpeg included.
-> 
-> **Web Dashboard:** Automatically starts on port 3000. Access at `http://localhost:3000`. Set `CLIENT_SECRET` for OAuth2 login.
+> Docker provides: auto-restart, persistent volumes (database + logs), health checks, log rotation, FFmpeg included.
+> Web dashboard starts automatically on port 3000.
 
 <details>
-<summary><b>Docker details</b></summary>
-
-- **Multi-stage build** — Node 20 Alpine, minimal image size
-- **Persistent volumes** — `werewolf-data` (SQLite + backups), `werewolf-logs`
-- **Audio mount** — `./audio` mounted read-only into the container
-- **Health check** — Built-in via `scripts/health-check.js` (60s interval)
-- **Log rotation** — JSON file driver, 10MB max, 3 files
+<summary><b>Useful Docker commands</b></summary>
 
 ```bash
-# Useful commands
-docker compose logs -f          # Follow logs
-docker compose restart           # Restart the bot
-docker compose down              # Stop the bot
-docker compose up -d --build     # Rebuild after updates
+docker compose logs -f           # Follow logs
+docker compose restart           # Restart
+docker compose down              # Stop
+docker compose up -d --build     # Rebuild after update
 ```
-
 </details>
 
 ### 📦 Manual (Node.js)
@@ -189,52 +226,24 @@ docker compose up -d --build     # Rebuild after updates
 <details>
 <summary><b>Install without Docker</b></summary>
 
-#### Prerequisites
-- **Node.js** ≥ 16.9.0
-- **FFmpeg** (optional, for ambient audio)
-- A **Discord bot** with permissions: Manage Channels, Manage Roles, Connect, Speak, Send Messages, Mute Members
+**Prerequisites:** Node.js ≥ 20, FFmpeg (optional, for audio)
 
 ```bash
-# 1. Clone and install
-git clone https://github.com/Heliox1119/Werewolf-bot.git
+git clone https://github.com/user/Werewolf-bot.git
 cd Werewolf-bot
 npm install
-
-# 2. Configure environment
-cp .env.example .env   # or create manually
-```
-
-Fill in the `.env` file:
-```env
-TOKEN=your_discord_bot_token
-CLIENT_ID=discord_application_id
-GUILD_ID=discord_server_id
-LOG_LEVEL=INFO    # DEBUG | INFO | WARN | ERROR | NONE
-```
-
-```bash
-# 3. Add audio files (optional)
-mkdir audio
-# Place: night_ambience.mp3, day_ambience.mp3, death.mp3,
-#        victory_villagers.mp3, victory_wolves.mp3
-
-# 4. Start the bot
+cp .env.example .env    # Edit with your tokens
 npm start
 ```
-
 </details>
 
-### Discord Configuration
+### Discord Setup
 
-Once the bot is online, in Discord:
 ```
-/setup wizard          # Interactive wizard (recommended)
-# or manually:
-/setup category #my-category
-/setup status          # Check configuration
+/setup wizard          # Interactive setup (recommended)
 ```
 
-> ⚠️ The bot will refuse to create games without a configured category.
+> The bot refuses to create games without a configured category.
 
 ---
 
@@ -245,22 +254,24 @@ Once the bot is online, in Discord:
 | Command | Description |
 |---------|-------------|
 | `/create` | Create a game (interactive lobby) |
-| `/join` | Join the game |
-| `/help` | Display command help |
+| `/join` | Join the current game |
+| `/help` | Display command list |
 
-### In-game
+### In-Game
 
 | Command | Description | Role |
 |---------|-------------|------|
 | `/kill @player` | Choose the night victim | 🐺 Werewolves |
 | `/see @player` | Reveal a player's role | 🔮 Seer |
-| `/potion type:Life/Death` | Use a potion | 🧪 Witch |
+| `/potion Life\|Death` | Use a potion | 🧪 Witch |
 | `/love @a @b` | Link two lovers | 💘 Cupid |
+| `/protect @player` | Protect a player | 🛡️ Salvateur |
 | `/shoot @player` | Shoot on death | 🏹 Hunter |
-| `/listen` | Real-time anonymized spy on wolves (DM relay, 30% detection with smart hint) | 👧 Little Girl |
-| `/skip` | Skip your night action | Seer / Witch / Cupid |
-| `/vote @player` | Vote to eliminate someone | All (alive) |
-| `/captainvote @player` | Vote for captain (auto-resolve) | All (alive) |
+| `/listen` | Spy on wolves (DM relay, 30% detection) | 👧 Little Girl |
+| `/steal` | Choose an extra role | 🎭 Thief |
+| `/skip` | Skip your night action | Night roles |
+| `/vote @player` | Vote to eliminate | All (alive) |
+| `/captainvote @player` | Vote for captain | All (alive) |
 | `/nextphase` | Advance to next phase | All |
 | `/vote-end` | Vote to stop the game | All (alive) |
 | `/end` | End the game | Admin / Host |
@@ -269,7 +280,7 @@ Once the bot is online, in Discord:
 
 | Command | Description |
 |---------|-------------|
-| `/stats [@player]` | Player stats with ELO, rank, achievements |
+| `/stats [@player]` | Player stats (ELO, rank, achievements) |
 | `/leaderboard [top]` | Server ELO leaderboard |
 | `/history [limit]` | Recent game history |
 
@@ -278,130 +289,37 @@ Once the bot is online, in Discord:
 | Command | Description |
 |---------|-------------|
 | `/setup wizard` | Configuration wizard |
-| `/setup category` | Set Discord category |
-| `/setup rules min max` | Default rules (players) |
-| `/setup webhook url` | Monitoring webhook |
-| `/setup status` | View configuration |
-| `/setrules` | Change min/max players, wolf win condition (`majority`/`elimination`) |
+| `/setrules` | Min/max players, wolf win condition |
 | `/clear` | Clean up game channels |
-| `/force-end` | Force end a game (bypass) |
-| `/lang fr\|en` | Change the bot language |
-| `/monitoring dashboard` | Real-time metrics |
-| `/monitoring health` | Bot health |
+| `/force-end` | Force end a game |
+| `/lang fr\|en` | Change bot language |
+| `/theme` | Change embed color theme |
+| `/monitoring` | Real-time metrics & health |
 | `/ratelimit stats` | Anti-spam stats |
 
-### Debug (Admin only)
-
-| Command | Description |
-|---------|-------------|
-| `/debug-fake-join` | Add fake players |
-| `/debug-start-force` | Force start |
-| `/debug-set-role` | Change a player's role |
-| `/debug-info` | Game state |
-| `/debug-games` | All active games |
-| `/debug-reset` | Delete the game |
-| `/debug-voicemute` | Disable voice mute |
-
 ---
 
-## 🎯 How to Play
+## 🎮 How to Play
 
-1. **Create** — A player types `/create` in the configured category
-2. **Join** — Players click the **Join** button on the lobby ([see lobby screenshot](https://ibb.co/SCybtk7))
-3. **Start** — The host clicks **Start** when there are enough players
-4. **Role Assignment** — Each player receives their role via DM ([see DM screenshot](https://ibb.co/CKFXhDf2))
-5. **Night** — Each role acts in their private channel, 90s max per role ([see channels](https://ibb.co/5Xd2zRqJ) · [night phase](https://ibb.co/BHG2cLzZ))
-6. **Day** — The village discusses and votes to eliminate a suspect
-7. **Victory** — When a side wins, the summary is displayed with a restart option
-
----
-
-## 🏗️ Architecture
-
-```
-Werewolf-bot/
-├── index.js                # Entry point, Discord handlers
-├── commands/               # Slash commands (auto-loaded)
-├── game/
-│   ├── gameManager.js      # Game logic, phases, victory (EventEmitter)
-│   ├── achievements.js     # Achievement engine + ELO system
-│   ├── voiceManager.js     # Audio & voice connections
-│   ├── phases.js           # Phase constants
-│   └── roles.js            # Role constants
-├── web/                    # 🌐 Web Dashboard (v3.0+)
-│   ├── server.js           # Express + Socket.IO server
-│   ├── routes/
-│   │   ├── auth.js         # Discord OAuth2 routes
-│   │   ├── api.js          # REST API (15 endpoints)
-│   │   └── dashboard.js    # HTML page routes
-│   ├── views/              # EJS templates
-│   │   ├── partials/       # Header & footer
-│   │   ├── dashboard.ejs   # Main dashboard
-│   │   ├── spectator.ejs   # Live game spectator
-│   │   ├── guild.ejs       # Guild page
-│   │   ├── player.ejs      # Player profile
-│   │   └── roles.ejs       # Custom roles editor
-│   └── public/             # Static assets (CSS, JS)
-├── locales/
-│   ├── fr.js               # French locale (~500+ keys)
-│   └── en.js               # English locale (~500+ keys)
-├── utils/
-│   ├── config.js           # Centralized configuration (SQLite)
-│   ├── i18n.js             # i18n system (t(), translateRole/Phase)
-│   ├── interaction.js      # safeReply, safeDefer
-│   ├── lobbyBuilder.js     # Lobby embed builder
-│   ├── rateLimiter.js      # Token bucket anti-spam
-│   └── validators.js       # Common validations
-├── database/
-│   ├── db.js               # SQLite API (games, players, stats)
-│   └── schema.sql          # Table schema
-├── monitoring/
-│   ├── metrics.js          # System/Discord/game collector
-│   └── alerts.js           # Webhook alerts
-├── Dockerfile              # Multi-stage Docker build
-├── docker-compose.yml      # Production-ready compose
-├── tests/                  # 456 Jest tests
-├── audio/                  # Ambient sounds (.mp3)
-└── img/                    # Role images
-```
+1. **Create** — `/create` in the configured category
+2. **Join** — Click the **Join** button on the lobby embed
+3. **Start** — Host clicks **Start** when enough players are ready
+4. **Roles** — Each player receives their role via DM
+5. **Night** — Each role acts in their private channel (120s max)
+6. **Day** — The village debates and votes to eliminate a suspect (8 min)
+7. **Victory** — When a side wins, the summary is displayed with ELO changes
 
 ---
 
 ## 🧪 Tests
 
 ```bash
-npm test                    # Run all tests
-npm run health              # Check bot health
-npm run clear-commands      # Reset Discord commands
+npm test                 # Run all 1245 tests
+npm run test:coverage    # With coverage report
+npm run test:watch       # Watch mode
 ```
 
----
-
-## 📊 Version History
-
-| Version | Highlights |
-|---------|-----------|
-| **v3.5.1** | 🛡️ Resilience hardening: full reboot state persistence (hunter/tiebreak/votes/idiot), AFK convergence fix, vote subPhase guard, 5 timer re-arms, 456 tests |
-| **v3.5.0** | 🌐 i18n engine rewrite (external JSON translations), persistent sessions (SQLite store + auto-generated secret), 456 tests |
-| **v3.4.1** | 🎨 Visual overhaul: global ambient glow system, player page redesign, spectator UX, invite card deck, dashboard data panels |
-| **v3.4.0** | 🎨 Complete web interface redesign (PJAX navigation, command center dashboard, guild overview, podium leaderboard, wiki docs, invite landing page), interactive `/setup wizard`, `/create` setup guard, multi-guild channel cleanup fix, guild reconciliation, 268 tests |
-| **v3.3.0** | 🚀 Production-readiness hardening: crash simulation matrix, WebSocket isolation/anti-abuse tests, GameMutex observability metrics, startup split-brain lock, stuck game liveness detection (`stuck_games_count`) |
-| **v3.2.0** | 🛡️ 6-axis architecture hardening: GameMutex, FSM transitions, transaction sync, dirty flag, 7 new DB columns, isRecentDuplicate on 12 commands, express-rate-limit, CORS, guild-scoped WS, Prometheus /metrics, /health, 223 tests |
-| **v3.1.0** | 🛡️ 15-point architecture audit, XSS elimination, WebSocket rate limiting & debounce, multi-tenant isolation, critical FSM fixes, game archiving, 200 tests |
-| **v3.0.0** | 🌐 Web Dashboard (Express + EJS), Live Spectator (Socket.IO), REST API (15 endpoints), Discord OAuth2, Custom Roles system, EventEmitter architecture |
-| **v2.9.0** | 🏆 Achievements (18), ELO ranking (7 tiers), death reveal embeds, DM turn notifications, `/leaderboard`, `/history`, post-game timeline, 4 bug fixes |
-| **v2.8.0** | 🐳 Docker, auto SQLite backup (hourly), multi-guild (per-server lang & config), rematch system |
-| **v2.7.0** | Little Girl real-time DM relay, smart ambiguous hints, Unicode/zalgo-proof, wolf win server-wide config, guild-only commands |
-| **v2.6.0** | Phase balancing, automatic captain vote, witch potion fix, configurable wolf victory, wolf ping |
-| **v2.5.1** | New roles (Salvateur, Ancien, Idiot), spectator mode, embed themes, bugfixes |
-| **v2.4.0** | Centralized i18n system FR/EN, `/lang` command, 500+ translated keys |
-| **v2.3.0** | Full audit (47 fixes), spectator mode, `/skip`, player stats in DB |
-| **v2.2.1** | Production hardening (26 fixes), 191 tests, safeReply everywhere |
-| **v2.2.0** | Secure debug commands, `/shoot`, `/vote-end`, AFK timeout 90s |
-| **v2.1.0** | SQLite, rate limiting, monitoring, centralized configuration |
-| **v2.0.0** | Debouncing, API cache, optimizations (-650 lines) |
-
-Full details: [CHANGELOG.md](CHANGELOG.md)
+See [TESTING.md](TESTING.md) for the full testing guide.
 
 ---
 
@@ -409,12 +327,12 @@ Full details: [CHANGELOG.md](CHANGELOG.md)
 
 | Document | Content |
 |----------|---------|
-| [CHANGELOG.md](CHANGELOG.md) | Detailed version history |
+| [CHANGELOG.md](CHANGELOG.md) | Version history |
 | [CONFIG.md](CONFIG.md) | Configuration system |
-| [DATABASE.md](DATABASE.md) | SQLite architecture, schema, API |
-| [MONITORING.md](MONITORING.md) | Monitoring and alerts |
-| [RATE_LIMITING.md](RATE_LIMITING.md) | Anti-spam protection |
+| [DATABASE.md](DATABASE.md) | SQLite schema & API |
 | [LOGGING.md](LOGGING.md) | Logging system |
+| [MONITORING.md](MONITORING.md) | Monitoring & alerts |
+| [RATE_LIMITING.md](RATE_LIMITING.md) | Anti-spam protection |
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Troubleshooting guide |
 | [TESTING.md](TESTING.md) | Testing guide |
 
@@ -424,10 +342,25 @@ Full details: [CHANGELOG.md](CHANGELOG.md)
 
 1. Fork the project
 2. Create a branch (`git checkout -b feature/my-feature`)
-3. Commit (`git commit -m 'feat: description'`)
-4. Push (`git push origin feature/my-feature`)
-5. Open a Pull Request
+3. Commit with conventional commits (`feat:`, `fix:`, `refactor:`)
+4. Push and open a Pull Request
+
+### Code Standards
+- All user-facing strings use `t()` (i18n)
+- All phase transitions go through `_setSubPhase()`
+- All concurrent game mutations use `runAtomic()`
+- All new features require tests
 
 ---
 
-**Version**: 3.5.1 · **Node.js**: ≥ 16.9.0 · **Discord.js**: ^14.25.1 · **Docker**: ready · **License**: ISC
+## 🔮 Roadmap
+
+| Version | Focus |
+|---------|-------|
+| **3.6** | GUI actions (buttons/menus replacing slash commands in-game), mobile-responsive web |
+| **3.7** | Seasons, tournaments, cross-guild rankings |
+| **4.0** | AI balancing, new game modes, additional localizations (ES, DE, PT) |
+
+---
+
+**Version**: 3.5.2 · **Node.js**: ≥ 20 · **Discord.js**: v14 · **License**: ISC

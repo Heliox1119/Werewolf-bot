@@ -85,8 +85,6 @@ function buildNarrationLine(game, guildId) {
     switch (game.subPhase) {
       case PHASES.VOTE_CAPITAINE:
         return t('village_panel.narration_captain_vote', {}, guildId);
-      case PHASES.DELIBERATION:
-        return t('village_panel.narration_deliberation', {}, guildId);
       case PHASES.VOTE:
         return t('village_panel.narration_vote', {}, guildId);
       default:
@@ -133,8 +131,6 @@ function buildFocusMessage(game, guildId) {
 
   if (game.phase === PHASES.DAY) {
     switch (game.subPhase) {
-      case PHASES.DELIBERATION:
-        return t('village_panel.focus_deliberation', {}, guildId);
       case PHASES.VOTE:
         return t('village_panel.focus_vote', {}, guildId);
       case PHASES.VOTE_CAPITAINE:

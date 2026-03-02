@@ -36,7 +36,7 @@ class I18n {
     // Load per-guild locales
     this.loadGuildLocales(configDb);
     
-    logger.info('i18n initialized', { locale: this.locale, available: Object.keys(this.locales) });
+    logger.info('I18N_INITIALIZED', { locale: this.locale, available: Object.keys(this.locales) });
   }
 
   /**
@@ -76,10 +76,10 @@ class I18n {
         // Also update guild locale cache
         if (!this._guildLocales) this._guildLocales = new Map();
         this._guildLocales.set(guildId, locale);
-        logger.info('Guild locale changed', { guildId, locale });
+        logger.info('GUILD_LOCALE_CHANGED', { guildId, locale });
         return true;
       } catch (e) {
-        logger.error('Failed to persist guild locale', { guildId, error: e.message });
+        logger.error('GUILD_LOCALE_PERSIST_FAILED', { guildId, error: e.message });
       }
     }
 
@@ -93,11 +93,11 @@ class I18n {
           ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
         `).run(locale);
       } catch (e) {
-        logger.error('Failed to persist locale', { error: e.message });
+        logger.error('LOCALE_PERSIST_FAILED', { error: e.message });
       }
     }
 
-    logger.info('Locale changed', { locale });
+    logger.info('LOCALE_CHANGED', { locale });
     return true;
   }
 
@@ -128,10 +128,10 @@ class I18n {
         }
       }
       if (this._guildLocales.size > 0) {
-        logger.info('Guild locales loaded', { count: this._guildLocales.size });
+        logger.info('GUILD_LOCALES_LOADED', { count: this._guildLocales.size });
       }
     } catch (e) {
-      logger.error('Failed to load guild locales', { error: e.message });
+      logger.error('GUILD_LOCALES_LOAD_FAILED', { error: e.message });
     }
   }
 
@@ -154,7 +154,7 @@ class I18n {
 
     // Si toujours pas trouvé, retourner la clé elle-même
     if (value === undefined) {
-      logger.warn('Missing translation key', { key, locale: this.locale });
+      logger.warn('TRANSLATION_KEY_MISSING', { key, locale: this.locale });
       return key;
     }
 
@@ -209,7 +209,6 @@ const PHASE_KEY_MAP = {
   'Voyante': 'voyante',
   'Réveil': 'reveil',
   'Vote Capitaine': 'vote_capitaine',
-  'Délibération': 'deliberation',
   'Vote': 'vote',
 };
 

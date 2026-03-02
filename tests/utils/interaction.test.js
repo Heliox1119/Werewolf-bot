@@ -1,12 +1,5 @@
 // Mock logger before requiring interaction module
-jest.mock('../../utils/logger', () => ({
-  interaction: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
-  }
-}));
+jest.mock('../../utils/logger', () => require('../helpers/loggerMock')());
 
 const { safeDefer, safeReply, safeEditReply } = require('../../utils/interaction');
 

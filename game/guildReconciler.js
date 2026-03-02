@@ -12,7 +12,7 @@
  * - Metric history
  */
 
-const { app: logger } = require('../utils/logger');
+const { game: logger } = require('../utils/logger');
 
 /**
  * Reconcile DB guild data with the bot's actual guild membership.
@@ -38,7 +38,7 @@ function reconcileGuildsOnStartup(client, db, gm) {
       if (r.gid) storedGuildIds.add(r.gid);
     }
   } catch (e) {
-    logger.error('[RECONCILE] Failed to read config guild IDs', { error: e.message });
+    logger.error('RECONCILE_READ_CONFIG_GUILD_IDS_FAILED', { error: e.message });
   }
 
   // 2b. Games table
@@ -48,7 +48,7 @@ function reconcileGuildsOnStartup(client, db, gm) {
     ).all();
     for (const r of gameRows) storedGuildIds.add(r.guild_id);
   } catch (e) {
-    logger.error('[RECONCILE] Failed to read games guild IDs', { error: e.message });
+    logger.error('RECONCILE_READ_GAMES_GUILD_IDS_FAILED', { error: e.message });
   }
 
   // 2c. Game history table
@@ -58,7 +58,7 @@ function reconcileGuildsOnStartup(client, db, gm) {
     ).all();
     for (const r of histRows) storedGuildIds.add(r.guild_id);
   } catch (e) {
-    logger.error('[RECONCILE] Failed to read game_history guild IDs', { error: e.message });
+    logger.error('RECONCILE_READ_GAME_HISTORY_GUILD_IDS_FAILED', { error: e.message });
   }
 
   // 2d. Player stats (guild-scoped rows)
@@ -68,7 +68,7 @@ function reconcileGuildsOnStartup(client, db, gm) {
     ).all();
     for (const r of statRows) storedGuildIds.add(r.guild_id);
   } catch (e) {
-    logger.error('[RECONCILE] Failed to read player_stats guild IDs', { error: e.message });
+    logger.error('RECONCILE_READ_PLAYER_STATS_GUILD_IDS_FAILED', { error: e.message });
   }
 
   // 2e. Player-guild junction
@@ -78,7 +78,7 @@ function reconcileGuildsOnStartup(client, db, gm) {
     ).all();
     for (const r of pgRows) storedGuildIds.add(r.guild_id);
   } catch (e) {
-    logger.error('[RECONCILE] Failed to read player_guilds guild IDs', { error: e.message });
+    logger.error('RECONCILE_READ_PLAYER_GUILDS_GUILD_IDS_FAILED', { error: e.message });
   }
 
   // 3. Diff
@@ -86,14 +86,14 @@ function reconcileGuildsOnStartup(client, db, gm) {
   const keptGuildIds = [...storedGuildIds].filter(gid => activeGuildIds.has(gid));
 
   if (staleGuildIds.length === 0) {
-    logger.info('[RECONCILE] All stored guilds are active — nothing to clean', {
+    logger.info('RECONCILE_ALL_GUILDS_ACTIVE', {
       activeGuilds: activeGuildIds.size,
       storedGuilds: storedGuildIds.size
     });
     return { removed: [], kept: keptGuildIds };
   }
 
-  logger.info('[RECONCILE] Found stale guilds to clean', {
+  logger.info('RECONCILE_STALE_GUILDS_FOUND', {
     stale: staleGuildIds.length,
     active: activeGuildIds.size,
     stored: storedGuildIds.size
@@ -106,19 +106,19 @@ function reconcileGuildsOnStartup(client, db, gm) {
     try {
       const stats = purgeGuildData(db, gm, guildId);
       removed.push(guildId);
-      logger.info('[RECONCILE] Removing stale guild data', {
+      logger.info('RECONCILE_STALE_GUILD_REMOVED', {
         guildId,
         ...stats
       });
     } catch (e) {
-      logger.error('[RECONCILE] Failed to purge guild data', {
+      logger.error('RECONCILE_PURGE_GUILD_FAILED', {
         guildId,
         error: e.message
       });
     }
   }
 
-  logger.success('[RECONCILE] Cleanup complete', {
+  logger.info('RECONCILE_CLEANUP_COMPLETE', {
     removedGuilds: removed.length,
     keptGuilds: keptGuildIds.length
   });

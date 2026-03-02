@@ -38,7 +38,6 @@ const SUB_PHASE_ACTIVE_ROLES = {
   [PHASES.VOYANTE]:         [ROLES.SEER],
   [PHASES.REVEIL]:          [],
   [PHASES.VOTE_CAPITAINE]:  null,
-  [PHASES.DELIBERATION]:    null,
   [PHASES.VOTE]:            null,
 };
 
@@ -62,7 +61,6 @@ function getSubPhaseEmoji(subPhase) {
     [PHASES.VOYANTE]: '🔮',
     [PHASES.REVEIL]: '🌅',
     [PHASES.VOTE_CAPITAINE]: '👑',
-    [PHASES.DELIBERATION]: '💬',
     [PHASES.VOTE]: '🗳️',
   };
   return map[subPhase] || '🔄';

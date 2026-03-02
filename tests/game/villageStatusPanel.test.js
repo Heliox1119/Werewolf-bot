@@ -86,11 +86,6 @@ describe('buildFocusMessage', () => {
   });
 
   // Day sub-phases
-  test('shows deliberation during DELIBERATION', () => {
-    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.DELIBERATION });
-    expect(buildFocusMessage(game, 'g1')).toContain('village_panel.focus_deliberation');
-  });
-
   test('shows vote during VOTE', () => {
     const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.VOTE });
     expect(buildFocusMessage(game, 'g1')).toContain('village_panel.focus_vote');
@@ -165,11 +160,6 @@ describe('buildNarrationLine', () => {
   test('returns captain vote narration during VOTE_CAPITAINE', () => {
     const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.VOTE_CAPITAINE });
     expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_captain_vote');
-  });
-
-  test('returns deliberation narration during DELIBERATION', () => {
-    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.DELIBERATION });
-    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_deliberation');
   });
 
   test('returns vote narration during VOTE', () => {
@@ -312,7 +302,7 @@ describe('buildVillageMasterEmbed — structure', () => {
   });
 
   test('sets image attachment for DAY phase', () => {
-    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.DELIBERATION });
+    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.VOTE });
     const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
     const json = embed.toJSON();
     expect(json.image).toBeDefined();
@@ -459,7 +449,7 @@ describe('buildVillageMasterEmbed — phase colors', () => {
   });
 
   test('day color', () => {
-    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.DELIBERATION });
+    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.VOTE });
     const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
     expect(embed.toJSON().color).toBe(0xF9A825);
   });
@@ -498,7 +488,7 @@ describe('buildVillageMasterEmbed — edge cases', () => {
   });
 
   test('title changes with phase emoji (day)', () => {
-    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.DELIBERATION });
+    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.VOTE });
     const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
     expect(embed.toJSON().title).toContain('☀️');
   });
@@ -794,7 +784,7 @@ describe('buildVillageMasterEmbed — animation', () => {
   test('title shows sunrise 🌅 during day transition window', () => {
     const game = createTestGame({
       phase: PHASES.DAY,
-      subPhase: PHASES.DELIBERATION,
+      subPhase: PHASES.VOTE,
       _lastPhaseChangeAt: Date.now(),
     });
     const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
@@ -804,7 +794,7 @@ describe('buildVillageMasterEmbed — animation', () => {
   test('title shows normal ☀️ after transition window', () => {
     const game = createTestGame({
       phase: PHASES.DAY,
-      subPhase: PHASES.DELIBERATION,
+      subPhase: PHASES.VOTE,
       _lastPhaseChangeAt: Date.now() - 60_000,
     });
     const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
@@ -814,7 +804,7 @@ describe('buildVillageMasterEmbed — animation', () => {
   test('color is sunrise orange during day transition', () => {
     const game = createTestGame({
       phase: PHASES.DAY,
-      subPhase: PHASES.DELIBERATION,
+      subPhase: PHASES.VOTE,
       _lastPhaseChangeAt: Date.now(),
     });
     const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');

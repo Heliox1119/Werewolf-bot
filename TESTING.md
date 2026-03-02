@@ -33,18 +33,34 @@ npm run test:verbose
 tests/
 ├── setup.js                    # Configuration globale
 ├── __mocks__/
-│   └── discord.js             # Mock de Discord.js
+│   ├── discord.js             # Mock de Discord.js
+│   └── database/              # Mock de la base de données
 ├── helpers/
 │   └── testHelpers.js         # Fonctions utilitaires
 ├── game/
 │   ├── gameManager.test.js    # Tests gameManager (critique)
 │   ├── roles.test.js          # Tests des rôles
-│   └── phases.test.js         # Tests des phases
+│   ├── phases.test.js         # Tests FSM & transitions
+│   ├── gameMutex.test.js      # Tests du verrou async
+│   ├── abilityEngine.test.js  # Tests moteur d'abilities
+│   ├── villageStatusPanel.test.js
+│   ├── roleChannelView.test.js
+│   ├── gameStateView.test.js
+│   ├── wolfVoteEngine.test.js
+│   └── ...
 ├── commands/
 │   ├── create.test.js         # Tests commande /create
-│   └── start.test.js          # Tests commande /start
-└── integration/
-    └── fullGame.test.js       # Tests partie complète
+│   ├── start.test.js          # Tests commande /start
+│   ├── vote.test.js, kill.test.js, ...
+│   └── setup-wizard.test.js
+├── integration/
+│   ├── fullGame.test.js       # Tests partie complète
+│   ├── crashMatrix.test.js    # Tests simulation de crash
+│   └── guiMaster.test.js      # Tests architecture GUI
+├── utils/
+│   └── validators.test.js, roleHelpers.test.js, ...
+└── web/
+    └── webSocket.test.js
 ```
 
 ## 📖 Guide d'utilisation

@@ -8,7 +8,7 @@
  *
  * Simulates a complete NIGHT → DAY cycle:
  *   LOUPS → SORCIERE → VOYANTE → REVEIL → DAY
- *   (captain vote → deliberation → vote → night transition)
+ *   (captain vote → vote → night transition)
  *
  * Asserts:
  *   - Zero text sends outside GUI (sendLogged blocks narrative types)
@@ -237,7 +237,6 @@ describe('GUI_MASTER Architecture', () => {
         { phase: PHASES.NIGHT, subPhase: PHASES.VOYANTE },
         { phase: PHASES.NIGHT, subPhase: PHASES.REVEIL },
         { phase: PHASES.DAY, subPhase: PHASES.VOTE_CAPITAINE },
-        { phase: PHASES.DAY, subPhase: PHASES.DELIBERATION },
         { phase: PHASES.DAY, subPhase: PHASES.VOTE },
       ];
 
@@ -292,10 +291,6 @@ describe('GUI_MASTER Architecture', () => {
       await new Promise(resolve => setImmediate(resolve));
 
       // Day sub-phase transitions
-      game.subPhase = PHASES.DELIBERATION;
-      gm._emitGameEvent(game, 'subPhaseChanged', { subPhase: PHASES.DELIBERATION });
-      await new Promise(resolve => setImmediate(resolve));
-
       game.subPhase = PHASES.VOTE;
       gm._emitGameEvent(game, 'subPhaseChanged', { subPhase: PHASES.VOTE });
       await new Promise(resolve => setImmediate(resolve));

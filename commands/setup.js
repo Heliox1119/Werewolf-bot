@@ -115,13 +115,13 @@ module.exports = {
           });
       }
 
-      logger.info('Setup command executed', {
+      logger.info('SETUP_COMMAND_EXECUTED', {
         subcommand,
         userId: interaction.user.id
       });
 
     } catch (error) {
-      logger.error('Error executing setup command', {
+      logger.error('SETUP_COMMAND_ERROR', {
         error: error.message,
         stack: error.stack
       });
@@ -234,7 +234,7 @@ module.exports = {
           'info'
         );
       } catch (error) {
-        logger.error('Failed to send test alert', { error: error.message });
+        logger.error('TEST_ALERT_SEND_FAILED', { error: error.message });
       }
     } else {
       await interaction.reply({
@@ -326,7 +326,7 @@ module.exports = {
         const metrics = MetricsCollector.getInstance();
         metrics.startCollection(intervalMs);
       } catch (error) {
-        logger.error('Failed to restart metrics collection', { error: error.message });
+        logger.error('METRICS_RESTART_FAILED', { error: error.message });
       }
     }
 
@@ -340,7 +340,7 @@ module.exports = {
         const alerts = AlertSystem.getInstance();
         alerts.setEnabled(alertsEnabled);
       } catch (error) {
-        logger.error('Failed to update alerts status', { error: error.message });
+        logger.error('ALERTS_STATUS_UPDATE_FAILED', { error: error.message });
       }
     }
 
@@ -538,13 +538,13 @@ module.exports = {
 
         if (existingCategory) {
           category = existingCategory;
-          logger.info('Wizard: reusing existing Werewolf category', { id: category.id });
+          logger.info('WIZARD_CATEGORY_REUSED', { id: category.id });
         } else {
           category = await guild.channels.create({
             name: '🐺 Werewolf',
             type: ChannelType.GuildCategory
           });
-          logger.info('Wizard: created Werewolf category', { id: category.id });
+          logger.info('WIZARD_CATEGORY_CREATED', { id: category.id });
         }
 
         // Create start-game channel inside the category if it doesn't exist
@@ -558,7 +558,7 @@ module.exports = {
             type: ChannelType.GuildText,
             parent: category.id
           });
-          logger.info('Wizard: created start-game channel', { id: startChannel.id });
+          logger.info('WIZARD_START_CHANNEL_CREATED', { id: startChannel.id });
         } else {
           startChannel = existingChannel;
         }
@@ -589,7 +589,7 @@ module.exports = {
         });
 
       } catch (err) {
-        logger.error('Wizard auto setup failed', { error: err.message, stack: err.stack });
+        logger.error('WIZARD_AUTO_SETUP_FAILED', { error: err.message, stack: err.stack });
         await interaction.editReply({
           content: t('cmd.setup.wizard_auto_error'),
           embeds: [],

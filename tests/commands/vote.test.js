@@ -1,6 +1,7 @@
 const gameManager = require('../../game/gameManager');
 const PHASES = require('../../game/phases');
 const ROLES = require('../../game/roles');
+const { createVillageVoteState } = require('../../game/villageVoteEngine');
 const {
   createMockInteraction,
   createMockPlayer,
@@ -47,6 +48,7 @@ describe('Commande /vote', () => {
     game.dayCount = options.dayCount || 1;
     game.voteVoters = new Map();
     game.votes = new Map();
+    game.villageVoteState = createVillageVoteState();
     return game;
   }
 
@@ -162,14 +164,14 @@ describe('Commande /vote', () => {
 
     await voteCommand.execute(interaction);
 
-    expect(game.votes.get('222222222222222222')).toBe(1);
-    expect(game.voteVoters.get('111111111111111111')).toBe('222222222222222222');
+    // Now uses villageVoteState instead of game.votes
+    expect(game.villageVoteState.votes.get('111111111111111111')).toBe('222222222222222222');
     expect(safeReply).toHaveBeenCalledWith(interaction, expect.objectContaining({
       content: expect.stringContaining('voté pour')
     }));
   });
 
-  test('le vote du capitaine compte double', async () => {
+  test('le capitaine n\'a plus de vote double (vote normal)', async () => {
     const game = setupGame('ch-vote');
     game.captainId = '111111111111111111';
     game.players.push(
@@ -182,9 +184,10 @@ describe('Commande /vote', () => {
 
     await voteCommand.execute(interaction);
 
-    expect(game.votes.get('222222222222222222')).toBe(2);
+    // Captain now has 1 vote like everyone else (no more ×2)
+    expect(game.villageVoteState.votes.get('111111111111111111')).toBe('222222222222222222');
     expect(safeReply).toHaveBeenCalledWith(interaction, expect.objectContaining({
-      content: expect.stringContaining('capitaine')
+      content: expect.stringContaining('voté pour')
     }));
   });
 
@@ -209,11 +212,11 @@ describe('Commande /vote', () => {
     i2.options.getUser = jest.fn(() => ({ id: '333333333333333333', username: 'Target2' }));
     await voteCommand.execute(i2);
 
-    expect(game.votes.has('222222222222222222')).toBe(false);
-    expect(game.votes.get('333333333333333333')).toBe(1);
+    // Now uses villageVoteState — voter's new choice replaces old one
+    expect(game.villageVoteState.votes.get('111111111111111111')).toBe('333333333333333333');
   });
 
-  test('rollback le vote mémoire si la persistance DB échoue', async () => {
+  test('rollback le vote mémoire si erreur interne', async () => {
     const game = setupGame('ch-vote');
     game.players.push(
       createMockPlayer({ id: '111111111111111111', alive: true }),
@@ -223,17 +226,18 @@ describe('Commande /vote', () => {
     const interaction = createMockInteraction({ commandName: 'vote', channelId: 'ch-vote', userId: '111111111111111111' });
     interaction.options.getUser = jest.fn(() => ({ id: '222222222222222222', username: 'Target' }));
 
-    const addVoteSpy = jest.spyOn(gameManager.db, 'addVoteIfChanged').mockReturnValue({ ok: false, affectedRows: 0, alreadyExecuted: false });
+    // Make runAtomic throw to simulate internal error
+    const runAtomicSpy = jest.spyOn(gameManager, 'runAtomic').mockRejectedValue(new Error('DB error'));
 
     await voteCommand.execute(interaction);
 
-    expect(game.voteVoters.has('111111111111111111')).toBe(false);
-    expect(game.votes.has('222222222222222222')).toBe(false);
+    // Vote should not be registered in villageVoteState
+    expect(game.villageVoteState.votes.has('111111111111111111')).toBe(false);
     expect(safeReply).toHaveBeenCalledWith(interaction, expect.objectContaining({
       content: expect.stringContaining('interne')
     }));
 
-    addVoteSpy.mockRestore();
+    runAtomicSpy.mockRestore();
   });
 
   test('deux votes concurrents du même joueur ne corrompent pas l\'état (un seul commit)', async () => {
@@ -254,10 +258,8 @@ describe('Commande /vote', () => {
 
     await Promise.all([voteCommand.execute(i1), voteCommand.execute(i2)]);
 
-    expect(addVoteSpy).toHaveBeenCalledTimes(1);
-    expect(game.voteVoters.size).toBe(1);
-    const totalVotes = Array.from(game.votes.values()).reduce((sum, value) => sum + value, 0);
-    expect(totalVotes).toBe(1);
+    // Only 1 voter entry should exist in villageVoteState (last one wins via runAtomic serialization)
+    expect(game.villageVoteState.votes.size).toBe(1);
 
     addVoteSpy.mockRestore();
   });

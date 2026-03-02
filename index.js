@@ -4,7 +4,7 @@ const { Client, GatewayIntentBits, Collection, REST, Routes, ActionRowBuilder, B
 const fs = require("fs");
 const path = require("path");
 const gameManager = require("./game/gameManager");
-const { app: logger, discord: discordLogger, interaction: interactionLogger } = require("./utils/logger");
+const { app: logger, interaction: interactionLogger, interactionMeta, runWithContext, rid } = require("./utils/logger");
 const { safeEditReply } = require("./utils/interaction");
 const { t } = require('./utils/i18n');
 const WebServer = require('./web/server');
@@ -20,7 +20,7 @@ let webServer = null;
 const REQUIRED_ENV = ['TOKEN', 'CLIENT_ID'];
 for (const key of REQUIRED_ENV) {
   if (!process.env[key]) {
-    console.error(`❌ Variable d'environnement manquante: ${key}. Vérifiez votre fichier .env`);
+    logger.fatal('ENV_MISSING', { key });
     process.exit(1);
   }
 }
@@ -28,7 +28,7 @@ for (const key of REQUIRED_ENV) {
 // Inter-process startup lock (split-brain protection)
 const lockResult = startupLock.acquire();
 if (!lockResult.ok) {
-  logger.critical('Refusing startup: another bot instance appears to be running', {
+  logger.fatal('STARTUP_LOCK_FAILED', {
     reason: lockResult.reason,
     ownerPid: lockResult.ownerPid,
     ownerStartedAt: lockResult.ownerStartedAt,
@@ -37,7 +37,7 @@ if (!lockResult.ok) {
   });
   process.exit(1);
 }
-logger.info('Startup lock acquired', {
+logger.info('STARTUP_LOCK_ACQUIRED', {
   pid: lockResult.pid,
   lockFilePath: lockResult.lockFilePath
 });
@@ -74,13 +74,13 @@ for (const file of commandFiles) {
   // Appliquer le rate limiting automatiquement
   const protectedCommand = applyRateLimit(command);
   client.commands.set(protectedCommand.data.name, protectedCommand);
-  logger.debug('Command loaded with rate limiting', { name: command.data.name });
+  logger.debug('COMMAND_LOADED', { name: command.data.name });
 }
 
 // Bot prêt
 client.once("clientReady", async () => {
-  logger.success(`🐺 Connected as ${client.user.tag}`);
-  logger.info('Registering slash commands...');
+  logger.info('BOT_READY', { tag: client.user.tag });
+  logger.info('REGISTERING_COMMANDS');
 
   // Initialiser le système de configuration
   try {
@@ -90,7 +90,7 @@ client.once("clientReady", async () => {
     ConfigManager.initialize(db.db); // Passer l'objet SQLite directement
     
     const config = ConfigManager.getInstance();
-    logger.success('Configuration system initialized');
+    logger.info('CONFIG_INITIALIZED');
 
     // Initialiser le système i18n
     const i18n = require('./utils/i18n');
@@ -98,14 +98,14 @@ client.once("clientReady", async () => {
     
     // Vérifier si le setup est complet
     if (!config.isSetupComplete()) {
-      logger.warn('Bot setup incomplete! Use /setup wizard to configure');
+      logger.warn('SETUP_INCOMPLETE');
       const missing = config.getMissingSetupKeys();
-      logger.warn('Missing configuration:', { keys: missing.map(m => m.key) });
+      logger.warn('SETUP_MISSING_KEYS', { keys: missing.map(m => m.key) });
     } else {
-      logger.success('Bot configuration complete');
+      logger.info('SETUP_COMPLETE');
     }
   } catch (error) {
-    logger.error('Failed to initialize configuration system', { error: error.message });
+    logger.error('CONFIG_INIT_FAILED', { error: error.message });
   }
 
   // Initialiser le système de monitoring
@@ -129,7 +129,7 @@ client.once("clientReady", async () => {
     // Activer/désactiver les alertes selon la config
     alerts.setEnabled(config.isMonitoringAlertsEnabled());
     
-    logger.success('Monitoring system initialized', { 
+    logger.info('MONITORING_INITIALIZED', { 
       interval: `${metricsInterval / 1000}s`,
       alertsEnabled: config.isMonitoringAlertsEnabled()
     });
@@ -140,7 +140,7 @@ client.once("clientReady", async () => {
       await alerts.alertBotStarted(packageJson.version, 'N/A');
     }
   } catch (error) {
-    logger.error('Failed to initialize monitoring system', { error: error.message });
+    logger.error('MONITORING_INIT_FAILED', { error: error.message });
   }
 
   // Initialiser le système de backup automatique
@@ -150,16 +150,16 @@ client.once("clientReady", async () => {
     BackupManager.initialize(backupDb);
     const backup = BackupManager.getInstance();
     backup.startAutoBackup();
-    logger.success('Backup system initialized (hourly, keep 24)');
+    logger.info('BACKUP_INITIALIZED');
   } catch (error) {
-    logger.error('Failed to initialize backup system', { error: error.message });
+    logger.error('BACKUP_INIT_FAILED', { error: error.message });
   }
 
   // Initialiser le système d'achievements & ELO
   try {
     gameManager.initAchievements();
   } catch (error) {
-    logger.error('Failed to initialize achievement system', { error: error.message });
+    logger.error('ACHIEVEMENTS_INIT_FAILED', { error: error.message });
   }
 
   // Initialiser le Web Dashboard & API
@@ -174,7 +174,7 @@ client.once("clientReady", async () => {
     });
     await webServer.start();
   } catch (error) {
-    logger.error('Failed to initialize web dashboard', { error: error.message, stack: error.stack });
+    logger.error('WEB_INIT_FAILED', { error: error.message, stack: error.stack });
   }
 
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
@@ -187,14 +187,14 @@ client.once("clientReady", async () => {
         Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
         { body: commandsJson }
       );
-      logger.success("✅ Slash commands registered (guild instant)", { guildId: process.env.GUILD_ID, count: client.commands.size });
+      logger.info('COMMANDS_REGISTERED', { mode: 'guild', guildId: process.env.GUILD_ID, count: client.commands.size });
     } else {
       // Pas de GUILD_ID → enregistrement global (propagation ~1h pour les nouveaux serveurs)
       await rest.put(
         Routes.applicationCommands(process.env.CLIENT_ID),
         { body: commandsJson }
       );
-      logger.success("✅ Slash commands registered (global)", { count: client.commands.size });
+      logger.info('COMMANDS_REGISTERED', { mode: 'global', count: client.commands.size });
     }
 
     // Auto-enregistrer les commandes quand le bot rejoint un nouveau serveur
@@ -204,9 +204,9 @@ client.once("clientReady", async () => {
           Routes.applicationGuildCommands(process.env.CLIENT_ID, guild.id),
           { body: commandsJson }
         );
-        logger.success(`✅ Slash commands registered for new guild`, { guildId: guild.id, guildName: guild.name });
+        logger.info('COMMANDS_REGISTERED', { mode: 'guild_join', guildId: guild.id, guildName: guild.name });
       } catch (err) {
-        logger.error(`Failed to register commands for new guild`, { guildId: guild.id, error: err.message });
+        logger.error('COMMANDS_REGISTER_FAILED', { guildId: guild.id, error: err.message });
       }
     });
 
@@ -222,23 +222,23 @@ client.once("clientReady", async () => {
           const botMember = guild.members.me || await guild.members.fetchMe();
           const missing = REQUIRED_PERMS.filter(p => !botMember.permissions.has(p));
           if (missing.length > 0) {
-            logger.warn(`⚠️ Missing permissions in ${guild.name}`, { guildId, missing });
+            logger.warn('PERMISSIONS_MISSING', { guildId, guildName: guild.name, missing });
           } else {
-            logger.success(`✅ All permissions OK in ${guild.name}`, { guildId });
+            logger.info('PERMISSIONS_OK', { guildId, guildName: guild.name });
           }
         } catch (err) {
-          logger.error(`Could not verify permissions in ${guild.name}`, err);
+          logger.error('PERMISSIONS_CHECK_FAILED', err);
         }
       }
       // ──────────────────────────────────────────────────────────────
 
       // Load saved game state BEFORE orphan cleanup so channels are recognized
       try {
-        logger.info('Loading saved game state...');
+        logger.info('GAME_STATE_LOADING');
         gameManager.loadState();
-        logger.info('Games loaded from DB', { count: gameManager.games.size });
+        logger.info('GAME_STATE_LOADED', { count: gameManager.games.size });
       } catch (err) {
-        logger.error('❌ Game state load failed', err);
+        logger.error('GAME_STATE_LOAD_FAILED', err);
       }
 
       // ─── Guild reconciliation: purge data for guilds bot left ─────
@@ -246,16 +246,16 @@ client.once("clientReady", async () => {
         const { reconcileGuildsOnStartup } = require('./game/guildReconciler');
         const result = reconcileGuildsOnStartup(client, gameManager.db, gameManager);
         if (result.removed.length > 0) {
-          logger.info('Guild reconciliation done', { removed: result.removed.length, kept: result.kept.length });
+          logger.info('GUILD_RECONCILIATION_DONE', { removed: result.removed.length, kept: result.kept.length });
         }
       } catch (err) {
-        logger.error('Guild reconciliation failed', { error: err.message });
+        logger.error('GUILD_RECONCILIATION_FAILED', { error: err.message });
       }
       // ──────────────────────────────────────────────────────────────
 
       // ─── Orphan channel cleanup ───────────────────────────────────
       try {
-        logger.info('Checking for orphan game channels...');
+        logger.info('ORPHAN_CLEANUP_STARTED');
         for (const [guildId, guild] of client.guilds.cache) {
           const gameChannelPrefixes = ['🐺', '🏘️', '🏘', '🔮', '🧪', '💘', '❤️', '❤', '🛡️', '🛡', '👻', '🎤'];
           const channels = guild.channels.cache.filter(ch => 
@@ -281,23 +281,23 @@ client.once("clientReady", async () => {
                   continue; // Silently skip — bot cannot manage this channel
                 }
                 await ch.delete('Orphan game channel cleanup');
-                logger.info('Deleted orphan channel', { name: ch.name, id: chId, guild: guild.name });
+                logger.info('ORPHAN_CHANNEL_DELETED', { name: ch.name, id: chId, guild: guild.name });
               } catch (e) {
                 // Silently ignore Missing Access/Permissions errors (50001, 50013)
                 if (e.code === 50001 || e.code === 50013) continue;
-                logger.error('Failed to delete orphan channel', e);
+                logger.error('ORPHAN_DELETE_FAILED', e);
               }
             }
           }
         }
       } catch (err) {
-        logger.error('Orphan cleanup failed', err);
+        logger.error('ORPHAN_CLEANUP_FAILED', err);
       }
       // ──────────────────────────────────────────────────────────────
 
       // Restaurer les parties chargées et tenter une restauration minimale
       try {
-        logger.info('Restoring games...', { count: gameManager.games.size });
+        logger.info('GAME_RESTORE_STARTED', { count: gameManager.games.size });
         for (const [channelId, game] of gameManager.games.entries()) {
           // Résoudre le guild de cette partie
           const guild = game.guildId 
@@ -305,20 +305,16 @@ client.once("clientReady", async () => {
             : null;
 
           if (!guild) {
-            logger.warn('Restored game has unknown guild, removing', { channelId, guildId: game.guildId });
-            try { gameManager.db.deleteGame(channelId); } catch (e) { /* ignore */ }
-            gameManager.games.delete(channelId);
-            gameManager.saveState();
+            logger.warn('GAME_RESTORE_UNKNOWN_GUILD', { channelId, guildId: game.guildId });
+            gameManager.purgeGame(channelId, game);
             continue;
           }
 
           // Validate main channel still exists
           const mainChannel = await guild.channels.fetch(game.mainChannelId).catch(() => null);
           if (!mainChannel) {
-            logger.warn('Restored game has missing main channel, removing', { channelId, mainChannelId: game.mainChannelId });
-            try { gameManager.db.deleteGame(channelId); } catch (e) { /* ignore */ }
-            gameManager.games.delete(channelId);
-            gameManager.saveState();
+            logger.warn('GAME_RESTORE_MISSING_CHANNEL', { channelId, mainChannelId: game.mainChannelId });
+            gameManager.purgeGame(channelId, game);
             continue;
           }
 
@@ -327,10 +323,10 @@ client.once("clientReady", async () => {
             const voiceChannel = await guild.channels.fetch(game.voiceChannelId).catch(() => null);
             if (voiceChannel) {
               gameManager.joinVoiceChannel(guild, game.voiceChannelId)
-                .then(() => logger.debug('Voice reconnected', { channelId, voiceChannelId: game.voiceChannelId }))
-                .catch(e => logger.error('Restore voice error', e));
+                .then(() => logger.debug('VOICE_RECONNECTED', { channelId, voiceChannelId: game.voiceChannelId }))
+                .catch(e => logger.error('VOICE_RESTORE_FAILED', e));
             } else {
-              logger.warn('Restored game has missing voice channel, clearing', { channelId, voiceChannelId: game.voiceChannelId });
+              logger.warn('GAME_RESTORE_MISSING_VOICE', { channelId, voiceChannelId: game.voiceChannelId });
               game.voiceChannelId = null;
               gameManager.saveState();
             }
@@ -342,57 +338,54 @@ client.once("clientReady", async () => {
           // Re-arm timers: lobby timeout for games not yet started
           if (!game.startedAt) {
             gameManager.setLobbyTimeout(channelId);
-            logger.debug('Re-armed lobby timeout for restored game', { channelId });
+            logger.debug('TIMER_LOBBY_REARMED', { channelId });
           } else {
             // Re-arm gameplay timers for in-progress games
             const PHASES = require('./game/phases');
             const nightActionPhases = [PHASES.VOLEUR, PHASES.LOUPS, PHASES.LOUP_BLANC, PHASES.SORCIERE, PHASES.VOYANTE, PHASES.SALVATEUR, PHASES.CUPIDON];
             if (game.phase === PHASES.NIGHT && nightActionPhases.includes(game.subPhase)) {
               gameManager.startNightAfkTimeout(guild, game);
-              logger.debug('Re-armed night AFK timeout for restored game', { channelId, subPhase: game.subPhase });
+              logger.debug('TIMER_NIGHT_AFK_REARMED', { channelId, subPhase: game.subPhase });
             } else if (game.phase === PHASES.NIGHT && game.subPhase === PHASES.REVEIL) {
               // Was about to transition to day — do it now
-              gameManager.transitionToDay(guild, game).catch(e => logger.error('Restore transitionToDay error', { error: e.message }));
-              logger.debug('Resuming day transition for restored game', { channelId });
+              gameManager.transitionToDay(guild, game).catch(e => logger.error('RESTORE_TRANSITION_FAILED', { error: e.message }));
+              logger.debug('RESTORE_DAY_TRANSITION', { channelId });
             } else if (game.phase === PHASES.DAY) {
-              if (game.subPhase === PHASES.DELIBERATION) {
-                gameManager.startDayTimeout(guild, game, 'deliberation');
-                logger.debug('Re-armed deliberation timeout for restored game', { channelId });
-              } else if (game.subPhase === PHASES.VOTE) {
-                gameManager.startDayTimeout(guild, game, 'vote');
-                logger.debug('Re-armed vote timeout for restored game', { channelId });
+              if (game.subPhase === PHASES.VOTE) {
+                gameManager.startDayTimeout(guild, game);
+                logger.debug('TIMER_VOTE_REARMED', { channelId });
               } else if (game.subPhase === PHASES.VOTE_CAPITAINE) {
                 gameManager.startCaptainVoteTimeout(guild, game);
-                logger.debug('Re-armed captain vote timeout for restored game', { channelId });
+                logger.debug('TIMER_CAPTAIN_VOTE_REARMED', { channelId });
               }
             }
 
             // Re-arm hunter shoot timeout if hunter was waiting to shoot
             if (game._hunterMustShoot) {
               gameManager.startHunterTimeout(guild, game, game._hunterMustShoot);
-              logger.debug('Re-armed hunter shoot timeout for restored game', { channelId, hunterId: game._hunterMustShoot });
+              logger.debug('TIMER_HUNTER_REARMED', { channelId, hunterId: game._hunterMustShoot });
             }
 
             // Re-arm captain tiebreak timeout if tiebreak was in progress
             if (game._captainTiebreak && Array.isArray(game._captainTiebreak) && game._captainTiebreak.length > 0) {
               gameManager.startCaptainTiebreakTimeout(guild, game);
-              logger.debug('Re-armed captain tiebreak timeout for restored game', { channelId, tiedIds: game._captainTiebreak });
+              logger.debug('TIMER_CAPTAIN_TIEBREAK_REARMED', { channelId, tiedIds: game._captainTiebreak });
             }
           }
         }
       } catch (err) {
-        logger.error('❌ Game state restoration failed', err);
+        logger.error('GAME_RESTORATION_FAILED', err);
       }
 
       // Archive old completed games (cleanup DB)
       try {
         const archived = gameManager.db.archiveOldGames(7);
-        if (archived > 0) logger.info(`🗃️ Archived ${archived} old games from DB`);
+        if (archived > 0) logger.info('GAMES_ARCHIVED', { count: archived });
       } catch (err) {
-        logger.error('Game archiving failed', err);
+        logger.error('GAMES_ARCHIVE_FAILED', err);
       }
   } catch (error) {
-    logger.error("❌ Failed to register commands", error);
+    logger.error('COMMANDS_REGISTER_FAILED', error);
   }
 });
 
@@ -409,7 +402,7 @@ async function updateLobbyEmbed(guild, channelId) {
     const payload = buildLobbyMessage(game, game.lobbyHostId);
     await lobbyMsg.edit(payload);
   } catch (err) {
-    logger.error("❌ Erreur rafraîchissement lobby:", { message: err.message });
+    logger.error('LOBBY_REFRESH_FAILED', { message: err.message });
   }
 }
 
@@ -451,7 +444,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     // Vérifier que le bot a la permission MUTE_MEMBERS
     const botMember = guild.members.me;
     if (botMember && !botMember.permissions.has('MuteMembers')) {
-      logger.warn('Bot missing MuteMembers permission — cannot mute/unmute players');
+      logger.warn('BOT_MISSING_MUTE_PERMISSION');
       return;
     }
 
@@ -474,7 +467,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
       } catch (e) { /* ignore */ }
     }
   } catch (err) {
-    logger.error('voiceStateUpdate error', { error: err.message });
+    logger.error('VOICE_STATE_UPDATE_FAILED', { error: err.message });
   }
 });
 
@@ -484,6 +477,9 @@ client.on("interactionCreate", async interaction => {
     try { await interaction.reply({ content: t('error.bot_only_in_server'), ephemeral: true }); } catch (e) { /* ignore */ }
     return;
   }
+
+  // ── Async context: every log inside this handler inherits requestId + guild ──
+  await runWithContext({ requestId: rid(), guildId: interaction.guildId, channelId: interaction.channelId, userId: interaction.user?.id }, async () => {
 
   if (!interaction.__logWrapped) {
     interaction.__logWrapped = true;
@@ -501,15 +497,13 @@ client.on("interactionCreate", async interaction => {
       interaction.reply = async (payload) => {
         try {
           const result = await originalReply(payload);
-          interactionLogger.info('Reply sent', {
-            command: interaction.commandName || 'unknown',
-            channelId: interaction.channelId || 'unknown',
-            userId: interaction.user?.id || 'unknown',
+          interactionLogger.info('REPLY_SENT', {
+            ...interactionMeta(interaction),
             content: formatContent(payload)
           });
           return result;
         } catch (err) {
-          interactionLogger.warn('Reply failed', { error: err.message, code: err.code });
+          interactionLogger.warn('REPLY_FAILED', { ...interactionMeta(interaction), error: err.message, code: err.code });
           throw err;
         }
       };
@@ -520,15 +514,13 @@ client.on("interactionCreate", async interaction => {
       interaction.editReply = async (payload) => {
         try {
           const result = await originalEditReply(payload);
-          interactionLogger.info('Reply edited', {
-            command: interaction.commandName || 'unknown',
-            channelId: interaction.channelId || 'unknown',
-            userId: interaction.user?.id || 'unknown',
+          interactionLogger.info('REPLY_EDITED', {
+            ...interactionMeta(interaction),
             content: formatContent(payload)
           });
           return result;
         } catch (err) {
-          interactionLogger.warn('EditReply failed', { error: err.message, code: err.code });
+          interactionLogger.warn('EDIT_REPLY_FAILED', { ...interactionMeta(interaction), error: err.message, code: err.code });
           throw err;
         }
       };
@@ -539,15 +531,13 @@ client.on("interactionCreate", async interaction => {
       interaction.followUp = async (payload) => {
         try {
           const result = await originalFollowUp(payload);
-          interactionLogger.info('FollowUp sent', {
-            command: interaction.commandName || 'unknown',
-            channelId: interaction.channelId || 'unknown',
-            userId: interaction.user?.id || 'unknown',
+          interactionLogger.info('FOLLOWUP_SENT', {
+            ...interactionMeta(interaction),
             content: formatContent(payload)
           });
           return result;
         } catch (err) {
-          interactionLogger.warn('FollowUp failed', { error: err.message, code: err.code });
+          interactionLogger.warn('FOLLOWUP_FAILED', { ...interactionMeta(interaction), error: err.message, code: err.code });
           throw err;
         }
       };
@@ -562,17 +552,17 @@ client.on("interactionCreate", async interaction => {
       let commandSuccess = true;
 
       try {
-        logger.info('Command received', {
-          command: `/${interaction.commandName}`,
-          user: interaction.user?.username || 'unknown',
-          userId: interaction.user?.id || 'unknown',
+        logger.info('COMMAND_RECEIVED', {
+          command: interaction.commandName,
+          user: interaction.user?.username,
+          userId: interaction.user?.id,
           channelId: interaction.channelId,
           guildId: interaction.guildId
         });
         await command.execute(interaction);
       } catch (err) {
         commandSuccess = false;
-        logger.error('Command execution error', err);
+        logger.error('COMMAND_EXEC_FAILED', err);
         
         // Enregistrer l'erreur dans le monitoring
         try {
@@ -680,11 +670,19 @@ client.on("interactionCreate", async interaction => {
       }
 
       if (buttonType === "game_cleanup") {
+        const mainChId = game.mainChannelId;
         const deletedCount = await gameManager.cleanupChannels(interaction.guild, game);
-        try { gameManager.db.deleteGame(game.mainChannelId); } catch (e) { /* ignore */ }
-        gameManager.games.delete(game.mainChannelId);
-        gameManager.saveState();
-        await safeEditReply(interaction, { content: t('cleanup.button_success', { n: deletedCount }), flags: MessageFlags.Ephemeral });
+        gameManager.purgeGame(mainChId, game);
+        // The summary (and thus the deferred reply) lives in the village channel
+        // which was just deleted, so editReply would fail with 10008.
+        // Send confirmation to the surviving main channel instead.
+        const ok = await safeEditReply(interaction, { content: t('cleanup.button_success', { n: deletedCount }), flags: MessageFlags.Ephemeral });
+        if (!ok) {
+          try {
+            const mainCh = await interaction.guild.channels.fetch(mainChId).catch(() => null);
+            if (mainCh) await mainCh.send(t('cleanup.button_success', { n: deletedCount }));
+          } catch { /* best-effort */ }
+        }
         return;
       }
 
@@ -693,9 +691,7 @@ client.on("interactionCreate", async interaction => {
       const previousPlayers = isRematch ? (game._previousPlayers || []) : [];
       
       const deletedCount = await gameManager.cleanupChannels(interaction.guild, game);
-      try { gameManager.db.deleteGame(game.mainChannelId); } catch (e) { /* ignore */ }
-      gameManager.games.delete(game.mainChannelId);
-      gameManager.saveState();
+      gameManager.purgeGame(game.mainChannelId, game);
 
       const ok = gameManager.create(game.mainChannelId, {
         ...(game.rules || { minPlayers: 5, maxPlayers: 10 }),
@@ -718,8 +714,7 @@ client.on("interactionCreate", async interaction => {
       );
 
       if (!setupSuccess) {
-        try { gameManager.db.deleteGame(game.mainChannelId); } catch (e) { /* ignore */ }
-        gameManager.games.delete(game.mainChannelId);
+        gameManager.purgeGame(game.mainChannelId);
         await safeEditReply(interaction, { content: t('error.channel_creation_button_failed'), flags: MessageFlags.Ephemeral });
         return;
       }
@@ -728,7 +723,7 @@ client.on("interactionCreate", async interaction => {
       if (newGame.voiceChannelId) {
         gameManager.joinVoiceChannel(interaction.guild, newGame.voiceChannelId)
           .then(() => gameManager.playAmbience(newGame.voiceChannelId, 'night_ambience.mp3'))
-          .catch(err => logger.error('Voice connection error', err));
+          .catch(err => logger.error('VOICE_CONNECTION_FAILED', err));
       }
 
       // Create lobby embed
@@ -750,17 +745,17 @@ client.on("interactionCreate", async interaction => {
               joinedCount++;
             }
           } catch (e) {
-            logger.debug('Rematch: could not re-add player', { userId: prev.id, error: e.message });
+            logger.debug('REMATCH_REJOIN_FAILED', { userId: prev.id, error: e.message });
           }
         }
-        logger.info('Rematch: auto-joined players', { count: joinedCount, total: previousPlayers.length });
+        logger.info('REMATCH_PLAYERS_JOINED', { count: joinedCount, total: previousPlayers.length });
       } else {
         gameManager.join(game.mainChannelId, interaction.user);
       }
 
       const lobbyPayload = buildLobbyMsg(newGame, interaction.user.id);
       const lobbyChannel = await interaction.guild.channels.fetch(game.mainChannelId);
-      logger.info('Channel send', { channelId: lobbyChannel.id, channelName: lobbyChannel.name, content: '[lobby message]' });
+      logger.info('LOBBY_MESSAGE_SENT', { channelId: lobbyChannel.id, channelName: lobbyChannel.name });
       const lobbyMsg = await lobbyChannel.send(lobbyPayload);
       newGame.lobbyMessageId = lobbyMsg.id;
 
@@ -839,9 +834,7 @@ client.on("interactionCreate", async interaction => {
             }
 
             // Supprimer la partie de la mémoire, de la DB et sauvegarder
-            try { gameManager.db.deleteGame(channelId); } catch (e) { /* ignore */ }
-            gameManager.games.delete(channelId);
-            try { await gameManager.saveState(); } catch (e) { /* best effort */ }
+            gameManager.purgeGame(channelId, game);
 
             // D'abord envoyer le message de résultat
             const reply = await safeEditReply(interaction, t('lobby.auto_ended', { n: deleted }));
@@ -858,7 +851,7 @@ client.on("interactionCreate", async interaction => {
                   }
                 }
               } catch (e) {
-                logger.error('Failed to cleanup messages', e);
+                logger.error('MESSAGE_CLEANUP_FAILED', e);
               }
               
               // Enfin, supprimer le message de réponse après 2 secondes
@@ -867,7 +860,7 @@ client.on("interactionCreate", async interaction => {
               }, 2000);
             }
           } catch (err) {
-            logger.error("❌ Erreur nettoyage automatique lobby_leave:", err);
+            logger.error('LOBBY_LEAVE_CLEANUP_FAILED', err);
             await safeEditReply(interaction, t('error.cleanup_auto_error'));
           }
           return;
@@ -926,7 +919,8 @@ client.on("interactionCreate", async interaction => {
 
       try {
         // Démarrer le jeu avec les rôles par défaut
-        const startedGame = gameManager.start(channelId);
+        // Use game.mainChannelId — guaranteed to be the Games Map key
+        const startedGame = gameManager.start(game.mainChannelId);
         if (!startedGame) {
           await safeEditReply(interaction, t('error.cannot_start'));
           return;
@@ -940,7 +934,7 @@ client.on("interactionCreate", async interaction => {
 
         await safeEditReply(interaction, t('game.started_button'));
       } catch (err) {
-        logger.error("❌ Erreur démarrage depuis lobby:", err);
+        logger.error('LOBBY_START_FAILED', err);
         await safeEditReply(interaction, t('error.start_error'));
       }
       return;
@@ -965,8 +959,31 @@ client.on("interactionCreate", async interaction => {
       await handleNightSelect(interaction);
       return;
     }
+
+    // ── Select menus for day village vote & captain tiebreak ──
+    const DAY_SELECT_IDS = ['captain_elect', 'village_vote', 'captain_tiebreak'];
+    if (DAY_SELECT_IDS.includes(interaction.customId)) {
+      const { safeDefer } = require('./utils/interaction');
+      try {
+        const deferred = await safeDefer(interaction, { flags: MessageFlags.Ephemeral });
+        if (!deferred) return;
+      } catch (err) {
+        if (err.code === 10062) return;
+        throw err;
+      }
+      const { handleCaptainElect, handleVillageVote, handleCaptainTiebreak } = require('./interactions/dayActions');
+      if (interaction.customId === 'captain_elect') {
+        await handleCaptainElect(interaction);
+      } else if (interaction.customId === 'village_vote') {
+        await handleVillageVote(interaction);
+      } else {
+        await handleCaptainTiebreak(interaction);
+      }
+      return;
+    }
   }
   }
+  }); // end runWithContext
 });
 
 // Global error handlers
@@ -975,7 +992,7 @@ client.on('error', (error) => {
     // Silently ignore "Unknown interaction" errors (expired interactions)
     return;
   }
-  logger.error('Client error:', error);
+  logger.error('CLIENT_ERROR', error);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
@@ -990,7 +1007,7 @@ process.on('unhandledRejection', (reason, promise) => {
     return;
   }
   
-  logger.error('Unhandled Rejection:', reason);
+  logger.error('UNHANDLED_REJECTION', reason);
 });
 
 process.on('uncaughtException', (error) => {
@@ -998,7 +1015,7 @@ process.on('uncaughtException', (error) => {
     // Silently ignore "Unknown interaction" errors
     return;
   }
-  logger.critical('Uncaught Exception — saving state before crash', error);
+  logger.fatal('UNCAUGHT_EXCEPTION', error);
   // Best-effort state save before crash
   try { gameManager.saveState(); } catch (e) { /* ignore */ }
   try { startupLock.release(); } catch (_) { /* ignore */ }
@@ -1007,31 +1024,31 @@ process.on('uncaughtException', (error) => {
 
 // ─── Discord client resilience ─────────────────────────────────────
 client.on('error', (error) => {
-  logger.error('Discord client error', error);
+  logger.error('DISCORD_CLIENT_ERROR', error);
 });
 
 client.on('warn', (message) => {
-  logger.warn('Discord client warning', { message });
+  logger.warn('DISCORD_CLIENT_WARNING', { message });
 });
 
 client.on('shardError', (error) => {
-  logger.error('WebSocket shard error', error);
+  logger.error('SHARD_ERROR', error);
 });
 
 client.on('shardDisconnect', (event, shardId) => {
-  logger.warn(`Shard ${shardId} disconnected`, { code: event?.code, reason: event?.reason });
+  logger.warn('SHARD_DISCONNECTED', { shardId, code: event?.code, reason: event?.reason });
 });
 
 client.on('shardReconnecting', (shardId) => {
-  logger.info(`Shard ${shardId} reconnecting...`);
+  logger.info('SHARD_RECONNECTING', { shardId });
 });
 
 client.on('shardResume', (shardId, replayedEvents) => {
-  logger.success(`Shard ${shardId} resumed`, { replayedEvents });
+  logger.info('SHARD_RESUMED', { shardId, replayedEvents });
 });
 
 client.on('invalidated', () => {
-  logger.critical('Session invalidated — restarting...');
+  logger.fatal('SESSION_INVALIDATED');
   try { gameManager.saveState(); } catch (e) { /* ignore */ }
   try { startupLock.release(); } catch (_) { /* ignore */ }
   process.exit(1);
@@ -1039,7 +1056,7 @@ client.on('invalidated', () => {
 
 // Graceful shutdown
 async function gracefulShutdown(signal) {
-  logger.info(`${signal} received — shutting down gracefully...`);
+  logger.info('SHUTDOWN_STARTED', { signal });
   try {
     // Stop metrics collection
     try {
@@ -1052,7 +1069,7 @@ async function gracefulShutdown(signal) {
       const backup = BackupManager.getInstance();
       backup.stopAutoBackup();
       await backup.performBackup();
-      logger.info('Final backup completed');
+      logger.info('SHUTDOWN_BACKUP_DONE');
     } catch (e) { /* ignore */ }
 
     // Clear all game timers and save state
@@ -1078,9 +1095,9 @@ async function gracefulShutdown(signal) {
     // Destroy Discord client
     client.destroy();
     startupLock.release();
-    logger.info('Shutdown complete');
+    logger.info('SHUTDOWN_COMPLETE');
   } catch (err) {
-    logger.error('Shutdown error', { error: err.message });
+    logger.error('SHUTDOWN_ERROR', { error: err.message });
     try { startupLock.release(); } catch (_) { /* ignore */ }
   }
   process.exit(0);

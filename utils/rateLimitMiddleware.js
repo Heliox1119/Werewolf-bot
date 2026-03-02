@@ -22,7 +22,7 @@ function withRateLimit(executeFunction, commandName) {
     const check = rateLimiter.checkLimit(userId, commandName);
 
     if (!check.allowed) {
-      logger.warn('Rate limit rejected', {
+      logger.warn('RATE_LIMIT_REJECTED', {
         userId,
         username,
         commandName,
@@ -42,7 +42,7 @@ function withRateLimit(executeFunction, commandName) {
     try {
       await executeFunction.call(this, interaction);
     } catch (error) {
-      logger.error('Command execution failed', {
+      logger.error('COMMAND_EXEC_FAILED', {
         commandName,
         userId,
         error: error.message

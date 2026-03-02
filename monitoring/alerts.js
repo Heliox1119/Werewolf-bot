@@ -1,4 +1,4 @@
-const { app: logger } = require('../utils/logger');
+const { monitoring: logger } = require('../utils/logger');
 const { t } = require('../utils/i18n');
 const { getSeverityColor } = require('../utils/theme');
 const { EmbedBuilder, WebhookClient } = require('discord.js');
@@ -37,16 +37,16 @@ class AlertSystem {
    */
   initializeWebhook() {
     if (!this.webhookUrl) {
-      logger.warn('No webhook URL configured, alerts disabled');
+      logger.warn('ALERT_WEBHOOK_NOT_CONFIGURED');
       return;
     }
     
     try {
       this.webhook = new WebhookClient({ url: this.webhookUrl });
       this.enabled = true;
-      logger.success('Alert system initialized with webhook');
+      logger.info('ALERT_SYSTEM_INITIALIZED');
     } catch (error) {
-      logger.error('Failed to initialize webhook', { error: error.message });
+      logger.error('ALERT_WEBHOOK_INIT_FAILED', { error: error.message });
       this.enabled = false;
     }
   }
@@ -60,7 +60,7 @@ class AlertSystem {
     
     const now = Date.now();
     if (now - rule.lastAlert < rule.cooldown) {
-      logger.debug('Alert on cooldown', { alertType, remaining: rule.cooldown - (now - rule.lastAlert) });
+      logger.debug('ALERT_ON_COOLDOWN', { alertType, remaining: rule.cooldown - (now - rule.lastAlert) });
       return false;
     }
     
@@ -84,7 +84,7 @@ class AlertSystem {
    */
   async sendAlert(title, description, severity = 'warning', fields = []) {
     if (!this.enabled) {
-      logger.debug('Alerts disabled, skipping', { title });
+      logger.debug('ALERTS_DISABLED_SKIPPING', { title });
       return false;
     }
     
@@ -105,10 +105,10 @@ class AlertSystem {
         username: 'Werewolf Monitoring'
       });
       
-      logger.info('Alert sent', { title, severity });
+      logger.info('ALERT_SENT', { title, severity });
       return true;
     } catch (error) {
-      logger.error('Failed to send alert', { title, error: error.message });
+      logger.error('ALERT_SEND_FAILED', { title, error: error.message });
       return false;
     }
   }
@@ -372,7 +372,7 @@ class AlertSystem {
       total: 0,
       byType: {}
     };
-    logger.info('Alert counters reset');
+    logger.info('ALERT_COUNTERS_RESET');
   }
 
   /**
@@ -380,7 +380,7 @@ class AlertSystem {
    */
   setEnabled(enabled) {
     this.enabled = enabled && this.webhook !== null;
-    logger.info(`Alert system ${enabled ? 'enabled' : 'disabled'}`);
+    logger.info('ALERT_SYSTEM_TOGGLED', { enabled });
   }
 
   /**

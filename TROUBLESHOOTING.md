@@ -1,219 +1,134 @@
-# 🔧 Guide de Dépannage - Werewolf Bot
+# 🔧 Troubleshooting Guide
 
-## Erreurs Discord API
+## Discord API Errors
 
-### InteractionNotReplied (10062)
-**Cause** : `editReply()` appelé sans `deferReply()` préalable
+### Error 10062 — Unknown Interaction (Expired)
 
-**Solution** : Utilisez toujours `checkCategoryAndDefer()` au début
+**Cause:** Interaction not deferred/replied within 3 seconds.
+
+**The 3-second rule:** Discord invalidates any interaction not acknowledged within 3s. Always defer first.
+
 ```javascript
+// ✅ Correct — defer immediately
+if (!await checkCategoryAndDefer(interaction)) return;
+// ... slow logic ...
+await interaction.editReply('Done');
+
+// ❌ Wrong — slow logic before reply
+const data = await fetchSomething(); // may take > 3s
+await interaction.reply('Done'); // 10062 if expired
+```
+
+**If a game is stuck after an expired interaction:**
+```
+/force-end                         # Force-end from any channel
+/force-end channel-id:123456789    # Target specific game
+/debug-games                       # List all active games
+```
+
+### Error 40060 — Interaction Already Replied
+
+**Cause:** `reply()` called after `deferReply()` or another `reply()`.
+
+**Solution:** After `deferReply()`, always use `editReply()`.
+
+### Error 10008 — Unknown Message
+
+**Cause:** Trying to edit/delete a message that was already deleted.
+
+**Solution:** The bot wraps all message operations in try/catch. If you see this in logs, it's handled gracefully.
+
+---
+
+## Gameplay Issues
+
+### Players stuck on mute after `/end`
+The bot automatically unmutes all players when a game ends. If mute persists:
+1. Check the bot has `Mute Members` permission
+2. Use `/debug-voicemute` to toggle voice muting off
+
+### Duplicate channels
+Use `/clear` to clean up orphaned game channels. Auto-cleanup runs on inactive lobbies after 1h.
+
+### Lobby not starting
+- Verify minimum player count is met (check with `/setrules`)
+- Ensure the bot has `Manage Channels` + `Manage Roles` permissions
+- The category must be configured: run `/setup wizard`
+
+### Game stuck / not advancing
+- Use `/nextphase` to force advance
+- Use `/debug-info` to inspect current state
+- If truly stuck, use `/force-end` and start a new game
+
+---
+
+## Audio Issues
+
+### Bot doesn't play sounds
+1. Verify audio files exist in `./audio/` (`night_ambience.mp3`, `day_ambience.mp3`, etc.)
+2. Bot needs `Connect` + `Speak` permissions in the voice channel
+3. FFmpeg must be available (included in Docker; for manual install: `npm install ffmpeg-static`)
+
+---
+
+## Development
+
+### Common patterns
+
+```javascript
+// Always check game exists
+const game = gameManager.games.get(channelId);
+if (!game) return interaction.editReply(t('errors.no_game'));
+
+// Always check player state
+const { inGame, alive, player } = isPlayerInGame(game, userId);
+
+// Always defer before slow operations
 if (!await checkCategoryAndDefer(interaction)) return;
 ```
 
-### InteractionAlreadyReplied (40060)
-**Cause** : `reply()` appelé après `deferReply()` ou un autre `reply()`
-
-**Solution** : Utilisez `editReply()` après defer
-```javascript
-await checkCategoryAndDefer(interaction); // defer
-await interaction.editReply("Message"); // OK
+### Logging
+Set `LOG_LEVEL` in `.env` (DEBUG | INFO | WARN | ERROR | NONE):
+```env
+LOG_LEVEL=DEBUG    # Show all logs including debug
 ```
 
-### Unknown Interaction (10062) - Interaction Expired
-**Cause** : Interaction non defer/reply dans les 3 secondes
-
-**Symptômes** :
-```
-[ERROR] [INTERACTION] Interaction expired (10062)
-{
-  "commandName": "create",
-  "age": 3150
-}
-```
-
-**Solutions** :
-
-1. **Utiliser `/force-end` (v2.0.2+)**
-   ```
-   /force-end
-   /force-end channel-id:123456789
-   ```
-   Commande admin qui fonctionne **toujours** (bypass interaction).
-
-2. **Réessayer la commande**
-   ```
-   /end
-   ```
-   Depuis v2.0.2, `/end` continue même si expiré (channels supprimés quand même).
-
-3. **Utiliser `/debug-games` pour localiser**
-   ```
-   /debug-games          # Voir toutes les parties
-   /force-end channel-id:123456789
-   ```
-
-**Note** : v2.0.2+ résout le problème en continuant l'action même si l'interaction expire.
-
-**Documentation complète** : Voir [ERROR_10062.md](ERROR_10062.md)
+Use `/debug-info` (admin) to inspect game state at runtime.
 
 ---
 
-## Problèmes de Gameplay
+## Deployment Checklist
 
-### Joueurs restent mute après /end
-**Cause** : La partie n'est pas marquée comme terminée
+- [ ] `.env` configured: `TOKEN`, `CLIENT_ID`, `GUILD_ID`
+- [ ] Node.js ≥ 20 installed
+- [ ] Dependencies installed: `npm install`
+- [ ] Audio files in `./audio/` (optional)
+- [ ] Discord bot permissions: Manage Channels, Manage Roles, Connect, Speak, Send Messages, Mute Members
+- [ ] Run `/setup wizard` on first launch to configure the game category
+- [ ] (Optional) Set `WEB_PORT`, `CLIENT_SECRET`, `SESSION_SECRET` for web dashboard
 
-**Solution** : Le bot unmute automatiquement maintenant
-- Phase "Terminé" détectée automatiquement
-- Tous les joueurs sont unmutes dans voiceStateUpdate
-
-### Channels en double
-**Cause** : Ancien jeu non nettoyé avant création
-
-**Solution** : Utilisez `/clear` ou le cleanup automatique fonctionne maintenant
-
-### Lobby timeout inactif
-**Cause** : Partie créée mais jamais démarrée
-
-**Solution** : Auto-cleanup après 1h d'inactivité (automatique)
-
----
-
-## Problèmes Audio
-
-### Bot ne joue pas de son
-**Vérifications** :
-1. Bot est dans le channel vocal
-2. Fichiers audio dans `/audio/`
-3. Permissions "Speak" du bot
-4. ffmpeg-static installé : `npm install ffmpeg-static`
-
-### Son continue après /end
-**Solution** : La boucle s'arrête automatiquement au cleanup
-
----
-
-## Problèmes de Performance
-
-### Lag dans le channel vocal
-**Cause** : Trop d'events voiceStateUpdate
-
-**Solution** : Optimisations implémentées
-- Cache Discord utilisé
-- Check de l'état actuel avant mute/unmute
-- Debouncing automatique
-
-### Sauvegardes lentes
-**Cause** : Trop de saveState() synchrones
-
-**Solution** : Utilisez `scheduleSave()`
-```javascript
-// ❌ Avant
-try { gameManager.saveState(); } catch (e) {}
-
-// ✅ Maintenant
-gameManager.scheduleSave();
-```
-
----
-
-## Erreurs de Développement
-
-### Cannot find module 'utils/...'
-**Solution** : Vérifiez les chemins relatifs
-```javascript
-const { checkCategoryAndDefer } = require("../utils/commands");
-```
-
-### Game undefined
-**Cause** : Game pas créé ou supprimé
-
-**Solution** : Vérifiez toujours
-```javascript
-const game = gameManager.games.get(channelId);
-if (!game) {
-  await interaction.editReply("❌ Aucune partie ici");
-  return;
-}
-```
-
-### Player not in game
-**Solution** : Utilisez le validator
-```javascript
-const { isPlayerInGame } = require("../utils/validators");
-const { inGame, alive, player } = isPlayerInGame(game, userId);
-```
-
----
-
-## Logs & Debugging
-
-### Activer les logs détaillés
-Modifiez `index.js` :
-```javascript
-function log(level, ...args) {
-  const ts = new Date().toISOString();
-  const emoji = level === 'error' ? '❌' : level === 'warn' ? '⚠️' : 'ℹ️';
-  console.log(`[${ts}] ${emoji} [${level.toUpperCase()}]`, ...args);
-}
-```
-
-### Vérifier l'état du jeu
-Utilisez `/debug-info` (admin)
-
-### Forcer le nettoyage
-Utilisez `/clear` (admin)
-
----
-
-## Checklist de Déploiement
-
-- [ ] `.env` configuré avec TOKEN, CLIENT_ID, GUILD_ID
-- [ ] Node.js ≥ 16.9.0
-- [ ] Dependencies installées : `npm install`
-- [ ] Dossier `/audio/` avec les fichiers son
-- [ ] Permissions bot Discord :
-  - Manage Channels
-  - Manage Roles
-  - Connect/Speak (vocal)
-  - Send Messages
-  - Mute Members
-- [ ] Catégorie Discord créée (ID dans CATEGORY_ID)
-
----
-
-## Commandes Utiles
-
-### Redémarrage propre
+### Docker deployment
 ```bash
-# Tuer les processus node existants
-taskkill /f /im node.exe
-
-# Redémarrer
-node index.js
+docker compose up -d
+docker compose logs -f    # Verify startup
 ```
 
-### Reset complet
-1. `/clear` - Nettoie les channels
-2. Supprimer `data/games.json`
-3. Redémarrer le bot
-
-### Backup manuel
+### Manual restart
 ```bash
-# Copier l'état actuel
-copy data\games.json data\games.backup.json
+npm start                 # Standard start
+npm run health            # Verify health
 ```
 
 ---
 
-## Support & Contact
+## Useful Commands
 
-Pour les bugs persistants :
-1. Vérifiez les logs console
-2. Consultez `OPTIMIZATIONS.md`
-3. Vérifiez les permissions Discord
-4. Testez avec `/debug-info`
-
----
-
-*Dernière mise à jour : Optimisations consolidation 2026*
+| Command | Purpose |
+|---------|---------|
+| `/debug-info` | Inspect current game state |
+| `/debug-games` | List all active games |
+| `/debug-reset` | Delete a game |
+| `/force-end` | Force-end any game |
+| `/clear` | Clean up game channels |
+| `npm run health` | Check bot health |
+| `npm test` | Run test suite |

@@ -71,13 +71,13 @@ module.exports = {
           });
       }
       
-      logger.info('Monitoring command executed', {
+      logger.info('MONITORING_COMMAND_EXECUTED', {
         subcommand,
         userId: interaction.user.id
       });
       
     } catch (error) {
-      logger.error('Error executing monitoring command', {
+      logger.error('MONITORING_COMMAND_ERROR', {
         error: error.message,
         stack: error.stack
       });

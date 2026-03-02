@@ -27,7 +27,7 @@ async function checkCategoryAndDefer(interaction) {
   // DEFER FIRST - Must happen within 3 seconds
   const deferSuccess = await ensureInteractionReady(interaction);
   if (!deferSuccess) {
-    logger.error('Failed to defer interaction', { 
+    logger.error('DEFER_FAILED', { 
       channelId: interaction.channelId,
       command: interaction.commandName 
     });
@@ -37,7 +37,7 @@ async function checkCategoryAndDefer(interaction) {
   // NOW check category (can take longer)
   const inCategory = await isInGameCategory(interaction);
   if (!inCategory) {
-    logger.warn('Category check failed', { 
+    logger.warn('CATEGORY_CHECK_FAILED', { 
       channelId: interaction.channelId,
       command: interaction.commandName 
     });
@@ -47,12 +47,12 @@ async function checkCategoryAndDefer(interaction) {
         content: t('error.action_forbidden')
       });
     } catch (e) {
-      logger.error('Failed to edit reply for category check', e);
+      logger.error('CATEGORY_CHECK_REPLY_FAILED', e);
     }
     return false;
   }
   
-  logger.debug('Category check and defer successful', { 
+  logger.debug('CATEGORY_DEFER_OK', { 
     channelId: interaction.channelId,
     command: interaction.commandName 
   });
@@ -71,7 +71,7 @@ async function cleanupBotMessages(channel, clientId, excludeMessageId = null) {
       (!excludeMessageId || msg.id !== excludeMessageId)
     );
     
-    logger.debug('Cleaning up bot messages', { 
+    logger.debug('BOT_MESSAGES_CLEANUP_STARTED', { 
       channelId: channel.id, 
       count: botMessages.size 
     });
@@ -83,14 +83,14 @@ async function cleanupBotMessages(channel, clientId, excludeMessageId = null) {
         deleted++;
       } catch (e) {
         // Message already deleted or no permissions
-        logger.debug('Failed to delete message', { messageId: msg.id });
+        logger.debug('MESSAGE_DELETE_FAILED', { messageId: msg.id });
       }
     }
     
-    logger.debug('Bot messages cleaned up', { deleted });
+    logger.debug('BOT_MESSAGES_CLEANED', { deleted });
     return deleted;
   } catch (error) {
-    logger.error('Error cleaning up bot messages', error);
+    logger.error('BOT_MESSAGES_CLEANUP_FAILED', error);
     return 0;
   }
 }
@@ -100,7 +100,7 @@ async function cleanupBotMessages(channel, clientId, excludeMessageId = null) {
  */
 async function sendTemporaryMessage(interaction, content, deleteAfter = 2000) {
   try {
-    logger.debug('Sending temporary message', { deleteAfter });
+    logger.debug('TEMP_MESSAGE_SENDING', { deleteAfter });
     let reply = await safeEditReply(interaction, content);
 
     if (!reply) {
@@ -126,7 +126,7 @@ async function sendTemporaryMessage(interaction, content, deleteAfter = 2000) {
     if (deleteAfter > 0) {
       setTimeout(() => {
         reply.delete().then(() => {
-          logger.debug('Temporary message deleted');
+          logger.debug('TEMP_MESSAGE_DELETED');
         }).catch(() => {
           // Already deleted or no permissions
         });
@@ -135,7 +135,7 @@ async function sendTemporaryMessage(interaction, content, deleteAfter = 2000) {
     
     return reply;
   } catch (error) {
-    logger.error('Error sending temporary message', error);
+    logger.error('TEMP_MESSAGE_FAILED', error);
     return null;
   }
 }

@@ -5,11 +5,18 @@ const ROLES = require("../game/roles");
 const { safeReply } = require("../utils/interaction");
 const { isInGameCategory } = require("../utils/validators");
 const { t, translateRole } = require('../utils/i18n');
+const {
+  registerVillageVote,
+  getEligibleVoters,
+  allVotersVoted,
+  resolveCaptainTiebreak,
+  resolveIdiotEffect,
+} = require('../game/villageVoteEngine');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("vote")
-    .setDescription("Voter pour éliminer quelqu'un (jour seulement)")
+    .setDescription("Voter pour éliminer quelqu'un (jour seulement) — préférez le menu GUI du panneau village")
     .addUserOption(option =>
       option
         .setName("target")
@@ -56,7 +63,7 @@ module.exports = {
     }
 
     // Idiot du Village révélé ne peut plus voter
-    if (player.role === ROLES.IDIOT && player.idiotRevealed) {
+    if (player.idiotRevealed) {
       await safeReply(interaction, { content: t('error.idiot_cannot_vote'), flags: MessageFlags.Ephemeral });
       return;
     }
@@ -74,14 +81,15 @@ module.exports = {
       return;
     }
 
-    // --- Départage capitaine ---
-    if (game._captainTiebreak && Array.isArray(game._captainTiebreak)) {
+    // --- Captain tiebreak (via slash command fallback) ---
+    const voteState = game.villageVoteState;
+    if (voteState && voteState.tiedCandidates.length >= 2) {
       if (interaction.user.id !== game.captainId) {
         await safeReply(interaction, { content: t('error.captain_tiebreak_only'), flags: MessageFlags.Ephemeral });
         return;
       }
-      if (!game._captainTiebreak.includes(target.id)) {
-        const tiedNames = game._captainTiebreak.map(id => {
+      if (!voteState.tiedCandidates.includes(target.id)) {
+        const tiedNames = voteState.tiedCandidates.map(id => {
           const p = game.players.find(pl => pl.id === id);
           return p ? p.username : id;
         }).join(', ');
@@ -91,48 +99,68 @@ module.exports = {
 
       let tiebreakResult;
       try {
-        tiebreakResult = await gameManager.runAtomic(game.mainChannelId, () => {
-          const collateral = gameManager.kill(game.mainChannelId, target.id, { throwOnDbFailure: true });
-          gameManager.logAction(game, `Départage capitaine: ${targetPlayer.username} éliminé`);
-          const hunterTriggered = targetPlayer.role === ROLES.HUNTER;
-          if (hunterTriggered) {
-            game._hunterMustShoot = targetPlayer.id;
+        tiebreakResult = await gameManager.runAtomic(game.mainChannelId, (state) => {
+          const res = resolveCaptainTiebreak(state.villageVoteState, target.id);
+          if (res.action === 'eliminate') {
+            state._captainTiebreak = null;
           }
-          game._captainTiebreak = null;
-          const victory = gameManager.checkWinner(game);
-          return { collateral, hunterTriggered, victory };
+          return res;
         });
       } catch (e) {
         await safeReply(interaction, { content: t('error.internal'), flags: MessageFlags.Ephemeral });
         return;
       }
 
-      // Cancel the AFK tiebreak timer — captain resolved manually
+      if (tiebreakResult.action !== 'eliminate') {
+        await safeReply(interaction, { content: t('error.vote_already_resolved'), flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      // Cancel the AFK tiebreak timer
       gameManager.clearCaptainTiebreakTimeout(game);
 
       const villageChannel = game.villageChannelId
         ? await interaction.guild.channels.fetch(game.villageChannelId)
         : await interaction.guild.channels.fetch(game.mainChannelId);
 
-      if (game.voiceChannelId) {
-        await gameManager.playAmbience(game.voiceChannelId, 'death.mp3');
-      }
-      await villageChannel.send(t('game.captain_tiebreak', { name: targetPlayer.username }));
+      // Check Idiot du Village
+      const idiotEffect = resolveIdiotEffect(targetPlayer);
+      if (idiotEffect) {
+        await gameManager.runAtomic(game.mainChannelId, (state) => {
+          const p = state.players.find(pl => pl.id === targetPlayer.id);
+          if (p) p.idiotRevealed = true;
+        });
+        await villageChannel.send(t('game.idiot_revealed', { name: targetPlayer.username }));
+        gameManager.logAction(game, `Idiot du Village ${targetPlayer.username} révélé via départage capitaine`);
+      } else {
+        if (targetPlayer.role === ROLES.ANCIEN) {
+          await gameManager.runAtomic(game.mainChannelId, (state) => { state.villageRolesPowerless = true; });
+          await villageChannel.send(t('game.ancien_power_drain', { name: targetPlayer.username }));
+          gameManager.logAction(game, `Ancien ${targetPlayer.username} tué par départage capitaine — pouvoirs perdus`);
+        }
 
-      for (const dead of tiebreakResult.collateral) {
-        await villageChannel.send(t('game.lover_death', { name: dead.username }));
-        gameManager.logAction(game, `Mort d'amour: ${dead.username}`);
-      }
+        if (game.voiceChannelId) {
+          await gameManager.playAmbience(game.voiceChannelId, 'death.mp3');
+        }
+        await villageChannel.send(t('game.captain_tiebreak', { name: targetPlayer.username }));
+        const collateral = gameManager.kill(game.mainChannelId, target.id, { throwOnDbFailure: true });
+        gameManager.logAction(game, `Départage capitaine: ${targetPlayer.username} éliminé`);
 
-      if (tiebreakResult.hunterTriggered) {
-        await villageChannel.send(t('game.hunter_death', { name: targetPlayer.username }));
-        gameManager.startHunterTimeout(interaction.guild, game, targetPlayer.id);
+        for (const dead of collateral) {
+          await villageChannel.send(t('game.lover_death', { name: dead.username }));
+          gameManager.logAction(game, `Mort d'amour: ${dead.username}`);
+        }
+
+        if (targetPlayer.role === ROLES.HUNTER && !game.villageRolesPowerless) {
+          game._hunterMustShoot = targetPlayer.id;
+          await villageChannel.send(t('game.hunter_death', { name: targetPlayer.username }));
+          gameManager.startHunterTimeout(interaction.guild, game, targetPlayer.id);
+        }
       }
 
       await safeReply(interaction, { content: t('cmd.vote.tiebreak_success', { name: target.username }), flags: MessageFlags.Ephemeral });
 
-      // Vérifier victoire puis passer à la nuit
-      if (tiebreakResult.victory) {
+      if (gameManager.checkWinner(game)) {
         await gameManager.announceVictoryIfAny(interaction.guild, game);
       } else {
         await gameManager.transitionToNight(interaction.guild, game);
@@ -140,97 +168,52 @@ module.exports = {
       return;
     }
 
-    // --- Guard: only allow regular votes during VOTE subPhase ---
+    // --- Regular vote (slash command fallback for GUI select menu) ---
     if (game.subPhase !== PHASES.VOTE) {
       await safeReply(interaction, { content: t('error.vote_not_vote_phase'), flags: MessageFlags.Ephemeral });
       return;
     }
 
-    if (!game.voteVoters) {
-      game.voteVoters = new Map();
-    }
-
-    const aliveReal = game.players.filter(p => p.alive && gameManager.isRealPlayerId(p.id));
-    if (aliveReal.length <= 1) {
-      await safeReply(interaction, { content: t('error.one_player_left'), flags: MessageFlags.Ephemeral });
-      await gameManager.announceVictoryIfAny(interaction.guild, game);
+    if (!voteState || voteState.resolved) {
+      await safeReply(interaction, { content: t('error.vote_already_resolved'), flags: MessageFlags.Ephemeral });
       return;
     }
 
     let voteResult;
     try {
-      voteResult = await gameManager.runAtomic(game.mainChannelId, () => {
-        // Si le votant est le capitaine, son vote compte double
-        const isCaptain = game.captainId && game.captainId === interaction.user.id;
-        const increment = isCaptain ? 2 : 1;
-
-        const dbVoteResult = gameManager.db.addVoteIfChanged(
-          game.mainChannelId,
-          interaction.user.id,
-          target.id,
-          'village',
-          game.dayCount || 0
-        );
-        if (!dbVoteResult.ok) throw new Error('Failed to persist village vote');
-
-        if (dbVoteResult.affectedRows === 0) {
-          const note = increment === 2 ? " " + t('cmd.vote.captain_note') : "";
-          const votedRealCount = aliveReal.filter(p => game.voteVoters.has(p.id)).length;
-          return {
-            count: game.votes.get(target.id) || 0,
-            note,
-            votedRealCount,
-            alreadyExecuted: true
-          };
+      voteResult = await gameManager.runAtomic(game.mainChannelId, (state) => {
+        const count = registerVillageVote(state.villageVoteState, interaction.user.id, target.id);
+        if (count === null) {
+          return { action: 'already_resolved' };
         }
 
-        // Remove previous vote if exists
-        const previousTarget = game.voteVoters.get(interaction.user.id);
-        if (previousTarget) {
-          if (!game._voteIncrements) game._voteIncrements = new Map();
-          const prevIncrement = game._voteIncrements.get(interaction.user.id) || 1;
-          const prevCount = (game.votes.get(previousTarget) || 0) - prevIncrement;
-          if (prevCount <= 0) {
-            game.votes.delete(previousTarget);
-          } else {
-            game.votes.set(previousTarget, prevCount);
-          }
-        }
+        gameManager.db.addVoteIfChanged(state.mainChannelId, interaction.user.id, target.id, 'village', state.dayCount || 0);
+        gameManager.logAction(state, `${interaction.user.username} vote contre ${target.username}`);
 
-        if (!game._voteIncrements) game._voteIncrements = new Map();
-        game._voteIncrements.set(interaction.user.id, increment);
+        const eligible = getEligibleVoters(state, (id) => gameManager.isRealPlayerId(id));
+        const eligibleIds = eligible.map(p => p.id);
+        const allDone = allVotersVoted(state.villageVoteState, eligibleIds);
 
-        game.voteVoters.set(interaction.user.id, target.id);
-        game.votes.set(target.id, (game.votes.get(target.id) || 0) + increment);
-
-        const note = increment === 2 ? " " + t('cmd.vote.captain_note') : "";
-        gameManager.logAction(game, `${interaction.user.username} vote contre ${target.username}${note}`);
-
-        const votedRealCount = aliveReal.filter(p => game.voteVoters.has(p.id)).length;
-        return {
-          count: game.votes.get(target.id),
-          note,
-          votedRealCount,
-          alreadyExecuted: false
-        };
+        return { action: 'voted', count, allDone, totalVotes: state.villageVoteState.votes.size, totalEligible: eligibleIds.length };
       });
     } catch (e) {
       await safeReply(interaction, { content: t('error.internal'), flags: MessageFlags.Ephemeral });
       return;
     }
 
-    await safeReply(interaction, { content: t('cmd.vote.success', { name: target.username, count: voteResult.count }) + voteResult.note, flags: MessageFlags.Ephemeral });
+    if (voteResult.action === 'already_resolved') {
+      await safeReply(interaction, { content: t('error.vote_already_resolved'), flags: MessageFlags.Ephemeral });
+      return;
+    }
 
-    // Annonce publique dans le village
-    try {
-      const villageChannel = game.villageChannelId
-        ? await interaction.guild.channels.fetch(game.villageChannelId)
-        : await interaction.guild.channels.fetch(game.mainChannelId);
-      const votedRealSoFar = voteResult.votedRealCount;
-      await villageChannel.send(t('cmd.vote.public', { name: interaction.user.username, n: votedRealSoFar, total: aliveReal.length }));
-    } catch (e) { /* ignore */ }
+    await safeReply(interaction, { content: t('cmd.vote.success', { name: target.username, count: voteResult.count }), flags: MessageFlags.Ephemeral });
 
-    if (aliveReal.length > 0 && voteResult.votedRealCount >= aliveReal.length) {
+    // Refresh GUI panels to show updated vote tally
+    await gameManager._refreshAllGui(game.mainChannelId);
+
+    // If all eligible voters have voted → transition to night
+    if (voteResult.allDone) {
+      gameManager.clearDayTimeout(game);
       await gameManager.transitionToNight(interaction.guild, game);
     }
   }

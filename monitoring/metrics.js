@@ -1,4 +1,4 @@
-const { app: logger } = require('../utils/logger');
+const { monitoring: logger } = require('../utils/logger');
 const os = require('os');
 
 /**
@@ -84,7 +84,7 @@ class MetricsCollector {
     // Charger les compteurs persistants depuis la DB
     this._loadPersistentCounters();
     
-    logger.info('MetricsCollector initialized');
+    logger.info('METRICS_COLLECTOR_INITIALIZED');
   }
 
   /**
@@ -103,12 +103,12 @@ class MetricsCollector {
       this.metrics.errors.critical = db.getCounter('metrics.errors.critical');
       this.metrics.errors.warnings = db.getCounter('metrics.errors.warnings');
       
-      logger.info('Persistent counters loaded from DB', {
+      logger.info('PERSISTENT_COUNTERS_LOADED', {
         commandsTotal: this.metrics.commands.total,
         errorsTotal: this.metrics.errors.total
       });
     } catch (e) {
-      logger.debug('Could not load persistent counters (DB not ready yet)', { error: e.message });
+      logger.debug('PERSISTENT_COUNTERS_LOAD_FAILED', { error: e.message });
     }
   }
 
@@ -129,7 +129,7 @@ class MetricsCollector {
    * Démarre la collecte périodique des métriques
    */
   startCollection(intervalMs = 60000) {
-    logger.info('Starting metrics collection', { intervalMs });
+    logger.info('METRICS_COLLECTION_STARTED', { intervalMs });
     
     // Collecter immédiatement
     this.collect();
@@ -166,7 +166,7 @@ class MetricsCollector {
       clearInterval(this.snapshotInterval);
       this.snapshotInterval = null;
     }
-    logger.info('Metrics collection stopped');
+    logger.info('METRICS_COLLECTION_STOPPED');
   }
 
   /**
@@ -207,9 +207,9 @@ class MetricsCollector {
         health_issues: JSON.stringify(health.issues)
       });
       db.cleanupOldMetrics(7);
-      logger.debug('Metrics snapshot saved to DB');
+      logger.debug('METRICS_SNAPSHOT_SAVED');
     } catch (e) {
-      logger.warn('Failed to save metrics snapshot', { error: e.message });
+      logger.warn('METRICS_SNAPSHOT_SAVE_FAILED', { error: e.message });
     }
   }
 
@@ -231,13 +231,13 @@ class MetricsCollector {
         }
       } catch { /* alerts module not available */ }
       
-      logger.debug('Metrics collected', {
+      logger.debug('METRICS_COLLECTED', {
         memory: this.metrics.system.memory.percentage,
         latency: this.metrics.discord.latency,
         games: this.metrics.game.activeGames
       });
     } catch (error) {
-      logger.error('Failed to collect metrics', { error: error.message });
+      logger.error('METRICS_COLLECTION_FAILED', { error: error.message });
     }
   }
 
@@ -343,7 +343,7 @@ class MetricsCollector {
       this.metrics.errors.last24h = errorsLast24h;
     } catch (error) {
       // gameManager peut ne pas être disponible au démarrage
-      logger.debug('Could not collect game metrics', { error: error.message });
+      logger.debug('GAME_METRICS_COLLECTION_FAILED', { error: error.message });
     }
   }
 
@@ -369,7 +369,7 @@ class MetricsCollector {
     const sum = this.commandResponseTimes.reduce((a, b) => a + b, 0);
     this.metrics.commands.avgResponseTime = Math.round(sum / this.commandResponseTimes.length);
     
-    logger.debug('Command recorded', { commandName, responseTime, success });
+    logger.debug('COMMAND_RECORDED', { commandName, responseTime, success });
   }
 
   /**
@@ -378,7 +378,7 @@ class MetricsCollector {
   recordRateLimited(userId, commandName) {
     this.metrics.commands.rateLimited++;
     this._persistCounter('metrics.commands.rateLimited', this.metrics.commands.rateLimited);
-    logger.debug('Rate limit recorded', { userId, commandName });
+    logger.debug('RATE_LIMIT_RECORDED', { userId, commandName });
   }
 
   /**
@@ -400,21 +400,21 @@ class MetricsCollector {
     
     this._persistCounter('metrics.errors.total', this.metrics.errors.total);
     
-    logger.debug('Error recorded', { level, total: this.metrics.errors.total });
+    logger.debug('ERROR_RECORDED', { level, total: this.metrics.errors.total });
   }
 
   /**
    * Enregistre la création d'une partie (legacy - stats 24h viennent de game_history)
    */
   recordGameCreated() {
-    logger.debug('Game creation recorded (computed from DB)');
+    logger.debug('GAME_CREATION_RECORDED');
   }
 
   /**
    * Enregistre la fin d'une partie (legacy - stats 24h viennent de game_history)
    */
   recordGameCompleted() {
-    logger.debug('Game completion recorded (computed from DB)');
+    logger.debug('GAME_COMPLETION_RECORDED');
   }
 
   /**
@@ -459,7 +459,7 @@ class MetricsCollector {
     // Note: les stats 24h (games, erreurs) sont calculées depuis la DB,
     // pas besoin de reset ici
     
-    logger.debug('History cleaned up');
+    logger.debug('HISTORY_CLEANED_UP');
   }
 
   /**

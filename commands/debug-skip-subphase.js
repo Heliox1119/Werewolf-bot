@@ -23,7 +23,6 @@ module.exports = {
           { name: "Voyante",         value: PHASES.VOYANTE },
           { name: "Réveil",          value: PHASES.REVEIL },
           { name: "Vote Capitaine",  value: PHASES.VOTE_CAPITAINE },
-          { name: "Délibération",    value: PHASES.DELIBERATION },
           { name: "Vote",            value: PHASES.VOTE },
         )
     ),
@@ -84,7 +83,7 @@ module.exports = {
       PHASES.LOUPS, PHASES.LOUP_BLANC, PHASES.SORCIERE, PHASES.VOYANTE,
     ];
     const DAY_SUBPHASES = [
-      PHASES.REVEIL, PHASES.VOTE_CAPITAINE, PHASES.DELIBERATION, PHASES.VOTE,
+      PHASES.REVEIL, PHASES.VOTE_CAPITAINE, PHASES.VOTE,
     ];
 
     const targetIsNight = NIGHT_SUBPHASES.includes(targetSubPhase);

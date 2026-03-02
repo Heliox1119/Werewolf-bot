@@ -26,8 +26,7 @@ module.exports = {
     }
 
     // Effacer la partie de la mémoire et de la DB
-    try { gameManager.db.deleteGame(interaction.channelId); } catch (e) { /* ignore */ }
-    gameManager.games.delete(interaction.channelId);
+    gameManager.purgeGame(interaction.channelId, game);
 
     await interaction.reply({
       content: t('cmd.debug_reset.success'),

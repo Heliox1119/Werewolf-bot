@@ -27,17 +27,17 @@ class VoiceManager {
       });
 
       connection.on(VoiceConnectionStatus.Ready, () => {
-        logger.info('Voice connected', { channelId: voiceChannel.id, channelName: voiceChannel.name });
+        logger.info('VOICE_CONNECTED', { channelId: voiceChannel.id, channelName: voiceChannel.name });
       });
 
       connection.on(VoiceConnectionStatus.Disconnected, () => {
-        logger.warn('Voice disconnected', { channelId: voiceChannel.id, channelName: voiceChannel.name });
+        logger.warn('VOICE_DISCONNECTED', { channelId: voiceChannel.id, channelName: voiceChannel.name });
       });
 
       this.connections.set(voiceChannel.id, connection);
       return connection;
     } catch (error) {
-      logger.error('Voice connection error', error);
+      logger.error('VOICE_CONNECTION_ERROR', error);
       return null;
     }
   }
@@ -46,13 +46,13 @@ class VoiceManager {
     try {
       const connection = this.connections.get(voiceChannelId);
       if (!connection) {
-        logger.error('No voice connection', { voiceChannelId });
+        logger.error('VOICE_NO_CONNECTION', { voiceChannelId });
         return false;
       }
 
       const soundPath = path.join(__dirname, '..', 'audio', soundFile);
       if (!existsSync(soundPath)) {
-        logger.error('Audio file not found', { soundFile, soundPath });
+        logger.error('AUDIO_FILE_NOT_FOUND', { soundFile, soundPath });
         return false;
       }
       const resource = createAudioResource(createReadStream(soundPath));
@@ -70,10 +70,10 @@ class VoiceManager {
       }
 
       player.play(resource);
-      logger.info('Sound played', { soundFile, voiceChannelId });
+      logger.info('SOUND_PLAYED', { soundFile, voiceChannelId });
       return true;
     } catch (error) {
-      logger.error('playSound error', error);
+      logger.error('PLAY_SOUND_ERROR', error);
       return false;
     }
   }
@@ -86,7 +86,7 @@ class VoiceManager {
 
       const soundPath = path.join(__dirname, '..', 'audio', soundFile);
       if (!existsSync(soundPath)) {
-        logger.error('Audio file not found for loop', { soundFile, soundPath });
+        logger.error('AUDIO_FILE_NOT_FOUND_FOR_LOOP', { soundFile, soundPath });
         return false;
       }
 
@@ -102,7 +102,7 @@ class VoiceManager {
 
       const playOnce = () => {
         const resource = createAudioResource(createReadStream(soundPath));
-        try { player.play(resource); } catch (e) { logger.error('loop play error', e); }
+        try { player.play(resource); } catch (e) { logger.error('LOOP_PLAY_ERROR', e); }
       };
 
       // on idle, replay if loop still active
@@ -120,10 +120,10 @@ class VoiceManager {
 
       // start first play
       playOnce();
-      logger.info('Loop started', { soundFile, voiceChannelId });
+      logger.info('LOOP_STARTED', { soundFile, voiceChannelId });
       return true;
     } catch (err) {
-      logger.error('startLoop error', err);
+      logger.error('START_LOOP_ERROR', err);
       return false;
     }
   }
@@ -137,10 +137,10 @@ class VoiceManager {
         try { player.off('stateChange', meta.onState); } catch (e) { /* ignore */ }
       }
       this.loops.delete(voiceChannelId);
-      logger.info('Loop stopped', { voiceChannelId });
+      logger.info('LOOP_STOPPED', { voiceChannelId });
       return true;
     } catch (err) {
-      logger.error('stopLoop error', err);
+      logger.error('STOP_LOOP_ERROR', err);
       return false;
     }
   }
@@ -153,7 +153,7 @@ class VoiceManager {
       connection.destroy();
       this.connections.delete(voiceChannelId);
       this.players.delete(voiceChannelId);
-      logger.info('Voice disconnected', { voiceChannelId });
+      logger.info('VOICE_DISCONNECTED', { voiceChannelId });
     }
   }
 }

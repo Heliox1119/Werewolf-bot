@@ -29,15 +29,19 @@ module.exports = {
     const { safeDefer } = require('../utils/interaction');
     await safeDefer(interaction);
 
+    // ALWAYS use game.mainChannelId — interaction.channelId may be a sub-channel
+    // (e.g. village channel) which is NOT the Games Map key.
+    const channelId = game.mainChannelId;
+
     // Utiliser gameManager.start() — bypass du minimum via override
     // Si pas assez de joueurs pour les rôles, start() complète avec les Villageois
-    const startedGame = gameManager.start(interaction.channelId);
+    const startedGame = gameManager.start(channelId);
     if (!startedGame) {
       // start() échoue si minPlayers non atteint, forcer manuellement
-      const game2 = gameManager.games.get(interaction.channelId);
+      const game2 = gameManager.games.get(channelId);
       if (game2) {
         game2.rules = { ...game2.rules, minPlayers: 1 };
-        const retried = gameManager.start(interaction.channelId);
+        const retried = gameManager.start(channelId);
         if (!retried) {
           await interaction.editReply(t('cmd.debug_start_force.cannot_start'));
           return;
@@ -48,7 +52,7 @@ module.exports = {
       }
     }
 
-    const finalGame = gameManager.games.get(interaction.channelId);
+    const finalGame = gameManager.games.get(channelId);
     const setupSuccess = await gameManager.postStartGame(interaction.guild, finalGame, interaction.client, interaction);
 
     if (!setupSuccess) {

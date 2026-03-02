@@ -9,21 +9,7 @@ const {
 
 // ── Mocks ──
 jest.mock('../../game/gameManager');
-jest.mock('../../utils/logger', () => ({
-  app: {
-    info: jest.fn(), warn: jest.fn(), error: jest.fn(),
-    success: jest.fn(), debug: jest.fn()
-  },
-  commands: {
-    startTimer: jest.fn(() => ({ end: jest.fn() })),
-    info: jest.fn(), warn: jest.fn(), error: jest.fn(),
-    success: jest.fn(), debug: jest.fn()
-  },
-  interaction: {
-    info: jest.fn(), warn: jest.fn(), error: jest.fn(),
-    success: jest.fn(), debug: jest.fn()
-  }
-}));
+jest.mock('../../utils/logger', () => require('../helpers/loggerMock')());
 jest.mock('../../utils/theme', () => ({
   getColor: jest.fn(() => 0x00ff00),
   themeLobbyColor: jest.fn(() => 0x00ff00)

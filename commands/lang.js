@@ -43,7 +43,7 @@ module.exports = {
         content: t('lang.changed', { locale, name: langName }),
       });
     } catch (error) {
-      logger.error('Error changing language', { error: error.message });
+      logger.error('LANGUAGE_CHANGE_ERROR', { error: error.message });
       return interaction.reply({
         content: '❌ Error / Erreur',
         flags: MessageFlags.Ephemeral,

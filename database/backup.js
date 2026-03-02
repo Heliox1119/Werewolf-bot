@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { app: logger } = require('../utils/logger');
+const { db: logger } = require('../utils/logger');
 
 /**
  * SQLite automatic backup system
@@ -27,7 +27,7 @@ class BackupManager {
       fs.mkdirSync(this.backupDir, { recursive: true });
     }
 
-    logger.info('BackupManager initialized', { backupDir: this.backupDir, maxBackups: this.maxBackups });
+    logger.info('BACKUP_MANAGER_INITIALIZED', { backupDir: this.backupDir, maxBackups: this.maxBackups });
   }
 
   /**
@@ -35,25 +35,25 @@ class BackupManager {
    */
   startAutoBackup() {
     if (this.interval) {
-      logger.warn('Auto backup already running');
+      logger.warn('AUTO_BACKUP_ALREADY_RUNNING');
       return;
     }
 
     // Run first backup 5 minutes after start (let DB settle)
     setTimeout(() => {
       this.performBackup().catch(err => 
-        logger.error('Initial backup failed', { error: err.message })
+        logger.error('INITIAL_BACKUP_FAILED', { error: err.message })
       );
     }, 5 * 60 * 1000);
 
     // Then every hour
     this.interval = setInterval(() => {
       this.performBackup().catch(err => 
-        logger.error('Scheduled backup failed', { error: err.message })
+        logger.error('SCHEDULED_BACKUP_FAILED', { error: err.message })
       );
     }, this.backupIntervalMs);
 
-    logger.success('Auto backup started', { interval: '1h', maxBackups: this.maxBackups });
+    logger.info('AUTO_BACKUP_STARTED', { interval: '1h', maxBackups: this.maxBackups });
   }
 
   /**
@@ -63,7 +63,7 @@ class BackupManager {
     if (this.interval) {
       clearInterval(this.interval);
       this.interval = null;
-      logger.info('Auto backup stopped');
+      logger.info('AUTO_BACKUP_STOPPED');
     }
   }
 
@@ -73,7 +73,7 @@ class BackupManager {
    */
   async performBackup() {
     if (!this.db || !this.db.db) {
-      logger.error('Cannot backup: database not initialized');
+      logger.error('BACKUP_DB_NOT_INITIALIZED');
       return null;
     }
 
@@ -87,14 +87,14 @@ class BackupManager {
       const stats = fs.statSync(backupFile);
       const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
 
-      logger.success('Backup created', { file: path.basename(backupFile), size: `${sizeMB} MB` });
+      logger.info('BACKUP_CREATED', { file: path.basename(backupFile), size: `${sizeMB} MB` });
 
       // Rotate old backups
       this.rotateBackups();
 
       return backupFile;
     } catch (err) {
-      logger.error('Backup failed', { error: err.message, file: backupFile });
+      logger.error('BACKUP_FAILED', { error: err.message, file: backupFile });
       // Clean up partial backup
       try { if (fs.existsSync(backupFile)) fs.unlinkSync(backupFile); } catch (e) { /* ignore */ }
       return null;
@@ -117,15 +117,15 @@ class BackupManager {
       for (let i = 0; i < toDelete; i++) {
         try {
           fs.unlinkSync(files[i]);
-          logger.debug('Old backup deleted', { file: path.basename(files[i]) });
+          logger.debug('OLD_BACKUP_DELETED', { file: path.basename(files[i]) });
         } catch (e) {
-          logger.error('Failed to delete old backup', { file: files[i], error: e.message });
+          logger.error('OLD_BACKUP_DELETE_FAILED', { file: files[i], error: e.message });
         }
       }
 
-      logger.info('Backup rotation complete', { deleted: toDelete, remaining: this.maxBackups });
+      logger.info('BACKUP_ROTATION_COMPLETE', { deleted: toDelete, remaining: this.maxBackups });
     } catch (err) {
-      logger.error('Backup rotation failed', { error: err.message });
+      logger.error('BACKUP_ROTATION_FAILED', { error: err.message });
     }
   }
 
@@ -155,7 +155,7 @@ class BackupManager {
           };
         });
     } catch (err) {
-      logger.error('Failed to list backups', { error: err.message });
+      logger.error('BACKUP_LIST_FAILED', { error: err.message });
       return [];
     }
   }
@@ -175,16 +175,16 @@ class BackupManager {
     const safetyBackup = path.join(this.backupDir, `pre-restore-${Date.now()}.db`);
     try {
       await this.db.backup(safetyBackup);
-      logger.info('Safety backup created before restore', { file: path.basename(safetyBackup) });
+      logger.info('SAFETY_BACKUP_CREATED', { file: path.basename(safetyBackup) });
     } catch (e) {
-      logger.warn('Could not create safety backup', { error: e.message });
+      logger.warn('SAFETY_BACKUP_FAILED', { error: e.message });
     }
 
     // Close current DB, copy backup over, reopen
     this.db.close();
     fs.copyFileSync(backupFile, dbPath);
     
-    logger.success('Database restored from backup', { file: path.basename(backupFile) });
+    logger.info('DB_RESTORED_FROM_BACKUP', { file: path.basename(backupFile) });
     return true;
   }
 }

@@ -100,7 +100,7 @@ class GameMutex {
         this._recordHold(holdMs);
 
         if (holdMs > LONG_HOLD_WARNING_MS) {
-          logger.warn('GameMutex lock held too long', {
+          logger.warn('GAME_MUTEX_LOCK_HELD_TOO_LONG', {
             channelId,
             holdMs,
             waitMs,

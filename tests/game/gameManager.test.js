@@ -510,7 +510,7 @@ describe('GameManager', () => {
       gameManager.create('ch-cap3');
       const game = gameManager.games.get('ch-cap3');
       game.phase = PHASES.DAY;
-      game.subPhase = PHASES.DELIBERATION;
+      game.subPhase = PHASES.VOTE;
 
       expect((await gameManager.voteCaptain('ch-cap3', 'v1', 't1')).reason).toBe('wrong_phase');
     });
@@ -687,7 +687,7 @@ describe('GameManager', () => {
       const game = gameManager.games.get('ch-stuck');
       game.startedAt = Date.now() - 120000;
       game.phase = PHASES.DAY;
-      game.subPhase = PHASES.DELIBERATION;
+      game.subPhase = PHASES.VOTE;
       game._lastMutationAt = Date.now() - 120000;
 
       const warnSpy = jest.spyOn(gameLogger, 'warn').mockImplementation(() => {});
@@ -1120,6 +1120,253 @@ describe('GameManager', () => {
       advanceSpy.mockRestore();
       transitionSpy.mockRestore();
       jest.useRealTimers();
+    });
+  });
+
+  // ─── Reconciliation: getGameByChannel, purgeGame, purgeGuildZombies ───
+
+  describe('getGameByChannel()', () => {
+    test('returns game from memory by mainChannelId', () => {
+      gameManager.create('ch1');
+      expect(gameManager.getGameByChannel('ch1')).toBe(gameManager.games.get('ch1'));
+    });
+
+    test('returns game from memory via sub-channel id', () => {
+      gameManager.create('ch1');
+      const game = gameManager.games.get('ch1');
+      game.villageChannelId = 'village-1';
+      game.wolvesChannelId = 'wolves-1';
+
+      expect(gameManager.getGameByChannel('village-1')).toBe(game);
+      expect(gameManager.getGameByChannel('wolves-1')).toBe(game);
+    });
+
+    test('returns null for unknown channel', () => {
+      expect(gameManager.getGameByChannel('unknown')).toBeNull();
+    });
+
+    test('detects and purges zombie DB row', () => {
+      // Manually insert into DB without adding to memory
+      gameManager.db.createGame('zombie-ch', { guildId: 'g1' });
+      expect(gameManager.db.getGame('zombie-ch')).toBeTruthy();
+
+      // getGameByChannel should detect the zombie and purge it
+      const result = gameManager.getGameByChannel('zombie-ch');
+      expect(result).toBeNull();
+      expect(gameManager.db.getGame('zombie-ch')).toBeFalsy();
+    });
+  });
+
+  describe('purgeGame()', () => {
+    test('clears memory and DB', () => {
+      gameManager.create('ch1');
+      expect(gameManager.games.has('ch1')).toBe(true);
+      expect(gameManager.db.getGame('ch1')).toBeTruthy();
+
+      gameManager.purgeGame('ch1');
+
+      expect(gameManager.games.has('ch1')).toBe(false);
+      expect(gameManager.db.getGame('ch1')).toBeFalsy();
+    });
+
+    test('clears dirty games cache', () => {
+      gameManager.create('ch1');
+      gameManager.dirtyGames.add('ch1');
+
+      gameManager.purgeGame('ch1');
+
+      expect(gameManager.dirtyGames.has('ch1')).toBe(false);
+    });
+
+    test('works even without in-memory game', () => {
+      // Manually insert DB row
+      gameManager.db.createGame('zombie-ch');
+      expect(gameManager.db.getGame('zombie-ch')).toBeTruthy();
+
+      gameManager.purgeGame('zombie-ch');
+
+      expect(gameManager.db.getGame('zombie-ch')).toBeFalsy();
+    });
+
+    test('is safe to call on non-existent channel', () => {
+      expect(() => gameManager.purgeGame('nonexistent')).not.toThrow();
+    });
+  });
+
+  describe('purgeGuildZombies()', () => {
+    test('removes DB-only games for a guild', () => {
+      gameManager.db.createGame('z1', { guildId: 'g1' });
+      gameManager.db.createGame('z2', { guildId: 'g1' });
+      gameManager.db.createGame('z3', { guildId: 'g2' });
+
+      const purged = gameManager.purgeGuildZombies('g1');
+
+      expect(purged).toBe(2);
+      expect(gameManager.db.getGame('z1')).toBeFalsy();
+      expect(gameManager.db.getGame('z2')).toBeFalsy();
+      // g2 game untouched
+      expect(gameManager.db.getGame('z3')).toBeTruthy();
+    });
+
+    test('does not purge games that are in memory', () => {
+      gameManager.create('ch1', { guildId: 'g1' });
+      gameManager.db.createGame('z1', { guildId: 'g1' });
+
+      const purged = gameManager.purgeGuildZombies('g1');
+
+      expect(purged).toBe(1);
+      expect(gameManager.games.has('ch1')).toBe(true);
+      expect(gameManager.db.getGame('ch1')).toBeTruthy();
+    });
+
+    test('returns 0 if no zombies', () => {
+      gameManager.create('ch1', { guildId: 'g1' });
+
+      const purged = gameManager.purgeGuildZombies('g1');
+      expect(purged).toBe(0);
+    });
+  });
+
+  describe('create() zombie reconciliation', () => {
+    test('purges zombie DB row and creates successfully', () => {
+      // Manually create DB-only game (zombie)
+      gameManager.db.createGame('ch1', { guildId: 'g1' });
+      expect(gameManager.db.getGame('ch1')).toBeTruthy();
+      expect(gameManager.games.has('ch1')).toBe(false);
+
+      // create() should detect zombie, purge it, and create fresh
+      const result = gameManager.create('ch1', { guildId: 'g1' });
+      expect(result).toBe(true);
+      expect(gameManager.games.has('ch1')).toBe(true);
+    });
+  });
+
+  describe('getGameByChannelId() delegates to getGameByChannel()', () => {
+    test('existing game found', () => {
+      gameManager.create('ch1');
+      expect(gameManager.getGameByChannelId('ch1')).toBe(gameManager.games.get('ch1'));
+    });
+
+    test('zombie purged, null returned', () => {
+      gameManager.db.createGame('zombie-ch');
+      const result = gameManager.getGameByChannelId('zombie-ch');
+      expect(result).toBeNull();
+      expect(gameManager.db.getGame('zombie-ch')).toBeFalsy();
+    });
+  });
+
+  // ─── Debug pipeline: start() uses mainChannelId ───────────────────
+
+  describe('start() — channelId must be mainChannelId', () => {
+    test('start(mainChannelId) succeeds', () => {
+      gameManager.create('main-ch');
+      const game = gameManager.games.get('main-ch');
+      game.rules = { minPlayers: 1 };
+      game.players = [
+        { id: 'user1', username: 'Alice', role: null, alive: true },
+        { id: 'fake_001', username: 'FakeBot', role: null, alive: true },
+      ];
+
+      const result = gameManager.start('main-ch');
+      expect(result).not.toBeNull();
+      expect(result.startedAt).toBeTruthy();
+      expect(result.players.every(p => p.role !== null)).toBe(true);
+    });
+
+    test('start(subChannelId) returns null — game not found', () => {
+      gameManager.create('main-ch');
+      const game = gameManager.games.get('main-ch');
+      game.villageChannelId = 'village-ch';
+      game.rules = { minPlayers: 1 };
+      game.players = [{ id: 'user1', username: 'Alice', role: null, alive: true }];
+
+      // start with sub-channel ID — should fail
+      const result = gameManager.start('village-ch');
+      expect(result).toBeNull();
+    });
+
+    test('getGameByChannelId resolves sub-channel but start requires mainChannelId', () => {
+      gameManager.create('main-ch');
+      const game = gameManager.games.get('main-ch');
+      game.villageChannelId = 'village-ch';
+      game.rules = { minPlayers: 1 };
+      game.players = [{ id: 'user1', username: 'Alice', role: null, alive: true }];
+
+      // getGameByChannelId resolves the game via sub-channel
+      const found = gameManager.getGameByChannelId('village-ch');
+      expect(found).toBe(game);
+
+      // But start must use mainChannelId
+      const result = gameManager.start(found.mainChannelId);
+      expect(result).not.toBeNull();
+    });
+  });
+
+  describe('join() — fake players use same pipeline', () => {
+    test('join with fake user object works', () => {
+      gameManager.create('ch1');
+      const game = gameManager.games.get('ch1');
+
+      const fakeUser = { id: 'fake_123_0', username: 'FakeAlice' };
+      const ok = gameManager.join('ch1', fakeUser);
+
+      expect(ok).toBe(true);
+      expect(game.players).toHaveLength(1);
+      expect(game.players[0].id).toBe('fake_123_0');
+      expect(game.players[0].username).toBe('FakeAlice');
+      expect(game.players[0].role).toBeNull();
+      expect(game.players[0].alive).toBe(true);
+    });
+
+    test('join with real user object works', () => {
+      gameManager.create('ch1');
+      const game = gameManager.games.get('ch1');
+
+      const realUser = { id: '123456789012345678', username: 'RealAlice' };
+      const ok = gameManager.join('ch1', realUser);
+
+      expect(ok).toBe(true);
+      expect(game.players).toHaveLength(1);
+      expect(game.players[0].id).toBe('123456789012345678');
+    });
+
+    test('fake and real players coexist after start', () => {
+      gameManager.create('ch1');
+      const game = gameManager.games.get('ch1');
+      game.rules = { minPlayers: 2 };
+
+      gameManager.join('ch1', { id: '111111111111111111', username: 'Real' });
+      gameManager.join('ch1', { id: 'fake_001', username: 'Fake' });
+
+      const started = gameManager.start('ch1');
+      expect(started).not.toBeNull();
+      expect(started.players.every(p => p.role !== null)).toBe(true);
+    });
+  });
+
+  describe('_postRolePanels — logging and recovery', () => {
+    test('rolePanels NOT set when no roleChannels exist', async () => {
+      gameManager.create('ch1');
+      const game = gameManager.games.get('ch1');
+      // No role channel IDs set → getRoleChannels returns {}
+
+      const mockGuild = { channels: { fetch: jest.fn() } };
+      await gameManager._postRolePanels(mockGuild, game);
+
+      // rolePanels should NOT be set (no channels to post to)
+      expect(gameManager.rolePanels.has('ch1')).toBe(false);
+    });
+  });
+
+  describe('isRealPlayerId()', () => {
+    test('true for numeric snowflake', () => {
+      expect(gameManager.isRealPlayerId('123456789012345678')).toBe(true);
+    });
+    test('false for fake_* id', () => {
+      expect(gameManager.isRealPlayerId('fake_123_0')).toBe(false);
+    });
+    test('false for undefined', () => {
+      expect(gameManager.isRealPlayerId(undefined)).toBe(false);
     });
   });
 });
