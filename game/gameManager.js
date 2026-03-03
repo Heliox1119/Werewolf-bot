@@ -1078,6 +1078,7 @@ class GameManager extends EventEmitter {
     }
     const { getRoleChannels, buildRolePanel, getRoleKeyImage, buildRolePanelComponents } = require('./roleChannelView');
     const { AttachmentBuilder } = require('discord.js');
+    const { mapConcurrent } = require('../utils/concurrency');
     const roleChannels = getRoleChannels(game);
     const timerInfo = this.getTimerInfo(game.mainChannelId);
     const panelRef = {};
@@ -1090,20 +1091,22 @@ class GameManager extends EventEmitter {
 
     let posted = 0;
     let failed = 0;
+    const entries = Object.entries(roleChannels);
 
-    for (const [roleKey, channelId] of Object.entries(roleChannels)) {
+    // Post panels concurrently (concurrency = 3) — each: fetch + send + pin = 3 API calls
+    await mapConcurrent(entries, async ([roleKey, channelId]) => {
       try {
         const channel = await guild.channels.fetch(channelId);
         if (!channel) {
           logger.warn('ROLE_PANEL_CHANNEL_NOT_FOUND', { roleKey, channelId });
           failed++;
-          continue;
+          return;
         }
         const embed = buildRolePanel(roleKey, game, timerInfo, game.guildId);
         if (!embed) {
           logger.warn('ROLE_PANEL_BUILD_NULL', { roleKey });
           failed++;
-          continue;
+          return;
         }
         const sendPayload = { embeds: [embed] };
         const imageFile = getRoleKeyImage(roleKey);
@@ -1122,7 +1125,7 @@ class GameManager extends EventEmitter {
         logger.warn('ROLE_PANEL_POST_FAILED', { roleKey, channelId, error: e.message });
         failed++;
       }
-    }
+    }, 3, { swallowErrors: true });
 
     logger.info('ROLE_PANELS_POST_COMPLETE', {
       channelId: game.mainChannelId,
@@ -2765,6 +2768,7 @@ class GameManager extends EventEmitter {
     // in start(), and its setImmediate fires as soon as we yield with our first await.
     this._guiPostingInProgress.add(game.mainChannelId);
 
+    const flowTimer = logger.startTimer('postStartGame');
     logger.info('POST_START_GAME_BEGIN', {
       channelId: game.mainChannelId,
       guildId: game.guildId,
@@ -2785,14 +2789,14 @@ class GameManager extends EventEmitter {
     const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
     const pathMod = require('path');
     const { getRoleDescription, getRoleImageName } = require('../utils/roleHelpers');
+    const { mapConcurrent } = require('../utils/concurrency');
 
     const updateProgress = async (msg) => {
       if (!interaction) return;
       try { await interaction.editReply({ content: msg }); } catch {}
     };
 
-    // 0. Prune unused role channels BEFORE setting permissions
-    //    Only channels for roles actually in play survive.
+    // ─── Step 0: Prune unused role channels (must complete before permissions) ──
     try {
       await updateProgress(t('progress.pruning_channels', {}, game.guildId));
       const pruneResult = await this.pruneUnusedRoleChannels(guild, game);
@@ -2807,22 +2811,65 @@ class GameManager extends EventEmitter {
       logger.error('POST_START_PRUNE_FAILED', { channelId: game.mainChannelId, error: err.message });
     }
 
-    // 1. Permissions channels
+    // ─── Step 1+2: Permissions + Voice in parallel ──────────────────
+    // These are independent: channel permissions and voice muting hit different endpoints.
     await updateProgress(t('progress.permissions'));
-    const setupSuccess = await this.updateChannelPermissions(guild, game);
+    const [setupSuccess] = await Promise.all([
+      this.updateChannelPermissions(guild, game),
+      (async () => {
+        await updateProgress(t('progress.voice'));
+        await this.updateVoicePerms(guild, game);
+      })(),
+    ]);
     if (!setupSuccess) {
       this._guiPostingInProgress.delete(game.mainChannelId);
+      flowTimer.end('POST_START_GAME_ABORT', { reason: 'permissions_failed' });
       return false;
     }
 
-    // 2. Permissions vocales
-    await updateProgress(t('progress.voice'));
-    await this.updateVoicePerms(guild, game);
+    // ─── Step 3: Post ALL GUI panels in parallel (role + village + spectator) ─
+    // GUIs are the user-visible deliverable — sent IMMEDIATELY after permissions
+    // settle, BEFORE the slow DM fan-out. This eliminates the perceived delay.
+    await updateProgress(t('progress.channels'));
+    const guiTimer = logger.startTimer('postGuiPanels');
+    await Promise.all([
+      (async () => {
+        try {
+          await this._postRolePanels(guild, game);
+        } catch (e) { logger.warn('ROLE_PANELS_POST_FAILED_INIT', { error: e.message }); }
+      })(),
+      this._postVillageMasterPanel(guild, game),
+      this._postSpectatorPanel(guild, game),
+    ]);
+    guiTimer.end('GUI_PANELS_ALL_POSTED');
 
-    // 3. Envoyer les rôles en DM
+    // 3b. Scheduled recovery: if role panels failed, retry once after a short delay
+    if (!this.rolePanels.has(game.mainChannelId)) {
+      logger.warn('ROLE_PANELS_DEFERRED_RETRY_SCHEDULED', {
+        channelId: game.mainChannelId,
+      });
+      setTimeout(async () => {
+        try {
+          if (!this.rolePanels.has(game.mainChannelId) && this.games.has(game.mainChannelId)) {
+            logger.info('ROLE_PANELS_DEFERRED_RECOVERY', { channelId: game.mainChannelId });
+            await this._postRolePanels(guild, game);
+          }
+        } catch (e) {
+          logger.warn('ROLE_PANELS_DEFERRED_RECOVERY_FAILED', { error: e.message });
+        }
+      }, 3000);
+    }
+
+    // Release the posting guard — panels exist, refreshes can now proceed
+    this._guiPostingInProgress.delete(game.mainChannelId);
+
+    // ─── Step 4: Send role DMs concurrently (concurrency = 3) ──────
+    // DMs go to a different rate-limit bucket (user DMs) so we can safely
+    // overlap with the just-posted GUI panels settling.
     await updateProgress(t('progress.dm'));
-    for (const player of game.players) {
-      if (typeof player.id !== 'string' || !/^\d+$/.test(player.id)) continue;
+    const dmTimer = logger.startTimer('sendRoleDMs');
+    const dmPlayers = game.players.filter(p => typeof p.id === 'string' && /^\d+$/.test(p.id));
+    await mapConcurrent(dmPlayers, async (player) => {
       try {
         const user = await client.users.fetch(player.id);
         const embed = new EmbedBuilder()
@@ -2843,43 +2890,11 @@ class GameManager extends EventEmitter {
       } catch (err) {
         logger.warn('ROLE_DM_SEND_FAILED', { error: err.message });
       }
-    }
+    }, 3);
+    dmTimer.end('ROLE_DMS_DONE', { count: dmPlayers.length });
 
-    // 4. Post persistent role channel GUI panels (replaces legacy welcome messages)
-    await updateProgress(t('progress.channels'));
-    try {
-      await this._postRolePanels(guild, game);
-    } catch (e) { logger.warn('ROLE_PANELS_POST_FAILED_INIT', { error: e.message }); }
-
-    // 4b. Scheduled recovery: if role panels failed, retry once after a short delay
-    if (!this.rolePanels.has(game.mainChannelId)) {
-      logger.warn('ROLE_PANELS_DEFERRED_RETRY_SCHEDULED', {
-        channelId: game.mainChannelId,
-      });
-      setTimeout(async () => {
-        try {
-          if (!this.rolePanels.has(game.mainChannelId) && this.games.has(game.mainChannelId)) {
-            logger.info('ROLE_PANELS_DEFERRED_RECOVERY', { channelId: game.mainChannelId });
-            await this._postRolePanels(guild, game);
-          }
-        } catch (e) {
-          logger.warn('ROLE_PANELS_DEFERRED_RECOVERY_FAILED', { error: e.message });
-        }
-      }, 3000);
-    }
-
-    // 5. Village master GUI panel replaces all narrative text.
-    //    (Legacy nightStart message suppressed — GUI_MASTER architecture)
+    // ─── Step 5: Done — start AFK timeout ───────────────────────────
     await updateProgress(t('progress.done'));
-
-    // 5b. Post the persistent village master GUI panel
-    await this._postVillageMasterPanel(guild, game);
-
-    // 5c. Post the persistent spectator GUI panel
-    await this._postSpectatorPanel(guild, game);
-
-    // Release the posting guard — panels exist, refreshes can now proceed
-    this._guiPostingInProgress.delete(game.mainChannelId);
 
     // 6. Lancer le timeout AFK si on est en sous-phase qui attend une action
     if ([PHASES.VOLEUR, PHASES.CUPIDON, PHASES.LOUPS, PHASES.SALVATEUR].includes(game.subPhase)) {
@@ -2891,6 +2906,7 @@ class GameManager extends EventEmitter {
       }
     }
 
+    flowTimer.end('POST_START_GAME_DONE', { playerCount: game.players.length });
     return true;
   }
 
@@ -3080,11 +3096,9 @@ class GameManager extends EventEmitter {
 
   async updateChannelPermissions(guild, game) {
     const timer = logger.startTimer('updateChannelPermissions');
+    const { mapConcurrent } = require('../utils/concurrency');
     try {
       logger.info('PERMISSIONS_UPDATING');
-
-      // Mettre à jour le channel des loups
-      const wolvesChannel = await guild.channels.fetch(game.wolvesChannelId);
       const { PermissionsBitField } = require('discord.js');
 
       // Bot overwrite — always included so the bot retains access to hidden channels
@@ -3093,159 +3107,104 @@ class GameManager extends EventEmitter {
         id: botId,
         allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.ManageChannels, PermissionsBitField.Flags.SendMessages]
       };
+      const denyAll = { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] };
+      const viewSend = [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages];
 
-      const wolvesPerms = [
-        {
-          id: guild.id,
-          deny: [PermissionsBitField.Flags.ViewChannel]
-        },
-        botOverwrite
-      ];
+      // ── Phase 1: Batch-fetch all unique player members in ONE pass ──
+      // Avoids N×M individual guild.members.fetch() calls (was per-player per-channel).
+      const uniquePlayerIds = [...new Set(game.players.filter(p => p.alive && /^\d+$/.test(p.id)).map(p => p.id))];
+      const validMembers = new Set();
+      const memberTimer = logger.startTimer('batchMemberFetch');
 
-      // Ajouter uniquement les joueurs valides (membres du serveur)
-      for (const p of game.players.filter(p => (p.role === ROLES.WEREWOLF || p.role === ROLES.WHITE_WOLF) && p.alive)) {
+      await mapConcurrent(uniquePlayerIds, async (playerId) => {
         try {
-          await guild.members.fetch(p.id);
-          wolvesPerms.push({
-            id: p.id,
-            allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-          });
-        } catch (err) {
-          logger.warn('PERMISSIONS_NON_MEMBER_WOLVES', { playerId: p.id });
+          await guild.members.fetch(playerId);
+          validMembers.add(playerId);
+        } catch (_) {
+          logger.warn('PERMISSIONS_NON_MEMBER', { playerId });
         }
+      }, 5);
+      memberTimer.end('BATCH_MEMBER_FETCH_DONE', { total: uniquePlayerIds.length, valid: validMembers.size });
+
+      // ── Phase 2: Build all permission configs synchronously (zero API calls) ──
+      const channelConfigs = [];
+
+      // Helper: add a player overwrite if they were validated in Phase 1
+      const playerOverwrite = (playerId) =>
+        validMembers.has(playerId) ? { id: playerId, allow: viewSend } : null;
+
+      // Wolves channel (werewolves + white wolf)
+      if (game.wolvesChannelId) {
+        const overwrites = [denyAll, botOverwrite];
+        for (const p of game.players.filter(p => (p.role === ROLES.WEREWOLF || p.role === ROLES.WHITE_WOLF) && p.alive)) {
+          const ow = playerOverwrite(p.id);
+          if (ow) overwrites.push(ow);
+        }
+        channelConfigs.push({ channelId: game.wolvesChannelId, overwrites, label: 'WOLVES' });
       }
 
-      await wolvesChannel.permissionOverwrites.set(wolvesPerms);
-      logger.info('PERMISSIONS_UPDATED_WOLVES');
-
-      // Mettre à jour le channel du Loup Blanc
+      // White Wolf solo channel
       if (game.whiteWolfChannelId) {
-        try {
-          const whiteWolfChannel = await guild.channels.fetch(game.whiteWolfChannelId);
-          const whiteWolfPlayer = game.players.find(p => p.role === ROLES.WHITE_WOLF && p.alive);
-          const whiteWolfPerms = [
-            { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-            botOverwrite
-          ];
-          if (whiteWolfPlayer) {
-            try {
-              await guild.members.fetch(whiteWolfPlayer.id);
-              whiteWolfPerms.push({
-                id: whiteWolfPlayer.id,
-                allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-              });
-            } catch (err) {
-              logger.warn('PERMISSIONS_NON_MEMBER_WHITE_WOLF', { playerId: whiteWolfPlayer.id });
-            }
-          }
-          await whiteWolfChannel.permissionOverwrites.set(whiteWolfPerms);
-          logger.info('PERMISSIONS_UPDATED_WHITE_WOLF');
-        } catch (e) { logger.warn('PERMISSIONS_UPDATE_FAILED_WHITE_WOLF', { error: e.message }); }
+        const overwrites = [denyAll, botOverwrite];
+        const ww = game.players.find(p => p.role === ROLES.WHITE_WOLF && p.alive);
+        if (ww) { const ow = playerOverwrite(ww.id); if (ow) overwrites.push(ow); }
+        channelConfigs.push({ channelId: game.whiteWolfChannelId, overwrites, label: 'WHITE_WOLF' });
       }
 
-      // Mettre à jour le channel du Voleur
+      // Thief channel
       if (game.thiefChannelId) {
-        try {
-          const thiefChannel = await guild.channels.fetch(game.thiefChannelId);
-          const thiefPlayer = game.players.find(p => p.role === ROLES.THIEF && p.alive);
-          const thiefPerms = [
-            { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-            botOverwrite
-          ];
-          if (thiefPlayer) {
-            try {
-              await guild.members.fetch(thiefPlayer.id);
-              thiefPerms.push({
-                id: thiefPlayer.id,
-                allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-              });
-            } catch (err) {
-              logger.warn('PERMISSIONS_NON_MEMBER_THIEF', { playerId: thiefPlayer.id });
-            }
-          }
-          await thiefChannel.permissionOverwrites.set(thiefPerms);
-          logger.info('PERMISSIONS_UPDATED_THIEF');
-        } catch (e) { logger.warn('PERMISSIONS_UPDATE_FAILED_THIEF', { error: e.message }); }
+        const overwrites = [denyAll, botOverwrite];
+        const thief = game.players.find(p => p.role === ROLES.THIEF && p.alive);
+        if (thief) { const ow = playerOverwrite(thief.id); if (ow) overwrites.push(ow); }
+        channelConfigs.push({ channelId: game.thiefChannelId, overwrites, label: 'THIEF' });
       }
 
-      // Mettre à jour le channel de la voyante
-      const seerChannel = await guild.channels.fetch(game.seerChannelId);
-      const seerPlayer = game.players.find(p => p.role === ROLES.SEER && p.alive);
-      const seerPerms = [
-        { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-        botOverwrite
-      ];
-      if (seerPlayer) {
-        try {
-          await guild.members.fetch(seerPlayer.id);
-          seerPerms.push({
-            id: seerPlayer.id,
-            allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-          });
-        } catch (err) {
-          logger.warn('PERMISSIONS_NON_MEMBER_SEER', { playerId: seerPlayer.id });
-        }
+      // Seer channel
+      if (game.seerChannelId) {
+        const overwrites = [denyAll, botOverwrite];
+        const seer = game.players.find(p => p.role === ROLES.SEER && p.alive);
+        if (seer) { const ow = playerOverwrite(seer.id); if (ow) overwrites.push(ow); }
+        channelConfigs.push({ channelId: game.seerChannelId, overwrites, label: 'SEER' });
       }
-      await seerChannel.permissionOverwrites.set(seerPerms);
-      logger.info('PERMISSIONS_UPDATED_SEER');
 
-      // Mettre à jour le channel de la sorcière
-      const witchChannel = await guild.channels.fetch(game.witchChannelId);
-      const witchPlayer = game.players.find(p => p.role === ROLES.WITCH && p.alive);
-      const witchPerms = [ { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }, botOverwrite ];
-      if (witchPlayer) {
-        try {
-          await guild.members.fetch(witchPlayer.id);
-          witchPerms.push({
-            id: witchPlayer.id,
-            allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-          });
-        } catch (err) {
-          logger.warn('PERMISSIONS_NON_MEMBER_WITCH', { playerId: witchPlayer.id });
-        }
+      // Witch channel
+      if (game.witchChannelId) {
+        const overwrites = [denyAll, botOverwrite];
+        const witch = game.players.find(p => p.role === ROLES.WITCH && p.alive);
+        if (witch) { const ow = playerOverwrite(witch.id); if (ow) overwrites.push(ow); }
+        channelConfigs.push({ channelId: game.witchChannelId, overwrites, label: 'WITCH' });
       }
-      await witchChannel.permissionOverwrites.set(witchPerms);
-      logger.info('PERMISSIONS_UPDATED_WITCH');
 
-      // Mettre à jour le channel de Cupidon
+      // Cupid channel
       if (game.cupidChannelId) {
-        const cupidChannel = await guild.channels.fetch(game.cupidChannelId);
-        const cupidPlayer = game.players.find(p => p.role === ROLES.CUPID && p.alive);
-        const cupidPerms = [ { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }, botOverwrite ];
-        if (cupidPlayer) {
-          try {
-            await guild.members.fetch(cupidPlayer.id);
-            cupidPerms.push({
-              id: cupidPlayer.id,
-              allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-            });
-          } catch (err) {
-            logger.warn('PERMISSIONS_NON_MEMBER_CUPID', { playerId: cupidPlayer.id });
-          }
-        }
-        await cupidChannel.permissionOverwrites.set(cupidPerms);
-        logger.info('PERMISSIONS_UPDATED_CUPID');
+        const overwrites = [denyAll, botOverwrite];
+        const cupid = game.players.find(p => p.role === ROLES.CUPID && p.alive);
+        if (cupid) { const ow = playerOverwrite(cupid.id); if (ow) overwrites.push(ow); }
+        channelConfigs.push({ channelId: game.cupidChannelId, overwrites, label: 'CUPID' });
       }
 
-      // Mettre à jour le channel du Salvateur
+      // Salvateur channel
       if (game.salvateurChannelId) {
-        const salvateurChannel = await guild.channels.fetch(game.salvateurChannelId);
-        const salvateurPlayer = game.players.find(p => p.role === ROLES.SALVATEUR && p.alive);
-        const salvateurPerms = [ { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }, botOverwrite ];
-        if (salvateurPlayer) {
-          try {
-            await guild.members.fetch(salvateurPlayer.id);
-            salvateurPerms.push({
-              id: salvateurPlayer.id,
-              allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-            });
-          } catch (err) {
-            logger.warn('PERMISSIONS_NON_MEMBER_SALVATEUR', { playerId: salvateurPlayer.id });
-          }
-        }
-        await salvateurChannel.permissionOverwrites.set(salvateurPerms);
-        logger.info('PERMISSIONS_UPDATED_SALVATEUR');
+        const overwrites = [denyAll, botOverwrite];
+        const salv = game.players.find(p => p.role === ROLES.SALVATEUR && p.alive);
+        if (salv) { const ow = playerOverwrite(salv.id); if (ow) overwrites.push(ow); }
+        channelConfigs.push({ channelId: game.salvateurChannelId, overwrites, label: 'SALVATEUR' });
       }
+
+      // ── Phase 3: Apply all permission sets in parallel (concurrency = 3) ──
+      // Each item: fetch channel + set permissions = 2 API calls.
+      // With concurrency 3, up to 3 channels updated simultaneously.
+      const permTimer = logger.startTimer('applyPermissions');
+      await mapConcurrent(channelConfigs, async ({ channelId, overwrites, label }) => {
+        try {
+          const channel = await guild.channels.fetch(channelId);
+          await channel.permissionOverwrites.set(overwrites);
+          logger.info(`PERMISSIONS_UPDATED_${label}`);
+        } catch (e) {
+          logger.warn(`PERMISSIONS_UPDATE_FAILED_${label}`, { error: e.message });
+        }
+      }, 3);
+      permTimer.end('PERMISSIONS_APPLY_DONE', { channels: channelConfigs.length });
 
       timer.end();
       return true;
@@ -3403,34 +3362,32 @@ class GameManager extends EventEmitter {
       totalRoleChannels: ALL_ROLE_CHANNEL_FIELDS.length,
     });
 
-    // 4. Iterate and prune
-    const dbUpdates = {};
+    // 4. Separate fields into kept vs to-prune (synchronous — zero API calls)
+    const toPrune = [];
     for (const field of ALL_ROLE_CHANNEL_FIELDS) {
       const channelId = game[field];
-      if (!channelId) continue; // No channel exists for this field
-
+      if (!channelId) continue;
       if (neededFields.has(field)) {
         result.kept.push(field);
-        continue;
+      } else {
+        toPrune.push({ field, channelId });
       }
+    }
 
-      // This channel is unused — prune it
+    // 5. Delete unused channels in parallel (concurrency = 3)
+    const { mapConcurrent } = require('../utils/concurrency');
+    const dbUpdates = {};
+    await mapConcurrent(toPrune, async ({ field, channelId }) => {
       logger.info('PRUNE_CHANNEL_START', { field, channelId, channelType: FIELD_TO_DB_TYPE[field] });
-
       const deleted = await this._safeDeleteChannel(guild, channelId);
       if (deleted) {
-        // a) Null the game object field
         game[field] = null;
         dbUpdates[field] = null;
-
-        // b) Remove from game_channels DB
         try {
           this.db.deleteGameChannel(channelId);
         } catch (err) {
           logger.warn('PRUNE_DB_DELETE_FAILED', { channelId, error: err.message });
         }
-
-        // c) Clean rolePanels entry (prevents stale message edit attempts)
         const panelKey = FIELD_TO_PANEL_KEY[field];
         if (panelKey && this.rolePanels.has(game.mainChannelId)) {
           const panels = this.rolePanels.get(game.mainChannelId);
@@ -3438,14 +3395,13 @@ class GameManager extends EventEmitter {
             delete panels[panelKey];
           }
         }
-
         result.pruned.push(field);
         logger.info('PRUNE_CHANNEL_SUCCESS', { field, channelId });
       } else {
         result.failed.push(field);
         logger.warn('PRUNE_CHANNEL_FAILED', { field, channelId });
       }
-    }
+    }, 3, { swallowErrors: true });
 
     // 5. Persist all nulled channel IDs to DB in one update
     if (Object.keys(dbUpdates).length > 0) {
@@ -3707,37 +3663,24 @@ class GameManager extends EventEmitter {
       const voiceChannel = await guild.channels.fetch(game.voiceChannelId);
       if (!voiceChannel) return;
 
-      // La nuit : mute uniquement les joueurs inscrits à la partie ET présents dans le channel vocal
+      const botId = guild.members.me ? guild.members.me.id : null;
+      const { mapConcurrent } = require('../utils/concurrency');
+      const members = [...voiceChannel.members.values()].filter(m => !botId || m.id !== botId);
+
+      // Night: mute registered alive players; Day/Ended: unmute all registered players
       if (game.phase === PHASES.NIGHT) {
-        for (const member of voiceChannel.members.values()) {
-          try {
-            const botId = guild.members.me ? guild.members.me.id : null;
-            if (botId && member.id === botId) continue;
-          } catch (err) {
-            // ignore
-          }
-
-          const player = game.players.find(p => p.id === member.id);
-          if (player && player.alive) {
-            await member.voice.setMute(true);
-          }
-        }
-      }
-      // Le jour ou partie terminée : unmute tout le monde
-      else if (game.phase === PHASES.DAY || game.phase === PHASES.ENDED) {
-        for (const member of voiceChannel.members.values()) {
-          try {
-            const botId = guild.members.me ? guild.members.me.id : null;
-            if (botId && member.id === botId) continue;
-          } catch (err) {
-            // ignore
-          }
-
-          const player = game.players.find(p => p.id === member.id);
-          if (player) {
-            await member.voice.setMute(false);
-          }
-        }
+        const toMute = members.filter(m => {
+          const player = game.players.find(p => p.id === m.id);
+          return player && player.alive;
+        });
+        await mapConcurrent(toMute, async (member) => {
+          try { await member.voice.setMute(true); } catch (_) { /* ignore */ }
+        }, 5);
+      } else if (game.phase === PHASES.DAY || game.phase === PHASES.ENDED) {
+        const toUnmute = members.filter(m => game.players.some(p => p.id === m.id));
+        await mapConcurrent(toUnmute, async (member) => {
+          try { await member.voice.setMute(false); } catch (_) { /* ignore */ }
+        }, 5);
       }
     } catch (error) {
       logger.error('VOICE_PERMISSIONS_UPDATE_FAILED', error);
