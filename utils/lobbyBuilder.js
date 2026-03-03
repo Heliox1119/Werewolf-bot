@@ -32,20 +32,9 @@ const ROLE_LIST = [
  * Build a styled progress bar with segments
  */
 function buildProgressBar(current, min, max) {
-  const total = 12;
+  const total = 16;
   const filled = Math.min(Math.round((current / max) * total), total);
-  const minMark = Math.round((min / max) * total);
-
-  let bar = '';
-  for (let i = 0; i < total; i++) {
-    if (i < filled) {
-      bar += i < minMark ? '🟧' : '🟩';
-    } else if (i === minMark) {
-      bar += '🔹';
-    } else {
-      bar += '⬛';
-    }
-  }
+  const bar = '▰'.repeat(filled) + '▱'.repeat(total - filled);
 
   let status;
   if (current >= max) {
@@ -53,11 +42,10 @@ function buildProgressBar(current, min, max) {
   } else if (current >= min) {
     status = t('lobby.status_ready');
   } else {
-    const remaining = min - current;
-    status = t('lobby.status_remaining', { n: remaining });
+    status = t('lobby.status_remaining', { n: min - current });
   }
 
-  return `${bar}\n\`${current}\` / \`${max}\` joueurs  ·  ${status}`;
+  return `\`${bar}\`  **${current}** / **${max}**  ·  ${status}`;
 }
 
 /**
@@ -65,19 +53,20 @@ function buildProgressBar(current, min, max) {
  */
 function buildPlayerList(players, max) {
   if (players.length === 0) {
-    return `> ${t('lobby.no_players')}\n> \n> ${'⬜'.repeat(max)} \`0/${max}\``;
+    return t('lobby.no_players');
   }
 
-  const lines = players.map((p, i) => {
-    const icon = i === 0 ? '👑' : '🎮';
+  const MAX_SHOW = 8;
+  const display = players.slice(0, MAX_SHOW);
+  const lines = display.map((p, i) => {
+    const icon = i === 0 ? '👑' : '▸';
     const tag = i === 0 ? ` ${t('lobby.host_tag')}` : '';
-    return `> ${icon} **${p.username}**${tag}`;
+    return `${icon} **${p.username}**${tag}`;
   });
 
-  // Slot indicator
-  const filledSlots = '🟦'.repeat(Math.min(players.length, max));
-  const emptySlots = '⬜'.repeat(Math.max(0, max - players.length));
-  lines.push(`> \n> ${filledSlots}${emptySlots}`);
+  if (players.length > MAX_SHOW) {
+    lines.push(`*+${players.length - MAX_SHOW} …*`);
+  }
 
   return lines.join('\n');
 }
@@ -128,7 +117,7 @@ function buildRolesPreview(playerCount) {
   }
 
   const uniqueRoleCount = active.filter(r => r.count !== null && r.team !== 'evil').length + (wolfCount > 0 ? 1 : 0) + (hasWhiteWolf ? 1 : 0) + (villagerCount > 0 ? 1 : 0);
-  lines.push(`\n> ${t('lobby.roles_count', { n: uniqueRoleCount, m: playerCount })}`);
+  lines.push(`\n${t('lobby.roles_count', { n: uniqueRoleCount, m: playerCount })}`);
 
   return lines.join('\n');
 }
@@ -174,36 +163,34 @@ function buildLobbyEmbed(game, hostId) {
   const embed = new EmbedBuilder()
     .setTitle(title)
     .setDescription(
-      `${description}\n\n` +
-      `**${t('progress.label')}**\n${buildProgressBar(playerCount, min, max)}`
+      `${description}\n\n${buildProgressBar(playerCount, min, max)}`
     )
     .addFields(
       {
         name: t('lobby.field_players', { n: playerCount, max }),
         value: buildPlayerList(game.players, max),
-        inline: false
+        inline: true
+      },
+      {
+        name: t('lobby.field_info'),
+        value: [
+          `${t('lobby.info_host')} · <@${hostId}>`,
+          game.voiceChannelId ? `${t('lobby.info_voice')} · <#${game.voiceChannelId}>` : `${t('lobby.info_voice')} · ${t('lobby.info_voice_waiting')}`,
+          `${t('lobby.info_wolfwin')} · ${wolfWinLabel}`,
+          `${t('lobby.info_created')} · <t:${Math.floor((game._lobbyCreatedAt || Date.now()) / 1000)}:R>`
+        ].join('\n'),
+        inline: true
       },
       {
         name: t('lobby.field_roles'),
         value: playerCount >= min
           ? buildRolesPreview(playerCount)
-          : `> ${t('lobby.roles_hidden', { min })}\n> \n> 🐺 ×2  🔮  🧪  🏹  + ???`,
-        inline: false
-      },
-      {
-        name: t('lobby.field_info'),
-        value: [
-          `> ${t('lobby.info_host')} · <@${hostId}>`,
-          game.voiceChannelId ? `> ${t('lobby.info_voice')} · <#${game.voiceChannelId}>` : `> ${t('lobby.info_voice')} · ${t('lobby.info_voice_waiting')}`,
-          `> ${t('lobby.info_players', { min, max })}`,
-          `> ${t('lobby.info_wolfwin')} · ${wolfWinLabel}`,
-          `> ${t('lobby.info_created')} · <t:${Math.floor((game._lobbyCreatedAt || Date.now()) / 1000)}:R>`
-        ].join('\n'),
+          : `${t('lobby.roles_hidden', { min })}\n🐺 ×2  🔮  🧪  🏹  + ???`,
         inline: false
       }
     )
     .setColor(themeLobbyColor(game.guildId || null, playerCount / max))
-    .setImage('attachment://LG.jpg')
+    .setThumbnail('attachment://LG.jpg')
     .setFooter({ text: getRandomTip() })
     .setTimestamp();
 
@@ -255,9 +242,55 @@ function buildLobbyMessage(game, hostId) {
   };
 }
 
+/**
+ * Build the expired lobby message payload.
+ * Replaces the embed with a greyed-out "cancelled" state and removes all buttons.
+ * Safe to call even if the game object is partially cleaned up.
+ */
+function buildLobbyExpiredMessage(game) {
+  const playerCount = game && game.players ? game.players.length : 0;
+  const hostId = game ? game.lobbyHostId : null;
+
+  const embed = new EmbedBuilder()
+    .setTitle(t('lobby.expired_title'))
+    .setDescription(t('lobby.expired_description'))
+    .setColor(0x2f3136) // Discord dark grey — neutral/closed
+    .setFooter({ text: t('lobby.expired_footer') })
+    .setTimestamp();
+
+  // Show who was in the lobby if we still have the data
+  if (playerCount > 0) {
+    const names = game.players.map((p, i) => {
+      const icon = i === 0 ? '👑' : '~~🎮~~';
+      return `> ${icon} ~~${p.username}~~`;
+    }).join('\n');
+    embed.addFields({
+      name: t('lobby.field_players', { n: playerCount, max: game.rules?.maxPlayers ?? '?' }),
+      value: names,
+      inline: false
+    });
+  }
+
+  if (hostId) {
+    embed.addFields({
+      name: t('lobby.field_info'),
+      value: `> 👑 **Host** · <@${hostId}>`,
+      inline: false
+    });
+  }
+
+  return {
+    embeds: [embed],
+    components: [],  // Remove all buttons entirely
+    files: []        // No image attachment needed
+    // Note: attachments: [] would strip all existing attachments on edit
+  };
+}
+
 module.exports = {
   buildLobbyEmbed,
   buildLobbyMessage,
+  buildLobbyExpiredMessage,
   buildProgressBar,
   buildPlayerList,
   buildRolesPreview,

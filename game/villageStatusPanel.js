@@ -72,11 +72,19 @@ function getPhaseImage(phase) {
  * May contain \n for a 2-line strophe (split at locale level).
  * Derived ONLY from (phase + subPhase). Never reveals secrets.
  *
+ * For main-phase ambiance (generic night/day text), uses the dynamic
+ * currentNarrative picked once at phase transition — providing variety
+ * and context-aware tone, without changing on GUI refresh.
+ * Sub-phase narrations (wolves, witch, seer…) stay locale-based.
+ *
  * @param {object} game
  * @param {string} guildId
  * @returns {string}
  */
 function buildNarrationLine(game, guildId) {
+  // Dynamic narration helper — returns the stored text if available
+  const dynamicText = game.currentNarrative && game.currentNarrative.text;
+
   if (game.phase === PHASES.ENDED) {
     return t('village_panel.narration_ended', {}, guildId);
   }
@@ -86,13 +94,13 @@ function buildNarrationLine(game, guildId) {
       case PHASES.VOTE_CAPITAINE:
         return t('village_panel.narration_captain_vote', {}, guildId);
       case PHASES.VOTE:
-        return t('village_panel.narration_vote', {}, guildId);
+        return dynamicText || t('village_panel.narration_vote', {}, guildId);
       default:
-        return t('village_panel.narration_day', {}, guildId);
+        return dynamicText || t('village_panel.narration_day', {}, guildId);
     }
   }
 
-  // Night
+  // Night — sub-phase-specific narrations stay locale-based
   switch (game.subPhase) {
     case PHASES.VOLEUR:
       return t('village_panel.narration_thief', {}, guildId);
@@ -111,7 +119,7 @@ function buildNarrationLine(game, guildId) {
     case PHASES.REVEIL:
       return t('village_panel.narration_wakeup', {}, guildId);
     default:
-      return t('village_panel.narration_night', {}, guildId);
+      return dynamicText || t('village_panel.narration_night', {}, guildId);
   }
 }
 

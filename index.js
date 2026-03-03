@@ -253,41 +253,30 @@ client.once("clientReady", async () => {
       }
       // ──────────────────────────────────────────────────────────────
 
-      // ─── Orphan channel cleanup ───────────────────────────────────
+      // ─── Orphan channel cleanup (100% DB-based) ────────────────
       try {
         logger.info('ORPHAN_CLEANUP_STARTED');
-        for (const [guildId, guild] of client.guilds.cache) {
-          const gameChannelPrefixes = ['🐺', '🏘️', '🏘', '🔮', '🧪', '💘', '❤️', '❤', '🛡️', '🛡', '👻', '🎤'];
-          const channels = guild.channels.cache.filter(ch => 
-            ch.name && ch.type !== 4 && // Never delete categories (type 4)
-            gameChannelPrefixes.some(prefix => ch.name.startsWith(prefix))
-          );
-          for (const [chId, ch] of channels) {
-            // Si ce channel n'appartient à aucune partie connue, le supprimer
-            const isOwned = Array.from(gameManager.games.values()).some(g =>
-              g.voiceChannelId === chId || g.villageChannelId === chId ||
-              g.wolvesChannelId === chId || g.seerChannelId === chId ||
-              g.witchChannelId === chId || g.cupidChannelId === chId ||
-              g.salvateurChannelId === chId || g.spectatorChannelId === chId ||
-              g.thiefChannelId === chId || g.whiteWolfChannelId === chId
-            );
-            if (!isOwned) {
-              try {
-                // Check bot permissions before attempting to delete
-                const botMember = guild.members.me;
-                if (!botMember) continue;
-                const botPerms = ch.permissionsFor(botMember);
-                if (!botPerms || !botPerms.has('ViewChannel') || !botPerms.has('ManageChannels')) {
-                  continue; // Silently skip — bot cannot manage this channel
-                }
-                await ch.delete('Orphan game channel cleanup');
-                logger.info('ORPHAN_CHANNEL_DELETED', { name: ch.name, id: chId, guild: guild.name });
-              } catch (e) {
-                // Silently ignore Missing Access/Permissions errors (50001, 50013)
-                if (e.code === 50001 || e.code === 50013) continue;
-                logger.error('ORPHAN_DELETE_FAILED', e);
-              }
+        // Clean orphan DB-registered channels that no longer belong to an active game.
+        // Also purge DB records whose guild is no longer accessible.
+        const staleGuildIds = new Set();
+        for (const rc of gameManager.db.getAllRegisteredChannels()) {
+          if (!client.guilds.cache.has(rc.guild_id)) {
+            staleGuildIds.add(rc.guild_id);
+            gameManager.db.deleteGameChannel(rc.channel_id);
+          }
+        }
+        if (staleGuildIds.size > 0) {
+          logger.info('ORPHAN_STALE_GUILDS_CLEANED', { count: staleGuildIds.size });
+        }
+        // For each accessible guild, delegate to the unified DB-based method
+        for (const [, guild] of client.guilds.cache) {
+          try {
+            const deleted = await gameManager.cleanupOrphanChannels(guild);
+            if (deleted > 0) {
+              logger.info('ORPHAN_GUILD_CLEANUP_DONE', { guild: guild.name, deleted });
             }
+          } catch (e) {
+            logger.error('ORPHAN_GUILD_CLEANUP_FAILED', { guild: guild.name, error: e.message });
           }
         }
       } catch (err) {
@@ -995,15 +984,31 @@ client.on('error', (error) => {
   logger.error('CLIENT_ERROR', error);
 });
 
+// ─── Network / voice errors that should never crash the bot ──────
+const isTransientNetworkError = (err) => {
+  if (!err) return false;
+  const msg = err.message || '';
+  const code = err.code || '';
+  return (
+    code === 'ENOTFOUND' ||
+    code === 'ECONNRESET' ||
+    code === 'ETIMEDOUT' ||
+    code === 'EAI_AGAIN' ||
+    msg.includes('Cannot perform IP discovery') ||
+    msg.includes('socket closed') ||
+    msg.includes('getaddrinfo')
+  );
+};
+
 process.on('unhandledRejection', (reason, promise) => {
   if (reason?.code === 10062) {
     // Silently ignore "Unknown interaction" errors
     return;
   }
   
-  // Ignore voice connection UDP errors (firewall/NAT issues)
-  if (reason?.message?.includes('Cannot perform IP discovery') || 
-      reason?.message?.includes('socket closed')) {
+  // Ignore transient voice/network errors (DNS, firewall, NAT)
+  if (isTransientNetworkError(reason)) {
+    logger.warn('UNHANDLED_REJECTION_NETWORK', { code: reason?.code, message: reason?.message });
     return;
   }
   
@@ -1015,6 +1020,13 @@ process.on('uncaughtException', (error) => {
     // Silently ignore "Unknown interaction" errors
     return;
   }
+
+  // Transient network/DNS errors must not crash the bot
+  if (isTransientNetworkError(error)) {
+    logger.warn('UNCAUGHT_NETWORK_ERROR', { code: error.code, message: error.message });
+    return;
+  }
+
   logger.fatal('UNCAUGHT_EXCEPTION', error);
   // Best-effort state save before crash
   try { gameManager.saveState(); } catch (e) { /* ignore */ }

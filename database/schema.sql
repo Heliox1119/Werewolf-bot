@@ -268,6 +268,20 @@ CREATE TABLE IF NOT EXISTS mod_audit_log (
 
 CREATE INDEX IF NOT EXISTS idx_mod_audit_guild ON mod_audit_log(guild_id, created_at);
 
+-- Table de tracking des channels de partie (suppression sûre, 100% DB-based)
+CREATE TABLE IF NOT EXISTS game_channels (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  game_channel_id TEXT NOT NULL,
+  guild_id TEXT NOT NULL,
+  channel_type TEXT NOT NULL,
+  channel_id TEXT UNIQUE NOT NULL,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+  FOREIGN KEY (game_channel_id) REFERENCES games(channel_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_game_channels_game ON game_channels(game_channel_id);
+CREATE INDEX IF NOT EXISTS idx_game_channels_guild ON game_channels(guild_id);
+
 -- Version du schéma
 INSERT OR IGNORE INTO config (key, value) VALUES ('schema_version', '1');
 

@@ -107,8 +107,10 @@ class MockChannel {
     this.type = type;
     this.name = 'test-channel';
     this.parentId = null;
+    this.guildId = null;
     this.messages = [];
     this.permissionOverwrites = new Map();
+    this.permissionOverwrites.edit = jest.fn(async () => {});
   }
 
   async send(options) {
@@ -149,7 +151,9 @@ class MockGuild {
     this.channels = {
       cache: new MockCollection(),
       fetch: jest.fn(async (channelId) => {
-        return this.channels.cache.get(channelId) || new MockChannel(channelId);
+        const ch = this.channels.cache.get(channelId) || new MockChannel(channelId);
+        if (!ch.guildId) ch.guildId = this.id;
+        return ch;
       }),
       create: jest.fn(async (options) => {
         const channel = options.type === 2 ? 
@@ -157,6 +161,7 @@ class MockGuild {
           new MockChannel('channel-' + Date.now());
         channel.name = options.name;
         channel.parentId = options.parent;
+        channel.guildId = this.id;
         if (options.type === 4) { // GuildCategory
           channel.type = 4;
         }

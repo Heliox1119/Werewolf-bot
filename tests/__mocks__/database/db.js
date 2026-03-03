@@ -338,6 +338,52 @@ class MockGameDatabase {
 
   // ===== UTILITY =====
 
+  // ===== GAME CHANNELS (safe tracking for 100% DB-based deletion) =====
+
+  registerGameChannel(gameChannelId, guildId, channelType, channelId) {
+    if (!this.gameChannels) this.gameChannels = new Map();
+    this.gameChannels.set(channelId, {
+      game_channel_id: gameChannelId,
+      guild_id: guildId,
+      channel_type: channelType,
+      channel_id: channelId,
+      created_at: Math.floor(Date.now() / 1000)
+    });
+    return true;
+  }
+
+  getGameChannels(gameChannelId) {
+    if (!this.gameChannels) return [];
+    return Array.from(this.gameChannels.values()).filter(c => c.game_channel_id === gameChannelId);
+  }
+
+  getGameChannelsByGuild(guildId) {
+    if (!this.gameChannels) return [];
+    return Array.from(this.gameChannels.values()).filter(c => c.guild_id === guildId);
+  }
+
+  getAllRegisteredChannels() {
+    if (!this.gameChannels) return [];
+    return Array.from(this.gameChannels.values());
+  }
+
+  deleteGameChannel(channelId) {
+    if (!this.gameChannels) return false;
+    return this.gameChannels.delete(channelId);
+  }
+
+  deleteGameChannelsByGame(gameChannelId) {
+    if (!this.gameChannels) return 0;
+    let count = 0;
+    for (const [key, val] of this.gameChannels) {
+      if (val.game_channel_id === gameChannelId) {
+        this.gameChannels.delete(key);
+        count++;
+      }
+    }
+    return count;
+  }
+
   // ===== PLAYER STATS =====
 
   updatePlayerStats(playerId, username, updates, guildId = null) {

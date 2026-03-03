@@ -5,11 +5,11 @@
 
 A Discord bot for playing **Werewolf (Mafia)** with automatic voice management, ambient audio, web dashboard and interactive lobby.
 
-![Version](https://img.shields.io/badge/version-3.5.2-blue)
+![Version](https://img.shields.io/badge/version-3.5.3-blue)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2020-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)
-![Tests](https://img.shields.io/badge/tests-1245%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-1340%20passed-brightgreen)
 
 ---
 
@@ -55,13 +55,14 @@ A Discord bot for playing **Werewolf (Mafia)** with automatic voice management, 
 ## ✨ Features
 
 ### 🎮 Gameplay
-- **Interactive lobby** — Join / Leave / Start buttons with real-time role preview
+- **Interactive lobby** — Join / Leave / Start buttons with Unicode progress bar, compact player list, real-time role preview
 - **12 roles** — Werewolf, White Wolf, Villager, Seer, Witch, Hunter, Little Girl, Cupid, Salvateur, Ancien, Idiot du Village, Thief
 - **Automatic phases** — Night / Day cycle with voice mute/unmute, FSM-validated transitions
 - **Merged day vote** — Discussion and vote run simultaneously (8 min), with modifiable votes and absolute majority early resolution
 - **Captain election** — Automatic vote (×2 voting power), tie-breaking by random draw
 - **Victory detection** — Village, Wolves (majority or elimination, configurable), Lovers, Draw
 - **Ambient audio** — Night, day, death and victory sounds in voice channel
+- **Dynamic narration** — Context-aware atmospheric texts per phase (night/day tones: calm, tense, critical)
 - **Spectator mode** — Dead players get read-only access to all channels + dedicated spectator channel
 - **DM notifications** — Players receive a DM when it's their role's turn at night
 
@@ -83,9 +84,10 @@ A Discord bot for playing **Werewolf (Mafia)** with automatic voice management, 
 - **`/setup wizard`** — One-click auto-setup or category selection
 - **Customizable rules** — Min/max players, wolf win condition
 - **Debug commands** — Fake players, force start, inspect game state
-- **Auto cleanup** — Inactive game channels and lobbies (1h)
+- **Auto cleanup** — DB-tracked game channels, lobby expiry with styled notice
 - **Rate limiting** — Token bucket anti-spam with automatic bans
 - **Monitoring** — Real-time dashboard, webhook alerts, Prometheus metrics
+- **Network resilience** — Transient error filtering, voice error handlers
 
 ### 🌍 Internationalization
 - **FR / EN** — `/lang` command to switch language, saved in database
@@ -93,14 +95,14 @@ A Discord bot for playing **Werewolf (Mafia)** with automatic voice management, 
 - **Extensible** — Add a language by creating `locales/xx.js`
 
 ### 🗄️ Technical
-- **SQLite persistence** — Game state, player stats, ELO, achievements, metrics
+- **SQLite persistence** — Game state, player stats, ELO, achievements, metrics, game channel tracking
 - **GameMutex** — Async lock per game preventing race conditions
 - **FSM transition table** — Validates all phase transitions, logs invalid paths
 - **Transaction-wrapped sync** — Atomic DB writes, no partial state on crash
 - **GUI_MASTER architecture** — Single persistent panel per channel, edit-only updates (zero message spam)
 - **Docker ready** — Multi-stage build, docker-compose with persistent volumes, health checks
 - **Auto backup** — Hourly SQLite backups with 24h rotation
-- **1245 automated tests** — 43 suites, 0 failures
+- **1340 automated tests** — 46 suites, 0 failures
 
 ---
 
@@ -148,6 +150,7 @@ Werewolf-bot/
 │   ├── achievements.js      # Achievement engine + ELO system
 │   ├── voiceManager.js      # Audio & voice connections
 │   ├── phases.js            # Phase constants + FSM transition table
+│   ├── narrationPools.js     # Dynamic phase narration (night/day tones)
 │   ├── roles.js             # Role constants (12 roles)
 │   ├── guildReconciler.js   # Auto-purge stale guild data
 │   └── abilities/           # Composable ability engine (custom roles)
@@ -160,7 +163,7 @@ Werewolf-bot/
 ├── utils/                   # Config, i18n, logger, rate limiter, validators
 ├── database/                # SQLite API + schema + backup
 ├── monitoring/              # Metrics collector + webhook alerts
-├── tests/                   # 1245 Jest tests across 43 suites
+├── tests/                   # 1340 Jest tests across 46 suites
 ├── audio/                   # Ambient sounds (.mp3)
 ├── img/                     # Role images
 ├── Dockerfile               # Multi-stage Docker build
@@ -176,6 +179,7 @@ Werewolf-bot/
 | Crash safety | Transaction-wrapped DB sync + dirty flag + timer re-arm on boot |
 | Message spam | GUI_MASTER — one persistent embed per channel, edit-only |
 | Multi-guild | Per-server language, config, category with global fallback |
+| Channel cleanup | DB-tracked `game_channels` table — zero heuristic matching |
 | Observability | Structured logger, Prometheus `/api/metrics`, webhook alerts |
 
 ---
@@ -314,7 +318,7 @@ npm start
 ## 🧪 Tests
 
 ```bash
-npm test                 # Run all 1245 tests
+npm test                 # Run all 1340 tests
 npm run test:coverage    # With coverage report
 npm run test:watch       # Watch mode
 ```
@@ -363,4 +367,4 @@ See [TESTING.md](TESTING.md) for the full testing guide.
 
 ---
 
-**Version**: 3.5.2 · **Node.js**: ≥ 20 · **Discord.js**: v14 · **License**: ISC
+**Version**: 3.5.3 · **Node.js**: ≥ 20 · **Discord.js**: v14 · **License**: ISC

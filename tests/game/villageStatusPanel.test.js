@@ -217,6 +217,81 @@ describe('buildNarrationLine', () => {
     const game = createTestGame({ subPhase: 'mystery' });
     expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_night');
   });
+
+  // ── Dynamic narration (currentNarrative) ──
+
+  test('uses currentNarrative.text for DAY VOTE when available', () => {
+    const game = createTestGame({
+      phase: PHASES.DAY,
+      subPhase: PHASES.VOTE,
+      currentNarrative: { phase: 'day', text: '☀️ Dynamic day narration', tone: 'calm', context: {} },
+    });
+    expect(buildNarrationLine(game, 'g1')).toBe('☀️ Dynamic day narration');
+  });
+
+  test('uses currentNarrative.text for generic DAY when available', () => {
+    const game = createTestGame({
+      phase: PHASES.DAY,
+      subPhase: 'unknown',
+      currentNarrative: { phase: 'day', text: '🌤️ Village ambiance', tone: 'suspicious', context: {} },
+    });
+    expect(buildNarrationLine(game, 'g1')).toBe('🌤️ Village ambiance');
+  });
+
+  test('uses currentNarrative.text for generic NIGHT when available', () => {
+    const game = createTestGame({
+      phase: PHASES.NIGHT,
+      subPhase: 'unknown_sub',
+      currentNarrative: { phase: 'night', text: '🌒 Dynamic night narration', tone: 'tense', context: {} },
+    });
+    expect(buildNarrationLine(game, 'g1')).toBe('🌒 Dynamic night narration');
+  });
+
+  test('falls back to locale key when currentNarrative is null', () => {
+    const game = createTestGame({ phase: PHASES.DAY, subPhase: PHASES.VOTE, currentNarrative: null });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_vote');
+  });
+
+  test('does NOT use currentNarrative for night sub-phase-specific narrations', () => {
+    const game = createTestGame({
+      phase: PHASES.NIGHT,
+      subPhase: PHASES.LOUPS,
+      currentNarrative: { phase: 'night', text: 'Should not appear', tone: 'default', context: {} },
+    });
+    // Wolves sub-phase always uses locale key
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_wolves');
+  });
+
+  test('does NOT use currentNarrative for CAPTAIN VOTE', () => {
+    const game = createTestGame({
+      phase: PHASES.DAY,
+      subPhase: PHASES.VOTE_CAPITAINE,
+      currentNarrative: { phase: 'day', text: 'Should not appear', tone: 'calm', context: {} },
+    });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_captain_vote');
+  });
+
+  test('does NOT use currentNarrative for ENDED phase', () => {
+    const game = createTestGame({
+      phase: PHASES.ENDED,
+      currentNarrative: { phase: 'day', text: 'Should not appear', tone: 'calm', context: {} },
+    });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_ended');
+  });
+
+  test('GUI refresh returns same text when currentNarrative set', () => {
+    const game = createTestGame({
+      phase: PHASES.DAY,
+      subPhase: PHASES.VOTE,
+      currentNarrative: { phase: 'day', text: '🔥 Frozen text', tone: 'critical', context: {} },
+    });
+    const r1 = buildNarrationLine(game, 'g1');
+    const r2 = buildNarrationLine(game, 'g1');
+    const r3 = buildNarrationLine(game, 'g1');
+    expect(r1).toBe('🔥 Frozen text');
+    expect(r2).toBe('🔥 Frozen text');
+    expect(r3).toBe('🔥 Frozen text');
+  });
 });
 
 // ─── buildVillageMasterEmbed — structure ──────────────────────────

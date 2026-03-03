@@ -34,6 +34,16 @@ class VoiceManager {
         logger.warn('VOICE_DISCONNECTED', { channelId: voiceChannel.id, channelName: voiceChannel.name });
       });
 
+      // Catch network/DNS errors on the underlying socket so they don't
+      // bubble up as uncaughtException and crash the entire bot.
+      connection.on('error', (err) => {
+        logger.warn('VOICE_CONNECTION_NETWORK_ERROR', {
+          channelId: voiceChannel.id,
+          code: err.code,
+          message: err.message,
+        });
+      });
+
       this.connections.set(voiceChannel.id, connection);
       return connection;
     } catch (error) {
@@ -60,6 +70,9 @@ class VoiceManager {
       let player = this.players.get(voiceChannelId);
       if (!player) {
         player = createAudioPlayer();
+        player.on('error', (err) => {
+          logger.warn('AUDIO_PLAYER_ERROR', { voiceChannelId, code: err.code, message: err.message });
+        });
         this.players.set(voiceChannelId, player);
         connection.subscribe(player);
       }
@@ -96,6 +109,9 @@ class VoiceManager {
       let player = this.players.get(voiceChannelId);
       if (!player) {
         player = createAudioPlayer();
+        player.on('error', (err) => {
+          logger.warn('AUDIO_PLAYER_LOOP_ERROR', { voiceChannelId, code: err.code, message: err.message });
+        });
         this.players.set(voiceChannelId, player);
         connection.subscribe(player);
       }

@@ -272,6 +272,9 @@ module.exports = {
     leave_host_transfer: "✅ {{name}} a quitté la partie\n🎭 {{newHost}} est le nouveau host",
     leave_auto_cleanup: "✅ {{name}} a quitté la partie\n🧹 Nettoyage automatique...",
     auto_ended: "🐺 Partie terminée automatiquement ! {{n}} channel(s) supprimé(s).",
+    expired_title: "⏳  Lobby expiré — Partie annulée",
+    expired_description: "⏳ **Partie annulée pour inactivité.**\n\nLe lobby est resté ouvert trop longtemps sans démarrer.\nUtilise `/create` pour lancer une nouvelle partie.",
+    expired_footer: "Lobby expiré · Aucune action possible",
   },
 
   // ==================== RÔLES ====================

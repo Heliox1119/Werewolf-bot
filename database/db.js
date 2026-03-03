@@ -297,6 +297,25 @@ class GameDatabase {
         logger.info('MIGRATION_TABLE_CREATED', { table: 'mod_audit_log' });
       }
 
+      // Migration: create game_channels table for safe channel tracking (100% DB-based deletion)
+      const gameChannelsTable = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='game_channels'").get();
+      if (!gameChannelsTable) {
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS game_channels (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            game_channel_id TEXT NOT NULL,
+            guild_id TEXT NOT NULL,
+            channel_type TEXT NOT NULL,
+            channel_id TEXT UNIQUE NOT NULL,
+            created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+            FOREIGN KEY (game_channel_id) REFERENCES games(channel_id) ON DELETE CASCADE
+          )
+        `);
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_game_channels_game ON game_channels(game_channel_id)');
+        this.db.exec('CREATE INDEX IF NOT EXISTS idx_game_channels_guild ON game_channels(guild_id)');
+        logger.info('MIGRATION_TABLE_CREATED', { table: 'game_channels' });
+      }
+
       // Cleanup: remove fake debug players from stats
       this.db.exec("DELETE FROM player_stats WHERE player_id LIKE 'fake_%'");
       this.db.exec("DELETE FROM player_extended_stats WHERE player_id LIKE 'fake_%'");
@@ -436,6 +455,49 @@ class GameDatabase {
   getAllGames() {
     const stmt = this.db.prepare('SELECT * FROM games WHERE ended_at IS NULL');
     return stmt.all();
+  }
+
+  // ===== GAME CHANNELS (safe tracking for 100% DB-based deletion) =====
+
+  registerGameChannel(gameChannelId, guildId, channelType, channelId) {
+    try {
+      const stmt = this.db.prepare(`
+        INSERT OR REPLACE INTO game_channels (game_channel_id, guild_id, channel_type, channel_id)
+        VALUES (?, ?, ?, ?)
+      `);
+      stmt.run(gameChannelId, guildId, channelType, channelId);
+      return true;
+    } catch (err) {
+      logger.error('GAME_CHANNEL_REGISTER_ERROR', { error: err.message, gameChannelId, channelType, channelId });
+      return false;
+    }
+  }
+
+  getGameChannels(gameChannelId) {
+    const stmt = this.db.prepare('SELECT * FROM game_channels WHERE game_channel_id = ?');
+    return stmt.all(gameChannelId);
+  }
+
+  getGameChannelsByGuild(guildId) {
+    const stmt = this.db.prepare('SELECT * FROM game_channels WHERE guild_id = ?');
+    return stmt.all(guildId);
+  }
+
+  getAllRegisteredChannels() {
+    const stmt = this.db.prepare('SELECT * FROM game_channels');
+    return stmt.all();
+  }
+
+  deleteGameChannel(channelId) {
+    const stmt = this.db.prepare('DELETE FROM game_channels WHERE channel_id = ?');
+    const result = stmt.run(channelId);
+    return result.changes > 0;
+  }
+
+  deleteGameChannelsByGame(gameChannelId) {
+    const stmt = this.db.prepare('DELETE FROM game_channels WHERE game_channel_id = ?');
+    const result = stmt.run(gameChannelId);
+    return result.changes;
   }
 
   // ===== PLAYERS =====
@@ -842,8 +904,8 @@ class GameDatabase {
 
   updatePlayerStats(playerId, username, updates, guildId = null) {
     try {
-      // Skip fake/debug players
-      if (playerId && playerId.startsWith('fake_')) return true;
+      // Skip fake/debug players and non-snowflake IDs (test data protection)
+      if (!playerId || typeof playerId !== 'string' || !/^\d{17,20}$/.test(playerId)) return true;
 
       // Upsert: insérer ou mettre à jour
       const existing = this.db.prepare('SELECT * FROM player_stats WHERE player_id = ?').get(playerId);

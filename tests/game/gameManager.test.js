@@ -753,6 +753,75 @@ describe('GameManager', () => {
       expect(gameManager.lobbyTimeouts.has('ch-fsm-1')).toBe(false);
     });
 
+    test('_editLobbyExpired edits the lobby message with expired state', async () => {
+      gameManager.create('ch-expire-1', { guildId: 'guild-expire' });
+      const game = gameManager.games.get('ch-expire-1');
+      game.lobbyMessageId = 'lobby-msg-1';
+      game.lobbyHostId = '100000000000000001';
+      game.players.push(createMockPlayer({ id: '100000000000000001', username: 'Alice' }));
+      game.players.push(createMockPlayer({ id: '100000000000000002', username: 'Bob' }));
+
+      const editFn = jest.fn(async () => {});
+      const mockMsg = { id: 'lobby-msg-1', edit: editFn };
+      const mockChannel = {
+        id: 'ch-expire-1',
+        messages: { fetch: jest.fn(async () => mockMsg) }
+      };
+      const guild = createMockGuild({ id: 'guild-expire' });
+      guild.channels.fetch = jest.fn(async () => mockChannel);
+
+      await gameManager._editLobbyExpired(guild, game);
+
+      expect(guild.channels.fetch).toHaveBeenCalledWith('ch-expire-1');
+      expect(mockChannel.messages.fetch).toHaveBeenCalledWith('lobby-msg-1');
+      expect(editFn).toHaveBeenCalledTimes(1);
+
+      const payload = editFn.mock.calls[0][0];
+      expect(payload.components).toEqual([]);        // No buttons
+      expect(payload.embeds).toHaveLength(1);
+      expect(payload.embeds[0].data.color).toBe(0x2f3136); // Grey/closed color
+    });
+
+    test('_editLobbyExpired handles missing channel gracefully', async () => {
+      gameManager.create('ch-expire-2', { guildId: 'guild-expire' });
+      const game = gameManager.games.get('ch-expire-2');
+      game.lobbyMessageId = 'lobby-msg-2';
+
+      const guild = createMockGuild({ id: 'guild-expire' });
+      guild.channels.fetch = jest.fn(async () => { throw new Error('Unknown Channel'); });
+
+      // Should not throw
+      await expect(gameManager._editLobbyExpired(guild, game)).resolves.toBeUndefined();
+    });
+
+    test('_editLobbyExpired handles deleted message gracefully', async () => {
+      gameManager.create('ch-expire-3', { guildId: 'guild-expire' });
+      const game = gameManager.games.get('ch-expire-3');
+      game.lobbyMessageId = 'lobby-msg-3';
+
+      const mockChannel = {
+        id: 'ch-expire-3',
+        messages: { fetch: jest.fn(async () => { throw new Error('Unknown Message'); }) }
+      };
+      const guild = createMockGuild({ id: 'guild-expire' });
+      guild.channels.fetch = jest.fn(async () => mockChannel);
+
+      // Should not throw
+      await expect(gameManager._editLobbyExpired(guild, game)).resolves.toBeUndefined();
+    });
+
+    test('_editLobbyExpired is a no-op without lobbyMessageId', async () => {
+      gameManager.create('ch-expire-4', { guildId: 'guild-expire' });
+      const game = gameManager.games.get('ch-expire-4');
+      // lobbyMessageId not set
+
+      const guild = createMockGuild({ id: 'guild-expire' });
+      guild.channels.fetch = jest.fn();
+
+      await gameManager._editLobbyExpired(guild, game);
+      expect(guild.channels.fetch).not.toHaveBeenCalled();
+    });
+
     test('start() sets startedAt and assigns roles', () => {
       gameManager.create('ch-fsm-2');
       const game = gameManager.games.get('ch-fsm-2');

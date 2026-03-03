@@ -10,6 +10,7 @@ const { t, translateRole, translateRoleDesc, tips } = require('../utils/i18n');
 const { AchievementEngine, ACHIEVEMENTS } = require('./achievements');
 const { getColor } = require('../utils/theme');
 const nightEngine = require('./nightResolutionEngine');
+const { selectNarrative } = require('./narrationPools');
 
 // Timeouts configurables (en ms)
 const TIMEOUTS = {
@@ -173,6 +174,8 @@ class GameManager extends EventEmitter {
         const bot = require.main && require.main.exports && require.main.exports.client ? require.main.exports.client : null;
         const guild = bot ? bot.guilds.cache.get(game.guildId) : null;
         if (guild) {
+          // Edit the lobby message to show expired state BEFORE deleting channels
+          await this._editLobbyExpired(guild, game);
           this._emitGameEvent(game, 'gameEnded', { victor: null, reason: 'timeout' });
           await this.cleanupChannels(guild, game);
           this.purgeGame(channelId, game);
@@ -183,6 +186,27 @@ class GameManager extends EventEmitter {
     this.lobbyTimeouts.set(channelId, timeoutId);
     if (game) {
       game._activeTimerType = 'lobby';
+    }
+  }
+
+  /**
+   * Edit the lobby message to show an "expired / cancelled" state.
+   * Removes all buttons and replaces the embed with a greyed-out version.
+   * Safely handles missing channel, deleted message, permission errors, etc.
+   */
+  async _editLobbyExpired(guild, game) {
+    if (!game || !game.lobbyMessageId || !game.mainChannelId) return;
+    try {
+      const { buildLobbyExpiredMessage } = require('../utils/lobbyBuilder');
+      const channel = await guild.channels.fetch(game.mainChannelId).catch(() => null);
+      if (!channel) return;
+      const msg = await channel.messages.fetch(game.lobbyMessageId).catch(() => null);
+      if (!msg) return;
+      await msg.edit(buildLobbyExpiredMessage(game));
+    } catch (err) {
+      // Non-critical: if the edit fails (deleted msg, no perms), we still
+      // proceed with channel cleanup and game purge.
+      logger.warn('LOBBY_EXPIRED_EDIT_FAILED', { channelId: game.mainChannelId, error: err.message });
     }
   }
 
@@ -576,6 +600,14 @@ class GameManager extends EventEmitter {
     }
     game.phase = newPhase;
     game._lastPhaseChangeAt = Date.now();
+
+    // ── Dynamic narration: select ONCE per phase transition ──
+    if (newPhase !== PHASES.ENDED) {
+      game.currentNarrative = selectNarrative(game, newPhase);
+    } else {
+      game.currentNarrative = null;
+    }
+
     this.markDirty(game.mainChannelId);
   }
 
@@ -897,6 +929,8 @@ class GameManager extends EventEmitter {
       _activeTimerType: null,
       _lastMutationAt: Date.now(),
       _lastPhaseChangeAt: null,   // timestamp of last Night↔Day transition (drives transition visual)
+      _lastNightDeathCount: 0,       // deaths last night (drives narration context)
+      currentNarrative: null,        // { phase, text, tone, context } — set once per phase transition
       stuckStatus: 'OK',
       uiMode: 'GUI_MASTER'  // GUI is the sole visual source of truth (no loose text for phase/status)
     });
@@ -1745,6 +1779,11 @@ class GameManager extends EventEmitter {
       nightEngine.resolveWhiteWolfKill(game, ctx, this);
       nightEngine.clearNightState(game);
       nightEngine.resolveHunterDeath(game, ctx);
+
+      // ── Track night death count & refresh narration with accurate context ──
+      game._lastNightDeathCount = ctx.deaths ? ctx.deaths.length : 0;
+      game.currentNarrative = selectNarrative(game, game.phase);
+
       this.scheduleSave();
 
       // 2. Apply dead-player lockouts BEFORE announce (channel perms)
@@ -2993,6 +3032,24 @@ class GameManager extends EventEmitter {
         voiceChannelId: game.voiceChannelId
       });
 
+      // Register all channels in game_channels table for safe DB-based deletion
+      const channelRegistrations = [
+        { chType: 'village', id: villageChannel.id },
+        { chType: 'wolves', id: wolvesChannel.id },
+        { chType: 'seer', id: seerChannel.id },
+        { chType: 'witch', id: witchChannel.id },
+        { chType: 'cupid', id: cupidChannel.id },
+        { chType: 'salvateur', id: salvateurChannel.id },
+        { chType: 'whiteWolf', id: whiteWolfChannel.id },
+        { chType: 'thief', id: thiefChannel.id },
+        { chType: 'spectator', id: spectatorChannel.id },
+        { chType: 'voice', id: voiceChannel.id }
+      ];
+      for (const ch of channelRegistrations) {
+        this.db.registerGameChannel(mainChannelId, game.guildId, ch.chType, ch.id);
+      }
+      logger.info('CHANNELS_REGISTERED_IN_DB', { count: channelRegistrations.length, mainChannelId });
+
       timer.end();
       logger.info('CHANNELS_ALL_CREATED', { 
         channelCount: 10,
@@ -3189,7 +3246,11 @@ class GameManager extends EventEmitter {
       this.clearLobbyTimeout(game.mainChannelId);
     }
 
-    const ids = [
+    // Source of truth: game_channels DB table
+    const registeredChannels = this.db.getGameChannels(game.mainChannelId);
+
+    // Also collect IDs from game object as migration safety (channels created before game_channels table existed)
+    const gameObjectIds = [
       { id: game.wolvesChannelId, name: 'wolves' },
       { id: game.seerChannelId, name: 'seer' },
       { id: game.witchChannelId, name: 'witch' },
@@ -3200,18 +3261,35 @@ class GameManager extends EventEmitter {
       { id: game.thiefChannelId, name: 'thief' },
       { id: game.spectatorChannelId, name: 'spectator' },
       { id: game.voiceChannelId, name: 'voice' }
-    ];
+    ].filter(e => e.id);
 
-    logger.info('CHANNELS_CLEANUP_START', { channelCount: ids.filter(i => i.id).length });
+    // Merge: DB channels + game object IDs (deduplicated by channel ID)
+    const allIds = new Map();
+    for (const rc of registeredChannels) {
+      allIds.set(rc.channel_id, rc.channel_type);
+    }
+    for (const entry of gameObjectIds) {
+      if (!allIds.has(entry.id)) {
+        allIds.set(entry.id, entry.name);
+      }
+    }
+
+    logger.info('CHANNELS_CLEANUP_START', { channelCount: allIds.size, fromDb: registeredChannels.length, fromGameObj: gameObjectIds.length });
     let deleted = 0;
 
-    for (const entry of ids) {
-      if (!entry.id) continue;
+    for (const [channelId, channelType] of allIds) {
       try {
         // Force-fetch from API to avoid stale cache
-        const ch = await guild.channels.fetch(entry.id, { force: true }).catch(() => null);
+        const ch = await guild.channels.fetch(channelId, { force: true }).catch(() => null);
         if (!ch) {
-          logger.warn('CHANNEL_CLEANUP_NOT_FOUND', { name: entry.name, id: entry.id });
+          logger.warn('CHANNEL_CLEANUP_NOT_FOUND', { name: channelType, id: channelId });
+          this.db.deleteGameChannel(channelId);
+          continue;
+        }
+
+        // Safety: verify this channel belongs to this guild
+        if (ch.guildId !== guild.id) {
+          logger.warn('CHANNEL_CLEANUP_WRONG_GUILD', { channelId, expectedGuild: guild.id, actualGuild: ch.guildId });
           continue;
         }
 
@@ -3235,11 +3313,14 @@ class GameManager extends EventEmitter {
 
         await ch.delete({ reason: 'Cleanup partie Loup-Garou' });
         deleted++;
-        logger.info('CHANNEL_DELETED', { name: entry.name, id: entry.id });
+        logger.info('CHANNEL_DELETED', { name: channelType, id: channelId });
       } catch (err) {
-        logger.error('CHANNEL_DELETE_FAILED', { name: entry.name, id: entry.id, error: err.message });
+        logger.error('CHANNEL_DELETE_FAILED', { name: channelType, id: channelId, error: err.message });
       }
     }
+
+    // Clean up all DB records for this game
+    this.db.deleteGameChannelsByGame(game.mainChannelId);
 
     this.saveState();
     timer.end();
@@ -3249,111 +3330,74 @@ class GameManager extends EventEmitter {
   }
 
   /**
-   * Clean up orphan game channels (channels that exist without an active game)
+   * Clean up orphan game channels — 100% DB-based.
+   * Queries game_channels table, finds entries whose game is no longer active,
+   * deletes them from Discord by ID only (never by name/pattern).
    * @param {Guild} guild - The Discord guild
-   * @param {string} categoryId - The category ID to search in
    * @returns {number} Number of orphan channels deleted
    */
-  async cleanupOrphanChannels(guild, categoryId) {
+  async cleanupOrphanChannels(guild) {
     const timer = logger.startTimer('cleanupOrphanChannels');
-    logger.info('ORPHAN_CLEANUP_START', { categoryId });
-
-    // Match both with and without emojis (Discord sometimes normalizes, sometimes doesn't)
-    const gameChannelNames = [
-      'village', '🏘️-village', '🏘-village',
-      'loups', 'wolves', '🐺-loups', '🐺-wolves', 
-      'voyante', 'seer', '🔮-voyante', '🔮-seer',
-      'sorciere', 'witch', '🧪-sorciere', '🧪-witch',
-      'cupidon', 'cupid', '❤️-cupidon', '❤️-cupid', '❤-cupidon', '❤-cupid',
-      'salvateur', '🛡️-salvateur', '🛡-salvateur',
-      'spectateurs', 'spectators', '👻-spectateurs', '👻-spectators',
-      'partie', 'voice', '🎤-partie', '🎤-voice'
-    ];
+    logger.info('ORPHAN_CLEANUP_START', { guildId: guild.id });
     let deleted = 0;
 
     try {
-      // IMPORTANT: Force fetch ALL channels from API bypassing cache completely
-      logger.debug('ORPHAN_FETCHING_CHANNELS');
-      const allChannels = await guild.channels.fetch({ force: true, cache: false });
-      logger.debug('ORPHAN_CHANNELS_FETCHED', { total: allChannels.size });
-      
-      // Log all channels for debugging
-      const allChannelsList = Array.from(allChannels.values()).map(ch => ({
-        id: ch.id,
-        name: ch.name,
-        parentId: ch.parentId,
-        type: ch.type
-      }));
-      logger.debug('ORPHAN_ALL_GUILD_CHANNELS', { channels: allChannelsList.slice(0, 30) }); // Limit to first 30
-      
-      // Filter channels in the specified category
-      const channels = allChannels.filter(ch => ch.parentId === categoryId);
-      logger.info('ORPHAN_CATEGORY_CHANNELS', { 
-        count: channels.size, 
-        categoryId,
-        channelNames: Array.from(channels.values()).map(ch => ch.name)
-      });
-      
-      // Log active games
-      logger.debug('ORPHAN_ACTIVE_GAMES', { 
-        count: this.games.size,
-        gameChannelIds: Array.from(this.games.values()).flatMap(g => [
-          g.wolvesChannelId, g.seerChannelId, g.witchChannelId,
-          g.villageChannelId, g.cupidChannelId, g.voiceChannelId
-        ].filter(Boolean))
-      });
-      
-      for (const channel of channels.values()) {
-        // Never delete categories (type 4)
-        if (channel.type === 4) continue;
-        // Check if it's a game channel by exact name match
-        const isGameChannel = gameChannelNames.includes(channel.name);
-        
-        if (isGameChannel) {
-          logger.debug('ORPHAN_POTENTIAL_GAME_CHANNEL', { name: channel.name, id: channel.id });
-          
-          // Check if there's an active game that owns this channel
-          let isOrphan = true;
-          
-          for (const game of this.games.values()) {
-            const gameChannelIds = [
-              game.wolvesChannelId,
-              game.seerChannelId,
-              game.witchChannelId,
-              game.villageChannelId,
-              game.cupidChannelId,
-              game.salvateurChannelId,
-              game.spectatorChannelId,
-              game.voiceChannelId
-            ];
-            
-            if (gameChannelIds.includes(channel.id)) {
-              isOrphan = false;
-              logger.debug('ORPHAN_CHANNEL_BELONGS_TO_GAME', { channelId: channel.id, mainChannelId: game.mainChannelId });
-              break;
-            }
-          }
-          
-          if (isOrphan) {
-            logger.info('ORPHAN_CHANNEL_DELETING', { name: channel.name, id: channel.id });
-            try {
-              // Ensure bot has permission to delete
-              try {
-                const botId = guild.members.me?.id || guild.client.user.id;
-                await channel.permissionOverwrites.edit(botId, { ViewChannel: true, ManageChannels: true }).catch(() => {});
-              } catch (e) { /* best-effort */ }
-              await channel.delete({ reason: 'Cleanup orphan Loup-Garou channel' });
-              deleted++;
-              logger.info('ORPHAN_CHANNEL_DELETED', { name: channel.name, id: channel.id });
-            } catch (err) {
-              logger.error('ORPHAN_CHANNEL_DELETE_FAILED', { name: channel.name, id: channel.id, error: err.message });
-            }
-          } else {
-            logger.debug('ORPHAN_CHANNEL_KEPT_ACTIVE', { name: channel.name, id: channel.id });
-          }
-        } else {
-          logger.debug('ORPHAN_NON_GAME_CHANNEL_SKIPPED', { name: channel.name, type: channel.type });
+      // Source of truth: game_channels DB table
+      const registeredChannels = this.db.getGameChannelsByGuild(guild.id);
+
+      // Get active game mainChannelIds from memory
+      const activeGameIds = new Set();
+      for (const game of this.games.values()) {
+        if (game.guildId === guild.id) {
+          activeGameIds.add(game.mainChannelId);
         }
+      }
+
+      // Find orphans: registered channels whose game is no longer active
+      const orphans = registeredChannels.filter(rc => !activeGameIds.has(rc.game_channel_id));
+
+      logger.info('ORPHAN_CHANNELS_FOUND', { total: registeredChannels.length, active: activeGameIds.size, orphans: orphans.length });
+
+      for (const orphan of orphans) {
+        try {
+          const ch = await guild.channels.fetch(orphan.channel_id, { force: true }).catch(() => null);
+          if (!ch) {
+            // Channel already deleted on Discord side, clean DB record
+            this.db.deleteGameChannel(orphan.channel_id);
+            continue;
+          }
+
+          // Safety: verify this channel belongs to this guild
+          if (ch.guildId !== guild.id) {
+            logger.warn('ORPHAN_WRONG_GUILD', { channelId: orphan.channel_id, expectedGuild: guild.id, actualGuild: ch.guildId });
+            this.db.deleteGameChannel(orphan.channel_id);
+            continue;
+          }
+
+          // Unmute voice members before deletion
+          try {
+            if (ch.type === 2) {
+              for (const member of ch.members.values()) {
+                try { await member.voice.setMute(false); } catch (e) { /* ignore */ }
+              }
+            }
+          } catch (e) { /* ignore */ }
+
+          // Ensure bot has permission to delete
+          try {
+            const botId = guild.members.me?.id || guild.client.user.id;
+            await ch.permissionOverwrites.edit(botId, { ViewChannel: true, ManageChannels: true }).catch(() => {});
+          } catch (e) { /* best-effort */ }
+
+          await ch.delete({ reason: 'Cleanup orphan Loup-Garou channel' });
+          deleted++;
+          logger.info('ORPHAN_CHANNEL_DELETED', { type: orphan.channel_type, id: orphan.channel_id });
+        } catch (err) {
+          logger.error('ORPHAN_CHANNEL_DELETE_FAILED', { id: orphan.channel_id, error: err.message });
+        }
+
+        // Clean DB record regardless of deletion success
+        this.db.deleteGameChannel(orphan.channel_id);
       }
     } catch (err) {
       logger.error('ORPHAN_CLEANUP_ERROR', err);
@@ -3364,45 +3408,65 @@ class GameManager extends EventEmitter {
     return deleted;
   }
 
-  async cleanupCategoryChannels(guild, categoryId) {
-    const timer = logger.startTimer('cleanupCategoryChannels');
-    logger.info('CATEGORY_CLEANUP_START', { categoryId });
-
-    const gameChannelNames = [
-      'village', '🏘️-village', '🏘-village',
-      'loups', 'wolves', '🐺-loups', '🐺-wolves', 
-      'voyante', 'seer', '🔮-voyante', '🔮-seer',
-      'sorciere', 'witch', '🧪-sorciere', '🧪-witch',
-      'cupidon', 'cupid', '❤️-cupidon', '❤️-cupid', '❤-cupidon', '❤-cupid',
-      'salvateur', '🛡️-salvateur', '🛡-salvateur',
-      'spectateurs', 'spectators', '👻-spectateurs', '👻-spectators',
-      'partie', 'voice', '🎤-partie', '🎤-voice'
-    ];
-
+  /**
+   * Clean up all registered game channels for a guild — 100% DB-based.
+   * Used by /clear command. Deletes only channels tracked in game_channels table.
+   * @param {Guild} guild - The Discord guild
+   * @returns {number} Number of channels deleted
+   */
+  async cleanupAllGameChannels(guild) {
+    const timer = logger.startTimer('cleanupAllGameChannels');
+    logger.info('GUILD_CHANNEL_CLEANUP_START', { guildId: guild.id });
     let deleted = 0;
-    try {
-      const allChannels = await guild.channels.fetch(undefined, { force: true, cache: false });
-      const channels = allChannels.filter(ch => ch.parentId === categoryId && ch.type !== 4 && gameChannelNames.includes(ch.name));
 
-      for (const channel of channels.values()) {
+    try {
+      const registeredChannels = this.db.getGameChannelsByGuild(guild.id);
+
+      for (const entry of registeredChannels) {
         try {
-          // Ensure bot has permission to delete
+          const ch = await guild.channels.fetch(entry.channel_id, { force: true }).catch(() => null);
+          if (!ch) {
+            this.db.deleteGameChannel(entry.channel_id);
+            continue;
+          }
+
+          // Safety: verify guild
+          if (ch.guildId !== guild.id) {
+            logger.warn('CLEANUP_WRONG_GUILD', { channelId: entry.channel_id, expectedGuild: guild.id });
+            this.db.deleteGameChannel(entry.channel_id);
+            continue;
+          }
+
+          // Unmute voice members before deletion
+          try {
+            if (ch.type === 2) {
+              for (const member of ch.members.values()) {
+                try { await member.voice.setMute(false); } catch (e) { /* ignore */ }
+              }
+            }
+          } catch (e) { /* ignore */ }
+
+          // Ensure bot has permission
           try {
             const botId = guild.members.me?.id || guild.client.user.id;
-            await channel.permissionOverwrites.edit(botId, { ViewChannel: true, ManageChannels: true }).catch(() => {});
+            await ch.permissionOverwrites.edit(botId, { ViewChannel: true, ManageChannels: true }).catch(() => {});
           } catch (e) { /* best-effort */ }
-          await channel.delete({ reason: 'Cleanup duplicate Loup-Garou channels' });
+
+          await ch.delete({ reason: 'Cleanup Loup-Garou channel (/clear)' });
           deleted++;
+          logger.info('CHANNEL_DELETED', { type: entry.channel_type, id: entry.channel_id });
         } catch (err) {
-          logger.error('CATEGORY_CHANNEL_DELETE_FAILED', { name: channel.name, id: channel.id, error: err.message });
+          logger.error('CHANNEL_DELETE_FAILED', { id: entry.channel_id, error: err.message });
         }
+
+        this.db.deleteGameChannel(entry.channel_id);
       }
     } catch (err) {
-      logger.error('CATEGORY_CLEANUP_ERROR', err);
+      logger.error('GUILD_CHANNEL_CLEANUP_ERROR', err);
     }
 
     timer.end();
-    logger.info('CATEGORY_CLEANUP_COMPLETE', { deleted });
+    logger.info('GUILD_CHANNEL_CLEANUP_COMPLETE', { deleted });
     return deleted;
   }
 

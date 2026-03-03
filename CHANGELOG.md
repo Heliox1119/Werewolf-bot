@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/) and [Semantic Ver
 
 ---
 
+## [3.5.3] - 2026-03-03
+
+### Added
+- **DB-based channel tracking** — New `game_channels` table registers all 10 game channels at creation; cleanup is 100% database-driven (no more heuristic name/pattern matching)
+- **Dynamic narration system** — `narrationPools.js` provides context-aware atmospheric texts per phase transition (night: default/tense/critical; day: calm/suspicious/critical)
+- **Lobby expiry message** — Expired lobbies edit their embed with a styled expiry notice instead of silently vanishing
+- **Lobby visual polish** — Unicode progress bar (▰▱), compact player list with truncation, inline side-by-side fields, thumbnail instead of full image
+- **Network resilience** — `isTransientNetworkError()` helper filters transient Discord API/network errors from crash handlers
+- **Voice error handling** — Error listeners on voice connections and audio players prevent unhandled crashes
+
+### Fixed
+- **Leaderboard data integrity** — Snowflake regex validation in `updatePlayerStats` + GLOB filter in leaderboard queries prevent corrupt entries
+- **Channel cleanup reliability** — `/clear` replaced 60-line heuristic deletion with single `cleanupAllGameChannels(guild)` call
+
+### Changed
+- Orphan channel cleanup on startup uses DB-based approach instead of pattern matching
+- Village status panel integrates dynamic narration text from `currentNarrative`
+
+### Tests
+- **46 suites, 1340 tests** (was 43 suites, 1245 tests)
+- New: `gameChannels.test.js` (848 lines), `narrationPools.test.js` (349 lines), `lobbyBuilder.test.js` (100 lines)
+- Added `_editLobbyExpired` tests and dynamic narration integration tests
+
+---
+
 ## [3.5.2] - 2026-03-02
 
 ### Changed

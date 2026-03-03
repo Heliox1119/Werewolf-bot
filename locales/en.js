@@ -272,6 +272,9 @@ module.exports = {
     leave_host_transfer: "✅ {{name}} left the game\n🎭 {{newHost}} is the new host",
     leave_auto_cleanup: "✅ {{name}} left the game\n🧹 Automatic cleanup...",
     auto_ended: "🐺 Game automatically ended! {{n}} channel(s) deleted.",
+    expired_title: "⏳  Lobby expired — Game cancelled",
+    expired_description: "⛔ **Game cancelled due to inactivity.**\n\nThe lobby remained open too long without starting.\nUse `/create` to start a new game.",
+    expired_footer: "Lobby expired · No action possible",
   },
 
   // ==================== ROLES ====================
