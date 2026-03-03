@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/) and [Semantic Ver
 
 ---
 
+## [3.5.4] - 2026-03-03
+
+### Added
+- **Role channel pruning at game start** — `pruneUnusedRoleChannels(game)` deletes channels for roles not in play (supports Classic + Dynamic balance modes)
+- `_safeDeleteChannel()` wrapper with full error handling (10003 recovery, wrong-guild guard, voice unmute)
+- `ROLE_TO_CHANNEL_FIELDS` static mapping for role→channel resolution
+- i18n key `progress.pruning_channels` (FR + EN)
+
+### Changed
+- `postStartGame()` calls `pruneUnusedRoleChannels` before setting permissions (step 0)
+- Pruned channels: game object nulled, `game_channels` DB row removed, `rolePanels` entry cleaned, DB game row updated in single batch
+
+### Tests
+- **47 suites, 1380 tests** (was 46/1340)
+- New: `pruneUnusedRoleChannels.test.js` (40 tests: mapping, pruning logic, thief cards, protected channels, DB sync, rolePanels cleanup, edge cases, _safeDeleteChannel, idempotency)
+
+---
+
 ## [3.5.3] - 2026-03-03
 
 ### Added

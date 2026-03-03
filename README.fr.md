@@ -5,11 +5,11 @@
 
 Un bot Discord pour jouer au **Loup-Garou de Thiercelieux** avec gestion vocale automatique, audio d'ambiance, tableau de bord web et lobby interactif.
 
-![Version](https://img.shields.io/badge/version-3.5.3-blue)
+![Version](https://img.shields.io/badge/version-3.5.4-blue)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2020-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blueviolet)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)
-![Tests](https://img.shields.io/badge/tests-1340%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-1380%20passed-brightgreen)
 
 ---
 
@@ -102,7 +102,7 @@ Un bot Discord pour jouer au **Loup-Garou de Thiercelieux** avec gestion vocale 
 - **Architecture GUI_MASTER** — Un seul panel persistant par channel, mises à jour par edit uniquement (zéro spam de messages)
 - **Docker ready** — Build multi-stage, docker-compose avec volumes persistants, health checks
 - **Backup automatique** — Backup SQLite horaire avec rotation 24h
-- **1340 tests automatisés** — 46 suites, 0 failures
+- **1380 tests automatisés** — 47 suites, 0 failures
 
 ---
 
@@ -163,7 +163,7 @@ Werewolf-bot/
 ├── utils/                   # Config, i18n, logger, rate limiter, validators
 ├── database/                # API SQLite + schéma + backup
 ├── monitoring/              # Collecteur de métriques + alertes webhook
-├── tests/                   # 1340 tests Jest sur 46 suites
+├── tests/                   # 1380 tests Jest sur 47 suites
 ├── audio/                   # Sons d'ambiance (.mp3)
 ├── img/                     # Images des rôles
 ├── Dockerfile               # Build Docker multi-stage
@@ -318,7 +318,7 @@ npm start
 ## 🧪 Tests
 
 ```bash
-npm test                 # Lancer les 1340 tests
+npm test                 # Lancer les 1380 tests
 npm run test:coverage    # Avec rapport de couverture
 npm run test:watch       # Mode watch
 ```
@@ -367,4 +367,4 @@ Voir [TESTING.md](TESTING.md) pour le guide complet.
 
 ---
 
-**Version** : 3.5.3 · **Node.js** : ≥ 20 · **Discord.js** : v14 · **License** : ISC
+**Version** : 3.5.4 · **Node.js** : ≥ 20 · **Discord.js** : v14 · **License** : ISC

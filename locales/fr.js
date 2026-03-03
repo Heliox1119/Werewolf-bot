@@ -921,6 +921,7 @@ module.exports = {
 
   // ==================== PROGRESS ====================
   progress: {
+    pruning_channels: "⏳ Nettoyage des channels de rôles inutilisés...",
     permissions: "⏳ Configuration des permissions...",
     voice: "⏳ Configuration vocale...",
     dm: "⏳ Envoi des rôles en DM...",

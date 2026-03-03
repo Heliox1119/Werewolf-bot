@@ -2791,6 +2791,22 @@ class GameManager extends EventEmitter {
       try { await interaction.editReply({ content: msg }); } catch {}
     };
 
+    // 0. Prune unused role channels BEFORE setting permissions
+    //    Only channels for roles actually in play survive.
+    try {
+      await updateProgress(t('progress.pruning_channels', {}, game.guildId));
+      const pruneResult = await this.pruneUnusedRoleChannels(guild, game);
+      logger.info('POST_START_PRUNE_DONE', {
+        channelId: game.mainChannelId,
+        pruned: pruneResult.pruned.length,
+        kept: pruneResult.kept.length,
+        failed: pruneResult.failed.length,
+      });
+    } catch (err) {
+      // Non-fatal: if pruning fails, the game still works (extra channels remain)
+      logger.error('POST_START_PRUNE_FAILED', { channelId: game.mainChannelId, error: err.message });
+    }
+
     // 1. Permissions channels
     await updateProgress(t('progress.permissions'));
     const setupSuccess = await this.updateChannelPermissions(guild, game);
@@ -3237,6 +3253,220 @@ class GameManager extends EventEmitter {
       logger.error('PERMISSIONS_UPDATE_FAILED', error);
       return false;
     }
+  }
+
+  // ─── Role-to-channel mapping for pruning ──────────────────────────
+  // Maps each ROLE constant to the game object field(s) for its dedicated channel.
+  // Wolves channel is shared by WEREWOLF + WHITE_WOLF; WHITE_WOLF also has a solo channel.
+  // Protected channels (village, spectator, voice) are NEVER in this map.
+  static get ROLE_TO_CHANNEL_FIELDS() {
+    return {
+      [ROLES.WEREWOLF]:   ['wolvesChannelId'],
+      [ROLES.WHITE_WOLF]: ['wolvesChannelId', 'whiteWolfChannelId'],
+      [ROLES.SEER]:       ['seerChannelId'],
+      [ROLES.WITCH]:      ['witchChannelId'],
+      [ROLES.CUPID]:      ['cupidChannelId'],
+      [ROLES.SALVATEUR]:  ['salvateurChannelId'],
+      [ROLES.THIEF]:      ['thiefChannelId'],
+    };
+  }
+
+  /**
+   * Safely delete a single Discord channel with full error handling.
+   * Handles: already deleted, missing permissions, wrong guild, voice unmuting.
+   *
+   * @param {Guild}  guild     - Discord guild
+   * @param {string} channelId - Channel snowflake
+   * @param {string} reason    - Audit log reason
+   * @returns {boolean} true if deleted (or already gone), false on hard failure
+   */
+  async _safeDeleteChannel(guild, channelId, reason = 'Werewolf: unused role channel pruned') {
+    try {
+      const ch = await guild.channels.fetch(channelId, { force: true }).catch(() => null);
+      if (!ch) {
+        // Already deleted or not found — that's fine
+        logger.debug('PRUNE_CHANNEL_ALREADY_GONE', { channelId });
+        return true;
+      }
+
+      // Safety: wrong guild guard
+      if (ch.guildId !== guild.id) {
+        logger.warn('PRUNE_CHANNEL_WRONG_GUILD', { channelId, expected: guild.id, actual: ch.guildId });
+        return false;
+      }
+
+      // Voice channel: unmute members before deleting
+      if (ch.type === 2) {
+        for (const member of ch.members.values()) {
+          try { await member.voice.setMute(false); } catch (_) { /* ignore */ }
+        }
+      }
+
+      // Ensure bot has perms to delete (best-effort re-grant)
+      try {
+        const botId = guild.members.me?.id || guild.client.user.id;
+        await ch.permissionOverwrites.edit(botId, { ViewChannel: true, ManageChannels: true }).catch(() => {});
+      } catch (_) { /* best-effort */ }
+
+      await ch.delete({ reason });
+      return true;
+    } catch (err) {
+      // 10003 = Unknown Channel (already deleted), 10008 = Unknown Message
+      if (err.code === 10003 || err.code === 10008) return true;
+      logger.error('PRUNE_CHANNEL_DELETE_FAILED', { channelId, error: err.message, code: err.code });
+      return false;
+    }
+  }
+
+  /**
+   * Prune role channels that are not needed for the current game.
+   *
+   * Called ONCE at game start (inside postStartGame), after roles are distributed.
+   * Compares the set of roles actually in play (players + thiefExtraRoles) against
+   * all role channels created at /create, and safely deletes unused ones.
+   *
+   * PROTECTED (never pruned): village, spectator, voice, mainChannel.
+   *
+   * For each pruned channel:
+   *   1. Discord channel deleted via _safeDeleteChannel
+   *   2. game object field nulled
+   *   3. game_channels DB row removed
+   *   4. rolePanels entry cleaned (prevents stale message edits)
+   *   5. DB game row updated (channel IDs synced)
+   *
+   * @param {Guild}  guild - Discord guild
+   * @param {object} game  - In-memory game object (mutated in place)
+   * @returns {{ pruned: string[], kept: string[], failed: string[] }}
+   */
+  async pruneUnusedRoleChannels(guild, game) {
+    const timer = logger.startTimer('pruneUnusedRoleChannels');
+    const result = { pruned: [], kept: [], failed: [] };
+
+    // 1. Build the set of roles actually in play
+    //    Includes: all player roles + thief extra cards (those roles MIGHT enter play)
+    const activeRoles = new Set();
+    for (const player of (game.players || [])) {
+      if (player.role) activeRoles.add(player.role);
+    }
+    // Thief extra roles can be swapped in — their channels must stay
+    for (const extraRole of (game.thiefExtraRoles || [])) {
+      if (extraRole) activeRoles.add(extraRole);
+    }
+
+    // 2. Derive which channel fields are needed
+    const neededFields = new Set();
+    const roleToFields = GameManager.ROLE_TO_CHANNEL_FIELDS;
+    for (const role of activeRoles) {
+      const fields = roleToFields[role];
+      if (fields) {
+        for (const f of fields) neededFields.add(f);
+      }
+    }
+
+    // 3. All prunable role channel fields (excludes protected: village, spectator, voice)
+    const ALL_ROLE_CHANNEL_FIELDS = [
+      'wolvesChannelId',
+      'seerChannelId',
+      'witchChannelId',
+      'cupidChannelId',
+      'salvateurChannelId',
+      'whiteWolfChannelId',
+      'thiefChannelId',
+    ];
+
+    // Field → channel_type key used in game_channels DB table
+    const FIELD_TO_DB_TYPE = {
+      wolvesChannelId:    'wolves',
+      seerChannelId:      'seer',
+      witchChannelId:     'witch',
+      cupidChannelId:     'cupid',
+      salvateurChannelId: 'salvateur',
+      whiteWolfChannelId: 'whiteWolf',
+      thiefChannelId:     'thief',
+    };
+
+    // Field → role panel key (used in this.rolePanels)
+    const FIELD_TO_PANEL_KEY = {
+      wolvesChannelId:    'wolves',
+      seerChannelId:      'seer',
+      witchChannelId:     'witch',
+      cupidChannelId:     'cupid',
+      salvateurChannelId: 'salvateur',
+      whiteWolfChannelId: 'white_wolf',
+      thiefChannelId:     'thief',
+    };
+
+    logger.info('PRUNE_ANALYSIS', {
+      channelId: game.mainChannelId,
+      activeRoles: [...activeRoles],
+      neededFields: [...neededFields],
+      totalRoleChannels: ALL_ROLE_CHANNEL_FIELDS.length,
+    });
+
+    // 4. Iterate and prune
+    const dbUpdates = {};
+    for (const field of ALL_ROLE_CHANNEL_FIELDS) {
+      const channelId = game[field];
+      if (!channelId) continue; // No channel exists for this field
+
+      if (neededFields.has(field)) {
+        result.kept.push(field);
+        continue;
+      }
+
+      // This channel is unused — prune it
+      logger.info('PRUNE_CHANNEL_START', { field, channelId, channelType: FIELD_TO_DB_TYPE[field] });
+
+      const deleted = await this._safeDeleteChannel(guild, channelId);
+      if (deleted) {
+        // a) Null the game object field
+        game[field] = null;
+        dbUpdates[field] = null;
+
+        // b) Remove from game_channels DB
+        try {
+          this.db.deleteGameChannel(channelId);
+        } catch (err) {
+          logger.warn('PRUNE_DB_DELETE_FAILED', { channelId, error: err.message });
+        }
+
+        // c) Clean rolePanels entry (prevents stale message edit attempts)
+        const panelKey = FIELD_TO_PANEL_KEY[field];
+        if (panelKey && this.rolePanels.has(game.mainChannelId)) {
+          const panels = this.rolePanels.get(game.mainChannelId);
+          if (panels && panels[panelKey]) {
+            delete panels[panelKey];
+          }
+        }
+
+        result.pruned.push(field);
+        logger.info('PRUNE_CHANNEL_SUCCESS', { field, channelId });
+      } else {
+        result.failed.push(field);
+        logger.warn('PRUNE_CHANNEL_FAILED', { field, channelId });
+      }
+    }
+
+    // 5. Persist all nulled channel IDs to DB in one update
+    if (Object.keys(dbUpdates).length > 0) {
+      try {
+        this.db.updateGame(game.mainChannelId, dbUpdates);
+      } catch (err) {
+        logger.error('PRUNE_DB_UPDATE_FAILED', { channelId: game.mainChannelId, error: err.message });
+      }
+      this.markDirty(game.mainChannelId);
+    }
+
+    timer.end();
+    logger.info('PRUNE_COMPLETE', {
+      channelId: game.mainChannelId,
+      pruned: result.pruned.length,
+      kept: result.kept.length,
+      failed: result.failed.length,
+      details: result,
+    });
+
+    return result;
   }
 
   async cleanupChannels(guild, game) {
