@@ -907,6 +907,14 @@ client.on("interactionCreate", async interaction => {
           await safeEditReply(interaction, { content: t('lobby.balance_locked'), flags: MessageFlags.Ephemeral });
           return;
         }
+        if (result.error === 'RATE_LIMITED') {
+          await safeEditReply(interaction, { content: t('lobby.balance_rate_limited'), flags: MessageFlags.Ephemeral });
+          return;
+        }
+        if (result.error === 'DB_ERROR') {
+          await safeEditReply(interaction, { content: '❌ Internal error, please try again.', flags: MessageFlags.Ephemeral });
+          return;
+        }
         await safeEditReply(interaction, { content: t('error.no_game_found_button') });
         return;
       }

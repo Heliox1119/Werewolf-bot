@@ -1451,14 +1451,18 @@ describe('GameManager', () => {
       const result = gameManager.toggleBalanceMode('ch-toggle', 'host1');
       expect(result.success).toBe(true);
       expect(result.newMode).toBe(BalanceMode.CLASSIC);
+      expect(result.previousMode).toBe(BalanceMode.DYNAMIC);
       expect(gameManager.games.get('ch-toggle').balanceMode).toBe(BalanceMode.CLASSIC);
     });
 
     test('toggles CLASSIC → DYNAMIC', () => {
       gameManager.toggleBalanceMode('ch-toggle', 'host1'); // → CLASSIC
+      // Clear debounce lock to allow immediate re-toggle in test
+      gameManager._balanceToggleLocks.delete('ch-toggle');
       const result = gameManager.toggleBalanceMode('ch-toggle', 'host1'); // → DYNAMIC
       expect(result.success).toBe(true);
       expect(result.newMode).toBe(BalanceMode.DYNAMIC);
+      expect(result.previousMode).toBe(BalanceMode.CLASSIC);
     });
 
     test('persists to DB', () => {
@@ -1496,6 +1500,105 @@ describe('GameManager', () => {
     test('game.id is stored on game object', () => {
       const game = gameManager.games.get('ch-toggle');
       expect(typeof game.id).toBe('number');
+    });
+
+    // ─── Hardening tests ─────────────────────────────────────────
+
+    test('debounces rapid toggles within 500ms', () => {
+      const first = gameManager.toggleBalanceMode('ch-toggle', 'host1');
+      expect(first.success).toBe(true);
+
+      // Second toggle immediately — should be rate limited
+      const second = gameManager.toggleBalanceMode('ch-toggle', 'host1');
+      expect(second.success).toBe(false);
+      expect(second.error).toBe('RATE_LIMITED');
+
+      // Mode should remain from first toggle (CLASSIC)
+      expect(gameManager.games.get('ch-toggle').balanceMode).toBe(BalanceMode.CLASSIC);
+    });
+
+    test('allows toggle after debounce window expires', () => {
+      const first = gameManager.toggleBalanceMode('ch-toggle', 'host1');
+      expect(first.success).toBe(true);
+
+      // Simulate debounce expiry by backdating the lock
+      gameManager._balanceToggleLocks.set('ch-toggle', Date.now() - 600);
+
+      const second = gameManager.toggleBalanceMode('ch-toggle', 'host1');
+      expect(second.success).toBe(true);
+      expect(second.newMode).toBe(BalanceMode.DYNAMIC);
+    });
+
+    test('rolls back in-memory state on DB failure', () => {
+      const originalUpdate = gameManager.db.updateGame.bind(gameManager.db);
+      gameManager.db.updateGame = jest.fn(() => {
+        throw new Error('DB write failed');
+      });
+
+      const result = gameManager.toggleBalanceMode('ch-toggle', 'host1');
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('DB_ERROR');
+
+      // In-memory state should be rolled back to DYNAMIC
+      expect(gameManager.games.get('ch-toggle').balanceMode).toBe(BalanceMode.DYNAMIC);
+
+      // Debounce lock should be cleared so retry is possible
+      expect(gameManager._balanceToggleLocks.has('ch-toggle')).toBe(false);
+
+      // Restore
+      gameManager.db.updateGame = originalUpdate;
+    });
+
+    test('logs BALANCE_MODE_CHANGED on successful toggle', () => {
+      const infoSpy = jest.spyOn(gameLogger, 'info');
+      gameManager.toggleBalanceMode('ch-toggle', 'host1');
+
+      expect(infoSpy).toHaveBeenCalledWith('BALANCE_MODE_CHANGED', expect.objectContaining({
+        channelId: 'ch-toggle',
+        previousMode: BalanceMode.DYNAMIC,
+        newMode: BalanceMode.CLASSIC,
+        hostId: 'host1'
+      }));
+
+      infoSpy.mockRestore();
+    });
+
+    test('logs BALANCE_TOGGLE_DEBOUNCED on rate limit', () => {
+      const warnSpy = jest.spyOn(gameLogger, 'warn');
+      gameManager.toggleBalanceMode('ch-toggle', 'host1');  // succeeds
+      gameManager.toggleBalanceMode('ch-toggle', 'host1');  // debounced
+
+      expect(warnSpy).toHaveBeenCalledWith('BALANCE_TOGGLE_DEBOUNCED', expect.objectContaining({
+        channelId: 'ch-toggle',
+        userId: 'host1'
+      }));
+
+      warnSpy.mockRestore();
+    });
+
+    test('emits balanceModeChanged event with previousMode', () => {
+      const eventSpy = jest.fn();
+      gameManager.on('gameEvent', eventSpy);
+
+      gameManager.toggleBalanceMode('ch-toggle', 'host1');
+
+      const call = eventSpy.mock.calls.find(c => c[0]?.event === 'balanceModeChanged');
+      expect(call).toBeDefined();
+      expect(call[0].previousMode).toBe(BalanceMode.DYNAMIC);
+      expect(call[0].balanceMode).toBe(BalanceMode.CLASSIC);
+    });
+
+    test('debounce is per-channel (independent channels)', () => {
+      gameManager.create('ch-toggle-2', { guildId: 'g1', lobbyHostId: 'host1' });
+      gameManager.join('ch-toggle-2', { id: 'host1', username: 'Host' });
+
+      // Toggle channel 1
+      const r1 = gameManager.toggleBalanceMode('ch-toggle', 'host1');
+      expect(r1.success).toBe(true);
+
+      // Toggle channel 2 immediately — should NOT be debounced
+      const r2 = gameManager.toggleBalanceMode('ch-toggle-2', 'host1');
+      expect(r2.success).toBe(true);
     });
   });
 });

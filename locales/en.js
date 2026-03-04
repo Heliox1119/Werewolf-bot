@@ -268,6 +268,7 @@ module.exports = {
     balance_classic: "Classic",
     balance_changed: "⚖️ Balance mode changed: **{{mode}}**",
     balance_locked: "❌ Balance mode cannot be changed once the game has started.",
+    balance_rate_limited: "⏳ Too fast! Wait a moment before changing the mode.",
     field_players: "👥  Players  ──  {{n}}/{{max}}",
     field_roles: "🎭  Roles in play",
     field_info: "📋  Information",

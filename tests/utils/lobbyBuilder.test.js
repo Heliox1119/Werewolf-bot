@@ -173,6 +173,32 @@ describe('lobbyBuilder', () => {
       const infoField = embed.data.fields.find(f => f.name.includes('Information') || f.name.includes('Informations'));
       expect(infoField.value).toContain('Dynamique');
     });
+
+    test('DYNAMIC lobby title includes 🎭 icon', () => {
+      const game = makeGame(BalanceMode.DYNAMIC);
+      const payload = buildLobbyMessage(game, game.lobbyHostId);
+      const embed = payload.embeds[0];
+      expect(embed.data.title).toContain('🎭');
+    });
+
+    test('CLASSIC lobby title includes ⚖️ icon', () => {
+      const game = makeGame(BalanceMode.CLASSIC);
+      const payload = buildLobbyMessage(game, game.lobbyHostId);
+      const embed = payload.embeds[0];
+      expect(embed.data.title).toContain('⚖️');
+    });
+
+    test('title icon changes when balance mode toggles', () => {
+      const game = makeGame(BalanceMode.DYNAMIC);
+      const payloadDynamic = buildLobbyMessage(game, game.lobbyHostId);
+      expect(payloadDynamic.embeds[0].data.title).toContain('🎭');
+      expect(payloadDynamic.embeds[0].data.title).not.toContain('⚖️');
+
+      game.balanceMode = BalanceMode.CLASSIC;
+      const payloadClassic = buildLobbyMessage(game, game.lobbyHostId);
+      expect(payloadClassic.embeds[0].data.title).toContain('⚖️');
+      expect(payloadClassic.embeds[0].data.title).not.toContain('🎭');
+    });
   });
 
   // ─── buildRolesPreview balance mode dispatch ──────────────────

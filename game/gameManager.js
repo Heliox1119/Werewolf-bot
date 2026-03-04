@@ -28,7 +28,8 @@ const TIMEOUTS = {
   RECENT_COMMAND_WINDOW: 5_000,        // 5s
   RECENT_COMMAND_CLEANUP: 30_000,      // 30s
   RECENT_COMMAND_INTERVAL: 60_000,     // 60s interval de nettoyage
-  MAX_NO_KILL_CYCLES: 3                // 3 cycles jour/nuit sans mort → draw automatique
+  MAX_NO_KILL_CYCLES: 3,               // 3 cycles jour/nuit sans mort → draw automatique
+  BALANCE_TOGGLE_DEBOUNCE: 500         // 500ms debounce for balance mode toggle
 };
 
 class GameManager extends EventEmitter {
@@ -53,6 +54,7 @@ class GameManager extends EventEmitter {
     this._villagePanelTimers = new Map(); // gameChannelId -> intervalId (15s tick)
     this._guiPostingInProgress = new Set(); // gameChannelId — prevents concurrent _post* for the same game
     this._guiRefreshScheduled = new Set(); // gameChannelId — coalesces rapid _refreshAllGui calls
+    this._balanceToggleLocks = new Map(); // channelId -> timestamp (debounce rapid toggles)
     this._testMode = options.testMode ?? process.env.NODE_ENV === 'test';
     this._failurePoints = new Map();
     this.stuckGameThresholdMs = TIMEOUTS.STUCK_GAME_THRESHOLD;
@@ -2596,10 +2598,11 @@ class GameManager extends EventEmitter {
 
   /**
    * Toggle the balance mode between DYNAMIC and CLASSIC.
+   * Hardened: 500ms debounce, atomic with rollback, structured logging.
    *
    * @param {string} channelId - Game channel ID
    * @param {string} userId    - ID of the user attempting the toggle
-   * @returns {{ success: boolean, newMode?: string, error?: string }}
+   * @returns {{ success: boolean, newMode?: string, previousMode?: string, error?: string }}
    */
   toggleBalanceMode(channelId, userId) {
     const game = this.games.get(channelId);
@@ -2611,17 +2614,54 @@ class GameManager extends EventEmitter {
     // Cannot change once started
     if (game.startedAt) return { success: false, error: 'ALREADY_STARTED' };
 
-    const newMode = game.balanceMode === BalanceMode.DYNAMIC
+    // Debounce: reject if toggled within BALANCE_TOGGLE_DEBOUNCE ms
+    const now = Date.now();
+    const lastToggle = this._balanceToggleLocks.get(channelId);
+    if (lastToggle && (now - lastToggle) < TIMEOUTS.BALANCE_TOGGLE_DEBOUNCE) {
+      logger.warn('BALANCE_TOGGLE_DEBOUNCED', {
+        channelId,
+        userId,
+        elapsedMs: now - lastToggle
+      });
+      return { success: false, error: 'RATE_LIMITED' };
+    }
+    this._balanceToggleLocks.set(channelId, now);
+
+    const previousMode = game.balanceMode || BalanceMode.DYNAMIC;
+    const newMode = previousMode === BalanceMode.DYNAMIC
       ? BalanceMode.CLASSIC
       : BalanceMode.DYNAMIC;
 
+    // Atomic update with rollback on DB failure
     game.balanceMode = newMode;
-    this.db.updateGame(channelId, { balanceMode: newMode });
+    try {
+      this.db.updateGame(channelId, { balanceMode: newMode });
+    } catch (err) {
+      // Rollback in-memory state
+      game.balanceMode = previousMode;
+      this._balanceToggleLocks.delete(channelId);
+      logger.error('BALANCE_MODE_DB_FAILED', {
+        channelId,
+        userId,
+        previousMode,
+        newMode,
+        error: err.message
+      });
+      return { success: false, error: 'DB_ERROR' };
+    }
+
     this.markDirty(channelId);
 
-    this._emitGameEvent(game, 'balanceModeChanged', { balanceMode: newMode, changedBy: userId });
+    logger.info('BALANCE_MODE_CHANGED', {
+      channelId,
+      previousMode,
+      newMode,
+      hostId: userId
+    });
 
-    return { success: true, newMode };
+    this._emitGameEvent(game, 'balanceModeChanged', { balanceMode: newMode, previousMode, changedBy: userId });
+
+    return { success: true, newMode, previousMode };
   }
 
   start(channelId, rolesOverride = null) {

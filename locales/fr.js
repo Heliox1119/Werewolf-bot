@@ -268,6 +268,7 @@ module.exports = {
     balance_classic: "Classique",
     balance_changed: "⚖️ Mode d'équilibrage changé : **{{mode}}**",
     balance_locked: "❌ Le mode d'équilibrage ne peut plus être changé une fois la partie lancée.",
+    balance_rate_limited: "⏳ Trop rapide ! Attendez un instant avant de changer le mode.",
     field_players: "👥  Joueurs  ──  {{n}}/{{max}}",
     field_roles: "🎭  Rôles en jeu",
     field_info: "📋  Informations",

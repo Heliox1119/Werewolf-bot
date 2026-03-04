@@ -267,16 +267,21 @@ function buildLobbyEmbed(game, hostId) {
   const canStart = playerCount >= min;
   const isFull = playerCount >= max;
 
+  // Balance mode (computed early for title suffix)
+  const currentBalanceMode = game.balanceMode || BalanceMode.DYNAMIC;
+  const isDynamic = currentBalanceMode === BalanceMode.DYNAMIC;
+  const balanceModeIcon = isDynamic ? '🎭' : '⚖️';
+
   // Title changes with state
   let title, description;
   if (isFull) {
-    title = t('lobby.title_full');
+    title = `${t('lobby.title_full')}  ${balanceModeIcon}`;
     description = t('lobby.desc_full');
   } else if (canStart) {
-    title = t('lobby.title_ready');
+    title = `${t('lobby.title_ready')}  ${balanceModeIcon}`;
     description = t('lobby.desc_ready');
   } else {
-    title = t('lobby.title_recruiting');
+    title = `${t('lobby.title_recruiting')}  ${balanceModeIcon}`;
     description = t('lobby.desc_recruiting', { n: min - playerCount });
   }
 
@@ -284,10 +289,6 @@ function buildLobbyEmbed(game, hostId) {
   const config = ConfigManager.getInstance();
   const wolfWin = config.getWolfWinCondition(game.guildId || null);
   const wolfWinLabel = wolfWin === 'elimination' ? t('lobby.wolfwin_elimination') : t('lobby.wolfwin_majority');
-
-  // Balance mode
-  const currentBalanceMode = game.balanceMode || BalanceMode.DYNAMIC;
-  const isDynamic = currentBalanceMode === BalanceMode.DYNAMIC;
   const balanceModeLabel = isDynamic ? t('lobby.balance_dynamic') : t('lobby.balance_classic');
 
   const embed = new EmbedBuilder()
