@@ -48,7 +48,7 @@ function validateThiefSteal(interaction) {
     return { ok: false, message: t('error.you_are_dead') };
   }
 
-  if (!game.thiefExtraRoles || game.thiefExtraRoles.length !== 2) {
+  if (!game.thiefExtraRoles || game.thiefExtraRoles.length < 1) {
     return { ok: false, message: t('error.action_forbidden') };
   }
 
@@ -85,10 +85,11 @@ function validateThiefSkip(interaction) {
     return { ok: false, message: t('error.cannot_skip_phase') };
   }
 
-  // Both-wolves rule: skip is forbidden
-  if (game.thiefExtraRoles && game.thiefExtraRoles.length === 2) {
+  // Both-wolves rule: skip is forbidden when ALL options are wolf roles
+  if (game.thiefExtraRoles && game.thiefExtraRoles.length >= 1) {
     const isWolf = (r) => r === ROLES.WEREWOLF || r === ROLES.WHITE_WOLF;
-    if (isWolf(game.thiefExtraRoles[0]) && isWolf(game.thiefExtraRoles[1])) {
+    const allWolves = game.thiefExtraRoles.every(isWolf);
+    if (allWolves) {
       return { ok: false, message: t('cmd.steal.must_take_wolf') };
     }
   }

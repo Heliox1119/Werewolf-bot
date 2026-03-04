@@ -2694,10 +2694,12 @@ class GameManager extends EventEmitter {
     });
 
     // Si le Voleur est dans la pool, ajouter 2 cartes supplémentaires pour le choix
+    // En mode CLASSIC, pas de cartes physiques : la pool virtuelle est calculée après distribution
     const hasThiefInPool = rolesPool.includes(ROLES.THIEF);
-    const extraRolesCount = hasThiefInPool ? 2 : 0;
+    const isClassicMode = game.balanceMode === BalanceMode.CLASSIC;
+    const extraRolesCount = (hasThiefInPool && !isClassicMode) ? 2 : 0;
 
-    // Compléter avec des villageois si nécessaire (+ extra pour le voleur)
+    // Compléter avec des villageois si nécessaire (+ extra pour le voleur en DYNAMIC)
     const totalNeeded = game.players.length + extraRolesCount;
     if (rolesPool.length < totalNeeded) {
       rolesPool.push(...Array(totalNeeded - rolesPool.length).fill(ROLES.VILLAGER));
@@ -2712,10 +2714,10 @@ class GameManager extends EventEmitter {
       [rolesPool[i], rolesPool[j]] = [rolesPool[j], rolesPool[i]];
     }
 
-    // Si le Voleur est en jeu, extraire 2 cartes pour le choix du Voleur
-    // (on s'assure que le Voleur lui-même n'est pas dans les cartes extras)
+    // Si le Voleur est en jeu, extraire 2 cartes pour le choix du Voleur (DYNAMIC uniquement)
+    // En mode CLASSIC, la pool virtuelle est construite après distribution
     game.thiefExtraRoles = [];
-    if (hasThiefInPool) {
+    if (hasThiefInPool && !isClassicMode) {
       // D'abord assigner le rôle THIEF au joueur voleur
       const thiefIndex = rolesPool.indexOf(ROLES.THIEF);
       rolesPool.splice(thiefIndex, 1);
@@ -2735,6 +2737,19 @@ class GameManager extends EventEmitter {
       this.db.updatePlayer(channelId, p.id, { role: role });
     });
 
+    // CLASSIC mode: build virtual thief selection pool after distribution
+    if (hasThiefInPool && isClassicMode) {
+      const { buildThiefClassicPool } = require('./thiefPoolBuilder');
+      const assignedRoles = game.players.map(p => p.role);
+      const classicPool = buildThiefClassicPool(assignedRoles, enabledRoles);
+      if (classicPool.length > 0) {
+        game.thiefExtraRoles = classicPool;
+      } else {
+        // Fallback: no valid options → Thief keeps role, skip VOLEUR phase
+        game.thiefExtraRoles = [];
+      }
+    }
+
     game.startedAt = Date.now();
     game._aliveAtNightStart = game.players.filter(p => p.alive).length;
     game._noKillCycles = 0;
@@ -2746,7 +2761,7 @@ class GameManager extends EventEmitter {
     // Ordre: VOLEUR → CUPIDON → SALVATEUR → LOUPS
     const hasThief = game.players.some(p => p.role === ROLES.THIEF && p.alive);
     let initialSubPhase = PHASES.LOUPS;
-    if (hasThief && game.thiefExtraRoles.length === 2) {
+    if (hasThief && game.thiefExtraRoles.length >= 1) {
       initialSubPhase = PHASES.VOLEUR;
     } else {
       const hasCupid = game.players.some(p => p.role === ROLES.CUPID && p.alive);

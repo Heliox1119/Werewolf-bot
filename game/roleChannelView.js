@@ -18,6 +18,7 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const PHASES = require('./phases');
 const ROLES = require('./roles');
+const BalanceMode = require('./balanceMode');
 const { t, translatePhase, translateRole } = require('../utils/i18n');
 const {
   formatTimeRemaining,
@@ -357,7 +358,8 @@ function buildWhiteWolfPanel(game, timerInfo, guildId) {
 
 function buildThiefPanel(game, timerInfo, guildId) {
   const cards = game.thiefExtraRoles || [];
-  const hasCards = cards.length === 2;
+  const isClassic = game.balanceMode === BalanceMode.CLASSIC;
+  const hasCards = isClassic ? cards.length >= 1 : cards.length === 2;
   const thiefPhaseOver = game.subPhase !== PHASES.VOLEUR;
 
   // Override context when thief is done
@@ -370,8 +372,9 @@ function buildThiefPanel(game, timerInfo, guildId) {
     ];
     desc = lines.join('\n');
   } else {
+    const hintKey = isClassic ? 'role_panel.thief_action_hint_classic' : 'role_panel.thief_action_hint';
     desc = buildRoleDescription(game, timerInfo, 'thief', guildId,
-      (hasCards ? t('role_panel.thief_action_hint', {}, guildId) : null));
+      (hasCards ? t(hintKey, {}, guildId) : null));
   }
 
   const embed = new EmbedBuilder()
@@ -381,17 +384,39 @@ function buildThiefPanel(game, timerInfo, guildId) {
     .setTimestamp();
 
   if (hasCards) {
-    const card1 = translateRole(cards[0]);
-    const card2 = translateRole(cards[1]);
-    embed.addFields({
-      name: t('role_panel.thief_cards', {}, guildId),
-      value: `🃏 **${card1}**  ·  🃏 **${card2}**`,
-      inline: false,
-    });
+    if (isClassic) {
+      // CLASSIC mode: list all available roles
+      const roleList = cards.map(r => `🃏 **${translateRole(r)}**`).join('\n');
+      embed.addFields({
+        name: t('role_panel.thief_cards_classic', {}, guildId),
+        value: roleList,
+        inline: false,
+      });
+    } else {
+      // DYNAMIC mode: exactly 2 cards
+      const card1 = translateRole(cards[0]);
+      const card2 = translateRole(cards[1]);
+      embed.addFields({
+        name: t('role_panel.thief_cards', {}, guildId),
+        value: `🃏 **${card1}**  ·  🃏 **${card2}**`,
+        inline: false,
+      });
 
-    const bothWolves = (cards[0] === ROLES.WEREWOLF || cards[0] === ROLES.WHITE_WOLF) &&
-                       (cards[1] === ROLES.WEREWOLF || cards[1] === ROLES.WHITE_WOLF);
-    if (bothWolves) {
+      const bothWolves = (cards[0] === ROLES.WEREWOLF || cards[0] === ROLES.WHITE_WOLF) &&
+                         (cards[1] === ROLES.WEREWOLF || cards[1] === ROLES.WHITE_WOLF);
+      if (bothWolves) {
+        embed.addFields({
+          name: '⚠️',
+          value: t('role_panel.thief_must_take', {}, guildId),
+          inline: false,
+        });
+      }
+    }
+
+    // All-wolves warning (works for both modes)
+    const isWolf = (r) => r === ROLES.WEREWOLF || r === ROLES.WHITE_WOLF;
+    const allWolves = cards.every(isWolf);
+    if (allWolves && isClassic) {
       embed.addFields({
         name: '⚠️',
         value: t('role_panel.thief_must_take', {}, guildId),
@@ -439,15 +464,22 @@ function buildRolePanel(roleKey, game, timerInfo, guildId) {
 // ─── Thief Buttons (Action Row) ────────────────────────────────────
 
 /**
- * Build the ActionRow with thief action buttons.
- * Returns an array of components (0 or 1 ActionRow).
+ * Build the ActionRow with thief action buttons/select menu.
+ * Returns an array of components (0–2 ActionRows).
  *
- * Buttons are shown ONLY when:
+ * DYNAMIC mode (exactly 2 cards):
+ *   Single row with 2 card buttons + skip button.
+ *
+ * CLASSIC mode (1+ cards):
+ *   Row 1: StringSelectMenu with all available roles.
+ *   Row 2: Skip button.
+ *
+ * Components are shown ONLY when:
  *   - It is NIGHT phase
  *   - subPhase === VOLEUR
- *   - There are exactly 2 thief cards available
+ *   - There is at least 1 thief card available
  *
- * The "keep role" button is disabled when both cards are wolves.
+ * The "keep role" button is disabled when ALL cards are wolves.
  *
  * @param {object} game   Game state (read-only)
  * @param {string} guildId
@@ -458,12 +490,39 @@ function buildThiefButtons(game, guildId) {
   if (game.subPhase !== PHASES.VOLEUR) return [];
 
   const cards = game.thiefExtraRoles || [];
+  if (cards.length < 1) return [];
+
+  const isWolf = (r) => r === ROLES.WEREWOLF || r === ROLES.WHITE_WOLF;
+  const allWolves = cards.every(isWolf);
+  const isClassic = game.balanceMode === BalanceMode.CLASSIC;
+
+  if (isClassic) {
+    // CLASSIC mode: select menu + skip button in separate rows
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId('thief_steal_select')
+      .setPlaceholder(t('role_panel.thief_select_ph', {}, guildId))
+      .addOptions(cards.map(role => ({
+        label: translateRole(role),
+        value: role,
+        emoji: isWolf(role) ? '🐺' : '🃏',
+      })));
+
+    const selectRow = new ActionRowBuilder().addComponents(menu);
+    const skipRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('thief_skip')
+        .setLabel(`⏭️ ${t('role_panel.thief_keep_btn', {}, guildId)}`)
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(allWolves),
+    );
+    return [selectRow, skipRow];
+  }
+
+  // DYNAMIC mode: exactly 2 card buttons + skip
   if (cards.length !== 2) return [];
 
   const card1Label = translateRole(cards[0]);
   const card2Label = translateRole(cards[1]);
-
-  const isWolf = (r) => r === ROLES.WEREWOLF || r === ROLES.WHITE_WOLF;
   const bothWolves = isWolf(cards[0]) && isWolf(cards[1]);
 
   const row = new ActionRowBuilder().addComponents(

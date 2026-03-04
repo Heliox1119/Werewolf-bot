@@ -2,6 +2,7 @@ const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const gameManager = require("../game/gameManager");
 const ROLES = require("../game/roles");
 const PHASES = require("../game/phases");
+const BalanceMode = require("../game/balanceMode");
 const { isInGameCategory } = require("../utils/validators");
 const { safeReply } = require("../utils/interaction");
 const { t, translateRole } = require('../utils/i18n');
@@ -14,11 +15,17 @@ module.exports = {
       option
         .setName("choice")
         .setDescription("Numéro de la carte (1 ou 2)")
-        .setRequired(true)
+        .setRequired(false)
         .addChoices(
           { name: "Carte 1", value: 1 },
           { name: "Carte 2", value: 2 }
         )
+    )
+    .addStringOption(option =>
+      option
+        .setName("role")
+        .setDescription("Nom du rôle à voler (mode CLASSIC)")
+        .setRequired(false)
     ),
 
   async execute(interaction) {
@@ -62,19 +69,51 @@ module.exports = {
     }
 
     // Vérifier qu'il y a des cartes disponibles
-    if (!game.thiefExtraRoles || game.thiefExtraRoles.length !== 2) {
+    if (!game.thiefExtraRoles || game.thiefExtraRoles.length < 1) {
       await safeReply(interaction, { content: t('error.action_forbidden'), flags: MessageFlags.Ephemeral });
       return;
     }
 
-    const choice = interaction.options.getInteger("choice");
-    if (choice !== 1 && choice !== 2) {
-      await safeReply(interaction, { content: t('cmd.steal.invalid_choice'), flags: MessageFlags.Ephemeral });
-      return;
+    // Determine the chosen role based on mode
+    let chosenRole;
+    const isClassic = game.balanceMode === BalanceMode.CLASSIC;
+
+    if (isClassic) {
+      // CLASSIC mode: accept either choice (index) or role (name)
+      const roleName = interaction.options.getString("role");
+      const choice = interaction.options.getInteger("choice");
+
+      if (roleName) {
+        // Match by exact role constant value
+        chosenRole = game.thiefExtraRoles.find(r => r === roleName);
+        if (!chosenRole) {
+          // Try matching by translated name (case-insensitive)
+          chosenRole = game.thiefExtraRoles.find(r =>
+            translateRole(r).toLowerCase() === roleName.toLowerCase()
+          );
+        }
+      } else if (choice && choice >= 1 && choice <= game.thiefExtraRoles.length) {
+        chosenRole = game.thiefExtraRoles[choice - 1];
+      }
+
+      if (!chosenRole) {
+        await safeReply(interaction, { content: t('cmd.steal.invalid_choice_classic'), flags: MessageFlags.Ephemeral });
+        return;
+      }
+    } else {
+      // DYNAMIC mode: classic 2-card behaviour
+      const choice = interaction.options.getInteger("choice");
+      if (choice !== 1 && choice !== 2) {
+        await safeReply(interaction, { content: t('cmd.steal.invalid_choice'), flags: MessageFlags.Ephemeral });
+        return;
+      }
+      if (game.thiefExtraRoles.length !== 2) {
+        await safeReply(interaction, { content: t('error.action_forbidden'), flags: MessageFlags.Ephemeral });
+        return;
+      }
+      chosenRole = game.thiefExtraRoles[choice - 1];
     }
 
-    // Échanger le rôle
-    const chosenRole = game.thiefExtraRoles[choice - 1];
     const oldRole = player.role;
 
     try {
@@ -84,7 +123,7 @@ module.exports = {
         actor.role = chosenRole;
         state.thiefExtraRoles = [];
         gameManager.clearNightAfkTimeout(state);
-        gameManager.logAction(state, `Voleur vole la carte ${choice}: ${chosenRole} (ancien rôle: ${oldRole})`);
+        gameManager.logAction(state, `Voleur vole: ${chosenRole} (ancien rôle: ${oldRole})`);
         const persistedPlayer = gameManager.db.updatePlayer(state.mainChannelId, actor.id, { role: chosenRole });
         if (!persistedPlayer) throw new Error('Failed to persist thief role swap');
         const persistedAction = gameManager.db.addNightAction(state.mainChannelId, state.dayCount || 0, 'steal', interaction.user.id, null);

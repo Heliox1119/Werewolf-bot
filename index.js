@@ -970,6 +970,21 @@ client.on("interactionCreate", async interaction => {
 
   // ── Select menus for night role actions ──
   if (interaction.isStringSelectMenu()) {
+    // ── Thief steal select (CLASSIC mode) ──
+    if (interaction.customId === 'thief_steal_select') {
+      const { safeDefer } = require('./utils/interaction');
+      try {
+        const deferred = await safeDefer(interaction, { flags: MessageFlags.Ephemeral });
+        if (!deferred) return;
+      } catch (err) {
+        if (err.code === 10062) return;
+        throw err;
+      }
+      const { handleStealSelect } = require('./interactions/thiefButtons');
+      await handleStealSelect(interaction);
+      return;
+    }
+
     const ROLE_SELECT_IDS = ['wolves_kill', 'ww_kill', 'seer_see', 'salvateur_protect', 'witch_death', 'cupid_love'];
     if (ROLE_SELECT_IDS.includes(interaction.customId)) {
       const { safeDefer } = require('./utils/interaction');

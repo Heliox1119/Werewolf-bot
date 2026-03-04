@@ -364,6 +364,7 @@ module.exports = {
       skipped: "🎭 You keep your current role. The cards remain face down.",
       must_take_wolf: "❌ Both cards are werewolves. You must choose one!",
       invalid_choice: "❌ Invalid choice. Use `/steal choice:1` or `/steal choice:2`.",
+      invalid_choice_classic: "❌ Invalid role. Use the select menu or `/steal role:<name>`.",
     },
     listen: {
       wolf_revealed: "👁️ You caught a name in the darkness… **{{name}}** is a werewolf!",
@@ -1071,10 +1072,13 @@ module.exports = {
     // Thief
     thief_title: "Thief's Tent",
     thief_cards: "Available Cards",
+    thief_cards_classic: "Available Roles",
     thief_must_take: "Both cards are werewolves — you must take one!",
     thief_done: "The role has been chosen.",
     thief_action_hint: "Use `/steal` to see and choose a card.",
+    thief_action_hint_classic: "Choose a new role from the menu below, or keep your current role.",
     thief_keep_btn: "Keep my role",
+    thief_select_ph: "Choose a role to steal…",
     // Generic skip button
     skip_btn: "Skip",
     // Wolves select menu

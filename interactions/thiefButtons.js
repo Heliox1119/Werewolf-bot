@@ -1,10 +1,14 @@
 /**
- * interactions/thiefButtons.js — Button handler for the Thief (Voleur) role.
+ * interactions/thiefButtons.js — Button & select-menu handler for the Thief (Voleur) role.
  *
- * Three buttons:
+ * DYNAMIC mode — two buttons + skip:
  *   • thief_steal:1   — Choose card 1  (mirrors /steal choice:1)
  *   • thief_steal:2   — Choose card 2  (mirrors /steal choice:2)
  *   • thief_skip       — Keep current role (mirrors /skip for VOLEUR)
+ *
+ * CLASSIC mode — select menu + skip:
+ *   • thief_steal_select  — StringSelectMenu, value = role constant
+ *   • thief_skip           — Keep current role
  *
  * Every guard and business-logic step is identical to the slash commands.
  * This file ONLY adapts the interaction plumbing (deferred ephemeral + editReply).
@@ -18,11 +22,12 @@ const { safeEditReply } = require('../utils/interaction');
 const { t, translateRole } = require('../utils/i18n');
 
 /**
- * Handle a thief_steal button press.
- * @param {ButtonInteraction} interaction  Already deferred (ephemeral).
- * @param {number} choice  1 or 2
+ * Core steal logic shared by buttons (DYNAMIC) and select menu (CLASSIC).
+ *
+ * @param {Interaction} interaction  Already deferred (ephemeral).
+ * @param {string} chosenRole        The role constant the Thief selected.
  */
-async function handleSteal(interaction, choice) {
+async function handleStealCore(interaction, chosenRole) {
   const result = validateThiefSteal(interaction);
   if (!result.ok) {
     await safeEditReply(interaction, { content: result.message, flags: MessageFlags.Ephemeral });
@@ -30,7 +35,13 @@ async function handleSteal(interaction, choice) {
   }
 
   const { game, player } = result;
-  const chosenRole = game.thiefExtraRoles[choice - 1];
+
+  // Validate that the chosen role is actually in the selection pool
+  if (!game.thiefExtraRoles.includes(chosenRole)) {
+    await safeEditReply(interaction, { content: t('cmd.steal.invalid_choice'), flags: MessageFlags.Ephemeral });
+    return;
+  }
+
   const oldRole = player.role;
 
   try {
@@ -40,7 +51,7 @@ async function handleSteal(interaction, choice) {
       actor.role = chosenRole;
       state.thiefExtraRoles = [];
       gameManager.clearNightAfkTimeout(state);
-      gameManager.logAction(state, `Voleur vole la carte ${choice}: ${chosenRole} (ancien rôle: ${oldRole})`);
+      gameManager.logAction(state, `Voleur vole: ${chosenRole} (ancien rôle: ${oldRole})`);
       const persistedPlayer = gameManager.db.updatePlayer(state.mainChannelId, actor.id, { role: chosenRole });
       if (!persistedPlayer) throw new Error('Failed to persist thief role swap');
       const persistedAction = gameManager.db.addNightAction(state.mainChannelId, state.dayCount || 0, 'steal', interaction.user.id, null);
@@ -94,6 +105,34 @@ async function handleSteal(interaction, choice) {
 }
 
 /**
+ * Handle a thief_steal button press (DYNAMIC mode — choice 1 or 2).
+ * @param {ButtonInteraction} interaction  Already deferred (ephemeral).
+ * @param {number} choice  1 or 2
+ */
+async function handleSteal(interaction, choice) {
+  const game = gameManager.getGameByChannelId(interaction.channelId);
+  if (!game || !game.thiefExtraRoles || !game.thiefExtraRoles[choice - 1]) {
+    await safeEditReply(interaction, { content: t('error.action_forbidden'), flags: MessageFlags.Ephemeral });
+    return;
+  }
+  const chosenRole = game.thiefExtraRoles[choice - 1];
+  await handleStealCore(interaction, chosenRole);
+}
+
+/**
+ * Handle a thief_steal_select menu interaction (CLASSIC mode).
+ * @param {StringSelectMenuInteraction} interaction  Already deferred (ephemeral).
+ */
+async function handleStealSelect(interaction) {
+  const chosenRole = interaction.values[0];
+  if (!chosenRole) {
+    await safeEditReply(interaction, { content: t('cmd.steal.invalid_choice'), flags: MessageFlags.Ephemeral });
+    return;
+  }
+  await handleStealCore(interaction, chosenRole);
+}
+
+/**
  * Handle a thief_skip button press.
  * @param {ButtonInteraction} interaction  Already deferred (ephemeral).
  */
@@ -140,4 +179,4 @@ async function handleThiefButton(interaction) {
   }
 }
 
-module.exports = { handleThiefButton };
+module.exports = { handleThiefButton, handleStealSelect };

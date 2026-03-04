@@ -364,6 +364,7 @@ module.exports = {
       skipped: "🎭 Tu gardes ton rôle actuel. Les cartes restent face cachée.",
       must_take_wolf: "❌ Les deux cartes sont des loups-garous. Tu dois obligatoirement en choisir une !",
       invalid_choice: "❌ Choix invalide. Utilise `/steal choice:1` ou `/steal choice:2`.",
+      invalid_choice_classic: "❌ Rôle invalide. Utilise le menu de sélection ou `/steal role:<nom>`.",
     },
     listen: {
       wolf_revealed: "👁️ Tu as surpris un nom dans l'obscurité… **{{name}}** est un loup-garou !",
@@ -1071,10 +1072,13 @@ module.exports = {
     // Voleur
     thief_title: "Tente du Voleur",
     thief_cards: "Cartes disponibles",
+    thief_cards_classic: "Rôles disponibles",
     thief_must_take: "Les deux cartes sont des loups-garous — vous devez en prendre une !",
     thief_done: "Le rôle a été choisi.",
     thief_action_hint: "Utilisez `/steal` pour voir et choisir une carte.",
+    thief_action_hint_classic: "Choisissez un nouveau rôle dans le menu ci-dessous, ou gardez votre rôle actuel.",
     thief_keep_btn: "Garder mon rôle",
+    thief_select_ph: "Choisissez un rôle à voler…",
     // Bouton skip générique
     skip_btn: "Passer",
     // Menu de sélection des loups
