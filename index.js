@@ -889,6 +889,34 @@ client.on("interactionCreate", async interaction => {
       return;
     }
 
+    if (buttonType === "lobby_balance") {
+      const game = gameManager.games.get(channelId);
+      if (!game) {
+        await safeEditReply(interaction, { content: t('error.no_game_found_button') });
+        return;
+      }
+
+      const result = gameManager.toggleBalanceMode(channelId, interaction.user.id);
+
+      if (!result.success) {
+        if (result.error === 'NOT_HOST') {
+          await safeEditReply(interaction, { content: t('error.only_host_can_start'), flags: MessageFlags.Ephemeral });
+          return;
+        }
+        if (result.error === 'ALREADY_STARTED') {
+          await safeEditReply(interaction, { content: t('lobby.balance_locked'), flags: MessageFlags.Ephemeral });
+          return;
+        }
+        await safeEditReply(interaction, { content: t('error.no_game_found_button') });
+        return;
+      }
+
+      const modeLabel = result.newMode === 'CLASSIC' ? t('lobby.balance_classic') : t('lobby.balance_dynamic');
+      await safeEditReply(interaction, { content: t('lobby.balance_changed', { mode: modeLabel }) });
+      await updateLobbyEmbed(interaction.guild, channelId);
+      return;
+    }
+
     if (buttonType === "lobby_start") {
       const game = gameManager.games.get(channelId);
       if (!game) {

@@ -1438,4 +1438,64 @@ describe('GameManager', () => {
       expect(gameManager.isRealPlayerId(undefined)).toBe(false);
     });
   });
+
+  describe('toggleBalanceMode()', () => {
+    const BalanceMode = require('../../game/balanceMode');
+
+    beforeEach(() => {
+      gameManager.create('ch-toggle', { guildId: 'g1', lobbyHostId: 'host1' });
+      gameManager.join('ch-toggle', { id: 'host1', username: 'Host' });
+    });
+
+    test('toggles DYNAMIC → CLASSIC', () => {
+      const result = gameManager.toggleBalanceMode('ch-toggle', 'host1');
+      expect(result.success).toBe(true);
+      expect(result.newMode).toBe(BalanceMode.CLASSIC);
+      expect(gameManager.games.get('ch-toggle').balanceMode).toBe(BalanceMode.CLASSIC);
+    });
+
+    test('toggles CLASSIC → DYNAMIC', () => {
+      gameManager.toggleBalanceMode('ch-toggle', 'host1'); // → CLASSIC
+      const result = gameManager.toggleBalanceMode('ch-toggle', 'host1'); // → DYNAMIC
+      expect(result.success).toBe(true);
+      expect(result.newMode).toBe(BalanceMode.DYNAMIC);
+    });
+
+    test('persists to DB', () => {
+      gameManager.toggleBalanceMode('ch-toggle', 'host1');
+      const dbGame = gameManager.db.getGame('ch-toggle');
+      expect(dbGame.balance_mode).toBe(BalanceMode.CLASSIC);
+    });
+
+    test('rejects non-host user', () => {
+      gameManager.join('ch-toggle', { id: 'user2', username: 'NotHost' });
+      const result = gameManager.toggleBalanceMode('ch-toggle', 'user2');
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('NOT_HOST');
+      // Mode unchanged
+      expect(gameManager.games.get('ch-toggle').balanceMode).toBe(BalanceMode.DYNAMIC);
+    });
+
+    test('rejects after game started', () => {
+      // Add enough players to start
+      for (let i = 2; i <= 5; i++) {
+        gameManager.join('ch-toggle', { id: `p${i}`, username: `Player${i}` });
+      }
+      gameManager.start('ch-toggle');
+      const result = gameManager.toggleBalanceMode('ch-toggle', 'host1');
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('ALREADY_STARTED');
+    });
+
+    test('returns NO_GAME for nonexistent channel', () => {
+      const result = gameManager.toggleBalanceMode('ch-nonexistent', 'host1');
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('NO_GAME');
+    });
+
+    test('game.id is stored on game object', () => {
+      const game = gameManager.games.get('ch-toggle');
+      expect(typeof game.id).toBe('number');
+    });
+  });
 });

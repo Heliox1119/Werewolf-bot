@@ -3,6 +3,9 @@ const path = require('path');
 const { t, translateRole, tips: getTips } = require('./i18n');
 const { getLobbyColor: themeLobbyColor } = require('./theme');
 const ConfigManager = require('./config');
+const BalanceMode = require('../game/balanceMode');
+const { generateRoles } = require('../game/roleGeneration');
+const ROLES = require('../game/roles');
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const LOBBY_IMAGE = path.join(__dirname, '..', 'img', 'LG.jpg');
@@ -71,10 +74,58 @@ function buildPlayerList(players, max) {
   return lines.join('\n');
 }
 
+// ─── Role → emoji mapping (for CLASSIC preview) ─────────────────────────────
+const ROLE_EMOJI = Object.freeze({
+  [ROLES.WEREWOLF]:     '🐺',
+  [ROLES.WHITE_WOLF]:   '🐺',
+  [ROLES.VILLAGER]:     '🧑‍🌾',
+  [ROLES.SEER]:         '🔮',
+  [ROLES.WITCH]:        '🧪',
+  [ROLES.HUNTER]:       '🏹',
+  [ROLES.PETITE_FILLE]: '👁️',
+  [ROLES.CUPID]:        '💘',
+  [ROLES.THIEF]:        '🎭',
+  [ROLES.SALVATEUR]:    '🛡️',
+  [ROLES.ANCIEN]:       '🧓',
+  [ROLES.IDIOT]:        '🤡',
+});
+
+// ─── Role → i18n nameKey mapping ────────────────────────────────────────────
+const ROLE_NAME_KEY = Object.freeze({
+  [ROLES.WEREWOLF]:     'werewolf',
+  [ROLES.WHITE_WOLF]:   'white_wolf',
+  [ROLES.VILLAGER]:     'villager',
+  [ROLES.SEER]:         'seer',
+  [ROLES.WITCH]:        'witch',
+  [ROLES.HUNTER]:       'hunter',
+  [ROLES.PETITE_FILLE]: 'petite_fille',
+  [ROLES.CUPID]:        'cupid',
+  [ROLES.THIEF]:        'thief',
+  [ROLES.SALVATEUR]:    'salvateur',
+  [ROLES.ANCIEN]:       'ancien',
+  [ROLES.IDIOT]:        'idiot',
+});
+
+// ─── Role → team mapping ────────────────────────────────────────────────────
+const ROLE_TEAM = Object.freeze({
+  [ROLES.WEREWOLF]:     'evil',
+  [ROLES.WHITE_WOLF]:   'evil',
+  [ROLES.VILLAGER]:     'village',
+  [ROLES.SEER]:         'village',
+  [ROLES.WITCH]:        'village',
+  [ROLES.HUNTER]:       'village',
+  [ROLES.PETITE_FILLE]: 'village',
+  [ROLES.CUPID]:        'neutral',
+  [ROLES.THIEF]:        'village',
+  [ROLES.SALVATEUR]:    'village',
+  [ROLES.ANCIEN]:       'village',
+  [ROLES.IDIOT]:        'village',
+});
+
 /**
- * Build roles grid with team grouping
+ * Build roles grid with team grouping — DYNAMIC mode (original static ROLE_LIST)
  */
-function buildRolesPreview(playerCount) {
+function buildDynamicRolesPreview(playerCount) {
   const active = ROLE_LIST.filter(r => r.minPlayers <= playerCount || r.count === null);
 
   // Calculate wolf count: consolidate regular werewolf entries (highest applicable)
@@ -123,6 +174,80 @@ function buildRolesPreview(playerCount) {
 }
 
 /**
+ * Build roles preview from the actual generateRoles() pool — CLASSIC mode.
+ * Shows the real composition that would be generated for this player count + seed.
+ */
+function buildPoolBasedPreview(playerCount, balanceMode, rotationSeed) {
+  const pool = generateRoles(playerCount, balanceMode, { rotationSeed: rotationSeed || 0 });
+
+  // Count occurrences of each role
+  const counts = new Map();
+  for (const role of pool) {
+    counts.set(role, (counts.get(role) || 0) + 1);
+  }
+
+  // Remaining slots are villagers
+  const totalSpecials = pool.length;
+  const villagerCount = Math.max(0, playerCount - totalSpecials);
+  if (villagerCount > 0) counts.set(ROLES.VILLAGER, villagerCount);
+
+  const lines = [];
+
+  // Evil team
+  const evilRoles = [...counts.entries()].filter(([r]) => ROLE_TEAM[r] === 'evil');
+  if (evilRoles.length > 0) {
+    const evilParts = evilRoles.map(([r, c]) => {
+      const emoji = ROLE_EMOJI[r] || '❓';
+      const name = t(`role.${ROLE_NAME_KEY[r]}`);
+      return c > 1 ? `${emoji} ${name} ×${c}` : `${emoji} ${name}`;
+    });
+    lines.push(`${t('lobby.team_evil')} ─ ${evilParts.join('  ')}`);
+  }
+
+  // Village team
+  const villageRoles = [...counts.entries()].filter(([r]) => ROLE_TEAM[r] === 'village');
+  if (villageRoles.length > 0) {
+    const villageParts = villageRoles.map(([r, c]) => {
+      const emoji = ROLE_EMOJI[r] || '❓';
+      const name = t(`role.${ROLE_NAME_KEY[r]}`);
+      return c > 1 ? `${emoji} ${name} ×${c}` : `${emoji} ${name}`;
+    });
+    lines.push(`${t('lobby.team_village')} ─ ${villageParts.join('  ')}`);
+  }
+
+  // Neutral team
+  const neutralRoles = [...counts.entries()].filter(([r]) => ROLE_TEAM[r] === 'neutral');
+  if (neutralRoles.length > 0) {
+    const neutralParts = neutralRoles.map(([r, c]) => {
+      const emoji = ROLE_EMOJI[r] || '❓';
+      const name = t(`role.${ROLE_NAME_KEY[r]}`);
+      return c > 1 ? `${emoji} ${name} ×${c}` : `${emoji} ${name}`;
+    });
+    lines.push(`${t('lobby.team_neutral')} ─ ${neutralParts.join('  ')}`);
+  }
+
+  const uniqueRoles = counts.size;
+  lines.push(`\n${t('lobby.roles_count', { n: uniqueRoles, m: playerCount })}`);
+
+  return lines.join('\n');
+}
+
+/**
+ * Build roles preview — dispatches to the correct renderer based on balance mode.
+ *
+ * @param {number} playerCount
+ * @param {string} [balanceMode='DYNAMIC']
+ * @param {number} [rotationSeed=0] - Used for CLASSIC deterministic preview
+ * @returns {string}
+ */
+function buildRolesPreview(playerCount, balanceMode, rotationSeed) {
+  if (balanceMode === BalanceMode.CLASSIC) {
+    return buildPoolBasedPreview(playerCount, BalanceMode.CLASSIC, rotationSeed);
+  }
+  return buildDynamicRolesPreview(playerCount);
+}
+
+/**
  * Get a rotating tip based on time
  */
 function getRandomTip() {
@@ -160,6 +285,11 @@ function buildLobbyEmbed(game, hostId) {
   const wolfWin = config.getWolfWinCondition(game.guildId || null);
   const wolfWinLabel = wolfWin === 'elimination' ? t('lobby.wolfwin_elimination') : t('lobby.wolfwin_majority');
 
+  // Balance mode
+  const currentBalanceMode = game.balanceMode || BalanceMode.DYNAMIC;
+  const isDynamic = currentBalanceMode === BalanceMode.DYNAMIC;
+  const balanceModeLabel = isDynamic ? t('lobby.balance_dynamic') : t('lobby.balance_classic');
+
   const embed = new EmbedBuilder()
     .setTitle(title)
     .setDescription(
@@ -177,6 +307,7 @@ function buildLobbyEmbed(game, hostId) {
           `${t('lobby.info_host')} · <@${hostId}>`,
           game.voiceChannelId ? `${t('lobby.info_voice')} · <#${game.voiceChannelId}>` : `${t('lobby.info_voice')} · ${t('lobby.info_voice_waiting')}`,
           `${t('lobby.info_wolfwin')} · ${wolfWinLabel}`,
+          `${t('lobby.info_balance')} · ${balanceModeLabel}`,
           `${t('lobby.info_created')} · <t:${Math.floor((game._lobbyCreatedAt || Date.now()) / 1000)}:R>`
         ].join('\n'),
         inline: true
@@ -184,7 +315,7 @@ function buildLobbyEmbed(game, hostId) {
       {
         name: t('lobby.field_roles'),
         value: playerCount >= min
-          ? buildRolesPreview(playerCount)
+          ? buildRolesPreview(playerCount, currentBalanceMode, game.id || 0)
           : `${t('lobby.roles_hidden', { min })}\n🐺 ×2  🔮  🧪  🏹  + ???`,
         inline: false
       }
@@ -220,7 +351,12 @@ function buildLobbyEmbed(game, hostId) {
       .setCustomId(`lobby_wolfwin:${game.mainChannelId}`)
       .setLabel(wolfWin === 'elimination' ? t('ui.btn.wolfwin_elimination') : t('ui.btn.wolfwin_majority'))
       .setEmoji('⚙️')
-      .setStyle(wolfWin === 'elimination' ? ButtonStyle.Danger : ButtonStyle.Secondary)
+      .setStyle(wolfWin === 'elimination' ? ButtonStyle.Danger : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`lobby_balance:${game.mainChannelId}`)
+      .setLabel(isDynamic ? t('ui.btn.balance_dynamic') : t('ui.btn.balance_classic'))
+      .setEmoji(isDynamic ? '🎭' : '⚖️')
+      .setStyle(isDynamic ? ButtonStyle.Primary : ButtonStyle.Secondary)
   );
 
   return {

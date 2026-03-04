@@ -2594,6 +2594,36 @@ class GameManager extends EventEmitter {
     return true;
   }
 
+  /**
+   * Toggle the balance mode between DYNAMIC and CLASSIC.
+   *
+   * @param {string} channelId - Game channel ID
+   * @param {string} userId    - ID of the user attempting the toggle
+   * @returns {{ success: boolean, newMode?: string, error?: string }}
+   */
+  toggleBalanceMode(channelId, userId) {
+    const game = this.games.get(channelId);
+    if (!game) return { success: false, error: 'NO_GAME' };
+
+    // Only host can toggle
+    if (game.lobbyHostId !== userId) return { success: false, error: 'NOT_HOST' };
+
+    // Cannot change once started
+    if (game.startedAt) return { success: false, error: 'ALREADY_STARTED' };
+
+    const newMode = game.balanceMode === BalanceMode.DYNAMIC
+      ? BalanceMode.CLASSIC
+      : BalanceMode.DYNAMIC;
+
+    game.balanceMode = newMode;
+    this.db.updateGame(channelId, { balanceMode: newMode });
+    this.markDirty(channelId);
+
+    this._emitGameEvent(game, 'balanceModeChanged', { balanceMode: newMode, changedBy: userId });
+
+    return { success: true, newMode };
+  }
+
   start(channelId, rolesOverride = null) {
     const game = this.games.get(channelId);
     const minRequired = (game && game.rules && game.rules.minPlayers) || 5;
