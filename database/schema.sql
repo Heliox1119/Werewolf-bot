@@ -54,6 +54,9 @@ CREATE TABLE IF NOT EXISTS games (
   little_girl_exposed BOOLEAN DEFAULT 0,
   thief_extra_roles TEXT DEFAULT '[]',
   
+  -- Balance mode (DYNAMIC, CLASSIC, …)
+  balance_mode TEXT DEFAULT 'DYNAMIC',
+  
   -- Métadonnées
   started_at INTEGER,
   ended_at INTEGER,

@@ -320,6 +320,12 @@ class GameDatabase {
       this.db.exec("DELETE FROM player_stats WHERE player_id LIKE 'fake_%'");
       this.db.exec("DELETE FROM player_extended_stats WHERE player_id LIKE 'fake_%'");
       this.db.exec("DELETE FROM player_guilds WHERE player_id LIKE 'fake_%'");
+
+      // Migration v3.6: add balance_mode column to games
+      if (!gameColumns.includes('balance_mode')) {
+        this.db.exec("ALTER TABLE games ADD COLUMN balance_mode TEXT DEFAULT 'DYNAMIC'");
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'balance_mode', table: 'games' });
+      }
     } catch (err) {
       logger.error('SCHEMA_MIGRATION_ERROR', { error: err.message });
     }
@@ -351,8 +357,8 @@ class GameDatabase {
       const stmt = this.db.prepare(`
         INSERT INTO games (
           channel_id, guild_id, lobby_host_id, min_players, max_players,
-          phase, day_count, disable_voice_mute
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          phase, day_count, disable_voice_mute, balance_mode
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       
       const result = stmt.run(
@@ -363,7 +369,8 @@ class GameDatabase {
         options.maxPlayers || 10,
         'Nuit',
         0,
-        options.disableVoiceMute || 0
+        options.disableVoiceMute || 0,
+        options.balanceMode || 'DYNAMIC'
       );
       
       logger.info('GAME_CREATED', { gameId: result.lastInsertRowid, channelId });
@@ -429,7 +436,9 @@ class GameDatabase {
       // v3.5.1 — AFK no-kill cycles persistence
       noKillCycles: 'no_kill_cycles',
       // v3.5 — ability engine state
-      abilityStateJson: 'ability_state_json'
+      abilityStateJson: 'ability_state_json',
+      // v3.6 — balance mode
+      balanceMode: 'balance_mode'
     };
 
     for (const [jsKey, dbKey] of Object.entries(mapping)) {

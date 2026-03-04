@@ -37,6 +37,7 @@ class MockGameDatabase {
       day_count: 0,
       captain_id: null,
       disable_voice_mute: options.disableVoiceMute || 0,
+      balance_mode: options.balanceMode || 'DYNAMIC',
       white_wolf_channel_id: null,
       thief_channel_id: null,
       white_wolf_kill_target_id: null,
@@ -104,7 +105,8 @@ class MockGameDatabase {
       dayCount: 'day_count',
       captainId: 'captain_id',
       startedAt: 'started_at',
-      endedAt: 'ended_at'
+      endedAt: 'ended_at',
+      balanceMode: 'balance_mode'
     };
 
     for (const [jsKey, dbKey] of Object.entries(mapping)) {

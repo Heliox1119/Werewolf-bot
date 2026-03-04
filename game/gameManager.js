@@ -1,5 +1,7 @@
 const ROLES = require("./roles");
 const PHASES = require("./phases");
+const BalanceMode = require('./balanceMode');
+const { generateRoles } = require('./roleGeneration');
 const fs = require('fs');
 const path = require('path');
 const EventEmitter = require('events');
@@ -926,6 +928,7 @@ class GameManager extends EventEmitter {
       startedAt: null,
       endedAt: null,
       disableVoiceMute: options.disableVoiceMute || false,
+      balanceMode: options.balanceMode || BalanceMode.DYNAMIC,
       _activeTimerType: null,
       _lastMutationAt: Date.now(),
       _lastPhaseChangeAt: null,   // timestamp of last Night↔Day transition (drives transition visual)
@@ -2601,58 +2604,12 @@ class GameManager extends EventEmitter {
       return null;
     }
 
-    // If rolesOverride provided, use it; otherwise build default pool
+    // If rolesOverride provided, use it; otherwise generate via balance mode
     let rolesPool = [];
     if (Array.isArray(rolesOverride) && rolesOverride.length > 0) {
       rolesPool = [...rolesOverride];
     } else {
-      // Construire la pool de rôles de base
-      // 1 loup si 5 joueurs, 2 loups à partir de 6
-      if (game.players.length <= 5) {
-        rolesPool = [
-          ROLES.WEREWOLF,
-          ROLES.SEER,
-          ROLES.WITCH,
-          ROLES.HUNTER
-        ];
-      } else {
-        rolesPool = [
-          ROLES.WEREWOLF,
-          ROLES.WEREWOLF,
-          ROLES.SEER,
-          ROLES.WITCH,
-          ROLES.HUNTER
-        ];
-      }
-
-      // Si au moins 6 joueurs, ajouter la Petite Fille
-      if (game.players.length >= 6) {
-        rolesPool.push(ROLES.PETITE_FILLE);
-      }
-      // Si au moins 7 joueurs, ajouter Cupidon
-      if (game.players.length >= 7) {
-        rolesPool.push(ROLES.CUPID);
-      }
-      // Si au moins 8 joueurs, ajouter le Voleur
-      if (game.players.length >= 8) {
-        rolesPool.push(ROLES.THIEF);
-      }
-      // Si au moins 9 joueurs, ajouter le Salvateur
-      if (game.players.length >= 9) {
-        rolesPool.push(ROLES.SALVATEUR);
-      }
-      // Si au moins 10 joueurs, ajouter l'Ancien
-      if (game.players.length >= 10) {
-        rolesPool.push(ROLES.ANCIEN);
-      }
-      // Si au moins 11 joueurs, ajouter le Loup Blanc
-      if (game.players.length >= 11) {
-        rolesPool.push(ROLES.WHITE_WOLF);
-      }
-      // Si au moins 12 joueurs, ajouter l'Idiot du Village
-      if (game.players.length >= 12) {
-        rolesPool.push(ROLES.IDIOT);
-      }
+      rolesPool = generateRoles(game.players.length, game.balanceMode);
     }
 
     // Filtrer les rôles selon la configuration de la guilde (rôles activés)
@@ -4278,6 +4235,7 @@ class GameManager extends EventEmitter {
           startedAt: dbGame.started_at,
           endedAt: dbGame.ended_at,
           disableVoiceMute: dbGame.disable_voice_mute === 1,
+          balanceMode: dbGame.balance_mode || BalanceMode.DYNAMIC,
           _activeTimerType: null,
           _lastMutationAt: Date.now(),
           stuckStatus: 'OK',
