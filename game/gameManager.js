@@ -883,6 +883,7 @@ class GameManager extends EventEmitter {
 
     // Créer dans le cache mémoire
     this.games.set(channelId, {
+      id: gameId,
       mainChannelId: channelId,
       guildId: options.guildId || null,
       lobbyMessageId: null,
@@ -2609,7 +2610,7 @@ class GameManager extends EventEmitter {
     if (Array.isArray(rolesOverride) && rolesOverride.length > 0) {
       rolesPool = [...rolesOverride];
     } else {
-      rolesPool = generateRoles(game.players.length, game.balanceMode);
+      rolesPool = generateRoles(game.players.length, game.balanceMode, { rotationSeed: game.id || 0 });
     }
 
     // Filtrer les rôles selon la configuration de la guilde (rôles activés)
@@ -4184,6 +4185,7 @@ class GameManager extends EventEmitter {
         
         // Créer l'objet game en mémoire
         const game = {
+          id: dbGame.id || null,
           mainChannelId: channelId,
           guildId: dbGame.guild_id || null,
           lobbyMessageId: dbGame.lobby_message_id,
