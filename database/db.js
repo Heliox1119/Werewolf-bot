@@ -322,7 +322,7 @@ class GameDatabase {
       this.db.exec("DELETE FROM player_guilds WHERE player_id LIKE 'fake_%'");
 
       // Migration v3.6: add balance_mode column to games
-      if (!gameColumns.includes('balance_mode')) {
+      if (!columns.includes('balance_mode')) {
         this.db.exec("ALTER TABLE games ADD COLUMN balance_mode TEXT DEFAULT 'DYNAMIC'");
         logger.info('MIGRATION_COLUMN_ADDED', { column: 'balance_mode', table: 'games' });
       }
