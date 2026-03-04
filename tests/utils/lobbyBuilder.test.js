@@ -119,7 +119,7 @@ describe('lobbyBuilder', () => {
       };
     }
 
-    test('DYNAMIC lobby has balance button with Primary style', () => {
+    test('DYNAMIC lobby has balance button with Secondary style', () => {
       const game = makeGame(BalanceMode.DYNAMIC);
       const payload = buildLobbyMessage(game, game.lobbyHostId);
 
@@ -130,7 +130,7 @@ describe('lobbyBuilder', () => {
       const buttons = settingsRow.components;
       const balanceBtn = buttons.find(b => b.data.custom_id.startsWith('lobby_balance:'));
       expect(balanceBtn).toBeDefined();
-      expect(balanceBtn.data.style).toBe(1); // ButtonStyle.Primary = 1
+      expect(balanceBtn.data.style).toBe(2); // ButtonStyle.Secondary = 2
       expect(balanceBtn.data.label).toContain('Dynamique');
     });
 
@@ -144,6 +144,40 @@ describe('lobbyBuilder', () => {
       expect(balanceBtn).toBeDefined();
       expect(balanceBtn.data.style).toBe(2); // ButtonStyle.Secondary = 2
       expect(balanceBtn.data.label).toContain('Classique');
+    });
+
+    test('wolfwin button always uses Secondary style', () => {
+      const game = makeGame(BalanceMode.DYNAMIC);
+      const payload = buildLobbyMessage(game, game.lobbyHostId);
+
+      const settingsRow = payload.components[1];
+      const wolfwinBtn = settingsRow.components.find(b => b.data.custom_id.startsWith('lobby_wolfwin:'));
+      expect(wolfwinBtn).toBeDefined();
+      expect(wolfwinBtn.data.style).toBe(2); // ButtonStyle.Secondary = 2
+    });
+
+    test('CLASSIC lobby hides role preview', () => {
+      const game = makeGame(BalanceMode.CLASSIC);
+      const payload = buildLobbyMessage(game, game.lobbyHostId);
+
+      const embed = payload.embeds[0];
+      const rolesField = embed.data.fields.find(f => f.name.includes('Rôles') || f.name.includes('Roles'));
+      expect(rolesField).toBeDefined();
+      expect(rolesField.value).toContain('Classique');
+      // Should NOT contain actual role names
+      expect(rolesField.value).not.toContain('Loup-Garou');
+      expect(rolesField.value).not.toContain('Voyante');
+    });
+
+    test('DYNAMIC lobby shows full role preview', () => {
+      const game = makeGame(BalanceMode.DYNAMIC);
+      const payload = buildLobbyMessage(game, game.lobbyHostId);
+
+      const embed = payload.embeds[0];
+      const rolesField = embed.data.fields.find(f => f.name.includes('Rôles') || f.name.includes('Roles'));
+      expect(rolesField).toBeDefined();
+      // DYNAMIC should show actual role names
+      expect(rolesField.value).toContain('Loup-Garou');
     });
 
     test('balance button custom_id contains channel id', () => {

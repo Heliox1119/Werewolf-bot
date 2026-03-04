@@ -315,9 +315,11 @@ function buildLobbyEmbed(game, hostId) {
       },
       {
         name: t('lobby.field_roles'),
-        value: playerCount >= min
-          ? buildRolesPreview(playerCount, currentBalanceMode, game.id || 0)
-          : `${t('lobby.roles_hidden', { min })}\n🐺 ×2  🔮  🧪  🏹  + ???`,
+        value: !isDynamic
+          ? t('lobby.classic_roles_hidden')
+          : playerCount >= min
+            ? buildRolesPreview(playerCount, currentBalanceMode, game.id || 0)
+            : `${t('lobby.roles_hidden', { min })}\n🐺 ×2  🔮  🧪  🏹  + ???`,
         inline: false
       }
     )
@@ -346,18 +348,18 @@ function buildLobbyEmbed(game, hostId) {
       .setDisabled(!canStart)
   );
 
-  // ─── Buttons Row 2: Settings ───
+  // ─── Buttons Row 2: Settings (all Secondary — no accent colors) ───
   const settingsButtons = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`lobby_wolfwin:${game.mainChannelId}`)
       .setLabel(wolfWin === 'elimination' ? t('ui.btn.wolfwin_elimination') : t('ui.btn.wolfwin_majority'))
       .setEmoji('⚙️')
-      .setStyle(wolfWin === 'elimination' ? ButtonStyle.Danger : ButtonStyle.Secondary),
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`lobby_balance:${game.mainChannelId}`)
       .setLabel(isDynamic ? t('ui.btn.balance_dynamic') : t('ui.btn.balance_classic'))
       .setEmoji(isDynamic ? '🎭' : '⚖️')
-      .setStyle(isDynamic ? ButtonStyle.Primary : ButtonStyle.Secondary)
+      .setStyle(ButtonStyle.Secondary)
   );
 
   return {
