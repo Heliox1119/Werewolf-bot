@@ -628,7 +628,7 @@ client.on("interactionCreate", async interaction => {
 
     const [buttonType, arg1, arg2] = interaction.customId.split(":");
     let channelId = null;
-    if (buttonType === "lobby_join" || buttonType === "lobby_leave" || buttonType === "lobby_start" || buttonType === "lobby_wolfwin") {
+    if (buttonType === "lobby_join" || buttonType === "lobby_leave" || buttonType === "lobby_start" || buttonType === "lobby_wolfwin" || buttonType === "lobby_balance") {
       channelId = arg1;
     }
 
