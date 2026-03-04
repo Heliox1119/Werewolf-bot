@@ -52,7 +52,7 @@ module.exports = {
       try {
         const extStats = gameManager.achievements.getExtendedStats(target.id);
         const rank = gameManager.achievements.getPlayerRank(target.id);
-        const tier = AchievementEngine.getEloTier(extStats.elo_rating);
+        const tier = AchievementEngine.getEloTier(extStats.elo_rating, extStats.ranked_games_played);
         
         embed.addFields(
           { name: '🏅 ELO', value: `${tier.emoji} **${extStats.elo_rating}** (${tier.name})`, inline: true },

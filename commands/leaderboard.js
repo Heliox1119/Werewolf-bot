@@ -56,7 +56,8 @@ module.exports = {
       const medal = i < 3 ? medals[i] : `**${i + 1}.**`;
       const winrate = p.games_played > 0 ? Math.round((p.games_won / p.games_played) * 100) : 0;
       const elo = p.elo_rating || 1000;
-      const tier = AchievementEngine.getEloTier(elo);
+      const rankedGames = p.ranked_games_played ?? 0;
+      const tier = AchievementEngine.getEloTier(elo, rankedGames);
       
       return `${medal} ${tier.emoji} **${p.username}** — ${elo} ELO · ${winrate}% WR · ${p.games_played} ${t('leaderboard.games')}`;
     });

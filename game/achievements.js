@@ -8,6 +8,13 @@
 const { t, translateRole } = require('../utils/i18n');
 const { game: logger } = require('../utils/logger');
 const ROLES = require('./roles');
+const {
+  shouldSkipElo,
+  clampElo,
+  getPlacementMultiplier,
+  getEloTier: _getEloTier,
+  ELO_FLOOR,
+} = require('./eloGuards');
 
 // ==================== ACHIEVEMENT DEFINITIONS ====================
 
@@ -201,6 +208,7 @@ class AchievementEngine {
           best_survival_streak INTEGER DEFAULT 0,
           elo_rating INTEGER DEFAULT 1000,
           elo_peak INTEGER DEFAULT 1000,
+          ranked_games_played INTEGER DEFAULT 0,
           updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
         )
       `);
@@ -230,7 +238,7 @@ class AchievementEngine {
       'wolf_kills', 'wolf_wins', 'village_wins', 'lovers_wins',
       'seer_correct', 'salvateur_saves', 'witch_saves', 'hunter_wolf_kills',
       'times_captain', 'idiot_survives', 'ancien_extra_life_used',
-      'win_streak', 'survival_streak'
+      'win_streak', 'survival_streak', 'ranked_games_played'
     ];
     if (!valid.includes(stat)) return;
     
@@ -415,10 +423,28 @@ class AchievementEngine {
   // ==================== ELO SYSTEM ====================
 
   /**
-   * Calculate ELO changes for all players after a game
-   * K-factor scales with player count (more players = more ELO at stake)
+   * Calculate ELO changes for all players after a game.
+   * K-factor scales with player count (more players = more ELO at stake).
+   *
+   * Guards (via eloGuards):
+   *   - Inactivity draws → skip (return null)
+   *   - Cancelled / aborted before Night 1 → skip
+   *   - Winner is null → skip
+   *
+   * Placement phase (first 5 ranked games): K-factor × 1.25
+   * Hard ELO floor: 800
    */
   calculateElo(game, winner) {
+    // ── Guard: skip ELO entirely for inactivity draws / cancelled games ──
+    if (shouldSkipElo(game, winner)) {
+      logger.info('ELO_SKIPPED', {
+        reason: 'shouldSkipElo',
+        channelId: game?.mainChannelId,
+        winner,
+      });
+      return null;
+    }
+
     const players = game.players;
     const playerCount = players.length;
     const baseK = 32;
@@ -426,11 +452,13 @@ class AchievementEngine {
 
     const eloChanges = new Map();
 
-    // Get current ELO for all players
+    // Get current ELO + ranked games count for all players
     const elos = new Map();
+    const rankedCounts = new Map();
     for (const p of players) {
       const stats = this.getExtendedStats(p.id);
       elos.set(p.id, stats.elo_rating);
+      rankedCounts.set(p.id, stats.ranked_games_played ?? 0);
     }
 
     // Average ELO of each team
@@ -471,15 +499,18 @@ class AchievementEngine {
       if (p.role === ROLES.PETITE_FILLE) roleMultiplier = 1.15;
       if (p.role === ROLES.ANCIEN) roleMultiplier = 1.1;
 
+      // Placement multiplier (×1.25 during first 5 ranked games)
+      const placementMult = getPlacementMultiplier(rankedCounts.get(p.id));
+
       // Survival bonus: alive at end gets small boost
       const survivalBonus = p.alive ? 2 : 0;
 
-      const change = Math.round(K * roleMultiplier * (actual - expected)) + survivalBonus;
-      const newElo = Math.max(100, myElo + change); // Floor at 100
+      const change = Math.round(K * roleMultiplier * placementMult * (actual - expected)) + survivalBonus;
+      const newElo = clampElo(myElo + change); // Floor at ELO_FLOOR (800)
 
-      eloChanges.set(p.id, { oldElo: myElo, newElo, change });
+      eloChanges.set(p.id, { oldElo: myElo, newElo, change: newElo - myElo, rankedGamesPlayed: (rankedCounts.get(p.id) ?? 0) + 1 });
       
-      // Update in DB
+      // Update ELO in DB
       this.setStat(p.id, 'elo_rating', newElo);
       
       // Update peak
@@ -488,6 +519,9 @@ class AchievementEngine {
         SET elo_peak = MAX(elo_peak, ?)
         WHERE player_id = ?
       `).run(newElo, p.id);
+
+      // Increment ranked games played counter
+      this.incrementStat(p.id, 'ranked_games_played');
     }
 
     return eloChanges;
@@ -507,7 +541,8 @@ class AchievementEngine {
                  COALESCE(pes.elo_peak, 1000) as elo_peak,
                  COALESCE(pes.best_win_streak, 0) as best_win_streak,
                  COALESCE(pes.wolf_wins, 0) as wolf_wins,
-                 COALESCE(pes.village_wins, 0) as village_wins
+                 COALESCE(pes.village_wins, 0) as village_wins,
+                 COALESCE(pes.ranked_games_played, 0) as ranked_games_played
           FROM player_stats ps
           LEFT JOIN player_extended_stats pes ON ps.player_id = pes.player_id
           WHERE ps.games_played > 0
@@ -526,7 +561,8 @@ class AchievementEngine {
                COALESCE(pes.elo_peak, 1000) as elo_peak,
                COALESCE(pes.best_win_streak, 0) as best_win_streak,
                COALESCE(pes.wolf_wins, 0) as wolf_wins,
-               COALESCE(pes.village_wins, 0) as village_wins
+               COALESCE(pes.village_wins, 0) as village_wins,
+               COALESCE(pes.ranked_games_played, 0) as ranked_games_played
         FROM player_stats ps
         LEFT JOIN player_extended_stats pes ON ps.player_id = pes.player_id
         WHERE ps.games_played > 0
@@ -557,16 +593,18 @@ class AchievementEngine {
   }
 
   /**
-   * Get ELO tier name and emoji based on rating
+   * Get ELO tier name and emoji based on rating.
+   *
+   * Delegates to eloGuards.getEloTier() for the actual tier resolution.
+   * Accepts an optional rankedGamesPlayed param; when omitted the player
+   * is assumed to have completed placement (backward-compat).
+   *
+   * @param {number} elo
+   * @param {number} [rankedGamesPlayed=999]
+   * @returns {{ id: string, name: string, nameEn: string, emoji: string }}
    */
-  static getEloTier(elo) {
-    if (elo >= 2000) return { id: 'alpha', name: 'Loup Alpha', nameEn: 'Alpha Wolf', emoji: '🐺👑' };
-    if (elo >= 1700) return { id: 'diamond', name: 'Diamant', nameEn: 'Diamond', emoji: '💎' };
-    if (elo >= 1400) return { id: 'platinum', name: 'Platine', nameEn: 'Platinum', emoji: '⚜️' };
-    if (elo >= 1200) return { id: 'gold', name: 'Or', nameEn: 'Gold', emoji: '🥇' };
-    if (elo >= 1000) return { id: 'silver', name: 'Argent', nameEn: 'Silver', emoji: '🥈' };
-    if (elo >= 800) return { id: 'bronze', name: 'Bronze', nameEn: 'Bronze', emoji: '🥉' };
-    return { id: 'iron', name: 'Fer', nameEn: 'Iron', emoji: '⚙️' };
+  static getEloTier(elo, rankedGamesPlayed) {
+    return _getEloTier(elo, rankedGamesPlayed);
   }
 }
 

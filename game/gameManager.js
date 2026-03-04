@@ -1991,10 +1991,19 @@ class GameManager extends EventEmitter {
     const snapshot = this._createStateSnapshot(game);
     const victorDisplay = t('game.victory_draw_display') || 'draw';
 
+    // Mark game so eloGuards.shouldSkipElo() can detect inactivity draws
+    game._endedByInactivity = true;
+
     this._setPhase(game, PHASES.ENDED, { allowOutsideAtomic: true });
     game.endedAt = Date.now();
     this.clearGameTimers(game);
     this.logAction(game, `Partie terminée: match nul par inactivité (${game._noKillCycles} cycles sans élimination)`);
+
+    logger.info('ELO_SKIPPED_INACTIVITY_DRAW', {
+      channelId: game.mainChannelId,
+      noKillCycles: game._noKillCycles,
+      playerCount: game.players.length
+    });
 
     try { this.db.saveGameHistory(game, 'draw'); } catch (e) { /* ignore */ }
 
@@ -2161,7 +2170,7 @@ class GameManager extends EventEmitter {
           if (eloChanges && eloChanges.has(p.id)) {
             const elo = eloChanges.get(p.id);
             const arrow = elo.change >= 0 ? '📈' : '📉';
-            const tier = AchievementEngine.getEloTier(elo.newElo);
+            const tier = AchievementEngine.getEloTier(elo.newElo, elo.rankedGamesPlayed);
             line += ` ${arrow} ${elo.change >= 0 ? '+' : ''}${elo.change} (${tier.emoji} ${elo.newElo})`;
           }
           return line;

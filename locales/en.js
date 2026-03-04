@@ -841,6 +841,7 @@ module.exports = {
     wolves_wr: "Wolves Wins",
     avg_duration: "Avg. Duration",
     no_data: "📭 No ranking data available. Play some games to appear!",
+    placement: "Unranked ({{remaining}} games left)",
   },
 
   // ==================== HISTORY ====================
@@ -863,6 +864,8 @@ module.exports = {
     witch_saves: "Witch Saves",
     detailed: "Detailed Statistics",
     achievements: "Achievements",
+    placement_info: "Placement phase ({{played}}/{{total}})",
+    elo_floor: "ELO floor: {{floor}}",
   },
 
   // ==================== TIPS ====================

@@ -69,7 +69,7 @@ module.exports = function(webServer) {
           rank: i + 1,
           ...p,
           winrate: p.games_played > 0 ? Math.round((p.games_won / p.games_played) * 100) : 0,
-          tier: AchievementEngine.getEloTier(p.elo_rating || 1000)
+          tier: AchievementEngine.getEloTier(p.elo_rating || 1000, p.ranked_games_played)
         }));
         res.json({ success: true, data: enriched });
       } else {
@@ -103,7 +103,7 @@ module.exports = function(webServer) {
         const achs = gm.achievements.getPlayerAchievements(req.params.id);
         result.elo = ext.elo_rating;
         result.eloPeak = ext.elo_peak;
-        result.tier = AchievementEngine.getEloTier(ext.elo_rating);
+        result.tier = AchievementEngine.getEloTier(ext.elo_rating, ext.ranked_games_played);
         result.rank = rank;
         result.extended = ext;
         result.achievements = achs.map(a => ({

@@ -841,6 +841,7 @@ module.exports = {
     wolves_wr: "Victoires Loups",
     avg_duration: "Durée moy.",
     no_data: "📭 Aucune donnée de classement disponible. Jouez des parties pour apparaître !",
+    placement: "Non classé ({{remaining}} parties restantes)",
   },
 
   // ==================== HISTORY ====================
@@ -863,6 +864,8 @@ module.exports = {
     witch_saves: "Sauvetages sorcière",
     detailed: "Statistiques détaillées",
     achievements: "Succès",
+    placement_info: "Phase de placement ({{played}}/{{total}})",
+    elo_floor: "Plancher ELO : {{floor}}",
   },
 
   // ==================== TIPS ====================

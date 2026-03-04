@@ -326,6 +326,13 @@ class GameDatabase {
         this.db.exec("ALTER TABLE games ADD COLUMN balance_mode TEXT DEFAULT 'DYNAMIC'");
         logger.info('MIGRATION_COLUMN_ADDED', { column: 'balance_mode', table: 'games' });
       }
+
+      // Migration v3.8: add ranked_games_played to player_extended_stats for ELO placement
+      const extColumns = this.db.pragma('table_info(player_extended_stats)').map(c => c.name);
+      if (extColumns.length > 0 && !extColumns.includes('ranked_games_played')) {
+        this.db.exec('ALTER TABLE player_extended_stats ADD COLUMN ranked_games_played INTEGER DEFAULT 0');
+        logger.info('MIGRATION_COLUMN_ADDED', { column: 'ranked_games_played', table: 'player_extended_stats' });
+      }
     } catch (err) {
       logger.error('SCHEMA_MIGRATION_ERROR', { error: err.message });
     }

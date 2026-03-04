@@ -54,7 +54,7 @@ module.exports = function(webServer) {
         globalLeaderboard = raw.map((p, i) => ({
           rank: i + 1,
           ...p,
-          tier: AchievementEngine.getEloTier(p.elo_rating || 1000)
+          tier: AchievementEngine.getEloTier(p.elo_rating || 1000, p.ranked_games_played)
         }));
       } catch (err) {
         logger.error('DASHBOARD_LEADERBOARD_ERROR', { error: err.message });
@@ -153,7 +153,7 @@ module.exports = function(webServer) {
         leaderboard = gm.achievements.getLeaderboard(5, req.params.id).map((p, i) => ({
           rank: i + 1,
           ...p,
-          tier: AchievementEngine.getEloTier(p.elo_rating || 1000)
+          tier: AchievementEngine.getEloTier(p.elo_rating || 1000, p.ranked_games_played)
         }));
       }
 
@@ -288,7 +288,7 @@ module.exports = function(webServer) {
         leaderboard = gm.achievements.getLeaderboard(50, req.params.id).map((p, i) => ({
           rank: i + 1,
           ...p,
-          tier: AchievementEngine.getEloTier(p.elo_rating || 1000)
+          tier: AchievementEngine.getEloTier(p.elo_rating || 1000, p.ranked_games_played)
         }));
       }
 
@@ -338,7 +338,7 @@ module.exports = function(webServer) {
       if (gm.achievements) {
         ext = gm.achievements.getExtendedStats(req.params.id);
         rank = gm.achievements.getPlayerRank(req.params.id);
-        tier = AchievementEngine.getEloTier(ext.elo_rating || 1000);
+        tier = AchievementEngine.getEloTier(ext.elo_rating || 1000, ext.ranked_games_played);
         achievements = gm.achievements.getPlayerAchievements(req.params.id).map(a => ({
           ...a,
           ...(ALL_ACH[a.achievement_id] || {})
