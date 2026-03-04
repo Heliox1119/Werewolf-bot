@@ -253,7 +253,7 @@ module.exports = {
     team_village: "🔵 **Village**",
     team_neutral: "🟡 **Neutre**",
     roles_hidden: "*Les rôles seront dévoilés quand **{{min}}** joueurs seront réunis*",
-    classic_roles_hidden: "*En mode Classique, la composition des rôles n'est pas révélée avant le début de la partie.*\n\n🐺 ×?  🔮 ×?  🧪 ×?  🏹 ×?  + ???",
+    classic_roles_hidden: "*En mode Classique, la composition des rôles n'est pas révélée avant le début de la partie.* 🔒",
     roles_count: "**{{n}}** rôles différents · **{{m}}** cartes distribuées",
     info_host: "👑 **Host**",
     info_voice: "🎤 **Vocal**",
