@@ -1130,6 +1130,9 @@ module.exports = {
     narration_witch: "Une bougie vacille dans une chaumière cachée.\nLa Sorcière examine ses potions…",
     narration_seer: "Les étoiles s'alignent.\nLa Voyante scrute sa boule de cristal…",
     narration_wakeup: "L'aube se lève.\nLe village retient son souffle… qui a survécu à la nuit ?",
+    // CLASSIC mode — generic night messages (no role names)
+    classic_night_narration: "La nuit tombe sur le village.\nDes forces invisibles agissent dans l'ombre.",
+    classic_night_focus: "Un silence pesant règne… des âmes agissent dans l'obscurité.",
     // Field headers for definitive village panel
     state_header: "État du jeu",
     players_header: "Villageois",

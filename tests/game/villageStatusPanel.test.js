@@ -41,6 +41,7 @@ const {
   buildPlayerList,
   buildGameState,
   getPhaseImage,
+  isClassicNight,
 } = require('../../game/villageStatusPanel');
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -904,5 +905,109 @@ describe('buildVillageMasterEmbed — animation', () => {
     });
     const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
     expect(embed.toJSON().color).toBe(0x2C2F33);
+  });
+});
+
+// ─── CLASSIC mode — generic night messages ────────────────────────
+
+describe('CLASSIC mode — night role hiding', () => {
+  const BalanceMode = require('../../game/balanceMode');
+
+  function classicNightGame(subPhase) {
+    return createTestGame({
+      balanceMode: BalanceMode.CLASSIC,
+      phase: PHASES.NIGHT,
+      subPhase,
+    });
+  }
+
+  // isClassicNight helper
+  test('isClassicNight returns true for CLASSIC + NIGHT', () => {
+    const game = classicNightGame(PHASES.LOUPS);
+    expect(isClassicNight(game)).toBe(true);
+  });
+
+  test('isClassicNight returns false for CLASSIC + DAY', () => {
+    const game = createTestGame({ balanceMode: BalanceMode.CLASSIC, phase: PHASES.DAY, subPhase: PHASES.VOTE });
+    expect(isClassicNight(game)).toBe(false);
+  });
+
+  test('isClassicNight returns false for DYNAMIC + NIGHT', () => {
+    const game = createTestGame({ balanceMode: BalanceMode.DYNAMIC, phase: PHASES.NIGHT, subPhase: PHASES.LOUPS });
+    expect(isClassicNight(game)).toBe(false);
+  });
+
+  test('isClassicNight returns false when balanceMode is undefined (DYNAMIC default)', () => {
+    const game = createTestGame({ phase: PHASES.NIGHT, subPhase: PHASES.LOUPS });
+    expect(isClassicNight(game)).toBe(false);
+  });
+
+  // buildNarrationLine — CLASSIC night returns generic text for all sub-phases
+  const NIGHT_SUB_PHASES = [
+    PHASES.VOLEUR, PHASES.CUPIDON, PHASES.SALVATEUR,
+    PHASES.LOUPS, PHASES.LOUP_BLANC, PHASES.SORCIERE,
+    PHASES.VOYANTE, PHASES.REVEIL,
+  ];
+
+  test.each(NIGHT_SUB_PHASES)('CLASSIC narration for %s returns generic text', (subPhase) => {
+    const game = classicNightGame(subPhase);
+    const text = buildNarrationLine(game, 'g1');
+    expect(text).toContain('village_panel.classic_night_narration');
+    // Must NOT contain any role-specific narration key
+    expect(text).not.toContain('narration_wolves');
+    expect(text).not.toContain('narration_witch');
+    expect(text).not.toContain('narration_seer');
+    expect(text).not.toContain('narration_cupid');
+    expect(text).not.toContain('narration_thief');
+    expect(text).not.toContain('narration_salvateur');
+    expect(text).not.toContain('narration_white_wolf');
+  });
+
+  // buildFocusMessage — CLASSIC night returns generic text for all sub-phases
+  test.each(NIGHT_SUB_PHASES)('CLASSIC focus for %s returns generic text', (subPhase) => {
+    const game = classicNightGame(subPhase);
+    const text = buildFocusMessage(game, 'g1');
+    expect(text).toContain('village_panel.classic_night_focus');
+    // Must NOT contain role-specific focus key
+    expect(text).not.toContain('focus_wolves');
+    expect(text).not.toContain('focus_witch');
+    expect(text).not.toContain('focus_seer');
+    expect(text).not.toContain('focus_cupid');
+    expect(text).not.toContain('focus_thief');
+    expect(text).not.toContain('focus_salvateur');
+    expect(text).not.toContain('focus_white_wolf');
+  });
+
+  // CLASSIC day is NOT affected — still shows role-specific day messages
+  test('CLASSIC day still shows vote focus', () => {
+    const game = createTestGame({ balanceMode: BalanceMode.CLASSIC, phase: PHASES.DAY, subPhase: PHASES.VOTE });
+    expect(buildFocusMessage(game, 'g1')).toContain('village_panel.focus_vote');
+  });
+
+  test('CLASSIC day still shows captain vote narration', () => {
+    const game = createTestGame({ balanceMode: BalanceMode.CLASSIC, phase: PHASES.DAY, subPhase: PHASES.VOTE_CAPITAINE });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_captain_vote');
+  });
+
+  // DYNAMIC mode is completely unchanged
+  test('DYNAMIC narration for LOUPS still shows role-specific text', () => {
+    const game = createTestGame({ balanceMode: BalanceMode.DYNAMIC, phase: PHASES.NIGHT, subPhase: PHASES.LOUPS });
+    expect(buildNarrationLine(game, 'g1')).toContain('village_panel.narration_wolves');
+  });
+
+  test('DYNAMIC focus for SORCIERE still shows role-specific text', () => {
+    const game = createTestGame({ balanceMode: BalanceMode.DYNAMIC, phase: PHASES.NIGHT, subPhase: PHASES.SORCIERE });
+    expect(buildFocusMessage(game, 'g1')).toContain('village_panel.focus_witch');
+  });
+
+  // Master embed integration — CLASSIC night embed uses generic description
+  test('CLASSIC night master embed has generic narration in description', () => {
+    const game = classicNightGame(PHASES.LOUPS);
+    const embed = buildVillageMasterEmbed(game, NO_TIMER, 'g1');
+    const desc = getDescription(embed);
+    expect(desc).toContain('village_panel.classic_night_narration');
+    expect(desc).toContain('village_panel.classic_night_focus');
+    expect(desc).not.toContain('focus_wolves');
+    expect(desc).not.toContain('narration_wolves');
   });
 });

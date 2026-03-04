@@ -37,6 +37,7 @@
 
 const { EmbedBuilder } = require('discord.js');
 const PHASES = require('./phases');
+const BalanceMode = require('./balanceMode');
 const { t, translatePhase } = require('../utils/i18n');
 const {
   formatTimeRemaining,
@@ -63,6 +64,17 @@ const PHASE_IMAGES = {
  */
 function getPhaseImage(phase) {
   return PHASE_IMAGES[phase] || null;
+}
+
+// ─── CLASSIC mode helper ──────────────────────────────────────────
+
+/**
+ * Returns true when the game is in CLASSIC balance mode
+ * and the current phase is NIGHT (not DAY, not ENDED).
+ * In that situation, public displays must hide role identities.
+ */
+function isClassicNight(game) {
+  return game.balanceMode === BalanceMode.CLASSIC && game.phase === PHASES.NIGHT;
 }
 
 // ─── Narration line ───────────────────────────────────────────────
@@ -98,6 +110,11 @@ function buildNarrationLine(game, guildId) {
       default:
         return dynamicText || t('village_panel.narration_day', {}, guildId);
     }
+  }
+
+  // CLASSIC night — generic atmospheric narration, no role names
+  if (isClassicNight(game)) {
+    return t('village_panel.classic_night_narration', {}, guildId);
   }
 
   // Night — sub-phase-specific narrations stay locale-based
@@ -146,6 +163,11 @@ function buildFocusMessage(game, guildId) {
       default:
         return t('village_panel.focus_day', {}, guildId);
     }
+  }
+
+  // CLASSIC night — generic focus, no role names
+  if (isClassicNight(game)) {
+    return t('village_panel.classic_night_focus', {}, guildId);
   }
 
   // Night sub-phases
@@ -309,4 +331,5 @@ module.exports = {
   buildPlayerList,
   buildGameState,
   getPhaseImage,
+  isClassicNight,
 };

@@ -1130,6 +1130,9 @@ module.exports = {
     narration_witch: "Candlelight flickers in a hidden cottage.\nThe Witch examines her potions…",
     narration_seer: "The stars align.\nThe Seer peers into the crystal ball…",
     narration_wakeup: "Dawn breaks.\nThe village holds its breath… who survived the night?",
+    // CLASSIC mode — generic night messages (no role names)
+    classic_night_narration: "Night falls over the village.\nInvisible forces act in the shadows.",
+    classic_night_focus: "A heavy silence reigns… souls stir in the darkness.",
     // Field headers for definitive village panel
     state_header: "Game State",
     players_header: "Villagers",
